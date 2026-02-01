@@ -1,0 +1,387 @@
+
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-error: hsl(var(--error));
+  --color-error-foreground: hsl(var(--error-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+/* Continuous scrolling animation for company logos */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 25s linear infinite;
+}
+
+:root {
+  /* New Color Palette - Professional Dark Theme */
+  --pure-white: #FFFFFF;
+  --light-gray: #F7F9FC;
+  --charcoal: #2C2C2E;
+  --soft-blue: #3D8BFF; /* Fixed: Using project spec color instead of #5B7BBF */
+  --cool-gray: #E0E6ED;
+  --graphite: #1A1A1A;
+  --slate-gray: #6C757D;
+  --mint-green: #4BB543;
+  --amber: #F0A202;
+  --rose-red: #E63946;
+  --light-blue-bg: #F0F9FF; /* Light blue background for selected states */
+  --light-red-bg: #FEF2F2; /* Light red background for error states */
+  --light-red-border: #FECACA; /* Light red border for error states */
+  --success-text: #065F46; /* Dark green text for success messages */
+  --error-text: #DC2626; /* Red text for error messages */
+  
+  /* Brand-specific colors for semantic usage */
+  --brand-primary: var(--graphite); /* #1A1A1A */
+  --brand-secondary: var(--charcoal); /* #2C2C2E */
+  --brand-accent: var(--soft-blue); /* #3D8BFF */
+  --brand-text: var(--slate-gray); /* #6C757D */
+  
+  /* Button specific colors */
+  --button-primary: #1C2331;
+  --button-secondary: #0d1b2a;
+  --button-tertiary: #22333b;
+  --button-dark: #1E1E1E;
+  
+  /* CSS Variables using new palette */
+  --background: 0 0% 100%; /* #FFFFFF */
+  --foreground: 0 0% 10%; /* #1A1A1A */
+  --card: 0 0% 100%; /* #FFFFFF */
+  --card-foreground: 0 0% 10%; /* #1A1A1A */
+  --popover: 0 0% 100%; /* #FFFFFF */
+  --popover-foreground: 0 0% 10%; /* #1A1A1A */
+  
+  /* Primary elements using button colors */
+  --primary: 220 27% 15%; /* #1C2331 */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
+  --secondary: 210 40% 98%; /* #F7F9FC */
+  --secondary-foreground: 240 3% 18%; /* #2C2C2E */
+  --muted: 210 40% 98%; /* #F7F9FC */
+  --muted-foreground: 210 8% 46%; /* #6C757D */
+  --accent: 218 100% 62%; /* #3D8BFF */
+  --accent-foreground: 0 0% 100%; /* #FFFFFF */
+  
+  /* Semantic colors */
+  --success: 142 70% 49%; /* #4BB543 converted to HSL */
+  --success-foreground: 0 0% 100%;
+  --warning: 39 92% 47%; /* #F0A202 converted to HSL */
+  --warning-foreground: 0 0% 7%;
+  --error: 354 70% 54%; /* #E63946 converted to HSL */
+  --error-foreground: 0 0% 100%;
+  --info: 218 58% 63%; /* #3D8BFF converted to HSL */
+  --info-foreground: 0 0% 100%;
+  
+  /* Status-specific colors for badges and indicators */
+  --status-excellent: var(--success);
+  --status-good: var(--info); 
+  --status-warning: var(--warning);
+  --status-poor: var(--error);
+  
+  /* Interactive element colors */
+  --hover-overlay: 0 0% 0% / 0.05; /* rgba(0,0,0,0.05) in HSL format */
+  --focus-ring: var(--soft-blue);
+  --disabled-bg: var(--cool-gray);
+  --disabled-text: var(--slate-gray);
+  
+  /* UI Elements */
+  --border: 215 16% 88%; /* #E0E6ED */
+  --input: 215 16% 88%; /* #E0E6ED */
+  --ring: 218 100% 62%; /* #3D8BFF */
+  --destructive: 354 70% 54%; /* #E63946 */
+  --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+  --radius: 0.5rem;
+  
+  /* Table specific */
+  --table-frozen-column: #E8F4F8;
+  --table-frozen-column-foreground: var(--charcoal);
+  
+  /* Table header colors - Semrush style */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  
+  /* Usage card colors - Professional dark theme */
+  --usage-card-bg-from: 0 0% 7%; /* #121212 - Pure dark grey, no blue tint */
+  --usage-card-bg-to: 0 0% 4%; /* #0A0A0A - Almost pure black */
+  --usage-card-border: 0 0% 15%; /* #262626 - Dark border */
+  --usage-card-label: 0 0% 65%; /* #A6A6A6 - Medium grey for readability */
+  --usage-card-value: 0 0% 100%; /* #FFFFFF - Pure white */
+  
+  /* Settings page specific colors */
+  --settings-section-icon-bg: 220 27% 15%; /* Primary color with low opacity for icon backgrounds */
+  --settings-section-icon-text: 218 100% 62%; /* Accent color for icons */
+  --settings-gradient-from: 0 0% 100%; /* Card gradient start - white */
+  --settings-gradient-to: 210 40% 98%; /* Card gradient end - muted */
+  
+  /* Gray-scale palette for new settings redesign */
+  --gray-50: 0 0% 98%; /* #F9FAFB - Very light gray background */
+  --gray-100: 0 0% 96%; /* #F3F4F6 */
+  --gray-200: 0 0% 90%; /* #E5E7EB - Light borders, backgrounds */
+  --gray-300: 0 0% 83%; /* #D1D5DB - Input borders */
+  --gray-400: 0 0% 64%; /* #9CA3AF */
+  --gray-500: 0 0% 62%; /* #6B7280 - Secondary text */
+  --gray-600: 0 0% 45%; /* #4B5563 - Medium gray text */
+  --gray-700: 0 0% 34%; /* #374151 - Darker gray text */
+  --gray-800: 0 0% 20%; /* #1F2937 */
+  --gray-900: 0 0% 11%; /* #111827 - Dark primary text/buttons */
+  
+  /* Success/Green badge colors */
+  --green-100: 142 77% 93%; /* #DCFCE7 - Light green background */
+  --green-800: 142 70% 25%; /* #166534 - Dark green text */
+  
+  /* Settings card styling */
+  --settings-card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --settings-card-ring: 0 0% 11% / 0.05; /* gray-900 with 5% opacity */
+}
+
+.dark {
+  --background: 0 0% 0%; /* Pure black background */
+  --foreground: 0 0% 100%; /* Pure white text */
+  --card: 0 0% 0%; /* Black cards */
+  --card-foreground: 0 0% 100%; /* White text on cards */
+  --popover: 0 0% 0%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 5%; /* Very dark secondary background */
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 5%;
+  --muted-foreground: 0 0% 100%; /* White muted text */
+  --accent: 218 100% 62%; /* Keep brand accent consistent */
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 20%; /* Dark borders */
+  --input: 0 0% 5%;
+  --ring: 218 100% 62%; /* Keep accent ring consistent */
+  
+  /* Table specific - dark mode */
+  --table-frozen-column: hsl(215, 35%, 18%);
+  --table-frozen-column-foreground: hsl(0, 0%, 95%);
+  
+  /* Table header colors - dark mode */
+  --slate-50: hsl(215, 25%, 12%);
+  --slate-100: hsl(215, 25%, 15%);
+  
+  /* Usage card colors - dark mode */
+  --usage-card-bg-from: 220 40% 6%; /* #0a0e12 - Very dark blue-black */
+  --usage-card-bg-to: 220 45% 3%; /* #050708 - Almost black */
+  --usage-card-border: 220 30% 10%; /* #121619 */
+  --usage-card-label: 0 0% 80%; /* #CCCCCC - Light grey */
+  --usage-card-value: 0 0% 98%; /* #FAFAFA */
+  
+  /* Settings page specific colors - dark mode */
+  --settings-section-icon-bg: 0 0% 100%; /* White for dark mode */
+  --settings-section-icon-text: 218 100% 62%; /* Keep accent consistent */
+  --settings-gradient-from: 0 0% 0%; /* Card gradient start - black */
+  --settings-gradient-to: 0 0% 5%; /* Card gradient end - very dark */
+  
+  /* Gray-scale palette for dark mode */
+  --gray-50: 0 0% 10%; /* Dark background equivalent */
+  --gray-100: 0 0% 12%; /* Slightly lighter dark */
+  --gray-200: 0 0% 20%; /* Dark borders */
+  --gray-300: 0 0% 30%; /* Dark input borders */
+  --gray-400: 0 0% 50%; /* Medium gray */
+  --gray-500: 0 0% 65%; /* Light gray text */
+  --gray-600: 0 0% 75%; /* Lighter gray text */
+  --gray-700: 0 0% 85%; /* Even lighter */
+  --gray-800: 0 0% 92%; /* Near white */
+  --gray-900: 0 0% 98%; /* Light text/elements */
+  
+  /* Success/Green badge colors - dark mode */
+  --green-100: 142 70% 20%; /* Dark green background */
+  --green-800: 142 77% 85%; /* Light green text */
+  
+  /* Settings card styling - dark mode */
+  --settings-card-shadow: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+  --settings-card-ring: 0 0% 100% / 0.05; /* white with 5% opacity */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Statistical number styling */
+  .stat-number {
+    @apply text-2xl font-bold;
+    color: hsl(var(--stat-primary));
+  }
+  
+  .stat-number-large {
+    @apply text-4xl font-bold;
+    color: hsl(var(--stat-primary));
+  }
+  
+  .stat-percentage {
+    @apply text-xl font-semibold;
+    color: hsl(var(--stat-success));
+  }
+  
+  .stat-secondary {
+    @apply font-medium;
+    color: hsl(var(--stat-secondary));
+  }
+  
+  .stat-neutral {
+    @apply text-sm;
+    color: hsl(var(--stat-neutral));
+  }
+  
+  /* Status indicators */
+  .status-excellent {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+  }
+  
+  .status-good {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--info));
+    color: hsl(var(--info-foreground));
+  }
+  
+  .status-warning {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--warning));
+    color: hsl(var(--warning-foreground));
+  }
+  
+  /* Interactive elements with rich colors */
+  .card-interactive {
+    @apply transition-all duration-200 hover:shadow-md;
+    border-left: 4px solid hsl(var(--accent));
+  }
+  
+  .card-interactive:hover {
+    border-left-color: hsl(var(--primary));
+  }
+
+  /* Universal hover effect for buttons */
+  .btn-hover {
+    @apply transition-colors duration-200;
+  }
+  
+  .btn-hover:hover {
+    background-color: var(--button-dark) !important;
+    color: var(--pure-white) !important;
+  }
+  
+  /* Form Elements */
+  .form-field-default {
+    @apply border-border bg-background text-foreground rounded-md px-3 py-2;
+    border: 1px solid var(--border);
+  }
+  
+  .form-field-error {
+    @apply border-error bg-background text-foreground rounded-md px-3 py-2;
+    border: 1px solid hsl(var(--error));
+  }
+  
+  .form-field-success {
+    @apply border-success bg-background text-foreground rounded-md px-3 py-2;
+    border: 1px solid hsl(var(--success));
+  }
+  
+  .form-field-focus {
+    @apply outline-none focus:ring-2 focus:ring-info focus:border-info;
+  }
+  
+  /* Cards and Containers */
+  .card-default {
+    @apply bg-card border-border rounded-lg;
+    border: 1px solid var(--border);
+  }
+  
+  .card-bordered {
+    @apply bg-card border-border rounded-lg shadow-sm;
+    border: 1px solid var(--border);
+  }
+  
+  /* Status Badges */
+  .badge-success {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--success));
+    color: hsl(var(--success-foreground));
+  }
+  
+  .badge-warning {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--warning));
+    color: hsl(var(--warning-foreground));
+  }
+  
+  .badge-error {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--error));
+    color: hsl(var(--error-foreground));
+  }
+  
+  .badge-info {
+    @apply px-2 py-1 rounded text-xs font-medium;
+    background: hsl(var(--info));
+    color: hsl(var(--info-foreground));
+  }
+
+  /* Status Border Utilities for Toast */
+  .border-success {
+    border-color: hsl(var(--success)) !important;
+  }
+  
+  .border-warning {
+    border-color: hsl(var(--warning)) !important;
+  }
+  
+  .border-error {
+    border-color: hsl(var(--error)) !important;
+  }
+  
+  .border-info {
+    border-color: hsl(var(--info)) !important;
+  }
+
+  /* Radial gradient utility */
+  .bg-gradient-radial {
+    background: radial-gradient(var(--tw-gradient-stops));
+  }
+}

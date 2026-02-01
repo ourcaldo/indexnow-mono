@@ -1,0 +1,39 @@
+{
+    "name": "@indexnow/shared",
+    "version": "1.0.0",
+    "private": true,
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./schema": "./src/schema.ts",
+        "./hooks": "./src/hooks/index.ts"
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "zod": "^3.25.76",
+        "@supabase/supabase-js": "^2.45.4",
+        "@supabase/ssr": "^0.6.1",
+        "events": "^3.3.0",
+        "uuid": "^10.0.0",
+        "react": "^19.2.4",
+        "@tanstack/react-query": "^5.84.2",
+        "@paddle/paddle-js": "^1.4.2",
+        "analytics": "^0.8.19",
+        "@analytics/google-analytics": "^1.1.0",
+        "@analytics/google-tag-manager": "^0.6.0",
+        "@analytics/customerio": "^0.2.2",
+        "@sentry/nextjs": "^8.55.0",
+        "posthog-js": "^1.335.2"
+    },
+    "devDependencies": {
+        "@types/react": "^19.2.10",
+        "tsup": "^8.0.1",
+        "typescript": "^5.6.3"
+    }
+}

@@ -1,0 +1,65 @@
+import { useToast } from '../components/toast'
+import { ApiError } from '@indexnow/shared'
+
+/**
+ * Hook for consistent API error handling with toast notifications
+ * 
+ * Integrates with standardized ApiResponse format from Phase 2 error handling
+ * Automatically extracts error details (message, ID, severity) and displays
+ * user-friendly toast notifications with optional error ID copying.
+ */
+export function useApiError() {
+  const { addToast } = useToast()
+
+  /**
+   * Handle API errors with toast notifications
+   */
+  const handleApiError = (error: unknown) => {
+    // Extract error details from different error types
+    let message = 'An unexpected error occurred'
+    let errorId: string | undefined
+    let severity: string | undefined
+
+    if (error instanceof ApiError) {
+      message = error.message
+      errorId = error.id
+      severity = error.severity
+    } else if (error instanceof Error) {
+      message = error.message
+    } else if (typeof error === 'string') {
+      message = error
+    }
+
+    // Determine toast variant based on severity
+    const toastType = severity === 'CRITICAL' || severity === 'HIGH' 
+      ? 'error' 
+      : 'error'
+
+    // Show error toast
+    addToast({
+      title: 'Error',
+      description: message,
+      type: toastType,
+      duration: 6000,
+      ...(errorId && {
+        action: {
+          label: 'Copy Error ID',
+          onClick: () => {
+            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+              navigator.clipboard.writeText(errorId).then(() => {
+                addToast({
+                  title: 'Error ID copied',
+                  description: 'Error ID has been copied to clipboard',
+                  type: 'success',
+                  duration: 3000
+                })
+              }).catch(() => {})
+            }
+          }
+        }
+      })
+    })
+  }
+
+  return { handleApiError }
+}
