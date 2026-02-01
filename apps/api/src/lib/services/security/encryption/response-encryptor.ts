@@ -5,6 +5,7 @@
  * Part of Enhancement #6: API Security Middleware
  */
 
+import { type Json } from '@indexnow/shared';
 import crypto from 'crypto';
 import { keyManager, EncryptionKeyInfo } from './key-manager';
 
@@ -16,7 +17,7 @@ export interface EncryptionOptions {
 }
 
 export interface EncryptedResponse {
-  data: any;
+  data: Json;
   encrypted: Record<string, string>;
   keyId: string;
   algorithm: string;
@@ -26,12 +27,13 @@ export interface EncryptedResponse {
 export interface EncryptionResult {
   shouldEncrypt: boolean;
   encrypted?: EncryptedResponse;
-  original: any;
+  original: Json;
   metadata: {
     encryptionLevel: string;
     fieldsEncrypted: string[];
     responseSize: number;
     encryptedSize?: number;
+    error?: string;
   };
 }
 
@@ -54,7 +56,7 @@ export class ResponseEncryptor {
    * Encrypt response data based on sensitivity and configuration
    */
   async encryptResponse(
-    responseData: any,
+    responseData: Json,
     endpoint: string,
     userRole: string = 'user',
     options: EncryptionOptions
@@ -99,7 +101,7 @@ export class ResponseEncryptor {
 
       // Create encrypted response
       const encryptedResponse: EncryptedResponse = {
-        data: processedData,
+        data: processedData as Json,
         encrypted: encryptedFields,
         keyId: keyInfo.keyId,
         algorithm: this.algorithm,
@@ -123,14 +125,14 @@ export class ResponseEncryptor {
 
     } catch (error) {
       console.error('Response encryption error:', error);
-      return this.createResult(false, responseData, options.encryptionLevel, [], `Encryption failed: ${error}`);
+      return this.createResult(false, responseData, options.encryptionLevel, [], `Encryption failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   /**
    * Decrypt response data (for client-side use)
    */
-  async decryptResponse(encryptedResponse: EncryptedResponse): Promise<any> {
+  async decryptResponse(encryptedResponse: EncryptedResponse): Promise<Json> {
     try {
       const keyInfo = await keyManager.getKey(encryptedResponse.keyId);
       if (!keyInfo) {
@@ -145,7 +147,7 @@ export class ResponseEncryptor {
         this.setNestedValue(decryptedData, fieldPath, decryptedValue);
       }
 
-      return decryptedData;
+      return decryptedData as Json;
 
     } catch (error) {
       console.error('Response decryption error:', error);
@@ -231,7 +233,7 @@ export class ResponseEncryptor {
   /**
    * Encrypt a single field value
    */
-  private async encryptField(value: any, keyInfo: EncryptionKeyInfo): Promise<string> {
+  private async encryptField(value: Json, keyInfo: EncryptionKeyInfo): Promise<string> {
     const data = typeof value === 'string' ? value : JSON.stringify(value);
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipher(this.algorithm, keyInfo.key);
@@ -247,7 +249,7 @@ export class ResponseEncryptor {
   /**
    * Decrypt a single field value
    */
-  private async decryptField(encryptedValue: string, keyInfo: EncryptionKeyInfo): Promise<any> {
+  private async decryptField(encryptedValue: string, keyInfo: EncryptionKeyInfo): Promise<Json> {
     const [ivHex, encrypted, authTagHex] = encryptedValue.split(':');
 
     const iv = Buffer.from(ivHex, 'hex');
@@ -271,24 +273,38 @@ export class ResponseEncryptor {
   /**
    * Get nested value from object using dot notation path
    */
-  private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : undefined;
-    }, obj);
+  private getNestedValue(obj: unknown, path: string): Json | undefined {
+    const keys = path.split('.');
+    let current: any = obj; // Internal utility still needs to traverse dynamic structure
+    
+    for (const key of keys) {
+      if (current === null || typeof current !== 'object' || !(key in current)) {
+        return undefined;
+      }
+      current = current[key];
+    }
+    
+    return current as Json;
   }
 
   /**
    * Set nested value in object using dot notation path
    */
-  private setNestedValue(obj: any, path: string, value: any): void {
+  private setNestedValue(obj: unknown, path: string, value: Json): void {
+    if (obj === null || typeof obj !== 'object') return;
+    
     const keys = path.split('.');
     const lastKey = keys.pop()!;
-    const target = keys.reduce((current, key) => {
-      if (!current[key]) current[key] = {};
-      return current[key];
-    }, obj);
+    let current: any = obj;
 
-    target[lastKey] = value;
+    for (const key of keys) {
+      if (!current[key] || typeof current[key] !== 'object') {
+        current[key] = {};
+      }
+      current = current[key];
+    }
+
+    current[lastKey] = value;
   }
 
   /**
@@ -296,7 +312,7 @@ export class ResponseEncryptor {
    */
   private createResult(
     shouldEncrypt: boolean,
-    original: any,
+    original: Json,
     encryptionLevel: string,
     fieldsEncrypted: string[],
     error?: string

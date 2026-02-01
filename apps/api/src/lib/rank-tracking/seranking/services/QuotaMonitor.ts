@@ -957,7 +957,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     // Check pattern-based alerts
   }
 
-  private log(level: string, message: string, ...args: Json[]): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
     if (this.shouldLog(level)) {
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[QuotaMonitor] ${message}`;
@@ -981,8 +981,8 @@ export class QuotaMonitor implements IQuotaMonitor {
     }
   }
 
-  private shouldLog(level: string): boolean {
-    const levels = ['debug', 'info', 'warn', 'error'];
+  private shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
+    const levels: Array<'debug' | 'info' | 'warn' | 'error'> = ['debug', 'info', 'warn', 'error'];
     const configLevel = levels.indexOf(this.config.logLevel);
     const messageLevel = levels.indexOf(level);
     return messageLevel >= configLevel;

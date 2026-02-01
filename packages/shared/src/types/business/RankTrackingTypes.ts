@@ -132,6 +132,25 @@ export interface RankCheckResult {
   features?: SearchFeature[];
 }
 
+export interface DashboardRecentKeyword {
+  id: string;
+  keyword: string;
+  device_type: string;
+  domain: {
+    id: string;
+    domain_name: string;
+    display_name: string | null;
+  } | null;
+  country: {
+    name: string;
+    iso2_code: string;
+  } | null;
+  recent_ranking: {
+    position: number | null;
+    check_date: string;
+  }[] | null;
+}
+
 // Analytics types
 export interface KeywordAnalytics {
   keywordId: string;

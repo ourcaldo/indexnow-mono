@@ -15,22 +15,13 @@ import {
   Search,
   ChevronDown
 } from 'lucide-react'
-import { useSiteName, useSiteLogo, useDashboardData, authService } from '@indexnow/shared'
+import { useSiteName, useSiteLogo, useDashboardData, authService, type Json } from '@indexnow/shared'
 import { SharedDomainSelector } from '..'
 
-interface JsonObject {
-  [key: string]: string | number | boolean | null | JsonObject | any[];
-}
-
 interface SidebarUser {
-  email?: string;
-  name?: string;
-  role?: string;
-  user_metadata?: {
-    full_name?: string;
-    avatar_url?: string;
-    [key: string]: string | number | boolean | null | JsonObject | any[] | undefined;
-  };
+  id: string;
+  email: string;
+  user_metadata: Record<string, Json>;
 }
 
 interface Domain {

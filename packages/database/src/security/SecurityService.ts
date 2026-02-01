@@ -89,8 +89,8 @@ export interface UserOperationContext {
 /**
  * Options for secure queries.
  */
-export interface SecureQueryOptions {
-  table: string
+export interface SecureQueryOptions<TTable = string> {
+  table: TTable
   operationType: 'select' | 'insert' | 'update' | 'delete'
   columns?: string[]
   whereConditions?: Record<string, Json>

@@ -2,6 +2,8 @@
  * Payment-related type definitions for IndexNow Studio
  */
 
+import { type Json } from '../common/Json';
+
 // Basic payment types
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded';
 export type PaymentMethod = 'paddle' | 'credit-card';
@@ -95,7 +97,7 @@ export interface Order {
   customerInfo: CustomerInfo;
   isTrialToSubscription: boolean;
   trialDays?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, Json>;
   createdAt: Date;
   updatedAt: Date;
   paidAt?: Date;
@@ -113,7 +115,7 @@ export interface Transaction {
   status: PaymentStatus;
   paymentMethod: PaymentMethod;
   gateway: string;
-  gatewayResponse?: Record<string, any>;
+  gatewayResponse?: Record<string, Json>;
   failureReason?: string;
   refundAmount?: number;
   refundReason?: string;
@@ -309,7 +311,7 @@ export interface SavedPaymentMethod {
   last4?: string;
   isDefault: boolean;
   isActive: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, Json>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -422,7 +424,7 @@ export interface WebhookEvent {
   id: string;
   webhookId: string;
   event: string;
-  data: Record<string, any>;
+  data: Record<string, Json>;
   signature: string;
   status: 'pending' | 'delivered' | 'failed';
   attempts: number;

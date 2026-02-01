@@ -73,6 +73,16 @@ export interface HealthCheckConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
+export interface Incident {
+  id: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  component: string;
+  description: string;
+  started_at: Date;
+  resolved_at?: Date;
+  recovery_actions: string[];
+}
+
 export class HealthChecker implements IHealthChecker {
   private config: HealthCheckConfig;
   private apiClient?: ISeRankingApiClient;
@@ -81,7 +91,7 @@ export class HealthChecker implements IHealthChecker {
   
   // Runtime state
   private healthCache: Map<string, DetailedHealthCheck> = new Map();
-  private activeIncidents: Map<string, any> = new Map();
+  private activeIncidents: Map<string, Incident> = new Map();
   private recoveryAttempts: Map<string, number> = new Map();
   private lastHealthCheck?: Date;
   private monitoringTimer?: NodeJS.Timeout;
@@ -938,7 +948,7 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private log(level: string, message: string, ...args: any[]): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
     if (this.shouldLog(level)) {
       const logMessage = `[HealthChecker] ${message}`;
       const metadata = args.length > 0 ? { details: args } : {};
@@ -962,8 +972,8 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private shouldLog(level: string): boolean {
-    const levels = ['debug', 'info', 'warn', 'error'];
+  private shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
+    const levels: Array<'debug' | 'info' | 'warn' | 'error'> = ['debug', 'info', 'warn', 'error'];
     const configLevel = levels.indexOf(this.config.logLevel);
     const messageLevel = levels.indexOf(level);
     return messageLevel >= configLevel;

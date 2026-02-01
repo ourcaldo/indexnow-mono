@@ -4,8 +4,14 @@
  */
 
 import { CACHE_KEYS, CACHE_TTL } from '@/lib/core/constants/AppConstants';
+import { 
+  AppUserProfile, 
+  AppUserSettings, 
+  UserQuotaUsage, 
+  Json 
+} from '@indexnow/shared';
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   data: T;
   timestamp: number;
   ttl: number;
@@ -20,7 +26,7 @@ export interface CacheStats {
 }
 
 export class CacheService {
-  private cache: Map<string, CacheEntry> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private stats = {
     hits: 0,
     misses: 0,
@@ -29,7 +35,7 @@ export class CacheService {
   /**
    * Set a value in cache with TTL
    */
-  set<T = any>(key: string, value: T, ttl: number = CACHE_TTL.MEDIUM): void {
+  set<T = unknown>(key: string, value: T, ttl: number = CACHE_TTL.MEDIUM): void {
     this.cache.set(key, {
       data: value,
       timestamp: Date.now(),
@@ -40,7 +46,7 @@ export class CacheService {
   /**
    * Get a value from cache
    */
-  get<T = any>(key: string): T | null {
+  get<T = unknown>(key: string): T | null {
     const entry = this.cache.get(key);
 
     if (!entry) {
@@ -130,7 +136,7 @@ export class CacheService {
   /**
    * Get or set cached value with function
    */
-  async getOrSet<T = any>(
+  async getOrSet<T = unknown>(
     key: string,
     factory: () => Promise<T> | T,
     ttl: number = CACHE_TTL.MEDIUM
@@ -153,7 +159,7 @@ export class CacheService {
   /**
    * Set multiple values at once
    */
-  setMultiple<T = any>(entries: Array<{ key: string; value: T; ttl?: number }>): void {
+  setMultiple<T = unknown>(entries: Array<{ key: string; value: T; ttl?: number }>): void {
     entries.forEach(({ key, value, ttl = CACHE_TTL.MEDIUM }) => {
       this.set(key, value, ttl);
     });
@@ -162,7 +168,7 @@ export class CacheService {
   /**
    * Get multiple values at once
    */
-  getMultiple<T = any>(keys: string[]): Array<{ key: string; value: T | null }> {
+  getMultiple<T = unknown>(keys: string[]): Array<{ key: string; value: T | null }> {
     return keys.map(key => ({
       key,
       value: this.get<T>(key),
@@ -221,43 +227,43 @@ export class CacheService {
   /**
    * Cache user profile
    */
-  cacheUserProfile(userId: string, profile: any, ttl: number = CACHE_TTL.LONG): void {
+  cacheUserProfile(userId: string, profile: AppUserProfile, ttl: number = CACHE_TTL.LONG): void {
     this.set(`${CACHE_KEYS.USER_PROFILE}:${userId}`, profile, ttl);
   }
 
   /**
    * Get cached user profile
    */
-  getCachedUserProfile(userId: string): any | null {
-    return this.get(`${CACHE_KEYS.USER_PROFILE}:${userId}`);
+  getCachedUserProfile(userId: string): AppUserProfile | null {
+    return this.get<AppUserProfile>(`${CACHE_KEYS.USER_PROFILE}:${userId}`);
   }
 
   /**
    * Cache user settings
    */
-  cacheUserSettings(userId: string, settings: any, ttl: number = CACHE_TTL.LONG): void {
+  cacheUserSettings(userId: string, settings: AppUserSettings, ttl: number = CACHE_TTL.LONG): void {
     this.set(`${CACHE_KEYS.USER_SETTINGS}:${userId}`, settings, ttl);
   }
 
   /**
    * Get cached user settings
    */
-  getCachedUserSettings(userId: string): any | null {
-    return this.get(`${CACHE_KEYS.USER_SETTINGS}:${userId}`);
+  getCachedUserSettings(userId: string): AppUserSettings | null {
+    return this.get<AppUserSettings>(`${CACHE_KEYS.USER_SETTINGS}:${userId}`);
   }
 
   /**
    * Cache user quota
    */
-  cacheUserQuota(userId: string, quota: any, ttl: number = CACHE_TTL.SHORT): void {
+  cacheUserQuota(userId: string, quota: UserQuotaUsage, ttl: number = CACHE_TTL.SHORT): void {
     this.set(`${CACHE_KEYS.USER_QUOTA}:${userId}`, quota, ttl);
   }
 
   /**
    * Get cached user quota
    */
-  getCachedUserQuota(userId: string): any | null {
-    return this.get(`${CACHE_KEYS.USER_QUOTA}:${userId}`);
+  getCachedUserQuota(userId: string): UserQuotaUsage | null {
+    return this.get<UserQuotaUsage>(`${CACHE_KEYS.USER_QUOTA}:${userId}`);
   }
 
   /**
@@ -272,15 +278,15 @@ export class CacheService {
   /**
    * Cache packages
    */
-  cachePackages(packages: any[], ttl: number = CACHE_TTL.VERY_LONG): void {
+  cachePackages(packages: Json[], ttl: number = CACHE_TTL.VERY_LONG): void {
     this.set(CACHE_KEYS.PACKAGES, packages, ttl);
   }
 
   /**
    * Get cached packages
    */
-  getCachedPackages(): any[] | null {
-    return this.get(CACHE_KEYS.PACKAGES);
+  getCachedPackages(): Json[] | null {
+    return this.get<Json[]>(CACHE_KEYS.PACKAGES);
   }
 
   /**

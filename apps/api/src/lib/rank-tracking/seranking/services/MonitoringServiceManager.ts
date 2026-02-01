@@ -15,7 +15,10 @@ import {
   IHealthChecker,
   ISeRankingApiClient,
   IKeywordBankService,
-  IIntegrationService
+  IIntegrationService,
+  EnhancedQuotaStatus,
+  SystemHealthSummary,
+  Json
 } from '@indexnow/shared';
 
 import { ApiMetricsCollector, ApiMetricsConfig } from './ApiMetricsCollector';
@@ -315,7 +318,7 @@ export class MonitoringServiceManager {
   async runSystemDiagnostics(): Promise<ServiceResponse<{
     diagnostics_id: string;
     overall_status: 'healthy' | 'degraded' | 'unhealthy';
-    component_results: Record<string, any>;
+    component_results: Record<string, Json>;
     recommendations: string[];
     estimated_resolution_time?: string;
   }>> {
@@ -323,7 +326,7 @@ export class MonitoringServiceManager {
       this.log('info', 'Running comprehensive system diagnostics');
 
       const diagnosticsId = `diag_${Date.now()}`;
-      const results: Record<string, any> = {};
+      const results: Record<string, Json> = {};
 
       // Run all health checks
       const healthResult = await this.healthChecker.performHealthCheck();
@@ -507,8 +510,8 @@ export class MonitoringServiceManager {
 
   private calculateOverallScore(
     apiMetrics: ApiMetrics,
-    quotaData: any,
-    healthData: any
+    quotaData: EnhancedQuotaStatus | null,
+    healthData: SystemHealthSummary | null
   ): number {
     let score = 100;
 
@@ -537,8 +540,8 @@ export class MonitoringServiceManager {
 
   private async generatePerformanceInsights(
     apiMetrics: ApiMetrics,
-    quotaData: any,
-    healthData: any
+    quotaData: EnhancedQuotaStatus | null,
+    healthData: SystemHealthSummary | null
   ): Promise<SystemMonitoringStatus['performance_insights']> {
     const insights: SystemMonitoringStatus['performance_insights'] = [];
 
@@ -578,7 +581,7 @@ export class MonitoringServiceManager {
     return insights;
   }
 
-  private assessRiskLevel(quotaData: any): 'low' | 'medium' | 'high' | 'critical' {
+  private assessRiskLevel(quotaData: EnhancedQuotaStatus | null): 'low' | 'medium' | 'high' | 'critical' {
     if (!quotaData) return 'medium';
     
     const usage = quotaData.usage_percentage;
@@ -631,7 +634,7 @@ export class MonitoringServiceManager {
     };
   }
 
-  private log(level: string, message: string, ...args: any[]): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
     if (this.shouldLog(level)) {
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[MonitoringServiceManager] ${message}`;
@@ -655,8 +658,8 @@ export class MonitoringServiceManager {
     }
   }
 
-  private shouldLog(level: string): boolean {
-    const levels = ['debug', 'info', 'warn', 'error'];
+  private shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
+    const levels: Array<'debug' | 'info' | 'warn' | 'error'> = ['debug', 'info', 'warn', 'error'];
     const configLevel = levels.indexOf(this.config.logLevel);
     const messageLevel = levels.indexOf(level);
     return messageLevel >= configLevel;

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useDashboardData } from '../hooks/useDashboardData'
-import { type RankTrackingDomain, type RankKeyword } from '../types/business/RankTrackingTypes'
+import { type RankTrackingDomain, type DashboardRecentKeyword } from '../types/business/RankTrackingTypes'
 
 interface DomainContextType {
   domains: RankTrackingDomain[]
@@ -22,8 +22,8 @@ export function DomainProvider({ children }: { children: ReactNode }) {
   const [isDomainSelectorOpen, setIsDomainSelectorOpen] = useState(false)
 
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData()
-  const domains = (dashboardData?.rankTracking?.domains || []) as unknown as RankTrackingDomain[]
-  const recentKeywords = (dashboardData?.rankTracking?.recentKeywords || []) as unknown as RankKeyword[]
+  const domains = dashboardData?.rankTracking?.domains || []
+  const recentKeywords = dashboardData?.rankTracking?.recentKeywords || []
 
   useEffect(() => {
     if (!selectedDomainId && domains.length > 0) {
@@ -34,7 +34,7 @@ export function DomainProvider({ children }: { children: ReactNode }) {
   const selectedDomainInfo = domains.find((d: RankTrackingDomain) => d.id === selectedDomainId)
 
   const getDomainKeywordCount = (domainId: string) => {
-    return recentKeywords.filter((k: RankKeyword) => k.domain === domainId).length
+    return recentKeywords.filter((k: DashboardRecentKeyword) => k.domain?.id === domainId).length
   }
 
   return (

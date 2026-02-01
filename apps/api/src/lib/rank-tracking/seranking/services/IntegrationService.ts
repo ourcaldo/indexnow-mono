@@ -13,7 +13,8 @@ import {
   SeRankingRateLimitConfig,
   ApiMetrics,
   IIntegrationService,
-  ISeRankingApiClient
+  ISeRankingApiClient,
+  Json
 } from '@indexnow/shared';
 import { supabaseAdmin } from '../../../database/supabase';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
@@ -56,7 +57,7 @@ interface UsageLogRow {
   response_time_ms: number | null;
   timestamp: string;
   date: string;
-  metadata: any | null;
+  metadata: Json | null;
 }
 
 // Usage report types
@@ -211,8 +212,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to retrieve integration settings: ${error}`,
-          details: error
+          message: `Failed to retrieve integration settings: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -293,8 +294,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to update integration settings: ${error}`,
-          details: error
+          message: `Failed to update integration settings: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -309,7 +310,7 @@ export class IntegrationService implements IIntegrationService {
       operationType?: string;
       responseTime?: number;
       successful?: boolean;
-      metadata?: any;
+      metadata?: Json;
     } = {}
   ): Promise<ServiceResponse<boolean>> {
     try {
@@ -456,8 +457,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to record API usage: ${error}`,
-          details: error
+          message: `Failed to record API usage: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -524,8 +525,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to reset quota usage: ${error}`,
-          details: error
+          message: `Failed to reset quota usage: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -599,7 +600,7 @@ export class IntegrationService implements IIntegrationService {
       const result: SeRankingHealthCheckResult = {
         status: 'unhealthy',
         last_check: new Date(),
-        error_message: `Health check failed: ${error}`,
+        error_message: `Health check failed: ${error instanceof Error ? error.message : String(error)}`,
         response_time: Date.now() - startTime
       };
       
@@ -609,8 +610,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Integration health check failed: ${error}`,
-          details: error
+          message: `Integration health check failed: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -687,8 +688,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.AUTHENTICATION_ERROR,
-          message: `Failed to validate API key: ${error}`,
-          details: error
+          message: `Failed to validate API key: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -733,8 +734,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to get quota status: ${error}`,
-          details: error
+          message: `Failed to get quota status: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -771,8 +772,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.QUOTA_EXCEEDED_ERROR,
-          message: `Failed to check quota availability: ${error}`,
-          details: error
+          message: `Failed to check quota availability: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -940,8 +941,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to generate usage report: ${error}`,
-          details: error
+          message: `Failed to generate usage report: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -970,8 +971,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to enable quota alerts: ${error}`,
-          details: error
+          message: `Failed to enable quota alerts: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -1003,8 +1004,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to get integration health: ${error}`,
-          details: error
+          message: `Failed to get integration health: ${error instanceof Error ? error.message : String(error)}`,
+          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
         }
       };
     }
@@ -1139,7 +1140,7 @@ export class IntegrationService implements IIntegrationService {
     }
   }
 
-  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: any[]): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
     const levels = { debug: 0, info: 1, warn: 2, error: 3 };
     const configLevel = levels[this.config.logLevel];
     const messageLevel = levels[level];

@@ -128,47 +128,57 @@ export default function PackageManagement() {
     }
   }
 
+  interface PackageFormData extends Omit<Partial<PaymentPackage>, 'pricing_tiers'> {
+    pricing_tiers?: Record<string, PricingTier>;
+  }
+
   const PackageForm = ({ packageData, onSave, onCancel }: {
     packageData: Partial<PaymentPackage>
     onSave: (packageData: Partial<PaymentPackage>) => void
     onCancel: () => void
   }) => {
-    const [formData, setFormData] = useState<Partial<PaymentPackage>>({
+    // Transform array to record for easier form handling
+    const initialTiers: Record<string, PricingTier> = {};
+    if (Array.isArray(packageData.pricing_tiers)) {
+      packageData.pricing_tiers.forEach(tier => {
+        initialTiers[tier.period] = tier;
+      });
+    }
+
+    const [formData, setFormData] = useState<PackageFormData>({
       ...packageData,
       features: packageData.features || [],
       quota_limits: packageData.quota_limits || {},
-      pricing_tiers: packageData.pricing_tiers
+      pricing_tiers: initialTiers
     })
 
-    const updateField = (field: keyof PaymentPackage, value: unknown) => {
+    const updateField = <K extends keyof PackageFormData>(field: K, value: PackageFormData[K]) => {
       setFormData(prev => ({ ...prev, [field]: value }))
     }
 
-    const updateQuotaLimit = (key: string, value: unknown) => {
+    const updateQuotaLimit = (key: string, value: number) => {
       setFormData(prev => ({
         ...prev,
         quota_limits: { ...prev.quota_limits, [key]: value }
       }))
     }
 
-    const updatePricingTierField = (period: string, field: string, value: unknown) => {
-      const currentTiers = (formData.pricing_tiers as Record<string, Json>) || {}
-      
-      // Ensure period object exists
-      if (!currentTiers[period]) {
-        currentTiers[period] = { period_label: period, regular_price: 0, promo_price: 0, paddle_price_id: '' }
-      }
-      
-      // Update the specific field
-      const updatedTiers = {
-        ...currentTiers,
-        [period]: {
-          ...(currentTiers[period] as Record<string, Json>),
-          [field]: value
-        }
-      }
-      
-      setFormData(prev => ({ ...prev, pricing_tiers: updatedTiers as unknown as PricingTier[] }))
+    const updatePricingTierField = (period: string, field: keyof PricingTier, value: string | number) => {
+      setFormData(prev => {
+        const currentTiers = prev.pricing_tiers || {};
+        const updatedTiers = {
+          ...currentTiers,
+          [period]: {
+            ...(currentTiers[period] || { period: period as any, period_label: period, regular_price: 0, promo_price: 0 }),
+            [field]: value
+          }
+        };
+
+        return {
+          ...prev,
+          pricing_tiers: updatedTiers as Record<string, PricingTier>
+        };
+      });
     }
 
     const addFeature = () => {
@@ -189,12 +199,24 @@ export default function PackageManagement() {
       setFormData(prev => ({ ...prev, features: updatedFeatures }))
     }
 
+    const handleFormSubmit = () => {
+      // Transform record back to array for API
+      const finalTiers = formData.pricing_tiers 
+        ? Object.values(formData.pricing_tiers) 
+        : [];
+        
+      onSave({
+        ...formData,
+        pricing_tiers: finalTiers
+      } as Partial<PaymentPackage>);
+    }
+
     const initializePricingTiers = () => {
-      const defaultTiers = {
-        monthly: { period_label: 'Monthly', regular_price: 0, promo_price: 0, paddle_price_id: '' },
-        annual: { period_label: 'Annual', regular_price: 0, promo_price: 0, paddle_price_id: '' }
+      const defaultTiers: Record<string, PricingTier> = {
+        monthly: { period: 'monthly', period_label: 'Monthly', regular_price: 0, promo_price: 0 },
+        annual: { period: 'annual', period_label: 'Annual', regular_price: 0, promo_price: 0 }
       }
-      setFormData(prev => ({ ...prev, pricing_tiers: defaultTiers as unknown as PricingTier[] }))
+      setFormData(prev => ({ ...prev, pricing_tiers: defaultTiers }))
     }
 
     useEffect(() => {
@@ -316,7 +338,12 @@ export default function PackageManagement() {
                   { period: 'monthly', label: 'Monthly', defaultLabel: 'Monthly' },
                   { period: 'annual', label: 'Annual', defaultLabel: 'Annual' }
                 ].map((periodInfo) => {
-                  const tierData = ((formData.pricing_tiers as unknown as Record<string, Json>)?.[periodInfo.period] || {}) as Record<string, unknown>
+                  const tierData = formData.pricing_tiers?.[periodInfo.period] || {
+                    period: periodInfo.period as any,
+                    period_label: periodInfo.defaultLabel,
+                    regular_price: 0,
+                    promo_price: 0
+                  };
                   
                   return (
                     <div key={periodInfo.period} className="p-6 bg-secondary rounded-lg border border-border">
@@ -455,7 +482,7 @@ export default function PackageManagement() {
             Cancel
           </button>
           <button
-            onClick={() => onSave(formData)}
+            onClick={handleFormSubmit}
             className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
             <Save className="h-4 w-4" />

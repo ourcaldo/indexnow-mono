@@ -98,18 +98,18 @@ export class SecureDatabaseHelpers {
   /**
    * Executes a database operation securely with service role context validation and auditing.
    */
-  static async executeSecureOperation<T>(
+  static async executeSecureOperation<T, TTable = string>(
     context: ServiceRoleOperationContext,
-    queryOptions: SecureQueryOptions,
+    queryOptions: SecureQueryOptions<TTable>,
     operation: () => Promise<T>
   ): Promise<T> {
-    await SecurityService.validateOperationContext(context, queryOptions)
-    const sanitizedQueryOptions = SecurityService.sanitizeQueryOptions(queryOptions)
+    await SecurityService.validateOperationContext(context, queryOptions as unknown as SecureQueryOptions<string>)
+    const sanitizedQueryOptions = SecurityService.sanitizeQueryOptions(queryOptions as unknown as SecureQueryOptions<string>)
     const auditId = await SecurityService.logOperationStart(context, sanitizedQueryOptions)
     
     try {
       const result = await operation()
-      await SecurityService.logOperationSuccess(auditId, context, result)
+      await SecurityService.logOperationSuccess(auditId, context, result as unknown as Json)
       return result
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error))

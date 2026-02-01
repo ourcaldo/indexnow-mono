@@ -480,11 +480,11 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       keyword: {
         validateKeywordInput: (keyword: string, countryCode: string) => ValidationService.validateKeywordInput(keyword, countryCode),
         validateBulkKeywords: (keywords: string[] | Array<{keyword: string}>) => ValidationService.validateBulkKeywords(keywords)
-      } as unknown as IKeywordValidator, // Temporary adapter, strictly typing requires IKeywordValidator definition
+      },
       response: {
         validateApiResponse: (response: unknown) => ValidationService.validateApiResponse(response)
-      } as unknown as IApiResponseValidator,
-      quota: this.integrationService as unknown as IQuotaValidator
+      },
+      quota: this.integrationService
     };
     
     this.monitoring = {
@@ -606,7 +606,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
           details: recoveryResult.error.context
         } : {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : 'An unrecognized error occurred'
         }
       };
     }
@@ -629,10 +629,11 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       // Validate input
       const validation = await ValidationService.validateBulkKeywords(keywords);
       if (validation.isValid === false) {
+        const totalInvalid = (validation as { totalInvalid?: number }).totalInvalid || 0;
         return {
           success: false,
           error: {
-            message: `Validation failed for ${(validation as unknown as { totalInvalid: number }).totalInvalid || 'some'} keywords`,
+            message: `Validation failed for ${totalInvalid || 'some'} keywords`,
             type: SeRankingErrorType.INVALID_REQUEST_ERROR
           }
         };

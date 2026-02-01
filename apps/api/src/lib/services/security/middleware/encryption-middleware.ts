@@ -5,8 +5,9 @@
  * Part of Enhancement #6: API Security Middleware
  */
 
+import { type Json } from '@indexnow/shared';
 import { NextRequest, NextResponse } from 'next/server';
-import { responseEncryptor, EncryptionOptions, EncryptedResponse } from '../encryption/response-encryptor';
+import { responseEncryptor, EncryptionOptions, EncryptionResult } from '../encryption/response-encryptor';
 
 export interface ResponseEncryptionMiddlewareOptions {
   enabled?: boolean;
@@ -20,7 +21,7 @@ export interface ResponseEncryptionMiddlewareOptions {
 export interface EncryptionMiddlewareResult {
   shouldEncrypt: boolean;
   encryptedResponse?: NextResponse;
-  originalResponse?: any;
+  originalResponse?: Json;
   metadata: {
     encryptionApplied: boolean;
     encryptionLevel: string;
@@ -48,7 +49,7 @@ export class ResponseEncryptionMiddleware {
    */
   async processResponse(
     request: NextRequest,
-    responseData: any,
+    responseData: Json,
     userRole: string = 'user',
     options: ResponseEncryptionMiddlewareOptions = {}
   ): Promise<EncryptionMiddlewareResult> {
@@ -182,7 +183,7 @@ export class ResponseEncryptionMiddleware {
    */
   private createResult(
     shouldEncrypt: boolean,
-    responseData: any,
+    responseData: Json,
     encryptionLevel: string,
     fieldsEncrypted: string[],
     performanceImpact: number
@@ -204,7 +205,7 @@ export class ResponseEncryptionMiddleware {
    */
   private logEncryptionEvent(
     request: NextRequest,
-    encryptionResult: any,
+    encryptionResult: EncryptionResult,
     performanceImpact: number
   ): void {
     const url = new URL(request.url);
@@ -240,7 +241,7 @@ export class ResponseEncryptionMiddleware {
    * Create middleware function for specific configuration
    */
   createEndpointMiddleware(options: ResponseEncryptionMiddlewareOptions) {
-    return async (request: NextRequest, responseData: any, userRole?: string) => {
+    return async (request: NextRequest, responseData: Json, userRole?: string) => {
       return this.processResponse(request, responseData, userRole, options);
     };
   }

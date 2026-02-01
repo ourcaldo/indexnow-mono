@@ -126,10 +126,10 @@ export const GET = adminApiWrapper(async (
           }
         }
 
-        const authUser = await SecureServiceRoleWrapper.executeSecureOperation<AuthUserSubset>(
+        const authUser = await SecureServiceRoleWrapper.executeSecureOperation<AuthUserSubset, string>(
           authContext,
           {
-            table: 'auth.users' as unknown as 'indb_security_activity_logs', // Supabase schema table, casting to valid table type to bypass generic constraint for system tables
+            table: 'auth.users',
             operationType: 'select',
             columns: ['id', 'email'],
             whereConditions: { id: targetUserId }
@@ -137,7 +137,10 @@ export const GET = adminApiWrapper(async (
           async () => {
             const { data, error } = await supabaseAdmin.auth.admin.getUserById(targetUserId)
             if (error || !data?.user) throw error
-            return data.user as AuthUserSubset
+            return {
+              id: data.user.id,
+              email: data.user.email
+            }
           }
         )
 

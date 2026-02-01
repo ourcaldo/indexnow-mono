@@ -41,7 +41,7 @@ export const GET = adminApiWrapper(async (
       userAgent: request.headers.get('user-agent') || undefined || 'unknown'
     }
 
-    const order = await SecureServiceRoleWrapper.executeSecureOperation(
+    const order = await SecureServiceRoleWrapper.executeSecureOperation<OrderWithRelations>(
       orderContext,
       {
         table: 'indb_payment_transactions',
@@ -81,7 +81,13 @@ export const GET = adminApiWrapper(async (
           throw new Error(error?.message || 'Order not found')
         }
 
-        return data as OrderWithRelations
+        // Validate data structure matches OrderWithRelations
+        const validatedData = data as unknown as OrderWithRelations;
+        if (!validatedData.package) {
+           throw new Error('Order package information is missing');
+        }
+
+        return validatedData;
       }
     )
 
@@ -159,7 +165,7 @@ export const GET = adminApiWrapper(async (
         }
       }
 
-      authUser = await SecureServiceRoleWrapper.executeSecureOperation(
+      authUser = await SecureServiceRoleWrapper.executeSecureOperation<{ user: { id: string; email?: string } }, string>(
         authContext,
         {
           table: 'auth.users',
@@ -170,7 +176,12 @@ export const GET = adminApiWrapper(async (
         async () => {
           const { data, error } = await supabaseAdmin.auth.admin.getUserById(order.user_id)
           if (error || !data?.user) throw error
-          return data
+          return {
+            user: {
+              id: data.user.id,
+              email: data.user.email
+            }
+          }
         }
       )
     } catch (error) {
@@ -257,7 +268,7 @@ export const GET = adminApiWrapper(async (
         }
       }
 
-      activityHistory = await SecureServiceRoleWrapper.executeSecureOperation(
+      activityHistory = await SecureServiceRoleWrapper.executeSecureOperation<typeof activityHistory>(
         activityContext,
         {
           table: 'indb_security_activity_logs',
@@ -288,7 +299,15 @@ export const GET = adminApiWrapper(async (
             throw new Error(`Failed to fetch activity history: ${error.message}`)
           }
 
-          return (data || []) as unknown as typeof activityHistory
+          return (data || []).map(item => ({
+            id: String(item.id),
+            event_type: String(item.event_type),
+            action_description: String(item.action_description),
+            created_at: String(item.created_at),
+            user_id: String(item.user_id),
+            metadata: item.metadata as Record<string, unknown> | null,
+            user: Array.isArray(item.user) ? item.user as Array<{ full_name: string; role: string }> : null
+          }))
         }
       )
     } catch (error) {
@@ -328,7 +347,7 @@ export const GET = adminApiWrapper(async (
         }
       }
 
-      transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation(
+      transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation<typeof transactionHistory>(
         transactionContext,
         {
           table: 'indb_payment_transactions_history',
@@ -363,10 +382,20 @@ export const GET = adminApiWrapper(async (
             throw new Error(`Failed to fetch transaction history: ${error.message}`)
           }
 
-          // Safe cast as we know the structure matches the query selection
-          // We cast to unknown first because Supabase generated types might not perfectly align with our strict interface
-          // but we've verified the structure via the select string above.
-          return (data || []) as unknown as typeof transactionHistory
+          return (data || []).map(item => ({
+            id: String(item.id),
+            transaction_id: String(item.transaction_id),
+            old_status: String(item.old_status),
+            new_status: String(item.new_status),
+            action_type: String(item.action_type),
+            action_description: String(item.action_description),
+            changed_by: String(item.changed_by),
+            changed_by_type: String(item.changed_by_type),
+            notes: item.notes as string | null,
+            metadata: item.metadata as Record<string, Json> | null,
+            created_at: String(item.created_at),
+            user: Array.isArray(item.user) ? item.user as Array<{ full_name: string; role: string }> : null
+          }))
         }
       )
     } catch (error) {

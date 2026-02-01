@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabase-browser'
 import { DASHBOARD_ENDPOINTS } from '../constants/ApiEndpoints'
 import { AppUserProfile, UserQuotaUsage, AppUserSettings, TrialEligibility, UserSubscription } from '../types/global/User'
 import { type Json } from '../types/common/Json'
+import { type RankTrackingDomain, type DashboardRecentKeyword } from '../types/business/RankTrackingTypes'
 
 export interface DashboardData {
   user: {
@@ -14,8 +15,8 @@ export interface DashboardData {
   billing: UserSubscription | null;
   rankTracking: {
     usage: UserQuotaUsage;
-    domains: string[];
-    recentKeywords: Json[]; // TODO: Replace with Keyword[] when available
+    domains: RankTrackingDomain[];
+    recentKeywords: DashboardRecentKeyword[];
   };
   notifications: Json[]; // TODO: Replace with Notification[] when available
 }
