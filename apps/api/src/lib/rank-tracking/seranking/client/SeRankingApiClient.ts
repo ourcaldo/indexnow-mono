@@ -20,6 +20,7 @@ import { RateLimiter } from './RateLimiter';
 import { ApiRequestBuilder } from './ApiRequestBuilder';
 import { supabaseAdmin } from '../../../database/supabase';
 import { logger } from '@/lib/monitoring/error-handling';
+import { EncryptionService } from '@indexnow/auth';
 
 export class SeRankingApiClient implements ISeRankingApiClient {
   private config: SeRankingClientConfig;
@@ -463,10 +464,21 @@ export class SeRankingApiClient implements ISeRankingApiClient {
         return null;
       }
 
+      // Decrypt API key if it exists
+      let decryptedApiKey = data.apikey;
+      if (decryptedApiKey && decryptedApiKey.includes(':')) {
+        try {
+          decryptedApiKey = EncryptionService.decrypt(decryptedApiKey);
+        } catch (e) {
+          logger.error({ error: 'Failed to decrypt SeRanking API key' }, 'SeRankingApiClient Decryption failed');
+          return null;
+        }
+      }
+
       logger.info({}, 'SeRankingApiClient Retrieved API key from database');
 
       // Cache the API key for 5 minutes
-      this.integrationApiKey = data.apikey;
+      this.integrationApiKey = decryptedApiKey;
       this.integrationApiKeyExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
       return this.integrationApiKey || null;

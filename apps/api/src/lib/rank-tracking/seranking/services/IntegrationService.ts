@@ -18,6 +18,7 @@ import {
 } from '@indexnow/shared';
 import { supabaseAdmin } from '../../../database/supabase';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { EncryptionService } from '@indexnow/auth';
 import { logger } from '@/lib/monitoring/error-handling';
 
 // Configuration interface for the service
@@ -186,11 +187,21 @@ export class IntegrationService implements IIntegrationService {
             };
           }
 
+          // Decrypt API key if it exists
+          let decryptedApiKey = data.api_key;
+          if (decryptedApiKey && decryptedApiKey.includes(':')) {
+            try {
+              decryptedApiKey = EncryptionService.decrypt(decryptedApiKey);
+            } catch (e) {
+              this.log('error', 'Failed to decrypt SeRanking API key');
+            }
+          }
+
           return {
             success: true,
             data: {
               service_name: data.service_name,
-              api_key: data.api_key,
+              api_key: decryptedApiKey,
               api_url: data.api_url,
               api_quota_limit: data.api_quota_limit,
               api_quota_used: data.api_quota_used,
@@ -242,7 +253,8 @@ export class IntegrationService implements IIntegrationService {
         updateData.is_active = settings.is_active;
       }
       if (settings.api_key !== undefined) {
-        updateData.api_key = settings.api_key;
+        // Encrypt API key before storage
+        updateData.api_key = EncryptionService.encrypt(settings.api_key);
       }
       if (settings.api_url !== undefined) {
         updateData.api_url = settings.api_url;

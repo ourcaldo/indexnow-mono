@@ -7,6 +7,11 @@ import { supabaseAdmin } from '@/lib/database'
 import { logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+  // STRICT SECURITY CHECK: Disable in production
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 })
+  }
+
   const currentUser = await authService.getCurrentUser()
   
   if (!currentUser) {
@@ -76,6 +81,11 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
 })
 
 export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
+  // STRICT SECURITY CHECK: Disable in production
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 })
+  }
+
   const { targetUserId } = await request.json()
   const currentUser = await authService.getCurrentUser()
   

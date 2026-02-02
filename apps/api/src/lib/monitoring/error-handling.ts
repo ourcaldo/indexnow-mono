@@ -3,7 +3,7 @@ import pino from 'pino'
 import { v4 as uuidv4 } from 'uuid'
 import { supabaseAdmin } from '@/lib/database'
 import { trackServerError } from '@/lib/analytics/sentry-server'
-import { formatError, ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { formatError, ErrorType, ErrorSeverity, sanitizePII } from '@indexnow/shared'
 export { ErrorType, ErrorSeverity }
 
 // Configure Pino logger to avoid worker threads completely
@@ -151,7 +151,7 @@ export class ErrorHandlingService {
       endpoint: options.endpoint,
       method: options.method,
       statusCode: structuredError.statusCode,
-      metadata: options.metadata
+      metadata: sanitizePII(options.metadata) as Record<string, Json> | undefined
     }
 
     switch (structuredError.severity) {
@@ -228,7 +228,7 @@ export class ErrorHandlingService {
           endpoint: error.endpoint || null,
           http_method: error.method || null,
           status_code: error.statusCode,
-          metadata: error.metadata || null,
+          metadata: sanitizePII(error.metadata) as Json || null,
           stack_trace: error.stack || null,
           created_at: error.timestamp.toISOString()
         }

@@ -5,6 +5,7 @@ import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring'
 import { logger } from '@/lib/monitoring/error-handling'
 import { supabaseAdmin } from '@/lib/database'
+import { EncryptionService } from '@indexnow/auth'
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
   // Log admin payment gateway access
@@ -58,7 +59,18 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
             throw new Error('Failed to fetch payment gateways')
           }
           
-          return gatewaysData || []
+          const gateways = (gatewaysData || []).map(gateway => {
+            if (gateway.api_credentials) {
+              const sanitizedCreds = { ...gateway.api_credentials };
+              for (const key of Object.keys(sanitizedCreds)) {
+                sanitizedCreds[key] = '[ENCRYPTED]';
+              }
+              return { ...gateway, api_credentials: sanitizedCreds };
+            }
+            return gateway;
+          });
+
+          return gateways
         }
       )
     },
@@ -104,6 +116,18 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
               .neq('id', 'placeholder')
           }
 
+          // Encrypt API credentials before storage
+          const encryptedCredentials: Record<string, string> = {};
+          if (body.api_credentials) {
+            for (const [key, value] of Object.entries(body.api_credentials)) {
+              if (value && typeof value === 'string') {
+                encryptedCredentials[key] = EncryptionService.encrypt(value);
+              } else {
+                encryptedCredentials[key] = String(value);
+              }
+            }
+          }
+
           const { data: gatewayData, error } = await supabaseAdmin
             .from('indb_payment_gateways')
             .insert({
@@ -113,7 +137,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
               is_active: body.is_active || false,
               is_default: body.is_default || false,
               configuration: body.configuration || {},
-              api_credentials: body.api_credentials || {}
+              api_credentials: encryptedCredentials
             })
             .select()
             .single()

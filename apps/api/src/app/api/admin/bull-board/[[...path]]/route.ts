@@ -3,6 +3,7 @@ import { createBullBoard } from '@bull-board/api'
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'
 import { queueManager } from '@/lib/queues/QueueManager'
 import { logger } from '@/lib/monitoring/error-handling'
+import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 
 const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME
 const BULL_BOARD_PASSWORD = process.env.BULL_BOARD_PASSWORD
@@ -94,7 +95,7 @@ async function initializeBullBoard() {
   }
 }
 
-export async function GET(request: NextRequest) {
+export const GET = adminApiWrapper(async (request: NextRequest) => {
   const securityCheck = checkSecurityRequirements()
   if (!securityCheck.valid) {
     logger.error({ error: securityCheck.error }, 'Bull Board security check failed')
@@ -104,7 +105,8 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  if (!checkAuth(request)) {
+  // Double layer: System Admin Auth (via wrapper) + Optional Basic Auth
+  if (BULL_BOARD_USERNAME && BULL_BOARD_PASSWORD && !checkAuth(request)) {
     return createUnauthorizedResponse()
   }
 
@@ -152,7 +154,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = adminApiWrapper(async (request: NextRequest) => {
   const securityCheck = checkSecurityRequirements()
   if (!securityCheck.valid) {
     logger.error({ error: securityCheck.error }, 'Bull Board security check failed')
@@ -162,7 +164,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (!checkAuth(request)) {
+  // Double layer: System Admin Auth (via wrapper) + Optional Basic Auth
+  if (BULL_BOARD_USERNAME && BULL_BOARD_PASSWORD && !checkAuth(request)) {
     return createUnauthorizedResponse()
   }
 

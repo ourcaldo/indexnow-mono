@@ -283,7 +283,7 @@ CREATE INDEX IF NOT EXISTS idx_keyword_keywords_user ON indb_keyword_keywords(us
 -- Rank tracking history
 CREATE TABLE IF NOT EXISTS indb_keyword_rank_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  keyword_id UUID NOT NULL,
+  keyword_id UUID NOT NULL REFERENCES indb_keyword_keywords(id) ON DELETE CASCADE,
   position INTEGER,
   url TEXT,
   checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -298,7 +298,7 @@ CREATE INDEX IF NOT EXISTS idx_rank_history_composite ON indb_keyword_rank_histo
 -- Current keyword rankings
 CREATE TABLE IF NOT EXISTS indb_keyword_rankings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  keyword_id UUID NOT NULL,
+  keyword_id UUID NOT NULL REFERENCES indb_keyword_keywords(id) ON DELETE CASCADE,
   position INTEGER,
   url TEXT,
   change INTEGER DEFAULT 0,
@@ -507,7 +507,7 @@ CREATE TABLE IF NOT EXISTS indb_seranking_metrics_raw (
   cache_hit BOOLEAN NOT NULL DEFAULT FALSE,
   error_type VARCHAR(50),
   error_message TEXT,
-  user_id UUID,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   quota_remaining INTEGER,
   rate_limit_remaining INTEGER,
   retry_attempt INTEGER DEFAULT 0,
@@ -540,13 +540,14 @@ CREATE TABLE IF NOT EXISTS indb_seranking_metrics_aggregated (
 CREATE TABLE IF NOT EXISTS indb_seranking_quota_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  user_id UUID,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   operation_type VARCHAR(50) NOT NULL DEFAULT 'api_request',
   quota_consumed INTEGER NOT NULL,
   quota_remaining INTEGER NOT NULL,
   quota_limit INTEGER NOT NULL,
   usage_percentage DECIMAL(6,4) NOT NULL,
   session_id VARCHAR(100),
+  metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -670,12 +671,20 @@ ALTER TABLE indb_seranking_usage_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indb_seranking_metrics_raw ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indb_seranking_quota_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indb_enrichment_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_keyword_rank_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_keyword_rankings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_admin_activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_security_audit_logs ENABLE ROW LEVEL SECURITY;
 
--- 1. indb_auth_user_profiles: Users can only see and update their own profile
+-- 1. indb_auth_user_profiles: Users can only see and update their own profile (restricted fields)
 CREATE POLICY "Users can view own profile" ON indb_auth_user_profiles
   FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own profile" ON indb_auth_user_profiles
-  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own profile fields" ON indb_auth_user_profiles
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (
+    auth.uid() = user_id AND 
+    role = (SELECT role FROM indb_auth_user_profiles WHERE user_id = auth.uid())
+  );
 
 -- 2. indb_auth_user_settings: Users can only see and update their own settings
 CREATE POLICY "Users can view own settings" ON indb_auth_user_settings
@@ -738,6 +747,45 @@ CREATE POLICY "Users can view own quota usage" ON indb_seranking_quota_usage
 -- 16. indb_enrichment_jobs: Users can manage their own enrichment jobs
 CREATE POLICY "Users can manage own enrichment jobs" ON indb_enrichment_jobs
   FOR ALL USING (auth.uid() = user_id);
+
+-- 17. indb_keyword_rank_history: Users can only see history for keywords they own
+CREATE POLICY "Users can view own rank history" ON indb_keyword_rank_history
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM indb_keyword_keywords
+      WHERE indb_keyword_keywords.id = indb_keyword_rank_history.keyword_id
+      AND indb_keyword_keywords.user_id = auth.uid()
+    )
+  );
+
+-- 18. indb_keyword_rankings: Users can only see rankings for keywords they own
+CREATE POLICY "Users can view own rankings" ON indb_keyword_rankings
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM indb_keyword_keywords
+      WHERE indb_keyword_keywords.id = indb_keyword_rankings.keyword_id
+      AND indb_keyword_keywords.user_id = auth.uid()
+    )
+  );
+
+-- 19. indb_admin_activity_logs: Only admins can view admin activity logs
+CREATE POLICY "Admins can view admin activity logs" ON indb_admin_activity_logs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM indb_auth_user_profiles
+      WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
+    )
+  );
+
+-- 20. indb_security_audit_logs: Admins can view all, users can only view their own
+CREATE POLICY "Users can view own security audit logs" ON indb_security_audit_logs
+  FOR SELECT USING (
+    auth.uid() = user_id OR
+    EXISTS (
+      SELECT 1 FROM indb_auth_user_profiles
+      WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
+    )
+  );
 
 -- ============================================================
 -- SEED DATA (Optional)

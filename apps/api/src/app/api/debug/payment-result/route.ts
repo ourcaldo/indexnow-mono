@@ -3,8 +3,14 @@ import { requireServerAdminAuth } from '@/lib/auth/server-auth'
 import { logger } from '@/lib/monitoring/error-handling'
 
 export async function POST(request: NextRequest) {
+  // STRICT SECURITY CHECK: Disable in production
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not Found' }, { status: 404 })
+  }
+
   try {
-    // Debug routes enabled always for development behavior
+    // Require admin authentication
+    await requireServerAdminAuth(request)
     
     const { payment_method, result } = await request.json()
     

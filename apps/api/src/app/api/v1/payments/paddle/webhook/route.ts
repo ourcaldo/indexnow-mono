@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/database'
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { sanitizePII } from '@indexnow/shared'
 import {
   processSubscriptionCreated,
   processSubscriptionUpdated,
@@ -120,7 +121,7 @@ export const POST = async (request: NextRequest) => {
         .insert({
           event_id,
           event_type,
-          event_data: eventData,
+          event_data: sanitizePII(eventData),
           processed: false,
         })
 
