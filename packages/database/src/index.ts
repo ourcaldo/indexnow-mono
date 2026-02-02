@@ -57,9 +57,6 @@ export { createBrowserClient, getBrowserClient, supabaseBrowser as supabase, sup
 // Server exports
 export { createClient as createServerClient, createAdminClient, supabaseAdmin, type CookieStore } from './server'
 
-// Middleware exports
-export { createMiddlewareClient, getUser, type MiddlewareRequest, type MiddlewareResponse, type MiddlewareResponseFactory } from './middleware'
-
 // Security exports
 export { 
     SecureServiceRoleWrapper, 

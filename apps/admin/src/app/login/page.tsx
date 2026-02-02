@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@indexnow/database'
+import { supabaseBrowser as supabase } from '@indexnow/auth'
 import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@indexnow/ui'
 import { Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
 import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/shared/hooks'
@@ -102,8 +102,9 @@ export default function AdminLoginPage() {
         router.push('/')
       }, 100)
       
-    } catch (error: any) {
-      setError(error.message || 'Login failed. Please try again.')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }

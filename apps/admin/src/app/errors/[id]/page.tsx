@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Separator, useToast } from '@indexnow/ui';
 import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS } from '@indexnow/shared';
-import { supabaseBrowser } from '@indexnow/database';
+import { supabaseBrowser } from '@indexnow/auth';
 
 interface ErrorDetail {
   id: string;

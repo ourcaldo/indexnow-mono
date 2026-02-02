@@ -270,6 +270,11 @@ export class AuthService {
 
     return session
   }
+
+  async getToken(): Promise<string | null> {
+    const session = await this.getSession()
+    return session?.access_token || null
+  }
 }
 
 export const authService = new AuthService()

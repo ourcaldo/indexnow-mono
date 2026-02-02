@@ -1,4 +1,4 @@
-import { getUser } from '@indexnow/database'
+import { getUser } from '@indexnow/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 /**

@@ -4,7 +4,8 @@
  * Updated for Paddle payment gateway integration
  */
 
-import { AppConfig } from '@indexnow/shared';
+import { AppConfig, formatCurrency } from '@indexnow/shared';
+export { formatCurrency };
 
 export interface PaymentConfigType {
   billing: {
@@ -108,19 +109,6 @@ export const PAYMENT_STATUS = {
 } as const;
 
 export type PaymentStatus = typeof PAYMENT_STATUS[keyof typeof PAYMENT_STATUS];
-
-// Helper functions
-export const formatCurrency = (amount: number, currency: string = 'USD'): string => {
-  const currencyCode = currency.toUpperCase() as keyof typeof CURRENCY_CONFIG;
-  const config = CURRENCY_CONFIG[currencyCode] || CURRENCY_CONFIG.USD;
-  
-  const formatted = amount.toLocaleString('en-US', {
-    minimumFractionDigits: config.decimals,
-    maximumFractionDigits: config.decimals,
-  });
-
-  return `${config.symbol}${formatted}`;
-};
 
 export const getPaymentAttempts = (): number => PaymentConfig.limits.paymentAttempts;
 export const getTrialPeriod = (): number => PaymentConfig.billing.trialPeriodDays;

@@ -3,7 +3,7 @@ import { formatSuccess, formatError } from './api-response-formatter'
 export { formatSuccess, formatError }
 import { getServerAuthUser, getServerAdminUser } from '../auth/server-auth'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { AppConfig } from '@indexnow/shared'
+import { AppConfig, ErrorHandlingService } from '@indexnow/shared'
 import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 import { type User, type SupabaseClient } from '@supabase/supabase-js'
 
@@ -52,7 +52,7 @@ export const authenticatedApiWrapper = <TAuth extends AuthenticatedContext = Aut
         }
       )
 
-      const context = { ...auth, supabase } as unknown as TAuth; 
+      const context = { ...auth, supabase } as TAuth; 
       // We cast here because TAuth extends AuthenticatedContext, and we constructed it. 
       // But to avoid 'unknown', we can just type it as AuthenticatedContext if TAuth is default.
       // However, getServerAuthUser returns a specific structure. 
@@ -62,7 +62,7 @@ export const authenticatedApiWrapper = <TAuth extends AuthenticatedContext = Aut
       if (result instanceof NextResponse) return result
       return NextResponse.json(result)
     } catch (error) {
-      console.error('API Error:', error)
+      ErrorHandlingService.handle(error, { context: 'API Middleware' });
       const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       return NextResponse.json(
@@ -119,12 +119,12 @@ export const adminApiWrapper = <TAuth extends AuthenticatedContext = Authenticat
         }
       )
 
-      const context = { ...auth, supabase } as AuthenticatedContext as TAuth;
+      const context = { ...auth, supabase } as TAuth;
       const result = await handler(req, context)
       if (result instanceof NextResponse) return result
       return NextResponse.json(result)
     } catch (error) {
-      console.error('Admin API Error:', error)
+      ErrorHandlingService.handle(error, { context: 'Admin API Middleware' });
       const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       return NextResponse.json(
@@ -149,7 +149,7 @@ export const publicApiWrapper = (handler: (req: NextRequest) => Promise<unknown>
       if (result instanceof NextResponse) return result
       return NextResponse.json(result)
     } catch (error) {
-      console.error('Public API Error:', error)
+      ErrorHandlingService.handle(error, { context: 'Public API Middleware' });
       const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
       const statusCode = (error as { statusCode?: number }).statusCode || 500;
       return NextResponse.json(

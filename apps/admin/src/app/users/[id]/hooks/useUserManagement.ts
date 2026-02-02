@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, useNotification } from '@indexnow/shared'
 
 interface UserActions {
   suspend: boolean
@@ -19,6 +19,15 @@ interface EditForm {
   phone_number: string
 }
 
+interface ConfirmConfig {
+  isOpen: boolean
+  title: string
+  message: string
+  onConfirm: () => void
+  confirmText?: string
+  variant?: 'destructive' | 'primary'
+}
+
 interface UseUserManagementReturn {
   actionLoading: UserActions
   newPassword: string
@@ -27,10 +36,12 @@ interface UseUserManagementReturn {
   editForm: EditForm
   showPackageModal: boolean
   selectedPackageId: string
+  confirmConfig: ConfirmConfig
   setEditMode: (value: boolean) => void
   setEditForm: (value: EditForm) => void
   setShowPackageModal: (value: boolean) => void
   setSelectedPackageId: (value: string) => void
+  setConfirmConfig: (value: ConfirmConfig) => void
   handleSuspendUser: (userId: string, onSuccess: () => void) => Promise<void>
   handleResetPassword: (userId: string) => Promise<void>
   handleResetQuota: (userId: string, onSuccess: () => void) => Promise<void>
@@ -43,6 +54,7 @@ interface UseUserManagementReturn {
 }
 
 export function useUserManagement(): UseUserManagementReturn {
+  const { showSuccess, showError } = useNotification()
   const [actionLoading, setActionLoading] = useState<UserActions>({
     suspend: false,
     resetPassword: false,
@@ -63,132 +75,157 @@ export function useUserManagement(): UseUserManagementReturn {
   })
   const [showPackageModal, setShowPackageModal] = useState(false)
   const [selectedPackageId, setSelectedPackageId] = useState('')
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
 
   const handleSuspendUser = useCallback(async (userId: string, onSuccess: () => void) => {
-    if (!confirm('Are you sure you want to suspend this user? They will lose access to their account.')) {
-      return
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Suspend User',
+      message: 'Are you sure you want to suspend this user? They will lose access to their account.',
+      variant: 'destructive',
+      confirmText: 'Suspend',
+      onConfirm: async () => {
+        try {
+          setActionLoading(prev => ({ ...prev, suspend: true }))
+          
+          const response = await fetch(ADMIN_ENDPOINTS.SUSPEND_USER(userId), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          })
 
-    try {
-      setActionLoading(prev => ({ ...prev, suspend: true }))
-      
-      const response = await fetch(ADMIN_ENDPOINTS.SUSPEND_USER(userId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        onSuccess()
-        alert('User has been suspended successfully.')
-      } else {
-        alert('Failed to suspend user. Please try again.')
+          if (response.ok) {
+            onSuccess()
+            showSuccess('User Suspended', 'User has been suspended successfully.')
+          } else {
+            showError('Action Failed', 'Failed to suspend user. Please try again.')
+          }
+        } catch (error) {
+          console.error('Failed to suspend user:', error)
+          showError('System Error', 'An error occurred while suspending user.')
+        } finally {
+          setActionLoading(prev => ({ ...prev, suspend: false }))
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to suspend user:', error)
-      alert('An error occurred while suspending user.')
-    } finally {
-      setActionLoading(prev => ({ ...prev, suspend: false }))
-    }
-  }, [])
+    })
+  }, [showSuccess, showError])
 
   const handleResetPassword = useCallback(async (userId: string) => {
-    if (!confirm('Are you sure you want to reset this user\'s password? They will receive a password reset email.')) {
-      return
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Reset Password',
+      message: 'Are you sure you want to reset this user\'s password? They will receive a password reset email.',
+      confirmText: 'Reset',
+      onConfirm: async () => {
+        try {
+          setActionLoading(prev => ({ ...prev, resetPassword: true }))
+          
+          const response = await fetch(ADMIN_ENDPOINTS.RESET_USER_PASSWORD(userId), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          })
 
-    try {
-      setActionLoading(prev => ({ ...prev, resetPassword: true }))
-      
-      const response = await fetch(ADMIN_ENDPOINTS.RESET_USER_PASSWORD(userId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setNewPassword(data.temporaryPassword || '')
-        alert('Password reset successfully. Temporary password generated.')
-      } else {
-        alert('Failed to reset password. Please try again.')
+          if (response.ok) {
+            const data = await response.json()
+            setNewPassword(data.temporaryPassword || '')
+            showSuccess('Password Reset', 'Password reset successfully. Temporary password generated.')
+          } else {
+            showError('Action Failed', 'Failed to reset password. Please try again.')
+          }
+        } catch (error) {
+          console.error('Failed to reset password:', error)
+          showError('System Error', 'An error occurred while resetting password.')
+        } finally {
+          setActionLoading(prev => ({ ...prev, resetPassword: false }))
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to reset password:', error)
-      alert('An error occurred while resetting password.')
-    } finally {
-      setActionLoading(prev => ({ ...prev, resetPassword: false }))
-    }
-  }, [])
+    })
+  }, [showSuccess, showError])
 
   const handleResetQuota = useCallback(async (userId: string, onSuccess: () => void) => {
-    if (!confirm('Are you sure you want to reset this user\'s daily quota? This will reset their usage to 0.')) {
-      return
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Reset Quota',
+      message: 'Are you sure you want to reset this user\'s daily quota? This will reset their usage to 0.',
+      onConfirm: async () => {
+        try {
+          setActionLoading(prev => ({ ...prev, resetQuota: true }))
+          
+          const response = await fetch(ADMIN_ENDPOINTS.RESET_USER_QUOTA(userId), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          })
 
-    try {
-      setActionLoading(prev => ({ ...prev, resetQuota: true }))
-      
-      const response = await fetch(ADMIN_ENDPOINTS.RESET_USER_QUOTA(userId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        onSuccess()
-        alert('User quota has been successfully reset.')
-      } else {
-        alert('Failed to reset quota. Please try again.')
+          if (response.ok) {
+            onSuccess()
+            showSuccess('Quota Reset', 'User quota has been successfully reset.')
+          } else {
+            showError('Action Failed', 'Failed to reset quota. Please try again.')
+          }
+        } catch (error) {
+          console.error('Failed to reset quota:', error)
+          showError('System Error', 'An error occurred while resetting quota.')
+        } finally {
+          setActionLoading(prev => ({ ...prev, resetQuota: false }))
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to reset quota:', error)
-      alert('An error occurred while resetting quota.')
-    } finally {
-      setActionLoading(prev => ({ ...prev, resetQuota: false }))
-    }
-  }, [])
+    })
+  }, [showSuccess, showError])
 
   const handleChangePackage = useCallback(() => {
     setShowPackageModal(true)
   }, [])
 
   const handleExtendSubscription = useCallback(async (userId: string, onSuccess: () => void) => {
-    if (!confirm('Are you sure you want to extend this user\'s subscription by 30 days?')) {
-      return
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Extend Subscription',
+      message: 'Are you sure you want to extend this user\'s subscription by 30 days?',
+      onConfirm: async () => {
+        try {
+          setActionLoading(prev => ({ ...prev, extendSubscription: true }))
+          
+          const response = await fetch(ADMIN_ENDPOINTS.EXTEND_SUBSCRIPTION(userId), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ days: 30 }),
+          })
 
-    try {
-      setActionLoading(prev => ({ ...prev, extendSubscription: true }))
-      
-      const response = await fetch(ADMIN_ENDPOINTS.EXTEND_SUBSCRIPTION(userId), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ days: 30 }),
-      })
-
-      if (response.ok) {
-        onSuccess()
-        alert('Subscription has been extended by 30 days.')
-      } else {
-        alert('Failed to extend subscription. Please try again.')
+          if (response.ok) {
+            onSuccess()
+            showSuccess('Subscription Extended', 'Subscription has been extended by 30 days.')
+          } else {
+            showError('Action Failed', 'Failed to extend subscription. Please try again.')
+          }
+        } catch (error) {
+          console.error('Failed to extend subscription:', error)
+          showError('System Error', 'An error occurred while extending subscription.')
+        } finally {
+          setActionLoading(prev => ({ ...prev, extendSubscription: false }))
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to extend subscription:', error)
-      alert('An error occurred while extending subscription.')
-    } finally {
-      setActionLoading(prev => ({ ...prev, extendSubscription: false }))
-    }
-  }, [])
+    })
+  }, [showSuccess, showError])
 
   const handleSaveEdit = useCallback(async (userId: string, editForm: EditForm, onSuccess: () => void) => {
     try {
@@ -206,17 +243,21 @@ export function useUserManagement(): UseUserManagementReturn {
       if (response.ok) {
         onSuccess()
         setEditMode(false)
+        showSuccess('User Updated', 'User profile has been updated successfully.')
+      } else {
+        showError('Update Failed', 'Failed to update user. Please try again.')
       }
     } catch (error) {
       console.error('Failed to update user:', error)
+      showError('System Error', 'An error occurred while updating user.')
     } finally {
       setActionLoading(prev => ({ ...prev, editData: false }))
     }
-  }, [])
+  }, [showSuccess, showError])
 
   const handlePackageChangeSubmit = useCallback(async (userId: string, selectedPackageId: string, onSuccess: () => void) => {
     if (!selectedPackageId) {
-      alert('Please select a package first.')
+      showError('Selection Required', 'Please select a package first.')
       return
     }
 
@@ -236,18 +277,18 @@ export function useUserManagement(): UseUserManagementReturn {
         const data = await response.json()
         onSuccess()
         setShowPackageModal(false)
-        alert(data.message || 'Package changed successfully!')
+        showSuccess('Package Changed', data.message || 'Package changed successfully!')
       } else {
         const errorData = await response.json()
-        alert(errorData.error || 'Failed to change package. Please try again.')
+        showError('Action Failed', errorData.error || 'Failed to change package. Please try again.')
       }
     } catch (error) {
       console.error('Failed to change package:', error)
-      alert('An error occurred while changing package.')
+      showError('System Error', 'An error occurred while changing package.')
     } finally {
       setActionLoading(prev => ({ ...prev, changePackage: false }))
     }
-  }, [])
+  }, [showSuccess, showError])
 
   const handleEditFormChange = useCallback((updates: Partial<EditForm>) => {
     setEditForm(prev => ({ ...prev, ...updates }))
@@ -265,10 +306,12 @@ export function useUserManagement(): UseUserManagementReturn {
     editForm,
     showPackageModal,
     selectedPackageId,
+    confirmConfig,
     setEditMode,
     setEditForm,
     setShowPackageModal,
     setSelectedPackageId,
+    setConfirmConfig,
     handleSuspendUser,
     handleResetPassword,
     handleResetQuota,

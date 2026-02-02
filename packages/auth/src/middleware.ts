@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { Database, AppConfig } from '@indexnow/shared'
 
 // Generic request type that works with Next.js and other frameworks
-interface MiddlewareRequest {
+export interface MiddlewareRequest {
     cookies: {
         getAll: () => { name: string; value: string }[]
         set: (name: string, value: string) => void
@@ -10,13 +10,13 @@ interface MiddlewareRequest {
     headers: Headers
 }
 
-interface MiddlewareResponse {
+export interface MiddlewareResponse {
     cookies: {
         set: (name: string, value: string, options?: CookieOptions) => void
     }
 }
 
-interface MiddlewareResponseFactory {
+export interface MiddlewareResponseFactory {
     next: (options?: { request?: { headers: Headers } }) => MiddlewareResponse
 }
 
@@ -80,5 +80,3 @@ export async function getUser<TRequest extends MiddlewareRequest>(
 
     return { user, error, response, supabase }
 }
-
-export type { MiddlewareRequest, MiddlewareResponse, MiddlewareResponseFactory }

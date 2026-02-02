@@ -12,7 +12,7 @@ import {
   XCircle,
   type LucideIcon
 } from 'lucide-react'
-import { supabase } from '@indexnow/database'
+import { supabaseBrowser as supabase } from '@indexnow/auth'
 import { useAdminDashboardLogger, ADMIN_ENDPOINTS } from '@indexnow/shared'
 
 interface DashboardStats {

@@ -14,8 +14,7 @@ import {
   X,
   Clock
 } from 'lucide-react'
-import { authService } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/shared'
+import { authService, formatCurrency } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
 import { AUTH_ENDPOINTS, BILLING_ENDPOINTS } from '@indexnow/shared'
 
@@ -97,7 +96,7 @@ export default function PlansTab() {
         throw new Error('User not authenticated')
       }
 
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getToken()
       if (!token) {
         throw new Error('No authentication token')
       }
@@ -129,15 +128,6 @@ export default function PlansTab() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
-  }
-
   const getBillingPeriodPrice = (pkg: PaymentPackage, period: string): { price: number, originalPrice?: number, discount?: number } => {
     // Handle pricing_tiers as array format from database
     if (Array.isArray(pkg.pricing_tiers)) {
@@ -152,7 +142,7 @@ export default function PlansTab() {
     }
     // Handle pricing_tiers as object format (fallback)
     else if (pkg.pricing_tiers?.[period]) {
-      const tier = pkg.pricing_tiers[period]
+      const tier = pkg.pricing_tiers[period] as PricingTier
       return {
         price: tier.promo_price || tier.regular_price,
         originalPrice: tier.promo_price ? tier.regular_price : undefined,
@@ -162,11 +152,9 @@ export default function PlansTab() {
     return { price: pkg.price }
   }
 
-
-
   const checkTrialEligibility = async () => {
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getToken()
       if (!token) return
 
       const response = await fetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY, {

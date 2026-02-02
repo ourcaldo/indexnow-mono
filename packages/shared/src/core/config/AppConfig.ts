@@ -10,6 +10,11 @@ const AppSchema = z.object({
   environment: z.enum(['development', 'staging', 'production']).default('development'),
   baseUrl: z.string().url().default('http://localhost:3000'),
   port: z.coerce.number().default(3000),
+  allowedOrigins: z.array(z.string()).default([
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002'
+  ]),
 });
 
 const SupabaseSchema = z.object({
@@ -116,6 +121,7 @@ export const createAppConfig = (): AppConfigType => {
       environment: process.env.NODE_ENV,
       baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
       port: process.env.PORT,
+      allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || undefined,
     },
     supabase: {
       url: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,

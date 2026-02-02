@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Checkbox } from '@indexnow/ui'
 import { useToast } from '@indexnow/ui'
-import { supabaseBrowser } from '@indexnow/database'
+import { supabaseBrowser } from '@indexnow/auth'
 import { formatCurrency, formatDate, formatRelativeTime, ADMIN_ENDPOINTS } from '@indexnow/shared'
 
 interface OrderTransaction {

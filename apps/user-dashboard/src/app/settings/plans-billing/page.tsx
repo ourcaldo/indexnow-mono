@@ -7,7 +7,7 @@ import { supabaseBrowser as supabase, AppConfig } from '@indexnow/shared'
 import { authService } from '@indexnow/shared'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/shared'
 import { LoadingSpinner, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, Progress, useToast, useApiError } from '@indexnow/ui'
-import { BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate } from '@indexnow/shared'
 import { CancelSubscriptionDialog } from './components/CancelSubscriptionDialog'
 import { SubscriptionStatusBadge } from './components/SubscriptionStatusBadge'
 
@@ -416,23 +416,6 @@ export default function BillingPage() {
     }
     
     return { price: pkg.price }
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
   }
 
   const getUsagePercentage = (used: number, limit: number, isUnlimited: boolean) => {

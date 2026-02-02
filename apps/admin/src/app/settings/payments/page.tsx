@@ -12,6 +12,7 @@ import {
   X
 } from 'lucide-react'
 import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ConfirmationDialog } from '@indexnow/ui'
 
 interface PaymentGateway {
   id: string
@@ -32,6 +33,19 @@ export default function PaymentGateways() {
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    variant?: 'destructive' | 'primary';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     fetchPaymentGateways()
@@ -85,24 +99,33 @@ export default function PaymentGateways() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this payment gateway?')) return
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Payment Gateway',
+      message: 'Are you sure you want to delete this payment gateway? This action cannot be undone.',
+      variant: 'destructive',
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(ADMIN_ENDPOINTS.PAYMENT_GATEWAY_BY_ID(id), {
+            method: 'DELETE',
+            credentials: 'include'
+          })
 
-    try {
-      const response = await fetch(ADMIN_ENDPOINTS.PAYMENT_GATEWAY_BY_ID(id), {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Payment gateway deleted successfully!' })
-        fetchPaymentGateways()
-      } else {
-        setMessage({ type: 'error', text: 'Failed to delete payment gateway' })
+          if (response.ok) {
+            setMessage({ type: 'success', text: 'Payment gateway deleted successfully!' })
+            fetchPaymentGateways()
+          } else {
+            setMessage({ type: 'error', text: 'Failed to delete payment gateway' })
+          }
+        } catch (error) {
+          console.error('Failed to delete payment gateway:', error)
+          setMessage({ type: 'error', text: 'Failed to delete payment gateway' })
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to delete payment gateway:', error)
-      setMessage({ type: 'error', text: 'Failed to delete payment gateway' })
-    }
+    })
   }
 
   const handleSetDefault = async (id: string) => {
@@ -466,6 +489,16 @@ export default function PaymentGateways() {
           </button>
         </div>
       )}
+      
+      <ConfirmationDialog
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+      />
     </div>
   )
 }

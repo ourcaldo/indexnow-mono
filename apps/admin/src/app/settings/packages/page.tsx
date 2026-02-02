@@ -17,6 +17,7 @@ import {
   Search
 } from 'lucide-react'
 import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ConfirmationDialog } from '@indexnow/ui'
 
 import { Json } from '@indexnow/shared'
 
@@ -55,6 +56,19 @@ export default function PackageManagement() {
   const [editingPackage, setEditingPackage] = useState<PaymentPackage | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    variant?: 'destructive' | 'primary';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     fetchPackages()
@@ -108,24 +122,33 @@ export default function PackageManagement() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this package?')) return
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Package',
+      message: 'Are you sure you want to delete this package? This action cannot be undone.',
+      variant: 'destructive',
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(ADMIN_ENDPOINTS.PACKAGE_BY_ID(id), {
+            method: 'DELETE',
+            credentials: 'include'
+          })
 
-    try {
-      const response = await fetch(ADMIN_ENDPOINTS.PACKAGE_BY_ID(id), {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Package deleted successfully!' })
-        fetchPackages()
-      } else {
-        setMessage({ type: 'error', text: 'Failed to delete package' })
+          if (response.ok) {
+            setMessage({ type: 'success', text: 'Package deleted successfully!' })
+            fetchPackages()
+          } else {
+            setMessage({ type: 'error', text: 'Failed to delete package' })
+          }
+        } catch (error) {
+          console.error('Failed to delete package:', error)
+          setMessage({ type: 'error', text: 'Failed to delete package' })
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+        }
       }
-    } catch (error) {
-      console.error('Failed to delete package:', error)
-      setMessage({ type: 'error', text: 'Failed to delete package' })
-    }
+    })
   }
 
   interface PackageFormData extends Omit<Partial<PaymentPackage>, 'pricing_tiers'> {
@@ -634,6 +657,16 @@ export default function PackageManagement() {
           </div>
         )}
       </div>
+      
+      <ConfirmationDialog
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+      />
     </div>
   )
 }

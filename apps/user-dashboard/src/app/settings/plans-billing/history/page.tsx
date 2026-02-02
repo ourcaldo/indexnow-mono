@@ -17,7 +17,7 @@ import {
 import { authService } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
-import { BILLING_ENDPOINTS } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, formatCurrency, formatDate, useApiError } from '@indexnow/shared'
 
 interface Transaction {
   id: string
@@ -66,6 +66,7 @@ interface BillingHistoryData {
 }
 
 export default function BillingHistoryPage() {
+  const { handleApiError } = useApiError()
   const [historyData, setHistoryData] = useState<BillingHistoryData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -116,7 +117,7 @@ export default function BillingHistoryPage() {
       const data = result?.success === true && result.data ? result.data : result
       setHistoryData(data)
     } catch (error) {
-      console.error('Error loading billing history:', error)
+      handleApiError(error, { context: 'BillingHistory', toastTitle: 'Load Error' })
       setError(error instanceof Error ? error.message : 'Failed to load billing history')
     } finally {
       setLoading(false)
@@ -143,25 +144,6 @@ export default function BillingHistoryPage() {
       case 'cancelled': return { bg: 'bg-muted/10', text: 'text-muted-foreground', border: 'border-muted/20' }
       default: return { bg: 'bg-muted/10', text: 'text-muted-foreground', border: 'border-muted/20' }
     }
-  }
-
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   const formatTransactionType = (type: string) => {

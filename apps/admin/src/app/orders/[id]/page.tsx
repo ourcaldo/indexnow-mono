@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge, Separator, Textarea, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, useToast } from '@indexnow/ui'
 import { formatCurrency, formatDate, formatRelativeTime, ADMIN_ENDPOINTS } from '@indexnow/shared'
-import { supabaseBrowser, type Json } from '@indexnow/database'
+import { supabaseBrowser, type Json } from '@indexnow/auth'
 
 interface OrderTransaction {
   id: string

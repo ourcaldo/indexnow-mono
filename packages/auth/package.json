@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware.d.ts",
+      "import": "./dist/middleware.mjs",
+      "require": "./dist/middleware.js"
     }
   },
   "scripts": {
@@ -20,6 +25,7 @@
   "dependencies": {
     "@indexnow/database": "workspace:*",
     "@indexnow/shared": "workspace:*",
+    "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.45.0",
     "crypto-js": "^4.2.0"
   },

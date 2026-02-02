@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Eye
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, formatDate } from '@indexnow/shared'
 
 interface ErrorStats {
   summary: {
@@ -101,15 +101,6 @@ export default function ErrorMonitoringDashboard() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   const getSeverityColor = (severity: string) => {

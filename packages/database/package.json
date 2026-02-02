@@ -21,11 +21,6 @@
             "import": "./dist/server.mjs",
             "require": "./dist/server.js"
         },
-        "./middleware": {
-            "types": "./dist/middleware.d.ts",
-            "import": "./dist/middleware.mjs",
-            "require": "./dist/middleware.js"
-        },
         "./types": {
             "types": "./dist/types.d.ts",
             "import": "./dist/types.mjs",
@@ -39,7 +34,6 @@
     },
     "dependencies": {
         "@indexnow/shared": "workspace:*",
-        "@supabase/ssr": "^0.6.1",
         "@supabase/supabase-js": "^2.54.0"
     },
     "devDependencies": {

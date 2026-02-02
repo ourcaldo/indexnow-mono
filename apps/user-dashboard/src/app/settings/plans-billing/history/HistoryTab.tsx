@@ -12,8 +12,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { authService } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/shared'
+import { authService, formatDate, formatCurrency } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
 import { BILLING_ENDPOINTS, buildEndpoint } from '@indexnow/shared'
 
@@ -85,7 +84,7 @@ export default function HistoryTab() {
         throw new Error('User not authenticated')
       }
 
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getToken()
       if (!token) {
         throw new Error('No authentication token')
       }
@@ -138,25 +137,6 @@ export default function HistoryTab() {
       case 'cancelled': return { bg: 'bg-muted-foreground/10', text: 'text-muted-foreground', border: 'border-muted-foreground/20' }
       default: return { bg: 'bg-muted-foreground/10', text: 'text-muted-foreground', border: 'border-muted-foreground/20' }
     }
-  }
-
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   const formatTransactionType = (type: string) => {
@@ -311,7 +291,7 @@ export default function HistoryTab() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Date: </span>
-                          <span className="text-foreground">{formatDate(transaction.created_at)}</span>
+                          <span className="text-foreground">{formatDate(new Date(transaction.created_at))}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Order ID: </span>
@@ -353,7 +333,7 @@ export default function HistoryTab() {
                   {transaction.verified_at && (
                     <div className="mt-4 pt-4 border-t border-border">
                       <div className="text-xs text-muted-foreground">
-                        Verified: {formatDate(transaction.verified_at)}
+                        Verified: {formatDate(new Date(transaction.verified_at))}
                       </div>
                     </div>
                   )}

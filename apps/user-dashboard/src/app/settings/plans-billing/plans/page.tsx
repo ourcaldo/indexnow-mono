@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { authService } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/shared'
-import { BILLING_ENDPOINTS } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
 
 interface PackageFeature {
@@ -96,15 +96,6 @@ export default function PlansPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
   }
 
   const getBillingPeriodPrice = (pkg: PaymentPackage, period: string): { price: number, originalPrice?: number, discount?: number } => {

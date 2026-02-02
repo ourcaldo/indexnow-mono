@@ -16,7 +16,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import Link from 'next/link'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, formatDate } from '@indexnow/shared'
 
 interface ActivityLog {
   id: string
@@ -95,16 +95,6 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
   }
 
   const getEventTypeBadge = (eventType: string, success: boolean) => {

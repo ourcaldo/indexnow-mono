@@ -16,6 +16,7 @@ export { usePricingData, type PackageData, type BillingPeriod as PricingBillingP
 // UI/UX Hooks - User interface state and interactions
 export { useModal } from './ui/useModal'
 export { useNotification } from './ui/useNotification'
+export { useApiError } from './ui/useApiError'
 
 // Legacy Hooks - Existing hooks maintained for compatibility
 export { useUserProfile } from './useUserProfile'

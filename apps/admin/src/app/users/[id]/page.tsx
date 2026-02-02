@@ -17,6 +17,7 @@ import { PackageSubscriptionCard } from './components/PackageSubscriptionCard'
 import { UserActivityCard } from './components/UserActivityCard'
 import { UserSecurityCard } from './components/UserSecurityCard'
 import { PackageChangeModal } from './components/PackageChangeModal'
+import { ConfirmationDialog } from '@indexnow/ui'
 
 
 // Import custom hooks
@@ -50,10 +51,12 @@ export default function UserDetail() {
     editForm,
     showPackageModal,
     selectedPackageId,
+    confirmConfig,
     setEditMode,
     setEditForm,
     setShowPackageModal,
     setSelectedPackageId,
+    setConfirmConfig,
     handleSuspendUser,
     handleResetPassword,
     handleResetQuota,
@@ -210,6 +213,17 @@ export default function UserDetail() {
         onClose={() => setShowPackageModal(false)}
         onPackageSelect={setSelectedPackageId}
         onSubmit={handlePackageChangeSubmitWithRefresh}
+      />
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   )

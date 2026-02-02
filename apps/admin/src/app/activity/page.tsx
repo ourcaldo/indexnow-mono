@@ -27,7 +27,7 @@ import {
   Key
 } from 'lucide-react'
 import Link from 'next/link'
-import { ADMIN_ENDPOINTS, type Json } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, type Json, formatDate } from '@indexnow/shared'
 
 interface ActivityLog {
   id: string
@@ -106,16 +106,6 @@ export default function ActivityLogsPage() {
     
     return matchesSearch && matchesType
   })
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
 
   const getEventTypeBadge = (eventType: string, success: boolean) => {
     const eventConfig = {

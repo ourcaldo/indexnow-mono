@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Badge, Separator, useToast } from '@indexnow/ui'
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { supabaseBrowser } from '@indexnow/shared'
-import { BILLING_ENDPOINTS } from '@indexnow/shared'
-import { type Json } from '@indexnow/database'
+import { BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
+import { type Json, supabaseBrowser } from '@indexnow/auth'
 
 interface Transaction {
   id: string
@@ -218,15 +217,6 @@ export default function OrderCompletedPage() {
     } finally {
       setUploading(false)
     }
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount)
   }
 
   const getStatusBadge = (status: string) => {

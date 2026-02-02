@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { AppConfig } from '@indexnow/shared'
 
 /**
  * API Application Middleware
@@ -20,7 +21,9 @@ export function middleware(request: NextRequest) {
 
   // 2. Global CORS Headers
   const origin = request.headers.get('origin')
-  if (origin) {
+  const allowedOrigins = AppConfig.app.allowedOrigins
+
+  if (origin && allowedOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin)
   }
   

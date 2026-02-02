@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { BILLING_ENDPOINTS, supabaseBrowser } from '@indexnow/shared'
+import { BILLING_ENDPOINTS } from '@indexnow/shared'
 import { usePageViewLogger } from '@indexnow/shared'
 import {
   Check,
@@ -11,7 +11,7 @@ import {
   CreditCard
 } from 'lucide-react'
 import { Button, useToast } from '@indexnow/ui'
-import { type Json } from '@indexnow/database'
+import { type Json, supabaseBrowser } from '@indexnow/auth'
 
 interface OrderData {
   order_id: string

@@ -3,28 +3,6 @@
  */
 
 /**
- * Formats currency amount
- */
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch (error) {
-    // Fallback to USD if currency is invalid
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  }
-}
-
-/**
  * Formats a date string into a readable format
  */
 export function formatDate(dateString: string | Date): string {
