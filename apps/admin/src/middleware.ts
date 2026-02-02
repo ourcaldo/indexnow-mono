@@ -1,6 +1,6 @@
 import { getUser } from '@indexnow/auth'
 import { NextRequest, NextResponse } from 'next/server'
-import { ADMIN_ENDPOINTS, type ApiResponse } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, type ApiResponse, logger } from '@indexnow/shared'
 
 /**
  * Admin Application Middleware
@@ -33,38 +33,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // 3. Verify admin role via API (API is the backbone)
+  // 3. Verify admin role directly via Supabase (faster than external fetch)
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const token = session?.access_token
+    const { data: profile, error: profileError } = await supabase
+      .from('indb_auth_user_profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
 
-    if (!token) {
-      throw new Error('No session token found')
-    }
-
-    const verifyResponse = await fetch(ADMIN_ENDPOINTS.VERIFY_ROLE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ userId: user.id }),
-      credentials: 'include'
-    })
-
-    if (!verifyResponse.ok) {
-      throw new Error('Role verification failed')
-    }
-
-    const result = await verifyResponse.json() as ApiResponse<VerifyRoleResponse>
-    
-    if (!result.success || !result.data || result.data.role !== 'super_admin') {
-      // Redirect to login if not a super_admin
+    if (profileError || !profile || profile.role !== 'super_admin') {
+      logger.warn({ 
+        userId: user.id, 
+        role: profile?.role,
+        error: profileError?.message 
+      }, 'Admin middleware: Unauthorized access attempt')
       const loginUrl = new URL('/login', request.url)
       return NextResponse.redirect(loginUrl)
     }
   } catch (error) {
-    console.error('Admin middleware verification error:', error)
+    logger.error({ error }, 'Admin middleware verification error')
     const loginUrl = new URL('/login', request.url)
     return NextResponse.redirect(loginUrl)
   }

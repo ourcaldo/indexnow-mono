@@ -6,6 +6,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { DatabaseConfig, TABLE_PREFIXES, getTableName } from '@/lib/core/config/DatabaseConfig';
 import { type Json } from '@indexnow/shared';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 export interface DatabaseConnection {
   client: SupabaseClient;
@@ -80,7 +81,7 @@ export class SupabaseService {
         .limit(1);
 
       if (error) {
-        console.error('Database initialization failed:', error);
+        ErrorHandlingService.handle(error, { context: 'SupabaseService.initialize', severity: 'error' });
         this.isConnected = false;
         return false;
       }
@@ -89,7 +90,7 @@ export class SupabaseService {
       this.lastHealthCheck = new Date();
       return true;
     } catch (error) {
-      console.error('Database connection error:', error);
+      ErrorHandlingService.handle(error, { context: 'SupabaseService.initialize', severity: 'critical' });
       this.isConnected = false;
       return false;
     }
@@ -295,42 +296,6 @@ export class SupabaseService {
         error: error instanceof Error ? error : new Error('Delete failed'),
       };
     }
-  }
-
-  /**
-   * Execute raw SQL query (use with caution)
-   */
-  async executeRawQuery<T = Json>(
-    query: string,
-    params?: Json[]
-  ): Promise<QueryResult<T>> {
-    try {
-      const { data, error } = await this.client.rpc('execute_sql', {
-        query_text: query,
-        query_params: params || [],
-      });
-
-      return {
-        data: data as T[] | null,
-        error: error ? new Error(error.message) : null,
-      };
-    } catch (error) {
-      return {
-        data: null,
-        error: error instanceof Error ? error : new Error('Raw query failed'),
-      };
-    }
-  }
-
-  /**
-   * Get connection status
-   */
-  getConnectionStatus(): DatabaseConnection {
-    return {
-      client: this.client,
-      isConnected: this.isConnected,
-      lastHealthCheck: this.lastHealthCheck,
-    };
   }
 
   /**

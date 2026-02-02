@@ -8,6 +8,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { AppConfig, type Json } from '@indexnow/shared';
 import { EMAIL_TEMPLATES, EmailTemplate } from '@/lib/core/constants/AppConstants';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 export interface EmailConfig {
   host: string;
@@ -86,7 +87,7 @@ export class EmailService {
       console.log('✅ SMTP transporter initialized and verified successfully');
       return true;
     } catch (error) {
-      console.error('❌ SMTP initialization failed:', error);
+      ErrorHandlingService.handle(error, { context: 'EmailService.initialize', severity: 'error' });
       this.isInitialized = false;
       return false;
     }
@@ -142,7 +143,7 @@ export class EmailService {
         recipients: recipientEmails,
       };
     } catch (error) {
-      console.error('Email sending failed:', error);
+      ErrorHandlingService.handle(error, { context: 'EmailService.sendEmail', severity: 'error' });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

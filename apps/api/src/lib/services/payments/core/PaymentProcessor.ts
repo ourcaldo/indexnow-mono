@@ -7,6 +7,7 @@ import { SecureServiceRoleWrapper, type TransactionGatewayResponse, type Databas
 import { PaymentGateway, PaymentRequest, PaymentResponse, CustomerDetails } from './PaymentGateway'
 import { PaymentValidator } from './PaymentValidator'
 import { supabaseAdmin } from '@/lib/database'
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 
 export interface ProcessPaymentRequest {
   user_id: string
@@ -148,7 +149,7 @@ export class PaymentProcessor {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error('Payment processing error:', errorMessage)
+      ErrorHandlingService.handle(error, { context: 'PaymentProcessor.processPayment', severity: 'error' })
       return {
         success: false,
         error: 'Payment processing failed'
@@ -191,7 +192,7 @@ export class PaymentProcessor {
 
       return packageData;
     } catch (error) {
-      console.error('Error fetching package details:', error)
+      ErrorHandlingService.handle(error, { context: 'PaymentProcessor.getPackageDetails', severity: 'error' })
       return null
     }
   }
@@ -329,7 +330,7 @@ export class PaymentProcessor {
 
       return transaction;
     } catch (error) {
-      console.error('Error creating transaction record:', error)
+      ErrorHandlingService.handle(error, { context: 'PaymentProcessor.createTransactionRecord', severity: 'error' })
       return null
     }
   }
@@ -375,7 +376,7 @@ export class PaymentProcessor {
         }
       );
     } catch (error) {
-      console.error('Error updating transaction status:', error)
+      ErrorHandlingService.handle(error, { context: 'PaymentProcessor.updateTransactionStatus', severity: 'error' })
     }
   }
 
@@ -433,7 +434,7 @@ export class PaymentProcessor {
         }
       )
     } catch (error) {
-      console.error('Error updating transaction with result:', error)
+      ErrorHandlingService.handle(error, { context: 'PaymentProcessor.updateTransactionWithResult', severity: 'error' })
     }
   }
 

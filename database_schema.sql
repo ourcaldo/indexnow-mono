@@ -293,6 +293,7 @@ CREATE TABLE IF NOT EXISTS indb_keyword_rank_history (
 
 CREATE INDEX IF NOT EXISTS idx_rank_history_keyword ON indb_keyword_rank_history(keyword_id);
 CREATE INDEX IF NOT EXISTS idx_rank_history_checked ON indb_keyword_rank_history(checked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rank_history_composite ON indb_keyword_rank_history(keyword_id, checked_at DESC);
 
 -- Current keyword rankings
 CREATE TABLE IF NOT EXISTS indb_keyword_rankings (
@@ -519,6 +520,7 @@ CREATE TABLE IF NOT EXISTS indb_seranking_metrics_raw (
 CREATE INDEX IF NOT EXISTS idx_seranking_metrics_raw_timestamp ON indb_seranking_metrics_raw(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_seranking_metrics_raw_user ON indb_seranking_metrics_raw(user_id);
 CREATE INDEX IF NOT EXISTS idx_seranking_metrics_raw_status ON indb_seranking_metrics_raw(status);
+CREATE INDEX IF NOT EXISTS idx_seranking_metrics_composite ON indb_seranking_metrics_raw(user_id, timestamp DESC);
 
 -- SeRanking aggregated metrics
 CREATE TABLE IF NOT EXISTS indb_seranking_metrics_aggregated (
@@ -593,17 +595,92 @@ CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_created ON indb_enrichment_jobs(c
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================
--- Note: Uncomment and customize these based on your security requirements
 
--- Enable RLS on all tables
--- ALTER TABLE indb_auth_user_profiles ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE indb_indexing_jobs ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE indb_payment_transactions ENABLE ROW LEVEL SECURITY;
--- etc.
+-- Enable RLS on all core tables
+ALTER TABLE indb_auth_user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_auth_user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_payment_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_payment_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_keyword_bank ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_keyword_domains ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_keyword_keywords ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_rank_keywords ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_site_integration ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_notifications_dashboard ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_security_activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_system_error_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_seranking_usage_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_seranking_metrics_raw ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_seranking_quota_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE indb_enrichment_jobs ENABLE ROW LEVEL SECURITY;
 
--- Example policy: Users can only see their own data
--- CREATE POLICY "Users can view own profile" ON indb_auth_user_profiles
---   FOR SELECT USING (auth.uid() = user_id);
+-- 1. indb_auth_user_profiles: Users can only see and update their own profile
+CREATE POLICY "Users can view own profile" ON indb_auth_user_profiles
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own profile" ON indb_auth_user_profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- 2. indb_auth_user_settings: Users can only see and update their own settings
+CREATE POLICY "Users can view own settings" ON indb_auth_user_settings
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own settings" ON indb_auth_user_settings
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- 3. indb_payment_transactions: Users can only see their own transactions
+CREATE POLICY "Users can view own transactions" ON indb_payment_transactions
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 4. indb_payment_subscriptions: Users can only see their own subscriptions
+CREATE POLICY "Users can view own subscriptions" ON indb_payment_subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 5. indb_keyword_bank: Users can manage their own keyword bank
+CREATE POLICY "Users can manage own keyword bank" ON indb_keyword_bank
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 6. indb_keyword_domains: Users can manage their own domains
+CREATE POLICY "Users can manage own domains" ON indb_keyword_domains
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 7. indb_keyword_keywords: Users can manage their own keywords
+CREATE POLICY "Users can manage own keywords" ON indb_keyword_keywords
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 8. indb_rank_keywords: Users can manage their own rank keywords
+CREATE POLICY "Users can manage own rank keywords" ON indb_rank_keywords
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 9. indb_site_integration: Users can manage their own integrations
+CREATE POLICY "Users can manage own integrations" ON indb_site_integration
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 10. indb_notifications_dashboard: Users can manage their own notifications
+CREATE POLICY "Users can manage own notifications" ON indb_notifications_dashboard
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 11. indb_security_activity_logs: Users can view their own security logs
+CREATE POLICY "Users can view own security logs" ON indb_security_activity_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 12. indb_system_error_logs: Users can view their own error logs
+CREATE POLICY "Users can view own error logs" ON indb_system_error_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 13. indb_seranking_usage_logs: Users can view their own usage logs
+CREATE POLICY "Users can view own usage logs" ON indb_seranking_usage_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 14. indb_seranking_metrics_raw: Users can view their own metrics
+CREATE POLICY "Users can view own metrics" ON indb_seranking_metrics_raw
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 15. indb_seranking_quota_usage: Users can view their own quota usage
+CREATE POLICY "Users can view own quota usage" ON indb_seranking_quota_usage
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 16. indb_enrichment_jobs: Users can manage their own enrichment jobs
+CREATE POLICY "Users can manage own enrichment jobs" ON indb_enrichment_jobs
+  FOR ALL USING (auth.uid() = user_id);
 
 -- ============================================================
 -- SEED DATA (Optional)
