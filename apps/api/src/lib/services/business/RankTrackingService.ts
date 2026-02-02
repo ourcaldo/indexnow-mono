@@ -174,7 +174,11 @@ export class RankTrackingService {
 
     // Apply search
     if (search) {
-      query = query.or(`keyword.ilike.%${search}%, domain.ilike.%${search}%`);
+      // Sanitize search string to prevent PostgREST syntax injection
+      const sanitizedSearch = search.replace(/[()%,]/g, '');
+      if (sanitizedSearch) {
+        query = query.or(`keyword.ilike.%${sanitizedSearch}%, domain.ilike.%${sanitizedSearch}%`);
+      }
     }
 
     // Apply ordering and pagination

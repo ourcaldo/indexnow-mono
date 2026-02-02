@@ -135,6 +135,41 @@ export class QuotaService {
   }
 
   /**
+   * Increment user quota usage atomically via RPC
+   */
+  static async incrementUsage(userId: string, count: number = 1): Promise<{
+    success: boolean
+    newUsed?: number
+    error?: string
+  }> {
+    try {
+      const quotaInfo = await this.getUserQuota(userId);
+      if (!quotaInfo) throw new Error('User quota info not found');
+
+      const { data, error } = await supabaseAdmin.rpc('increment_user_quota', {
+        target_user_id: userId,
+        increment_by: count,
+        quota_limit: quotaInfo.daily_quota_limit
+      });
+
+      if (error) {
+        console.error('RPC quota increment failed:', error);
+        return { success: false, error: error.message };
+      }
+
+      const result = data as { success: boolean; new_used?: number; error?: string };
+      return {
+        success: result.success,
+        newUsed: result.new_used,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('Error incrementing usage:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
    * Reset quota if it's a new day
    */
   static async resetQuotaIfNeeded(userId: string): Promise<void> {

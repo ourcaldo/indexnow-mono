@@ -4,9 +4,6 @@ import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'
 import { queueManager } from '@/lib/queues/QueueManager'
 import { logger } from '@/lib/monitoring/error-handling'
 
-const DEFAULT_USERNAME = 'admin'
-const DEFAULT_PASSWORD = 'admin123'
-
 const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME
 const BULL_BOARD_PASSWORD = process.env.BULL_BOARD_PASSWORD
 
@@ -22,10 +19,11 @@ function checkSecurityRequirements(): { valid: boolean; error?: string } {
     }
   }
 
-  if (BULL_BOARD_USERNAME === DEFAULT_USERNAME || BULL_BOARD_PASSWORD === DEFAULT_PASSWORD) {
-    return { 
-      valid: false, 
-      error: 'Default Bull Board credentials detected. Please set secure BULL_BOARD_USERNAME and BULL_BOARD_PASSWORD environment variables.' 
+  // Enforce minimum password length for Bull Board
+  if (BULL_BOARD_PASSWORD.length < 12) {
+    return {
+      valid: false,
+      error: 'Bull Board password is too weak. Please set a BULL_BOARD_PASSWORD with at least 12 characters.'
     }
   }
 

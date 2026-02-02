@@ -593,6 +593,63 @@ CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_status ON indb_enrichment_jobs(st
 CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_created ON indb_enrichment_jobs(created_at DESC);
 
 -- ============================================================
+-- STORED PROCEDURES & FUNCTIONS
+-- ============================================================
+
+-- Atomic quota increment with safety check
+CREATE OR REPLACE FUNCTION increment_user_quota(
+  target_user_id UUID,
+  increment_by INTEGER,
+  quota_limit INTEGER
+) RETURNS JSONB AS $$
+DECLARE
+  current_used INTEGER;
+  new_used INTEGER;
+  today_date DATE := CURRENT_DATE;
+  reset_date DATE;
+BEGIN
+  -- Get current quota usage and reset date
+  SELECT daily_quota_used, daily_quota_reset_date 
+  INTO current_used, reset_date
+  FROM indb_auth_user_profiles
+  WHERE user_id = target_user_id
+  FOR UPDATE; -- Lock the row
+
+  -- Handle daily reset if needed
+  IF reset_date IS NULL OR reset_date < today_date THEN
+    current_used := 0;
+    reset_date := today_date;
+  END IF;
+
+  new_used := current_used + increment_by;
+
+  -- Check against limit (unless limit is -1 for unlimited)
+  IF quota_limit != -1 AND new_used > quota_limit THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Quota exceeded',
+      'current_used', current_used,
+      'limit', quota_limit
+    );
+  END IF;
+
+  -- Update the profile
+  UPDATE indb_auth_user_profiles
+  SET 
+    daily_quota_used = new_used,
+    daily_quota_reset_date = today_date,
+    updated_at = NOW()
+  WHERE user_id = target_user_id;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'new_used', new_used,
+    'limit', quota_limit
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================
 

@@ -230,6 +230,7 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
           .from('indb_keyword_domains')
           .select('id')
           .eq('id', domain_id)
+          .eq('user_id', auth.userId)
           .single()
         return { data, error }
       }
