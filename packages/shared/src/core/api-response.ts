@@ -40,10 +40,11 @@ export interface ApiErrorResponse {
     id: string
     type: ErrorType
     message: string
+    userMessage?: string
     severity: ErrorSeverity
     timestamp: string
     statusCode: number
-    details?: ErrorDetails
+    details?: Omit<ErrorDetails, 'stack' | 'message'>
   }
   requestId?: string
 }
@@ -68,12 +69,14 @@ export function formatSuccess<T>(data: T, requestId?: string, statusCode: number
 
 /**
  * Format an error API response
+ * Sanitize the error to prevent internal data leakage in production
  */
 export function formatError(
   error: {
     id: string;
     type: ErrorType;
     message: string;
+    userMessage?: string;
     severity: ErrorSeverity;
     timestamp: Date;
     statusCode: number;
@@ -81,16 +84,33 @@ export function formatError(
   },
   requestId?: string
 ): ApiErrorResponse {
+  const isProd = process.env.NODE_ENV === 'production';
+  
+  // Use user-friendly message as the primary message in production
+  const clientMessage = isProd ? (error.userMessage || 'An unexpected error occurred') : error.message;
+
+  // Strip sensitive details in production
+  const sanitizedDetails = error.details ? { ...error.details } : undefined;
+  if (isProd && sanitizedDetails) {
+    delete sanitizedDetails.stack;
+    delete sanitizedDetails.message;
+    // Also remove any metadata that might contain sensitive internal info
+    if (sanitizedDetails.metadata) {
+      delete sanitizedDetails.metadata;
+    }
+  }
+
   return {
     success: false,
     error: {
       id: error.id,
       type: error.type,
-      message: error.message,
+      message: clientMessage,
+      userMessage: error.userMessage,
       severity: error.severity,
       timestamp: error.timestamp.toISOString(),
       statusCode: error.statusCode,
-      details: error.details
+      details: sanitizedDetails
     },
     requestId
   }

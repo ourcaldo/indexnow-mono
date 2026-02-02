@@ -7,6 +7,59 @@
 
 import { NUMERIC_LIMITS } from '@indexnow/shared';
 
+/**
+ * Interface for rate limit storage (In-Memory or Redis)
+ */
+export interface RateLimitStore {
+  get(key: string): Promise<{ count: number; resetTime: number } | null>;
+  set(key: string, data: { count: number; resetTime: number }, windowMs: number): Promise<void>;
+  increment(key: string, windowMs: number): Promise<{ count: number; resetTime: number }>;
+  delete(key: string): Promise<boolean>;
+  clear(): Promise<void>;
+  getAllEntries(): Promise<[string, { count: number; resetTime: number }][]>;
+}
+
+/**
+ * Default In-Memory Storage implementation
+ */
+class InMemoryStore implements RateLimitStore {
+  private limits = new Map<string, { count: number; resetTime: number }>();
+
+  async get(key: string) {
+    return this.limits.get(key) || null;
+  }
+
+  async set(key: string, data: { count: number; resetTime: number }) {
+    this.limits.set(key, data);
+  }
+
+  async increment(key: string, windowMs: number) {
+    const now = Date.now();
+    const data = this.limits.get(key);
+    
+    if (!data || data.resetTime <= now) {
+      const newData = { count: 1, resetTime: now + windowMs };
+      this.limits.set(key, newData);
+      return newData;
+    }
+
+    data.count++;
+    return data;
+  }
+
+  async delete(key: string) {
+    return this.limits.delete(key);
+  }
+
+  async clear() {
+    this.limits.clear();
+  }
+
+  async getAllEntries() {
+    return Array.from(this.limits.entries());
+  }
+}
+
 export interface RateLimitConfig {
   windowMs: number;
   maxRequests: number;
@@ -36,46 +89,37 @@ export interface BusinessRuleValidationResult {
 /**
  * Rate Limiter Service
  * Provides comprehensive rate limiting and business rule validation
+ * Refactored to support distributed state (Redis-ready)
  */
 export class RateLimiter {
   private static instance: RateLimiter;
-  private limits = new Map<string, { count: number; resetTime: number }>();
+  private store: RateLimitStore;
   private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor(store?: RateLimitStore) {
+    this.store = store || new InMemoryStore();
+    this.startCleanup();
+  }
 
   static getInstance(): RateLimiter {
     if (!RateLimiter.instance) {
       RateLimiter.instance = new RateLimiter();
-      // Start cleanup process
-      RateLimiter.instance.startCleanup();
     }
     return RateLimiter.instance;
   }
 
   /**
    * Check if request is within rate limit
+   * Uses sliding window approach conceptually by resetting on expiration
    */
-  checkRateLimit(identifier: string, config: RateLimitConfig): RateLimitResult {
+  async checkRateLimit(identifier: string, config: RateLimitConfig): Promise<RateLimitResult> {
     const key = config.keyGenerator ? config.keyGenerator(identifier) : identifier;
     const now = Date.now();
-    const windowStart = now - config.windowMs;
 
-    // Get current limit data
-    const limitData = this.limits.get(key);
-
-    if (!limitData || limitData.resetTime <= windowStart) {
-      // First request or window expired - create new limit
-      const resetTime = now + config.windowMs;
-      this.limits.set(key, { count: 1, resetTime });
-      
-      return {
-        allowed: true,
-        remaining: config.maxRequests - 1,
-        resetTime,
-      };
-    }
+    const limitData = await this.store.increment(key, config.windowMs);
 
     // Check if limit exceeded
-    if (limitData.count >= config.maxRequests) {
+    if (limitData.count > config.maxRequests) {
       return {
         allowed: false,
         remaining: 0,
@@ -84,12 +128,9 @@ export class RateLimiter {
       };
     }
 
-    // Increment count
-    limitData.count++;
-    
     return {
       allowed: true,
-      remaining: config.maxRequests - limitData.count,
+      remaining: Math.max(0, config.maxRequests - limitData.count),
       resetTime: limitData.resetTime,
     };
   }
@@ -97,8 +138,7 @@ export class RateLimiter {
   /**
    * Validate API request rate limits
    */
-  validateApiRateLimit(userId: string, endpoint: string, userPackage?: string): RateLimitResult {
-    // Configure rate limits based on user package
+  async validateApiRateLimit(userId: string, endpoint: string, userPackage?: string): Promise<RateLimitResult> {
     const packageLimits = this.getPackageRateLimits(userPackage);
     const key = `api:${userId}:${endpoint}`;
 
@@ -112,7 +152,7 @@ export class RateLimiter {
   /**
    * Validate file upload rate limits
    */
-  validateUploadRateLimit(userId: string, fileSize: number): RateLimitResult {
+  async validateUploadRateLimit(userId: string, fileSize: number): Promise<RateLimitResult> {
     const key = `upload:${userId}`;
     
     return this.checkRateLimit(key, {
@@ -125,26 +165,24 @@ export class RateLimiter {
   /**
    * Validate bulk operation rate limits
    */
-  validateBulkOperationLimit(userId: string, operationType: 'urls' | 'keywords' | 'jobs', itemCount: number): BusinessRuleValidationResult {
+  async validateBulkOperationLimit(userId: string, operationType: 'urls' | 'keywords' | 'jobs', itemCount: number): Promise<BusinessRuleValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check individual item limits
     const limits = {
       urls: NUMERIC_LIMITS.BULK_OPERATIONS.max,
       keywords: NUMERIC_LIMITS.BULK_OPERATIONS.max,
-      jobs: 10 // Lower limit for job creation
+      jobs: 10
     };
 
     if (itemCount > limits[operationType]) {
       errors.push(`Bulk ${operationType} operation exceeds maximum allowed items (${limits[operationType]})`);
     }
 
-    // Check rate limits
     const key = `bulk:${operationType}:${userId}`;
-    const rateLimitResult = this.checkRateLimit(key, {
+    const rateLimitResult = await this.checkRateLimit(key, {
       windowMs: 60 * 60 * 1000, // 1 hour
-      maxRequests: 5, // 5 bulk operations per hour
+      maxRequests: 5,
     });
 
     if (!rateLimitResult.allowed) {
@@ -342,15 +380,15 @@ export class RateLimiter {
   /**
    * Clear rate limit for specific key (admin function)
    */
-  clearRateLimit(key: string): boolean {
-    return this.limits.delete(key);
+  async clearRateLimit(key: string): Promise<boolean> {
+    return this.store.delete(key);
   }
 
   /**
    * Get current rate limit status
    */
-  getRateLimitStatus(key: string): { count: number; resetTime: number } | null {
-    return this.limits.get(key) || null;
+  async getRateLimitStatus(key: string): Promise<{ count: number; resetTime: number } | null> {
+    return this.store.get(key);
   }
 
   /**
@@ -359,13 +397,14 @@ export class RateLimiter {
   private startCleanup(): void {
     if (this.cleanupInterval) return;
 
-    this.cleanupInterval = setInterval(() => {
+    this.cleanupInterval = setInterval(async () => {
       const now = Date.now();
-      Array.from(this.limits.entries()).forEach(([key, data]) => {
+      const entries = await this.store.getAllEntries();
+      for (const [key, data] of entries) {
         if (data.resetTime <= now) {
-          this.limits.delete(key);
+          await this.store.delete(key);
         }
-      });
+      }
     }, 60 * 1000); // Cleanup every minute
   }
 
@@ -382,8 +421,8 @@ export class RateLimiter {
   /**
    * Reset all rate limits (admin function)
    */
-  resetAllLimits(): void {
-    this.limits.clear();
+  async resetAllLimits(): Promise<void> {
+    await this.store.clear();
   }
 }
 

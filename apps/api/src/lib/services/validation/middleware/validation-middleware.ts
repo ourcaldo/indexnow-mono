@@ -70,7 +70,7 @@ export class ValidationMiddleware {
       // 1. Rate Limiting
       if (options.rateLimitConfig) {
         const clientId = this.getClientIdentifier(request);
-        const rateLimit = rateLimiter.checkRateLimit(clientId, options.rateLimitConfig);
+        const rateLimit = await rateLimiter.checkRateLimit(clientId, options.rateLimitConfig);
         
         if (!rateLimit.allowed) {
           return {

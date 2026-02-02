@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { fileValidator } from '@/lib/services/validation/validators/file-validator'
 import type { AuthenticatedRequest } from '@/lib/core/api-middleware'
 
 interface TransactionRecord {
@@ -57,33 +58,32 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
     return formatError(error)
   }
 
-  // Validate file type and size
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
-  const maxSize = 5 * 1024 * 1024 // 5MB
+  // Validate file using advanced FileValidator (includes magic byte check)
+  const fileBuffer = Buffer.from(await proofFile.arrayBuffer())
+  const validationResult = await fileValidator.validateFile(
+    fileBuffer,
+    proofFile.name,
+    {
+      allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'],
+      maxSize: 5 * 1024 * 1024, // 5MB
+      checkMagicBytes: true,
+      validateContent: true
+    }
+  )
 
-  if (!allowedTypes.includes(proofFile.type)) {
+  if (!validationResult.isValid) {
     const error = await ErrorHandlingService.createError(
       ErrorType.VALIDATION,
-      'Invalid file type. Please upload JPG, PNG, WebP, or PDF files only.',
+      `File validation failed: ${validationResult.errors.join(', ')}`,
       {
         severity: ErrorSeverity.MEDIUM,
         statusCode: 400,
         userId: auth.userId,
-        userMessageKey: 'invalid_format'
-      }
-    )
-    return formatError(error)
-  }
-
-  if (proofFile.size > maxSize) {
-    const error = await ErrorHandlingService.createError(
-      ErrorType.VALIDATION,
-      'File size too large. Maximum size is 5MB.',
-      {
-        severity: ErrorSeverity.MEDIUM,
-        statusCode: 400,
-        userId: auth.userId,
-        userMessageKey: 'invalid_format'
+        userMessageKey: 'invalid_format',
+        metadata: {
+          errors: validationResult.errors,
+          warnings: validationResult.warnings
+        }
       }
     )
     return formatError(error)
