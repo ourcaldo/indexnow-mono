@@ -2,6 +2,7 @@ import { SecureServiceRoleHelpers } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { AppConfig } from '@indexnow/shared'
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 import { supabaseAdmin } from '../database/supabase'
 
 // Define types
@@ -94,8 +95,7 @@ export async function getServerAdminUser(request?: NextRequest): Promise<AdminUs
     }
 
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('Server auth error:', errorMessage)
+    ErrorHandlingService.handle(error, { context: 'getServerAdminUser' });
     return null
   }
 }
@@ -226,7 +226,7 @@ export async function getServerAuthUser(request?: NextRequest): Promise<AdminUse
     }
 
   } catch (error: unknown) {
-    console.error('Server auth error:', error instanceof Error ? error.message : String(error))
+    ErrorHandlingService.handle(error, { context: 'getServerAuthUser' });
     return null
   }
 }

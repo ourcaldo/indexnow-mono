@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabaseBrowser as supabase } from '@indexnow/auth'
 import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@indexnow/ui'
 import { Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
-import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/shared/hooks'
+import { useFavicon, useSiteName, useSiteLogo, authService } from '@indexnow/shared'
 import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS } from '@indexnow/shared'
 import { AuthErrorHandler } from '@indexnow/auth'
 
@@ -30,7 +29,7 @@ export default function AdminLoginPage() {
       }
     )
     
-    const { data: authListener } = supabase.auth.onAuthStateChange(authStateHandler)
+    const { data: authListener } = authService.onFullAuthStateChange(authStateHandler)
     
     return () => {
       authListener?.subscription?.unsubscribe()
@@ -43,17 +42,10 @@ export default function AdminLoginPage() {
     setError('')
 
     try {
-      // Step 1: Authenticate with Supabase
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      // Step 1: Authenticate using centralized authService
+      const authData = await authService.signIn(email, password)
 
-      if (authError) {
-        throw new Error(authError.message)
-      }
-
-      if (!authData.user) {
+      if (!authData.user || !authData.session) {
         throw new Error('Authentication failed')
       }
 
@@ -74,28 +66,18 @@ export default function AdminLoginPage() {
 
       if (!response.ok || !roleData.success) {
         // Sign out if not admin
-        await supabase.auth.signOut()
+        await authService.signOut()
         throw new Error(roleData.error || 'Access denied: Admin privileges required')
       }
 
       // Step 3: Verify user is SUPER ADMIN (not just admin)
       if (!roleData.data?.isSuperAdmin) {
-        await supabase.auth.signOut()
+        await authService.signOut()
         throw new Error('Access denied: Super Admin privileges required. This area is restricted to Super Admins only.')
       }
 
-      // Step 4: Set admin session
-      await fetch(AUTH_ENDPOINTS.SESSION, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          access_token: authData.session.access_token,
-          refresh_token: authData.session.refresh_token
-        }),
-        credentials: 'include'
-      })
+      // Step 4: The authService.signIn already calls AUTH_ENDPOINTS.SESSION to set server-side cookies
+      // We can just proceed to redirect
 
       // Use router.push with a small delay to ensure cookies are set
       setTimeout(() => {

@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS indb_auth_user_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON indb_auth_user_settings(user_id);
+
 -- ============================================================
 -- PAYMENT SYSTEM
 -- ============================================================
@@ -144,6 +146,8 @@ CREATE TABLE IF NOT EXISTS indb_payment_transactions_history (
   reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_transactions_history_tid ON indb_payment_transactions_history(transaction_id);
 
 -- User subscriptions
 CREATE TABLE IF NOT EXISTS indb_payment_subscriptions (
@@ -240,6 +244,7 @@ CREATE TABLE IF NOT EXISTS indb_keyword_bank (
 );
 
 CREATE INDEX IF NOT EXISTS idx_keyword_bank_user ON indb_keyword_bank(user_id);
+CREATE INDEX IF NOT EXISTS idx_keyword_bank_domain ON indb_keyword_bank(domain_id);
 
 -- Keyword domains
 CREATE TABLE IF NOT EXISTS indb_keyword_domains (
@@ -249,6 +254,8 @@ CREATE TABLE IF NOT EXISTS indb_keyword_domains (
   is_verified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_keyword_domains_user ON indb_keyword_domains(user_id);
 
 -- Keyword countries
 CREATE TABLE IF NOT EXISTS indb_keyword_countries (
@@ -270,6 +277,8 @@ CREATE TABLE IF NOT EXISTS indb_keyword_keywords (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_keyword_keywords_user ON indb_keyword_keywords(user_id);
 
 -- Rank tracking history
 CREATE TABLE IF NOT EXISTS indb_keyword_rank_history (
@@ -296,6 +305,8 @@ CREATE TABLE IF NOT EXISTS indb_keyword_rankings (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_rankings_keyword ON indb_keyword_rankings(keyword_id);
+
 -- Rank keywords (may be alternate structure)
 CREATE TABLE IF NOT EXISTS indb_rank_keywords (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -309,6 +320,8 @@ CREATE TABLE IF NOT EXISTS indb_rank_keywords (
   last_checked TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_user ON indb_rank_keywords(user_id);
 
 -- ============================================================
 -- SITE INTEGRATION & SETTINGS
@@ -327,6 +340,8 @@ CREATE TABLE IF NOT EXISTS indb_site_integration (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_site_integration_user ON indb_site_integration(user_id);
 
 -- Site settings (global application settings)
 CREATE TABLE IF NOT EXISTS indb_site_settings (
@@ -430,6 +445,7 @@ CREATE TABLE IF NOT EXISTS indb_security_audit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_operation ON indb_security_audit_logs(operation);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON indb_security_audit_logs(user_id);
 
 -- System error logs
 CREATE TABLE IF NOT EXISTS indb_system_error_logs (
@@ -474,6 +490,9 @@ CREATE TABLE IF NOT EXISTS indb_seranking_usage_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_seranking_usage_user ON indb_seranking_usage_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_seranking_usage_created ON indb_seranking_usage_logs(created_at DESC);
+
 -- SeRanking raw metrics
 CREATE TABLE IF NOT EXISTS indb_seranking_metrics_raw (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -498,6 +517,8 @@ CREATE TABLE IF NOT EXISTS indb_seranking_metrics_raw (
 );
 
 CREATE INDEX IF NOT EXISTS idx_seranking_metrics_raw_timestamp ON indb_seranking_metrics_raw(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_seranking_metrics_raw_user ON indb_seranking_metrics_raw(user_id);
+CREATE INDEX IF NOT EXISTS idx_seranking_metrics_raw_status ON indb_seranking_metrics_raw(status);
 
 -- SeRanking aggregated metrics
 CREATE TABLE IF NOT EXISTS indb_seranking_metrics_aggregated (
@@ -526,6 +547,9 @@ CREATE TABLE IF NOT EXISTS indb_seranking_quota_usage (
   session_id VARCHAR(100),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_seranking_quota_user ON indb_seranking_quota_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_seranking_quota_timestamp ON indb_seranking_quota_usage(timestamp DESC);
 
 -- SeRanking health checks
 CREATE TABLE IF NOT EXISTS indb_seranking_health_checks (
@@ -561,6 +585,10 @@ CREATE TABLE IF NOT EXISTS indb_enrichment_jobs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_user ON indb_enrichment_jobs(user_id);
+CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_status ON indb_enrichment_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_created ON indb_enrichment_jobs(created_at DESC);
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES

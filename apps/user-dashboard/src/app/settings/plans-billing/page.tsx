@@ -437,8 +437,7 @@ export default function BillingPage() {
       const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=${period}`
       window.location.href = checkoutUrl
     } catch (error) {
-      console.error('Error subscribing:', error)
-      alert(error instanceof Error ? error.message : 'Failed to redirect to checkout')
+      handleApiError(error, { context: 'BillingPage.handleSubscribe', toastTitle: 'Subscription Error' })
     } finally {
       setSubscribing(null)
     }

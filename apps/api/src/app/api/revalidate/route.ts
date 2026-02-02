@@ -1,69 +1,61 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { revalidatePath } from 'next/cache'
-import { requireServerAdminAuth } from '@/lib/auth/server-auth'
-import { logger } from '@/lib/monitoring/error-handling'
+import { z } from 'zod'
+import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware'
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 
-export async function POST(request: NextRequest) {
+const revalidateSchema = z.object({
+  path: z.string().min(1, 'Path is required'),
+  secret: z.string().optional()
+})
+
+export const POST = adminApiWrapper(async (request, auth) => {
   try {
-    // Method 1: Admin authentication (preferred)
-    // Try admin authentication first
-    let isAuthenticated = false
-    try {
-      await requireServerAdminAuth(request)
-      isAuthenticated = true
-    } catch {
-      // Fall back to secret-based authentication
-    }
-
-    // Method 2: Secret-based authentication (fallback for programmatic access)
-    if (!isAuthenticated) {
-      const { searchParams } = new URL(request.url)
-      const secret = searchParams.get('secret')
-
-      // Validate secret using environment variable (no fallback for security)
-      const expectedSecret = process.env.REVALIDATE_SECRET
-      if (!expectedSecret) {
-        return NextResponse.json(
-          { error: 'Revalidate secret not configured' },
-          { status: 500 }
-        )
-      }
-
-      if (secret !== expectedSecret) {
-        return NextResponse.json(
-          { error: 'Invalid secret or authentication required' },
-          { status: 401 }
-        )
-      }
-    }
-
     const { searchParams } = new URL(request.url)
-    const path = searchParams.get('path')
+    const validation = revalidateSchema.safeParse({
+      path: searchParams.get('path'),
+      secret: searchParams.get('secret')
+    })
 
-    if (!path) {
-      return NextResponse.json(
-        { error: 'Path is required' },
-        { status: 400 }
+    if (!validation.success) {
+      const validationError = await ErrorHandlingService.createError(
+        ErrorType.VALIDATION,
+        validation.error.issues[0].message,
+        { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400 }
       )
+      return formatError(validationError)
+    }
+
+    const { path, secret } = validation.data
+
+    // Check if it's a super admin or if a valid secret is provided
+    if (!auth.isSuperAdmin) {
+      const expectedSecret = process.env.REVALIDATE_SECRET
+      if (!expectedSecret || secret !== expectedSecret) {
+        const authError = await ErrorHandlingService.createError(
+          ErrorType.AUTHORIZATION,
+          'Unauthorized to revalidate',
+          { severity: ErrorSeverity.MEDIUM, userId: auth.userId, statusCode: 403 }
+        )
+        return formatError(authError)
+      }
     }
 
     // Revalidate the specified path
     revalidatePath(path)
     
-    return NextResponse.json({
-      success: true,
+    return formatSuccess({
       message: `Revalidated ${path}`,
       timestamp: new Date().toISOString()
     })
   } catch (error) {
-    logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Revalidation error:')
-    return NextResponse.json(
-      { error: 'Failed to revalidate' },
-      { status: 500 }
+    const systemError = await ErrorHandlingService.createError(
+      ErrorType.SYSTEM,
+      error instanceof Error ? error.message : String(error),
+      { severity: ErrorSeverity.HIGH, userId: auth.userId, statusCode: 500 }
     )
+    return formatError(systemError)
   }
-}
+})
 
-export async function GET(request: NextRequest) {
-  return POST(request)
-}
+export const GET = POST

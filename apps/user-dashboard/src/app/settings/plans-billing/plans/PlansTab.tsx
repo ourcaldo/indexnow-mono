@@ -14,7 +14,7 @@ import {
   X,
   Clock
 } from 'lucide-react'
-import { authService, formatCurrency } from '@indexnow/shared'
+import { authService, formatCurrency, useApiError } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
 import { AUTH_ENDPOINTS, BILLING_ENDPOINTS } from '@indexnow/shared'
 
@@ -62,6 +62,7 @@ interface PackagesData {
 }
 
 export default function PlansTab() {
+  const { handleApiError } = useApiError()
   const searchParams = useSearchParams()
   const [packagesData, setPackagesData] = useState<PackagesData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -190,8 +191,7 @@ export default function PlansTab() {
       window.location.href = checkoutUrl
 
     } catch (error) {
-      console.error('Error subscribing:', error)
-      alert(error instanceof Error ? error.message : 'Failed to redirect to checkout')
+      handleApiError(error, { context: 'PlansTab.handleSubscribe', toastTitle: 'Subscription Error' })
     } finally {
       setSubscribing(null)
     }
@@ -206,8 +206,7 @@ export default function PlansTab() {
       window.location.href = checkoutUrl
 
     } catch (error) {
-      console.error('Error starting trial:', error)
-      alert(error instanceof Error ? error.message : 'Failed to start trial')
+      handleApiError(error, { context: 'PlansTab.handleStartTrial', toastTitle: 'Trial Error' })
     } finally {
       setStartingTrial(null)
     }

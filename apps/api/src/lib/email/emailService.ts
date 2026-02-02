@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as nodemailer from 'nodemailer'
 import { AppConfig, type Json } from '@indexnow/shared'
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 
 interface EmailTemplate {
   subject: string
@@ -106,7 +107,7 @@ export class EmailService {
       this.isInitialized = true
       
     } catch (error) {
-      console.error('❌ Failed to initialize SMTP transporter:', error)
+      ErrorHandlingService.handle(error, { context: 'EmailService.initializeTransporter' });
       this.transporter = null
     }
   }
@@ -130,7 +131,7 @@ export class EmailService {
       console.log(`✅ Template loaded successfully (${template.length} characters)`)
       return template
     } catch (error) {
-      console.error(`❌ Failed to load template '${templateName}':`, error)
+      ErrorHandlingService.handle(error, { context: `EmailService.loadTemplate(${templateName})` });
       throw error
     }
   }
@@ -155,7 +156,7 @@ export class EmailService {
       console.log('✅ Template rendered successfully')
       return rendered
     } catch (error) {
-      console.error('❌ Failed to render template:', error)
+      ErrorHandlingService.handle(error, { context: 'EmailService.renderTemplate' });
       throw error
     }
   }
@@ -204,15 +205,10 @@ export class EmailService {
       })
 
     } catch (error) {
-      console.error('❌ Failed to send billing confirmation email:', error)
-      
-      // Log detailed error information
-      if (error instanceof Error) {
-        console.error('Error name:', error.name)
-        console.error('Error message:', error.message)
-        console.error('Error stack:', error.stack)
-      }
-      
+      ErrorHandlingService.handle(error, { 
+        context: 'EmailService.sendBillingConfirmation',
+        severity: ErrorSeverity.HIGH 
+      });
       throw error
     }
   }
@@ -242,7 +238,7 @@ export class EmailService {
       console.log('✅ Payment received email sent successfully!')
 
     } catch (error) {
-      console.error('❌ Failed to send payment received email:', error)
+      ErrorHandlingService.handle(error, { context: 'EmailService.sendPaymentReceived' });
       throw error
     }
   }
@@ -272,7 +268,7 @@ export class EmailService {
       console.log('✅ Package activated email sent successfully!')
 
     } catch (error) {
-      console.error('❌ Failed to send package activated email:', error)
+      ErrorHandlingService.handle(error, { context: 'EmailService.sendPackageActivated' });
       throw error
     }
   }
@@ -302,7 +298,7 @@ export class EmailService {
       console.log('✅ Order expired email sent successfully!')
 
     } catch (error) {
-      console.error('❌ Failed to send order expired email:', error)
+      ErrorHandlingService.handle(error, { context: 'EmailService.sendOrderExpired' });
       throw error
     }
   }
@@ -319,7 +315,7 @@ export class EmailService {
       console.log('✅ SMTP connection test successful')
       return true
     } catch (error) {
-      console.error('❌ SMTP connection test failed:', error)
+      ErrorHandlingService.handle(error, { context: 'EmailService.testConnection' });
       return false
     }
   }

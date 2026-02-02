@@ -257,34 +257,151 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
   }
 
   /**
-   * Enqueue multiple jobs in batch
+   * Enqueue multiple jobs in batch using a single database operation
    */
   async enqueueBatch(
     userId: string,
     batchRequest: BatchEnqueueRequest
   ): Promise<CreateJobResponse[]> {
-    const results: CreateJobResponse[] = [];
-    
     try {
-      // Process jobs in transaction-like manner
+      // Validate queue capacity for the entire batch
+      const queueSize = await this.getQueueSize();
+      if (queueSize + batchRequest.jobs.length > this.config.maxQueueSize) {
+        return batchRequest.jobs.map(() => ({
+          success: false,
+          error: 'Queue would exceed maximum capacity'
+        }));
+      }
+
+      const jobsToInsert: EnrichmentJobInsert[] = [];
+      const validationResults: CreateJobResponse[] = [];
+
+      // Prepare all job records and validate
       for (const jobRequest of batchRequest.jobs) {
-        const mergedConfig = {
+        const validation = this.validateJobData(jobRequest);
+        if (!validation.isValid) {
+          validationResults.push({
+            success: false,
+            error: `Invalid job data: ${validation.errors.join(', ')}`
+          });
+          continue;
+        }
+
+        const mergedConfig: EnrichmentJobConfig = {
+          ...DEFAULT_JOB_CONFIG,
           ...batchRequest.globalConfig,
           ...jobRequest.config
         };
+
+        const totalKeywords = this.calculateTotalKeywords(jobRequest.data);
+        const jobId = uuidv4();
         
-        const result = await this.enqueueJob(userId, {
-          ...jobRequest,
-          config: mergedConfig
+        const job: EnrichmentJobInsert = {
+          id: jobId,
+          user_id: userId,
+          name: this.generateJobName(jobRequest.type, jobRequest.data),
+          type: 'keyword_enrichment',
+          job_type: jobRequest.type,
+          status: EnrichmentJobStatus.QUEUED,
+          priority: jobRequest.priority || JobPriority.NORMAL,
+          config: mergedConfig,
+          source_data: jobRequest.data,
+          progress_data: {
+            total: totalKeywords,
+            processed: 0,
+            successful: 0,
+            failed: 0,
+            skipped: 0,
+            startedAt: new Date()
+          },
+          retry_count: 0,
+          metadata: jobRequest.metadata,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        jobsToInsert.push(job);
+        // Placeholder for successful results - will update with queue position later
+        validationResults.push({ success: true, jobId });
+      }
+
+      if (jobsToInsert.length === 0) {
+        return validationResults;
+      }
+
+      // Perform bulk insert
+      await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'enqueue_batch_enrichment_jobs',
+          reason: 'Bulk enqueueing enrichment jobs for keyword processing',
+          source: 'rank-tracking/seranking/services/EnrichmentQueue',
+          metadata: {
+            batch_size: jobsToInsert.length,
+            user_id: userId,
+            operation_type: 'job_batch_enqueue'
+          }
+        },
+        {
+          table: 'indb_enrichment_jobs',
+          operationType: 'insert',
+          data: jobsToInsert
+        },
+        async () => {
+          const { error } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .insert(jobsToInsert);
+
+          if (error) {
+            throw new Error(`Failed to insert batch jobs: ${error.message}`);
+          }
+
+          return { success: true };
+        }
+      );
+
+      this.metrics.jobsEnqueued += jobsToInsert.length;
+      
+      // Update results with queue positions and emit events
+      const finalResults: CreateJobResponse[] = [];
+      let insertIdx = 0;
+
+      for (let i = 0; i < validationResults.length; i++) {
+        if (!validationResults[i].success) {
+          finalResults.push(validationResults[i]);
+          continue;
+        }
+
+        const jobId = validationResults[i].jobId!;
+        
+        if (this.config.enableEvents) {
+          this.emitJobEvent(JobEventType.JOB_CREATED, jobId, userId);
+        }
+
+        // We could optimize this to not call getJobQueuePosition for every job in batch,
+        // but since we just inserted them, it's safer to get current positions.
+        const queuePosition = await this.getJobQueuePosition(jobId);
+        
+        finalResults.push({
+          ...validationResults[i],
+          queuePosition,
+          estimatedCompletion: this.calculateEstimatedCompletion(
+            this.calculateTotalKeywords(jobsToInsert[insertIdx].source_data as EnrichmentJobData),
+            queuePosition
+          )
         });
         
-        results.push(result);
+        insertIdx++;
       }
+
+      return finalResults;
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in batch enqueue');
+      return batchRequest.jobs.map(() => ({
+        success: false,
+        error: 'Internal error occurred during batch processing'
+      }));
     }
-    
-    return results;
   }
 
   /**

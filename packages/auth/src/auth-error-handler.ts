@@ -1,4 +1,4 @@
-import { supabase } from '@indexnow/database'
+import { supabaseBrowser as supabase } from '@indexnow/shared'
 import { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 export interface AuthErrorContext {

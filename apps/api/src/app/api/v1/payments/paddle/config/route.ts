@@ -6,112 +6,102 @@
  * API key and webhook secret are NEVER exposed to frontend
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/database'
+import { NextRequest } from 'next/server'
+import { SecureServiceRoleWrapper } from '@indexnow/database'
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
-    // Load Paddle gateway configuration from database
-    const { data: gateway, error } = await supabaseAdmin
-      .from('indb_payment_gateways')
-      .select('*')
-      .eq('slug', 'paddle')
-      .eq('is_active', true)
-      .single()
+    // Load Paddle gateway configuration from database using SecureServiceRoleWrapper
+    const gatewayResult = await SecureServiceRoleWrapper.executeWithUserSession(
+      auth.supabase,
+      {
+        userId: auth.userId,
+        operation: 'get_paddle_config',
+        source: 'payments',
+        reason: 'Fetching Paddle client configuration for checkout',
+        metadata: { endpoint: '/api/v1/payments/paddle/config' },
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+        userAgent: request.headers.get('user-agent') || undefined
+      },
+      { table: 'indb_payment_gateways', operationType: 'select' },
+      async (db) => {
+        const { data, error } = await db
+          .from('indb_payment_gateways')
+          .select('*')
+          .eq('slug', 'paddle')
+          .eq('is_active', true)
+          .single()
+        return { data, error }
+      }
+    )
+
+    const { data: gateway, error } = gatewayResult
 
     if (error || !gateway) {
-      await ErrorHandlingService.createError(
+      const structuredError = await ErrorHandlingService.createError(
         ErrorType.DATABASE,
         'Paddle gateway not found or not active',
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 404,
+          userId: auth.userId,
           metadata: { error: error?.message }
         }
       )
       
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Paddle payment gateway is not configured' 
-        },
-        { status: 404 }
-      )
+      return formatError(structuredError)
     }
 
     // Extract credentials from database
-    const apiCredentials = gateway.api_credentials || {}
-    const configuration = gateway.configuration || {}
+    const apiCredentials = (gateway.api_credentials as Record<string, any>) || {}
+    const configuration = (gateway.configuration as Record<string, any>) || {}
 
     // CRITICAL: Only return client_token (safe for frontend)
     // NEVER expose api_key or webhook_secret to frontend
     const clientToken = apiCredentials.client_token
 
     if (!clientToken) {
-      await ErrorHandlingService.createError(
+      const structuredError = await ErrorHandlingService.createError(
         ErrorType.DATABASE,
         'Paddle client token not found in database',
         {
           severity: ErrorSeverity.HIGH,
           statusCode: 500,
+          userId: auth.userId,
           metadata: { 
             gateway_id: gateway.id,
-            has_api_credentials: !!apiCredentials,
-            api_credentials_keys: Object.keys(apiCredentials)
+            has_api_credentials: !!apiCredentials
           }
         }
       )
 
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Paddle client token not configured in database' 
-        },
-        { status: 500 }
-      )
+      return formatError(structuredError)
     }
 
     // Return safe configuration for frontend
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          clientToken,
-          environment: configuration.environment || 'sandbox',
-          isActive: gateway.is_active,
-          isDefault: gateway.is_default
-        }
-      },
-      { 
-        status: 200,
-        headers: {
-          'Cache-Control': 'private, max-age=300' // Cache for 5 minutes
-        }
-      }
-    )
+    return formatSuccess({
+      clientToken,
+      environment: configuration.environment || 'sandbox',
+      isActive: gateway.is_active,
+      isDefault: gateway.is_default
+    })
 
   } catch (error) {
-    console.error('[Paddle Config API] Error loading configuration:', error)
-    
-    await ErrorHandlingService.createError(
+    const structuredError = await ErrorHandlingService.createError(
       ErrorType.EXTERNAL_API,
       error instanceof Error ? error.message : String(error),
       {
         severity: ErrorSeverity.HIGH,
         statusCode: 500,
+        userId: auth.userId,
         metadata: { source: 'paddle_config_api' }
       }
     )
 
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Failed to load Paddle configuration' 
-      },
-      { status: 500 }
-    )
+    return formatError(structuredError)
   }
-}
+})

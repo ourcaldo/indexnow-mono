@@ -243,6 +243,37 @@ export class ErrorHandlingService {
   }
 
   /**
+   * Static helper to handle errors consistently
+   */
+  static handle(error: unknown, options: { context?: string; userId?: string; severity?: ErrorSeverity } = {}) {
+    const message = error instanceof Error ? error.message : String(error);
+    const context = options.context || 'Unknown';
+    
+    const logContext: Record<string, Json | undefined> = {
+      context,
+      userId: options.userId,
+      severity: options.severity || ErrorSeverity.HIGH
+    };
+
+    if (error instanceof Error && error.stack) {
+      logContext.stack = error.stack;
+    }
+
+    logger.error(logContext, `[${context}] ${message}`);
+
+    // Optionally record in DB if severity is high enough
+    if (options.severity === ErrorSeverity.HIGH || options.severity === ErrorSeverity.CRITICAL) {
+      this.createError(ErrorType.SYSTEM, error instanceof Error ? error : message, {
+        severity: options.severity,
+        userId: options.userId,
+        metadata: { context }
+      }).catch(() => {
+        // Ignore DB recording errors to avoid recursion
+      });
+    }
+  }
+
+  /**
    * Create a standardized API error response
    * Uses the new standard format with success: false
    */

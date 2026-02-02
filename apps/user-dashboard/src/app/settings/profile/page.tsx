@@ -69,8 +69,9 @@ export default function ProfileSettingsPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      // Auth handled by AuthProvider - get session token directly
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      // Use centralized authService instead of raw supabase
+      const session = await authService.getSession()
+      const token = session?.access_token
       if (!token) return
 
       // Load user profile
@@ -105,7 +106,8 @@ export default function ProfileSettingsPage() {
   const handleSaveProfile = async () => {
     try {
       setSavingProfile(true)
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const session = await authService.getSession()
+      const token = session?.access_token
       if (!token) return
 
       const response = await fetch(AUTH_ENDPOINTS.AUTH.PROFILE, {
@@ -187,12 +189,9 @@ export default function ProfileSettingsPage() {
         return
       }
       
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: passwordForm.currentPassword
-      })
-
-      if (signInError) {
+      try {
+        await authService.signIn(user.email, passwordForm.currentPassword)
+      } catch (signInError) {
         addToast({
           title: 'Authentication Error',
           description: 'Current password is incorrect',
@@ -202,11 +201,11 @@ export default function ProfileSettingsPage() {
       }
 
       // Update password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
-      })
-
-      if (updateError) {
+      try {
+        await authService.updateUser({
+          password: passwordForm.newPassword
+        })
+      } catch (updateError: any) {
         addToast({
           title: 'Update Error',
           description: updateError.message || 'Failed to update password',

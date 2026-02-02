@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { publicApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware'
 
-export async function GET() {
-  return NextResponse.json({ 
+export const GET = publicApiWrapper(async () => {
+  return formatSuccess({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     message: 'IndexNow Studio API is running' 
-  });
-}
+  })
+})

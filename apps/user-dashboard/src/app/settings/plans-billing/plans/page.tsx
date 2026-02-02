@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { authService } from '@indexnow/shared'
+import { authService, useApiError } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/shared'
 import { BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
@@ -53,6 +53,7 @@ interface PackagesData {
 }
 
 export default function PlansPage() {
+  const { handleApiError } = useApiError()
   const [packagesData, setPackagesData] = useState<PackagesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -124,8 +125,7 @@ export default function PlansPage() {
       window.location.href = checkoutUrl
 
     } catch (error) {
-      console.error('Error redirecting to checkout:', error)
-      alert(error instanceof Error ? error.message : 'Failed to proceed to checkout')
+      handleApiError(error, { context: 'PlansPage.handleSubscribe', toastTitle: 'Subscription Error' })
       setSubscribing(null)
     }
   }

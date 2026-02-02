@@ -172,7 +172,8 @@ export default function Login() {
     setIsLoading(true)
     try {
       await authService.resetPassword(email)
-      alert("Password recovery email sent!")
+      // We don't have useToast here yet, let's use the error state for success message
+      setError("SUCCESS: Password recovery email sent! Please check your inbox.")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Failed to send recovery email")
     } finally {
@@ -349,11 +350,13 @@ export default function Login() {
                   }
                 </button>
 
-                {/* Error Message */}
+                {/* Error/Success Message */}
                 {error && (
-                  <div className="badge-error p-3 mb-6 text-center rounded-lg">
+                  <div className={`${error.startsWith('SUCCESS:') ? 'bg-success/10 text-success border border-success/20' : 'badge-error'} p-3 mb-6 text-center rounded-lg`}>
                     {/* Transform email confirmation error to be more descriptive */}
-                    {error.toLowerCase().includes('email not confirmed') 
+                    {error.startsWith('SUCCESS:') 
+                      ? error.replace('SUCCESS: ', '')
+                      : error.toLowerCase().includes('email not confirmed') 
                       ? 'Please verify your email before accessing your account.'
                       : error
                     }

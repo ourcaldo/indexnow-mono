@@ -12,8 +12,7 @@ import {
   XCircle,
   type LucideIcon
 } from 'lucide-react'
-import { supabaseBrowser as supabase } from '@indexnow/auth'
-import { useAdminDashboardLogger, ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { useAdminDashboardLogger, ADMIN_ENDPOINTS, authService } from '@indexnow/shared'
 
 interface DashboardStats {
   total_users: number
@@ -34,10 +33,11 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Get current session token from Supabase auth
-      const { data: { session } } = await supabase.auth.getSession()
+      // Get current session token from centralized authService
+      const session = await authService.getSession()
+      const token = session?.access_token
 
-      if (!session?.access_token) {
+      if (!token) {
         console.error('No authentication session found')
         return
       }
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
       const response = await fetch(ADMIN_ENDPOINTS.DASHBOARD, {
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })

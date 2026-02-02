@@ -261,6 +261,13 @@ export class AuthService {
     })
   }
 
+  onFullAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
+    return supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+      this.clearUserCache()
+      callback(event, session)
+    })
+  }
+
   async getSession() {
     const { data: { session }, error } = await supabase.auth.getSession()
     
@@ -269,6 +276,16 @@ export class AuthService {
     }
 
     return session
+  }
+
+  async updateUser(attributes: { password?: string; data?: any }) {
+    const { data, error } = await supabase.auth.updateUser(attributes)
+    
+    if (error) {
+      throw error
+    }
+
+    return data
   }
 
   async getToken(): Promise<string | null> {
