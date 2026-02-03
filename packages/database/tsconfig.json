@@ -14,7 +14,13 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "baseUrl": ".",
+        "paths": {
+            "@indexnow/shared": ["../shared/dist/index.d.ts"],
+            "@indexnow/shared/schema": ["../shared/dist/schema.d.ts"],
+            "@indexnow/shared/hooks": ["../shared/dist/hooks/index.d.ts"]
+        }
     },
     "include": [
         "src"

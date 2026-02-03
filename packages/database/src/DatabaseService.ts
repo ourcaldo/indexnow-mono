@@ -1,4 +1,5 @@
-import { supabaseBrowser as supabase } from './client'
+import { supabaseBrowser } from './client'
+import { type SupabaseClient } from '@supabase/supabase-js'
 import { 
     type Database,
     type DbUserProfile as UserProfile,
@@ -8,6 +9,26 @@ import {
     type UpdateUserSettings,
     type DbDashboardNotification as DashboardNotification
 } from '@indexnow/shared'
+
+type UpdateDashboardNotification = Partial<DashboardNotification>
+
+// Define a SafeDatabase interface to ensure table types are correctly inferred
+// This fixes the "Type instantiation is excessively deep and possibly infinite" and overload mismatch errors
+type SafeDatabase = {
+  public: {
+    Tables: Pick<Database['public']['Tables'], 
+      'indb_auth_user_profiles' | 
+      'indb_auth_user_settings' | 
+      'indb_notifications_dashboard'
+    >
+    Views: Database['public']['Views']
+    Functions: Database['public']['Functions']
+    Enums: Database['public']['Enums']
+    CompositeTypes: Database['public']['CompositeTypes']
+  }
+}
+
+const supabase = supabaseBrowser as unknown as SupabaseClient<SafeDatabase>
 
 export class DatabaseService {
   // ============================================================================
@@ -30,7 +51,7 @@ export class DatabaseService {
   }
 
   async createUserProfile(profile: InsertUserProfile): Promise<UserProfile | null> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('indb_auth_user_profiles')
       .insert(profile)
       .select()
@@ -45,7 +66,7 @@ export class DatabaseService {
   }
 
   async updateUserProfile(userId: string, updates: UpdateUserProfile): Promise<UserProfile | null> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('indb_auth_user_profiles')
       .update(updates)
       .eq('user_id', userId)
@@ -76,7 +97,7 @@ export class DatabaseService {
   }
 
   async updateUserSettings(userId: string, updates: UpdateUserSettings): Promise<UserSettings | null> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('indb_auth_user_settings')
       .update(updates)
       .eq('user_id', userId)
@@ -117,9 +138,9 @@ export class DatabaseService {
   }
 
   async markNotificationAsRead(notificationId: string, userId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('indb_notifications_dashboard')
-      .update({ is_read: true })
+      .update({ is_read: true } as UpdateDashboardNotification)
       .eq('id', notificationId)
       .eq('user_id', userId)
 

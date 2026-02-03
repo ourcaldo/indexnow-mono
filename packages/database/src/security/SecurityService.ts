@@ -108,7 +108,7 @@ export class SecurityViolationError extends Error {
  * Internal structural client for audit operations.
  * This cast is safe because supabaseAdmin implements this interface.
  */
-const auditClient = supabaseAdmin as SimpleAuditClient
+const auditClient = supabaseAdmin as unknown as SimpleAuditClient
 
 export class SecurityService {
   /**
@@ -253,12 +253,12 @@ export class SecurityService {
         .single()
 
       if (error || !data) {
-        logger.error({ error }, 'Failed to log service role operation start')
+        logger.error({ error: error || undefined }, 'Failed to log service role operation start')
         return 'unknown'
       }
       return data.id
     } catch (error) {
-      logger.error({ error }, 'Failed to create service role audit log')
+      logger.error({ error: error as any }, 'Failed to create service role audit log')
       return 'unknown'
     }
   }
@@ -291,7 +291,7 @@ export class SecurityService {
       if (error) throw error
       logger.info({ auditId, operation: context.operation }, 'Service role operation completed successfully')
     } catch (error) {
-      logger.error({ error, auditId }, 'Failed to log service role operation success')
+      logger.error({ error: error as any, auditId }, 'Failed to log service role operation success')
     }
   }
 
@@ -323,7 +323,7 @@ export class SecurityService {
       if (updateError) throw updateError
       logger.error({ auditId, operation: context.operation, error: error.message }, 'Service role operation failed')
     } catch (logError) {
-      logger.error({ logError, auditId, originalError: error.message }, 'Failed to log service role operation failure')
+      logger.error({ logError: logError as any, auditId, originalError: error.message }, 'Failed to log service role operation failure')
     }
   }
 
@@ -362,12 +362,12 @@ export class SecurityService {
         .single()
 
       if (error || !data) {
-        logger.error({ error }, 'Failed to log user operation start')
+        logger.error({ error: error || undefined }, 'Failed to log user operation start')
         return 'unknown'
       }
       return data.id
     } catch (error) {
-      logger.error({ error }, 'Failed to create user operation audit log')
+      logger.error({ error: error as any }, 'Failed to create user operation audit log')
       return 'unknown'
     }
   }
@@ -400,7 +400,7 @@ export class SecurityService {
       if (error) throw error
       logger.info({ auditId, operation: context.operation }, 'User operation completed successfully')
     } catch (error) {
-      logger.error({ error, auditId }, 'Failed to log user operation success')
+      logger.error({ error: error as any, auditId }, 'Failed to log user operation success')
     }
   }
 
@@ -432,7 +432,7 @@ export class SecurityService {
       if (updateError) throw updateError
       logger.error({ auditId, operation: context.operation, error: error.message }, 'User operation failed')
     } catch (logError) {
-      logger.error({ logError, auditId, originalError: error.message }, 'Failed to log user operation failure')
+      logger.error({ logError: logError as any, auditId, originalError: error.message }, 'Failed to log user operation failure')
     }
   }
 }

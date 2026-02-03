@@ -14,20 +14,114 @@ export * from './queues/QueueTypes';
 export * from './business/KeywordBankTypes';
 export * from './business/EnrichmentJobTypes';
 export * from './business/ServiceTypes';
-export * from './business/RankTrackingTypes';
-export * from './business/UserTypes';
-export * from './business/PaymentTypes';
-export type { 
-  Database, 
-  UserProfile as DbUserProfile, 
-  UserSettings as DbUserSettings, 
-  DashboardNotification as DbDashboardNotification, 
-  RankKeywordRow as DbRankKeywordRow, 
+// export * from './business/RankTrackingTypes'; // Conflicts with common types
+
+// Export unique types from RankTrackingTypes to avoid conflicts (e.g. Location)
+export type {
+  Device, SearchEngine, CountryCode,
+  RankKeyword, RankHistory, SerchResult, SearchFeature, RankTrackingDomain,
+  CreateKeywordRequest, UpdateKeywordRequest, BulkKeywordRequest, RankCheckRequest, RankCheckResult,
+  DashboardRecentKeyword, KeywordAnalytics, DomainAnalytics,
+  Competitor, CompetitorAnalysis,
+  RankReport, GenerateReportRequest,
+  RankTrackingQuota, RankTrackingLimits, RankTrackingSettings,
+  AvailableLocation
+} from './business/RankTrackingTypes';
+
+// Export unique types from UserTypes to avoid conflicts with global/User
+export type {
+  UserManagementAction,
+  UserStats,
+  TeamInvitation,
+  Session,
+  LoginAttempt,
+  AuthTokens,
+  PhoneVerification
+} from './business/UserTypes';
+
+// Export unique types from PaymentTypes to avoid conflicts with services/Payments
+export type {
+  SavedPaymentMethod,
+  Dispute,
+  PaymentWebhook
+} from './business/PaymentTypes';
+
+// Explicitly export all types from database with aliases where appropriate
+export type {
+  PostgrestError,
+  Json as DbJson,
+  
+  // Database JSON types
+  PackageFeatures,
+  PackageQuotaLimits,
+  PackagePricingTier,
+  PricingTierDetails,
+  PackagePricingTiers,
+  SiteIntegrationRateLimits,
+  SiteIntegrationAlertSettings,
+  PaymentGatewayCredentials,
+  PaymentGatewayConfiguration,
+  TransactionGatewayResponse,
+  TransactionMetadata,
+
+  // Main Database Type
+  Database,
+
+  // Row Types (Aliased to avoid conflicts)
+  UserProfile as DbUserProfile,
+  UserSettings as DbUserSettings,
+  DashboardNotification as DbDashboardNotification,
+  DailyStats as DbDailyStats,
+  KeywordCountry as DbKeywordCountry,
+  KeywordDomain as DbKeywordDomain,
+  KeywordKeyword as DbKeywordKeyword,
+  KeywordRanking as DbKeywordRanking,
+  KeywordUsage as DbKeywordUsage,
+  RankKeywordRow as DbRankKeywordRow,
+  SiteIntegration as DbSiteIntegration,
+  SeRankingIntegration as DbSeRankingIntegration,
+  SeRankingUsageLog as DbSeRankingUsageLog,
+  SecurityAuditLog as DbSecurityAuditLog,
+  SecurityActivityLog as DbSecurityActivityLog,
   SystemErrorLog as DbSystemErrorLog,
+  PackageRow as DbPackageRow,
+  SubscriptionRow as DbSubscriptionRow,
+  TransactionRow as DbTransactionRow,
+  ProfileRow as DbProfileRow,
+  UserSettingsRow as DbUserSettingsRow,
+
+  // Insert Types
   InsertUserProfile,
-  UpdateUserProfile,
   InsertUserSettings,
-  UpdateUserSettings
+  InsertDashboardNotification,
+  InsertKeywordCountry,
+  InsertKeywordDomain,
+  InsertKeywordKeyword,
+  InsertKeywordRanking,
+  InsertKeywordUsage,
+  InsertSiteIntegration,
+  InsertSeRankingIntegration,
+  InsertSeRankingUsageLog,
+  InsertSecurityAuditLog,
+  InsertSecurityActivityLog,
+  InsertSubscription,
+  InsertTransaction,
+  InsertPackage,
+
+  // Update Types
+  UpdateUserProfile,
+  UpdateUserSettings,
+  UpdateKeywordDomain,
+  UpdateKeywordKeyword,
+  UpdateKeywordRanking,
+  UpdateKeywordUsage,
+  UpdateSiteIntegration,
+  UpdateSeRankingIntegration,
+  UpdateSeRankingUsageLog,
+  UpdateDashboardNotification,
+  UpdateTransaction,
+  UpdateSubscription,
+  UpdatePackage
 } from './database';
 
 // Common utility types

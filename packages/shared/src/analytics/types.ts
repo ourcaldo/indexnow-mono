@@ -12,6 +12,8 @@ export interface UserTraits {
   [key: string]: Json | undefined;
 }
 
+export type AnalyticsTraits = UserTraits;
+
 export interface PageProperties {
   url?: string;
   path?: string;

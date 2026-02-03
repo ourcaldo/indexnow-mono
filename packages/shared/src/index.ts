@@ -1,6 +1,6 @@
 // Main exports
 export { 
-  type ApiResponse, 
+  type ApiResponse as SchemaApiResponse, 
   type PaginatedResponse,
   loginSchema,
   registerSchema,
@@ -39,7 +39,6 @@ export {
 export * from './types'
 export * from './utils/logger'
 export { formatDate, formatRelativeTime, formatNumber, truncateString, capitalizeFirstLetter } from './utils/formatters'
-export * from './utils/site-settings'
 export * from './utils/ui'
 export * from './utils/resilience'
 export * from './utils/error-tracker'
@@ -49,9 +48,9 @@ export * from './utils/ip-device-utils'
 export * from './utils/countries'
 export * from './utils/rate-limiter'
 export * from './utils/pii-sanitizer'
-export * from './core/api/ApiErrorHandler'
+export { ApiErrorHandler, ApplicationError } from './core/api/ApiErrorHandler'
 export * from './core/api/ApiMiddleware'
-export { formatSuccess, formatError } from './core/api-response'
+export { formatSuccess, formatError, type ApiResponse, type ApiSuccessResponse, type ApiErrorResponse } from './core/api-response'
 export * from './core/auth/AuthService'
 export * from './core/activity/ActivityLogger'
 export * from './contexts/DomainContext'

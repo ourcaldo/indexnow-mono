@@ -86,7 +86,7 @@ export class SecureDatabaseHelpers {
     
     try {
       const result = await operation(userSupabaseClient)
-      await SecurityService.logUserOperationSuccess(auditId, sanitizedContext, result)
+      await SecurityService.logUserOperationSuccess(auditId, sanitizedContext, result as unknown as Json)
       return result
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error))
@@ -136,7 +136,7 @@ export class SecureDatabaseHelpers {
         whereConditions
       },
       async () => {
-        const client = supabaseAdmin as SimpleDbClient
+        const client = supabaseAdmin as unknown as SimpleDbClient
         const builder = client.from(table) as SimpleDbBuilder<PublicTables[TTableName]['Row'], Record<string, Json>, Record<string, Json>>
 
         const { data, error } = await builder
@@ -165,7 +165,7 @@ export class SecureDatabaseHelpers {
         data: data as Json
       },
       async () => {
-        const client = supabaseAdmin as SimpleDbClient
+        const client = supabaseAdmin as unknown as SimpleDbClient
         const builder = client.from(table) as SimpleDbBuilder<
           PublicTables[TTableName]['Row'],
           PublicTables[TTableName]['Insert'],
@@ -202,7 +202,7 @@ export class SecureDatabaseHelpers {
         whereConditions
       },
       async () => {
-        const client = supabaseAdmin as SimpleDbClient
+        const client = supabaseAdmin as unknown as SimpleDbClient
         const builder = client.from(table) as SimpleDbBuilder<
           PublicTables[TTableName]['Row'],
           PublicTables[TTableName]['Insert'],
@@ -236,7 +236,7 @@ export class SecureDatabaseHelpers {
         whereConditions
       },
       async () => {
-        const client = supabaseAdmin as SimpleDbClient
+        const client = supabaseAdmin as unknown as SimpleDbClient
         const builder = client.from(table) as SimpleDbBuilder<Record<string, Json>, Record<string, Json>, Record<string, Json>>
 
         const { error } = await builder

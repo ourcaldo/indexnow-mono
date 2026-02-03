@@ -1,30 +1,142 @@
-import { db } from '@indexnow/database';
+import { db, supabaseBrowser as supabase } from '@indexnow/database';
 import { 
   USER_ROLES, 
   DEFAULT_SETTINGS,
-  type UserProfile,
-  type UserSettings,
-  type CreateUserRequest,
-  type UpdateProfileRequest as UpdateUserRequest,
-  type UserQuota,
   type TrialEligibility,
-  type UserRole,
   type Database,
   type DbUserProfile,
   type DbUserSettings,
   type InsertUserProfile,
   type UpdateUserProfile,
   type InsertUserSettings,
-  type UpdateUserSettings,
-  type EmailOptions,
-  supabaseBrowser as supabase
+  type UpdateUserSettings
 } from '@indexnow/shared';
 import { type SupabaseClient } from '@supabase/supabase-js';
 
-const typedSupabase = supabase as SupabaseClient<Database>;
+const typedSupabase = supabase as unknown as SupabaseClient<Database>;
+
+export type UserRole = 'user' | 'admin' | 'super_admin';
+
+export interface UserSettings {
+  id: string;
+  userId: string;
+  timeoutDuration: number;
+  retryAttempts: number;
+  emailJobCompletion: boolean;
+  emailJobFailure: boolean;
+  emailQuotaAlerts: boolean;
+  emailDailyReport: boolean;
+  defaultSchedule: string;
+  theme: string;
+  notifications: {
+    email: {
+      jobCompletion: boolean;
+      jobFailure: boolean;
+      quotaAlerts: boolean;
+      dailyReport: boolean;
+      weeklyReport: boolean;
+      securityAlerts: boolean;
+    };
+    browser: {
+      enabled: boolean;
+      jobUpdates: boolean;
+      systemAlerts: boolean;
+    };
+    sms: {
+      enabled: boolean;
+      criticalAlerts: boolean;
+    };
+  };
+  privacy: {
+    showProfile: boolean;
+    showActivity: boolean;
+    allowAnalytics: boolean;
+    dataRetention: string;
+  };
+  security: {
+    twoFactorEnabled: boolean;
+    twoFactorMethod: string;
+    sessionTimeout: number;
+    apiKeyExpiry: number;
+    passwordChangeRequired: boolean;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserQuota {
+  dailyUrls: { used: number; limit: number; percentage: number; remaining: number; };
+  keywords: { used: number; limit: number; percentage: number; remaining: number; };
+  serviceAccounts: { used: number; limit: number; percentage: number; remaining: number; };
+  rankChecks: { used: number; limit: number; percentage: number; remaining: number; };
+  apiCalls: { used: number; limit: number; percentage: number; remaining: number; };
+  storage: { used: number; limit: number; percentage: number; remaining: number; };
+}
+
+export interface CreateUserRequest {
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  country?: string;
+  role?: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName?: string;
+  phoneNumber?: string;
+  country?: string;
+  role?: string;
+  isActive?: boolean;
+  isSuspended?: boolean;
+  packageId?: string;
+}
+
+export interface EmailOptions {
+  to: string;
+  subject: string;
+  template: string;
+  data: Record<string, any>;
+}
 
 export interface IEmailService {
   sendEmail(options: EmailOptions): Promise<void>;
+}
+
+export interface UserProfile {
+  id: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  country?: string;
+  role: UserRole;
+  isActive: boolean;
+  isSuspended: boolean;
+  isTrialActive: boolean;
+  trialEndsAt?: Date;
+  subscriptionStatus: string;
+  subscriptionEndsAt?: Date;
+  packageId?: string;
+  quotaUsage: {
+    dailyUrls: number;
+    keywords: number;
+    serviceAccounts: number;
+    rankChecks: number;
+    apiCalls: number;
+    storage: number;
+  };
+  quotaLimits: {
+    dailyUrls: number;
+    keywords: number;
+    serviceAccounts: number;
+    rankChecks: number;
+    apiCalls: number;
+    storage: number;
+    concurrentJobs: number;
+    historicalData: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export class UserManagementService {
@@ -64,14 +176,18 @@ export class UserManagementService {
    * Get user profile by ID
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    return db.getUserProfile(userId);
+    const profile = await db.getUserProfile(userId);
+    if (!profile) {
+      return null;
+    }
+    return this.mapDatabaseProfileToModel(profile);
   }
 
   /**
    * Get user profile by email
    */
   async getUserProfileByEmail(email: string): Promise<UserProfile | null> {
-    const { data, error } = await typedSupabase
+    const { data, error } = await (typedSupabase as any)
       .from('indb_auth_user_profiles')
       .select('*')
       .eq('email', email.toLowerCase())
@@ -88,7 +204,7 @@ export class UserManagementService {
   /**
    * Update user profile
    */
-  async updateUserProfile(userId: string, updates: UpdateUserRequest): Promise<UserProfile> {
+  async updateUserProfile(userId: string, updates: UpdateProfileRequest): Promise<UserProfile> {
     const updateData: UpdateUserProfile = {};
     
     if (updates.fullName) updateData.full_name = updates.fullName;
@@ -112,7 +228,7 @@ export class UserManagementService {
    * Update user login information
    */
   async updateLastLogin(userId: string, ipAddress?: string): Promise<void> {
-    await typedSupabase
+    await (typedSupabase as any)
       .from('indb_auth_user_profiles')
       .update({
         updated_at: new Date().toISOString(),
@@ -128,7 +244,9 @@ export class UserManagementService {
    * Get user settings
    */
   async getUserSettings(userId: string): Promise<UserSettings | null> {
-    return db.getUserSettings(userId);
+    const settings = await db.getUserSettings(userId);
+    if (!settings) return null;
+    return this.mapDatabaseSettingsToModel(settings);
   }
 
   /**
@@ -202,8 +320,8 @@ export class UserManagementService {
     if (!profile) {
       return {
         isEligible: false,
-        reason: 'User profile not found',
-        trialDays: 0,
+        restrictions: ['User profile not found'],
+        trialLength: 0,
         hasUsedTrial: false,
       };
     }
@@ -212,8 +330,8 @@ export class UserManagementService {
     if (profile.isTrialActive || profile.trialEndsAt) {
       return {
         isEligible: false,
-        reason: 'Trial already used',
-        trialDays: 0,
+        restrictions: ['Trial already used'],
+        trialLength: 0,
         hasUsedTrial: true,
       };
     }
@@ -222,15 +340,15 @@ export class UserManagementService {
     if (profile.subscriptionEndsAt && profile.subscriptionEndsAt > new Date()) {
       return {
         isEligible: false,
-        reason: 'Active subscription found',
-        trialDays: 0,
+        restrictions: ['Active subscription found'],
+        trialLength: 0,
         hasUsedTrial: false,
       };
     }
 
     return {
       isEligible: true,
-      trialDays: 14,
+      trialLength: 14,
       hasUsedTrial: false,
     };
   }
@@ -241,7 +359,7 @@ export class UserManagementService {
   async activateTrial(userId: string, trialDays: number = 14): Promise<UserProfile> {
     const eligibility = await this.checkTrialEligibility(userId);
     if (!eligibility.isEligible) {
-      throw new Error(`Trial not eligible: ${eligibility.reason}`);
+      throw new Error(`Trial not eligible: ${eligibility.restrictions?.join(', ')}`);
     }
 
     const trialEndsAt = new Date();
@@ -256,7 +374,7 @@ export class UserManagementService {
       throw new Error('Failed to activate trial');
     }
 
-    return updatedProfile;
+    return this.mapDatabaseProfileToModel(updatedProfile);
   }
 
   /**
@@ -347,7 +465,7 @@ export class UserManagementService {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await typedSupabase
+    const { error } = await (typedSupabase as any)
       .from('indb_auth_user_settings')
       .insert(defaultSettings);
     
@@ -362,14 +480,14 @@ export class UserManagementService {
   private async getDailyUrlUsage(userId: string): Promise<number> {
     // This should query a jobs table, but for now we'll return the used quota from profile
     const profile = await db.getUserProfile(userId);
-    return profile?.quotaUsage.dailyUrls || 0;
+    return profile?.daily_quota_used || 0;
   }
 
   /**
    * Get keyword usage
    */
   private async getKeywordUsage(userId: string): Promise<number> {
-    const { count, error } = await typedSupabase
+    const { count, error } = await (typedSupabase as any)
       .from('indb_rank_keywords')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);

@@ -3,7 +3,15 @@
  * Handles all HTTP requests with consistent error handling
  */
 
-import { ApiEndpoints, type ApiResponse as StandardApiResponse, type Json } from '@indexnow/shared';
+import { ApiEndpoints, type Json } from '@indexnow/shared';
+
+export interface ExtendedApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: any;
+  requestId: string;
+  timestamp: string;
+}
 
 interface ApiClientConfig {
   baseUrl?: string;
@@ -43,7 +51,7 @@ export class ApiClient {
   private async request<T = Json>(
     endpoint: string,
     options: RequestInit = {}
-  ): Promise<StandardApiResponse<T>> {
+  ): Promise<ExtendedApiResponse<T>> {
     // Ensure endpoint starts with / if not a full URL
     const url = endpoint.startsWith('http') 
       ? endpoint 
@@ -64,7 +72,7 @@ export class ApiClient {
 
       clearTimeout(timeoutId);
 
-      const data = (await response.json()) as StandardApiResponse<T>;
+      const data = (await response.json()) as ExtendedApiResponse<T>;
       return data;
     } catch (error) {
       clearTimeout(timeoutId);
@@ -80,7 +88,7 @@ export class ApiClient {
     }
   }
 
-  async get<T = Json>(endpoint: string, headers?: Record<string, string>): Promise<StandardApiResponse<T>> {
+  async get<T = Json>(endpoint: string, headers?: Record<string, string>): Promise<ExtendedApiResponse<T | undefined>> {
     return this.request<T>(endpoint, {
       method: 'GET',
       headers,
@@ -91,7 +99,7 @@ export class ApiClient {
     endpoint: string,
     data?: Json,
     headers?: Record<string, string>
-  ): Promise<StandardApiResponse<T>> {
+  ): Promise<ExtendedApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       headers,
@@ -103,7 +111,7 @@ export class ApiClient {
     endpoint: string,
     data?: Json,
     headers?: Record<string, string>
-  ): Promise<StandardApiResponse<T>> {
+  ): Promise<ExtendedApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       headers,
@@ -111,7 +119,7 @@ export class ApiClient {
     });
   }
 
-  async delete<T = Json>(endpoint: string, headers?: Record<string, string>): Promise<StandardApiResponse<T>> {
+  async delete<T = Json>(endpoint: string, headers?: Record<string, string>): Promise<ExtendedApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
       headers,
@@ -122,7 +130,7 @@ export class ApiClient {
     endpoint: string,
     data?: Json,
     headers?: Record<string, string>
-  ): Promise<StandardApiResponse<T>> {
+  ): Promise<ExtendedApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       headers,
@@ -157,7 +165,12 @@ export const apiRequest = async <T = Json>(endpoint: string, options?: RequestIn
     credentials: 'include',
   });
 
-  const jsonResponse = await response.json().catch(() => ({ success: false, error: { message: 'Invalid JSON response' } })) as StandardApiResponse<T>;
+  const jsonResponse = await response.json().catch(() => ({ 
+    success: false, 
+    error: { message: 'Invalid JSON response' },
+    requestId: 'unknown',
+    timestamp: new Date().toISOString()
+  })) as ExtendedApiResponse<T>;
 
   if (!response.ok || jsonResponse.success === false) {
     const errorData = jsonResponse.success === false ? jsonResponse.error : { message: `HTTP Error: ${response.status}` };

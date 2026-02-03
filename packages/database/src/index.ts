@@ -1,55 +1,42 @@
 // Main exports - types from shared package
+import type { Database } from '@indexnow/shared'
+
 export type { 
     Database, 
-    Json,
-    UserProfile, 
-    UserSettings,
-    DashboardNotification,
-    DailyStats,
-    KeywordCountry,
-    KeywordDomain,
-    KeywordKeyword,
-    KeywordRanking,
-    KeywordUsage,
-    SiteIntegration,
-    SeRankingIntegration,
-    SeRankingUsageLog,
-    SecurityAuditLog,
-    SecurityActivityLog,
-    PackageRow,
-    SubscriptionRow,
-    TransactionRow,
-    ProfileRow,
-    UserSettingsRow,
-    InsertUserProfile,
-    InsertUserSettings,
-    InsertDashboardNotification,
-    InsertKeywordCountry,
-    InsertKeywordDomain,
-    InsertKeywordKeyword,
-    InsertKeywordRanking,
-    InsertKeywordUsage,
-    InsertSiteIntegration,
-    InsertSeRankingIntegration,
-    InsertSeRankingUsageLog,
-    InsertSecurityAuditLog,
-    InsertSecurityActivityLog,
-    InsertSubscription,
-    UpdateUserProfile,
-    UpdateUserSettings,
-    UpdateKeywordDomain,
-    UpdateKeywordKeyword,
-    UpdateKeywordRanking,
-    UpdateKeywordUsage,
-    UpdateSiteIntegration,
-    UpdateSeRankingIntegration,
-    UpdateSeRankingUsageLog,
-    UpdateDashboardNotification,
-    UpdateTransaction,
-    UpdateSubscription,
-    UpdatePackage,
-    PostgrestError
+    DbJson as Json,
+    DbUserProfile as UserProfile, 
+    DbUserSettings as UserSettings,
+    DbDashboardNotification as DashboardNotification,
+    DbRankKeywordRow as RankKeywordRow,
+    DbSystemErrorLog as SystemErrorLog,
+    // Database column types
+    PackageFeatures,
+    PackageQuotaLimits,
+    PackagePricingTier,
+    PackagePricingTiers,
+    PaymentGatewayCredentials,
+    PaymentGatewayConfiguration,
+    TransactionGatewayResponse,
+    TransactionMetadata,
+    SiteIntegrationRateLimits,
+    SiteIntegrationAlertSettings
 } from '@indexnow/shared'
+
+// Derived types for Insert/Update variants not exported by shared
+export type InsertUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Insert']
+export type UpdateUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Update']
+
+export type InsertUserSettings = Database['public']['Tables']['indb_auth_user_settings']['Insert']
+export type UpdateUserSettings = Database['public']['Tables']['indb_auth_user_settings']['Update']
+
+export type InsertDashboardNotification = Database['public']['Tables']['indb_notifications_dashboard']['Insert']
+export type UpdateDashboardNotification = Database['public']['Tables']['indb_notifications_dashboard']['Update']
+
+export type InsertRankKeywordRow = Database['public']['Tables']['indb_rank_keywords']['Insert']
+export type UpdateRankKeywordRow = Database['public']['Tables']['indb_rank_keywords']['Update']
+
+export type InsertSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Insert']
+export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Update']
 
 // Client exports
 export { 
@@ -64,7 +51,7 @@ export {
     createServerClient, 
     createAdminClient, 
     supabaseAdmin, 
-    type CookieStore,
+    type CookieStore, 
     createMiddlewareClient,
     type MiddlewareRequest,
     type MiddlewareResponse,
@@ -84,7 +71,12 @@ export {
 export { DatabaseService, db } from './DatabaseService'
 
 // Utility exports
-export * from './utils/ApiClient'
+export { 
+    ApiClient, 
+    apiClient, 
+    ApiError as ClientApiError, 
+    apiRequest 
+} from './utils/ApiClient'
 export * from './utils/site-settings'
 export * from './utils/queryClient'
 
