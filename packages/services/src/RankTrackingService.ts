@@ -1,5 +1,6 @@
 import { supabaseBrowser as supabase, type Database } from '@indexnow/database';
 import { type SupabaseClient } from '@supabase/supabase-js';
+import { type RankTrackingDomain } from '@indexnow/shared';
 
 // Define RPC function types that are missing from the generated Database type
 type DatabaseFunctions = {
@@ -17,6 +18,15 @@ type DatabaseFunctions = {
       new_tags: string[];
     };
     Returns: number;
+  };
+  get_user_domain_stats: {
+    Args: {
+      target_user_id: string;
+    };
+    Returns: Array<{
+      domain: string;
+      keyword_count: number;
+    }>;
   };
 };
 
@@ -38,6 +48,31 @@ const rpcClient = supabase as unknown as SupabaseClient<RpcDatabase>;
 const dbClient = supabase as any;
 
 export class RankTrackingService {
+  /**
+   * Get all domains for a user with stats
+   */
+  async getUserDomains(userId: string): Promise<RankTrackingDomain[]> {
+    const { data, error } = await rpcClient.rpc('get_user_domain_stats', {
+      target_user_id: userId
+    });
+
+    if (error) {
+      console.error('Error fetching user domains:', error);
+      throw error;
+    }
+
+    return (data || []).map(item => ({
+      id: item.domain,
+      userId: userId,
+      domain: item.domain,
+      name: item.domain,
+      isActive: true,
+      keywordCount: item.keyword_count,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+  }
+
   /**
    * Update keyword position
    * OPTIMIZED: Uses atomic SQL update to prevent race conditions

@@ -2,7 +2,7 @@
 -- IndexNow Studio - Domain Stats RPC
 -- ============================================================
 -- Generated: 2026-02-03
--- Purpose: Efficiently aggregate domain statistics on the database side
+-- Purpose: Efficiently aggregate keyword counts per domain via RPC
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION get_user_domain_stats(target_user_id UUID)
