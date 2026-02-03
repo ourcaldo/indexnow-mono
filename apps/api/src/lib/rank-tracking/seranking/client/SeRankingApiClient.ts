@@ -1,4 +1,3 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
 /**
  * SeRanking API Client
  * HTTP client for SeRanking keyword export API with authentication and error handling
@@ -6,27 +5,22 @@ import { SecureServiceRoleWrapper } from '@indexnow/database';
 
 import {
   SeRankingClientConfig,
-  SeRankingKeywordExportRequest,
   SeRankingApiResponse,
   SeRankingError as ISeRankingError,
   SeRankingErrorType,
-  SeRankingHealthCheckResult,
+  HealthCheckResult,
   QuotaStatus,
-  ApiRequestConfig,
-  ISeRankingApiClient,
-  Json
-} from '@indexnow/shared';
+  ApiRequestConfig
+} from '../types/SeRankingTypes';
 import { RateLimiter } from './RateLimiter';
 import { ApiRequestBuilder } from './ApiRequestBuilder';
-import { supabaseAdmin } from '../../../database/supabase';
-import { logger } from '@/lib/monitoring/error-handling';
-import { EncryptionService } from '@indexnow/auth';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { logger } from '../../../monitoring/error-handling';
 
-export class SeRankingApiClient implements ISeRankingApiClient {
+export class SeRankingApiClient {
   private config: SeRankingClientConfig;
   private rateLimiter: RateLimiter;
-  private requestBuilder: ApiRequestBuilder;
-  private lastHealthCheck?: SeRankingHealthCheckResult;
+  private lastHealthCheck?: HealthCheckResult;
   private lastHealthCheckTime?: Date;
   private integrationApiKey?: string;
   private integrationApiKeyExpiry?: Date;
@@ -41,10 +35,6 @@ export class SeRankingApiClient implements ISeRankingApiClient {
     
     // Initialize rate limiter with default config if not provided
     this.rateLimiter = rateLimiter || new RateLimiter(RateLimiter.createDefaultConfig());
-    
-    // Initialize request builder with system auth key for authorization
-    // Actual API key will be fetched from database when needed
-    this.requestBuilder = new ApiRequestBuilder(this.config.baseUrl, this.config.apiKey);
   }
 
   /**
@@ -94,9 +84,6 @@ export class SeRankingApiClient implements ISeRankingApiClient {
         status: response.status, 
         statusText: response.statusText 
       }, `SeRanking API Raw Response for keywords: ${keywords.join(', ')} (${countryCode})`);
-      logger.info({ 
-        payload: data 
-      }, `SeRanking API Response payload`);
       
       const result = this.validateAndTransformResponse(data);
       
@@ -116,7 +103,7 @@ export class SeRankingApiClient implements ISeRankingApiClient {
   /**
    * Test API connection and authentication
    */
-  async testConnection(countryCode: string = 'us'): Promise<SeRankingHealthCheckResult> {
+  async testConnection(countryCode: string = 'us'): Promise<HealthCheckResult> {
     const startTime = Date.now();
     
     try {
@@ -177,26 +164,6 @@ export class SeRankingApiClient implements ISeRankingApiClient {
   }
 
   /**
-   * Get current API quota status (placeholder - SeRanking doesn't provide direct quota endpoint)
-   */
-  async getQuotaStatus(): Promise<QuotaStatus> {
-    // Note: SeRanking API doesn't provide a direct quota endpoint
-    // This would need to be tracked internally based on integration settings
-    throw new Error('Quota status must be retrieved from integration settings');
-  }
-  
-  /**
-   * Get rate limiter status for monitoring
-   */
-  async getRateLimitStatus(): Promise<{
-    remaining: { minute: number; hour: number; day: number };
-    resetTime: { minute: Date; hour: Date; day: Date };
-    currentUsage: { minute: number; hour: number; day: number };
-  }> {
-    return await this.rateLimiter.getStatus();
-  }
-
-  /**
    * Check if API is healthy (cached for 5 minutes)
    */
   async isHealthy(): Promise<boolean> {
@@ -213,7 +180,6 @@ export class SeRankingApiClient implements ISeRankingApiClient {
     return healthCheck.status === 'healthy';
   }
 
-
   /**
    * Make HTTP request with timeout and enhanced retry logic for rate limiting
    */
@@ -221,7 +187,7 @@ export class SeRankingApiClient implements ISeRankingApiClient {
     // Validate request configuration
     ApiRequestBuilder.validateRequestConfig(config);
     
-    let lastError: Error | unknown;
+    let lastError: any;
     
     for (let attempt = 0; attempt < (this.config.retryAttempts || 3); attempt++) {
       try {
@@ -290,7 +256,7 @@ export class SeRankingApiClient implements ISeRankingApiClient {
   /**
    * Validate and transform API response
    */
-  private validateAndTransformResponse(data: unknown): SeRankingApiResponse {
+  private validateAndTransformResponse(data: any): SeRankingApiResponse {
     if (!Array.isArray(data)) {
       throw new SeRankingApiError(
         'Invalid API response format: expected array',
@@ -299,29 +265,26 @@ export class SeRankingApiClient implements ISeRankingApiClient {
       );
     }
     
-    return data.map((item: unknown) => {
-      const record = item as Record<string, Json>;
-      return {
-        is_data_found: Boolean(record.is_data_found),
-        keyword: String(record.keyword || ''),
-        volume: record.volume ? Number(record.volume) : null,
-        cpc: record.cpc ? Number(record.cpc) : null,
-        competition: record.competition ? Number(record.competition) : null,
-        difficulty: record.difficulty ? Number(record.difficulty) : null,
-        history_trend: record.history_trend && typeof record.history_trend === 'object' 
-          ? record.history_trend 
-          : null
-      };
-    });
+    return data.map(item => ({
+      is_data_found: Boolean(item.is_data_found),
+      keyword: String(item.keyword || ''),
+      volume: item.volume ? Number(item.volume) : null,
+      cpc: item.cpc ? Number(item.cpc) : null,
+      competition: item.competition ? Number(item.competition) : null,
+      difficulty: item.difficulty ? Number(item.difficulty) : null,
+      history_trend: item.history_trend && typeof item.history_trend === 'object' 
+        ? item.history_trend 
+        : null
+    }));
   }
 
   /**
    * Create SeRanking API error from HTTP response with enhanced rate limit handling
    */
   private async createApiError(response: Response): Promise<SeRankingApiError> {
-    let errorData: Record<string, Json> | undefined;
+    let errorData: any;
     try {
-      errorData = await response.json() as Record<string, Json>;
+      errorData = await response.json();
     } catch {
       errorData = { message: await response.text() };
     }
@@ -358,31 +321,18 @@ export class SeRankingApiClient implements ISeRankingApiClient {
     
     const message = errorData?.message || errorData?.error || `HTTP ${response.status}: ${response.statusText}`;
     
-    // Enhanced error with rate limit specific information
-    const error = new SeRankingApiError(message, errorType, {
+    return new SeRankingApiError(message, errorType, {
       statusCode: response.status,
       response: errorData,
       retryable
     });
-    
-    // Add rate limit specific metadata for 429 errors
-    if (response.status === 429) {
-      const retryAfter = this.parseRetryAfterHeader(response);
-      error.setRateLimitInfo(retryAfter, {
-        retryAfterSeconds: retryAfter,
-        type: 'api_rate_limit',
-        source: 'seranking_api'
-      });
-    }
-    
-    return error;
   }
 
   /**
    * Create generic error for non-HTTP errors
    */
-  private createGenericError(error: unknown): SeRankingApiError {
-    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+  private createGenericError(error: any): SeRankingApiError {
+    if (error.name === 'AbortError') {
       return new SeRankingApiError(
         'Request timeout',
         SeRankingErrorType.TIMEOUT_ERROR,
@@ -390,7 +340,7 @@ export class SeRankingApiClient implements ISeRankingApiClient {
       );
     }
     
-    if (error && typeof error === 'object' && 'name' in error && error.name === 'TypeError' && 'message' in error && typeof error.message === 'string' && error.message.includes('fetch')) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return new SeRankingApiError(
         'Network connection failed',
         SeRankingErrorType.NETWORK_ERROR,
@@ -398,48 +348,32 @@ export class SeRankingApiClient implements ISeRankingApiClient {
       );
     }
     
-    const message = error instanceof Error ? error.message : 'An unrecognized error occurred';
-    
-    // Convert unknown error to Json safely
-    const safeErrorData = error instanceof Error 
-      ? { message: error.message, stack: error.stack }
-      : typeof error === 'object' && error !== null
-        ? JSON.parse(JSON.stringify(error))
-        : { rawError: String(error) };
-
     return new SeRankingApiError(
-      message,
+      error.message || 'Unknown error occurred',
       SeRankingErrorType.UNKNOWN_ERROR,
       { 
         retryable: false,
-        response: safeErrorData
+        response: error 
       }
     );
   }
 
   /**
    * Get actual SeRanking API key from database
-   * Uses caching to avoid repeated database queries
    */
   private async getActualApiKey(): Promise<string | null> {
     try {
-      // Check if cached key is still valid (cache for 5 minutes)
       if (this.integrationApiKey && this.integrationApiKeyExpiry && new Date() < this.integrationApiKeyExpiry) {
         return this.integrationApiKey;
       }
 
-      // Fetch from database using correct column name 'apikey'
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
           userId: 'system',
           operation: 'get_seranking_api_key',
-          reason: 'SeRankingApiClient retrieving API key configuration for keyword export operations',
+          reason: 'Retrieving API key configuration',
           source: 'SeRankingApiClient.getActualApiKey',
-          metadata: {
-            service_name: 'seranking_keyword_export',
-            cache_status: 'expired_or_missing',
-            operationType: 'integration_config_retrieval'
-          }
+          metadata: { service_name: 'seranking_keyword_export' }
         },
         { table: 'indb_site_integration', operationType: 'select' },
         async () => {
@@ -450,40 +384,18 @@ export class SeRankingApiClient implements ISeRankingApiClient {
             .eq('is_active', true)
             .single();
 
-          if (error && error.code !== 'PGRST116') {
-            logger.error({ error: error.message || String(error), code: error.code }, 'SeRankingApiClient Database error fetching API key');
-            return null;
-          }
-
+          if (error && error.code !== 'PGRST116') return null;
           return data;
         }
       );
 
-      if (!data || !data.apikey) {
-        logger.warn({}, 'SeRankingApiClient No active SeRanking integration found');
-        return null;
-      }
+      if (!data || !data.apikey) return null;
 
-      // Decrypt API key if it exists
-      let decryptedApiKey = data.apikey;
-      if (decryptedApiKey && decryptedApiKey.includes(':')) {
-        try {
-          decryptedApiKey = EncryptionService.decrypt(decryptedApiKey);
-        } catch (e) {
-          logger.error({ error: 'Failed to decrypt SeRanking API key' }, 'SeRankingApiClient Decryption failed');
-          return null;
-        }
-      }
-
-      logger.info({}, 'SeRankingApiClient Retrieved API key from database');
-
-      // Cache the API key for 5 minutes
-      this.integrationApiKey = decryptedApiKey;
+      this.integrationApiKey = data.apikey;
       this.integrationApiKeyExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-      return this.integrationApiKey || null;
+      return this.integrationApiKey;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'SeRankingApiClient Failed to fetch API key');
       return null;
     }
   }
@@ -493,61 +405,43 @@ export class SeRankingApiClient implements ISeRankingApiClient {
    */
   private parseRetryAfterHeader(response: Response): number {
     const retryAfter = response.headers.get('Retry-After');
-    if (!retryAfter) {
-      return 0;
-    }
+    if (!retryAfter) return 0;
     
-    // Retry-After can be in seconds (number) or HTTP date
     const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds)) {
-      return Math.max(0, Math.min(seconds, 300)); // Cap at 5 minutes
-    }
+    if (!isNaN(seconds)) return Math.max(0, Math.min(seconds, 300));
     
-    // Try to parse as HTTP date
     try {
       const retryDate = new Date(retryAfter);
       const now = new Date();
       const diffMs = retryDate.getTime() - now.getTime();
-      const diffSeconds = Math.ceil(diffMs / 1000);
-      return Math.max(0, Math.min(diffSeconds, 300)); // Cap at 5 minutes
+      return Math.max(0, Math.min(Math.ceil(diffMs / 1000), 300));
     } catch {
-      return 0; // Invalid date format
+      return 0;
     }
   }
   
-  /**
-   * Calculate exponential backoff delay with jitter
-   */
   private calculateExponentialBackoff(attempt: number): number {
     const baseDelay = this.config.retryDelay || 1000;
     const exponentialDelay = baseDelay * Math.pow(2, attempt);
-    const jitter = Math.random() * 1000; // Up to 1 second jitter
-    const maxDelay = 30000; // Cap at 30 seconds
-    
-    return Math.min(exponentialDelay + jitter, maxDelay);
+    const jitter = Math.random() * 1000;
+    return Math.min(exponentialDelay + jitter, 30000);
   }
   
-  /**
-   * Delay utility for retry logic
-   */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
-// SeRanking API Error implementation
 export class SeRankingApiError extends Error implements ISeRankingError {
   public type: SeRankingErrorType;
   public statusCode?: number;
-  public response?: Json;
+  public response?: any;
   public retryable: boolean;
-  public retryAfter?: number;
-  public rateLimitInfo?: Json;
 
   constructor(
     message: string, 
     type: SeRankingErrorType, 
-    options: { statusCode?: number; response?: Json; retryable: boolean }
+    options: { statusCode?: number; response?: any; retryable: boolean }
   ) {
     super(message);
     this.name = 'SeRankingApiError';
@@ -555,10 +449,5 @@ export class SeRankingApiError extends Error implements ISeRankingError {
     this.statusCode = options.statusCode;
     this.response = options.response;
     this.retryable = options.retryable;
-  }
-
-  public setRateLimitInfo(retryAfter: number, rateLimitInfo: Json): void {
-    this.retryAfter = retryAfter;
-    this.rateLimitInfo = rateLimitInfo;
   }
 }

@@ -1,9 +1,8 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ActivityLogger } from '@/lib/monitoring'
-import { supabaseAdmin } from '@/lib/database'
+import { ServerActivityLogger } from '@/lib/monitoring'
 import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 
 export const POST = adminApiWrapper(async (
@@ -185,7 +184,7 @@ export const POST = adminApiWrapper(async (
   const oldPackageName = Array.isArray(currentUser.package) ? 
     currentUser.package[0]?.name : currentUser.package?.name || 'No Package'
   
-  await ActivityLogger.logAdminAction(
+  await ServerActivityLogger.logAdminAction(
     adminUser.id,
     'package_change',
     userId,

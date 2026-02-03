@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@indexnow/shared';
+import { queryClient, apiRequest } from '@indexnow/database';
 import {
   Dialog,
   DialogContent,
@@ -23,13 +23,22 @@ interface ErrorDetailModalProps {
   onClose: () => void;
 }
 
+interface ErrorDetailResponse {
+  error: SystemErrorLog;
+  userInfo?: {
+    email: string;
+    full_name?: string | null;
+  };
+  relatedErrors?: SystemErrorLog[];
+}
+
 export function ErrorDetailModal({ errorId, open, onClose }: ErrorDetailModalProps) {
   const { addToast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/v1/admin/errors', errorId],
     queryFn: async () => {
-      return apiRequest(`/api/v1/admin/errors/${errorId}`);
+      return apiRequest<ErrorDetailResponse>(`/api/v1/admin/errors/${errorId}`);
     },
     enabled: !!errorId && open
   });

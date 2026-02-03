@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+:root {
+  /* New Color Palette - Professional Dark Theme */
+  --pure-white: #FFFFFF;
+  --light-gray: #F7F9FC;
+  --charcoal: #2C2C2E;
+  --soft-blue: #3D8BFF;
+  --cool-gray: #E0E6ED;
+  --graphite: #1A1A1A;
+  --slate-gray: #6C757D;
+  --mint-green: #4BB543;
+  --amber: #F0A202;
+  --rose-red: #E63946;
+  --light-blue-bg: #F0F9FF;
+  --light-red-bg: #FEF2F2;
+  --light-red-border: #FECACA;
+  --success-text: #065F46;
+  --error-text: #DC2626;
+  
+  /* Brand-specific colors for semantic usage */
+  --brand-primary: var(--graphite);
+  --brand-secondary: var(--charcoal);
+  --brand-accent: var(--soft-blue);
+  --brand-text: var(--slate-gray);
+  
+  /* Button specific colors */
+  --button-primary: #1C2331;
+  --button-secondary: #0d1b2a;
+  --button-tertiary: #22333b;
+  --button-dark: #1E1E1E;
+  
+  /* CSS Variables using new palette */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  
+  /* Primary elements */
+  --primary: 220 27% 15%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 98%;
+  --secondary-foreground: 240 3% 18%;
+  --muted: 210 40% 98%;
+  --muted-foreground: 210 8% 46%;
+  --accent: 218 100% 62%;
+  --accent-foreground: 0 0% 100%;
+  
+  /* Semantic colors */
+  --success: 142 70% 49%;
+  --success-foreground: 0 0% 100%;
+  --warning: 39 92% 47%;
+  --warning-foreground: 0 0% 7%;
+  --error: 354 70% 54%;
+  --error-foreground: 0 0% 100%;
+  --info: 218 58% 63%;
+  --info-foreground: 0 0% 100%;
+  
+  /* Status-specific colors */
+  --status-excellent: var(--success);
+  --status-good: var(--info); 
+  --status-warning: var(--warning);
+  --status-poor: var(--error);
+  
+  /* Interactive element colors */
+  --hover-overlay: 0 0% 0% / 0.05;
+  --focus-ring: var(--soft-blue);
+  --disabled-bg: var(--cool-gray);
+  --disabled-text: var(--slate-gray);
+  
+  /* UI Elements */
+  --border: 215 16% 88%;
+  --input: 215 16% 88%;
+  --ring: 218 100% 62%;
+  --destructive: 354 70% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --radius: 0.5rem;
+  
+  /* Gray-scale palette */
+  --gray-50: 0 0% 98%;
+  --gray-100: 0 0% 96%;
+  --gray-200: 0 0% 90%;
+  --gray-300: 0 0% 83%;
+  --gray-400: 0 0% 64%;
+  --gray-500: 0 0% 62%;
+  --gray-600: 0 0% 45%;
+  --gray-700: 0 0% 34%;
+  --gray-800: 0 0% 20%;
+  --gray-900: 0 0% 11%;
+  
+  /* Success/Green badge colors */
+  --green-100: 142 77% 93%;
+  --green-800: 142 70% 25%;
+}
+
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 0 0% 0%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 0%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 5%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 5%;
+  --muted-foreground: 0 0% 100%;
+  --accent: 218 100% 62%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 20%;
+  --input: 0 0% 5%;
+  --ring: 218 100% 62%;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+}
+
+@layer utilities {
+  .stat-number { @apply text-2xl font-bold; color: hsl(var(--stat-primary)); }
+  .stat-number-large { @apply text-4xl font-bold; color: hsl(var(--stat-primary)); }
+  .stat-percentage { @apply text-xl font-semibold; color: hsl(var(--stat-success)); }
+  .stat-secondary { @apply font-medium; color: hsl(var(--stat-secondary)); }
+  .stat-neutral { @apply text-sm; color: hsl(var(--stat-neutral)); }
+  
+  .status-excellent { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+  .status-good { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--info)); color: hsl(var(--info-foreground)); }
+  .status-warning { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--warning)); color: hsl(var(--warning-foreground)); }
+  
+  .card-interactive { @apply transition-all duration-200 hover:shadow-md; border-left: 4px solid hsl(var(--accent)); }
+  .card-interactive:hover { border-left-color: hsl(var(--primary)); }
+  
+  .btn-hover { @apply transition-colors duration-200; }
+  .btn-hover:hover { background-color: var(--button-dark) !important; color: var(--pure-white) !important; }
+  
+  .form-field-default { @apply border-border bg-background text-foreground rounded-md px-3 py-2; border: 1px solid var(--border); }
+  .form-field-error { @apply border-error bg-background text-foreground rounded-md px-3 py-2; border: 1px solid hsl(var(--error)); }
+  .form-field-success { @apply border-success bg-background text-foreground rounded-md px-3 py-2; border: 1px solid hsl(var(--success)); }
+  .form-field-focus { @apply outline-none focus:ring-2 focus:ring-info focus:border-info; }
+  
+  .card-default { @apply bg-card border-border rounded-lg; border: 1px solid var(--border); }
+  .card-bordered { @apply bg-card border-border rounded-lg shadow-sm; border: 1px solid var(--border); }
+  
+  .badge-success { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+  .badge-warning { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--warning)); color: hsl(var(--warning-foreground)); }
+  .badge-error { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--error)); color: hsl(var(--error-foreground)); }
+  .badge-info { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--info)); color: hsl(var(--info-foreground)); }
+}

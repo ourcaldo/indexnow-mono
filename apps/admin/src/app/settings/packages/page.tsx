@@ -192,7 +192,7 @@ export default function PackageManagement() {
         const updatedTiers = {
           ...currentTiers,
           [period]: {
-            ...(currentTiers[period] || { period: period as any, period_label: period, regular_price: 0, promo_price: 0 }),
+            ...(currentTiers[period] || { period: period as PricingTier['period'], period_label: period, regular_price: 0, promo_price: 0 }),
             [field]: value
           }
         };
@@ -362,11 +362,11 @@ export default function PackageManagement() {
                   { period: 'annual', label: 'Annual', defaultLabel: 'Annual' }
                 ].map((periodInfo) => {
                   const tierData = formData.pricing_tiers?.[periodInfo.period] || {
-                    period: periodInfo.period as any,
-                    period_label: periodInfo.defaultLabel,
-                    regular_price: 0,
-                    promo_price: 0
-                  };
+                  period: periodInfo.period as PricingTier['period'],
+                  period_label: periodInfo.defaultLabel,
+                  regular_price: 0,
+                  promo_price: 0
+                };
                   
                   return (
                     <div key={periodInfo.period} className="p-6 bg-secondary rounded-lg border border-border">

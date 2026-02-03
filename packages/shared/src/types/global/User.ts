@@ -29,6 +29,7 @@ export interface AppUserProfile {
   is_active: boolean;
   subscription_status: SubscriptionStatus;
   package_name?: string;
+  package?: any; // Joint package data
   created_at: Date;
   updated_at: Date;
 }
@@ -72,6 +73,9 @@ export interface UserQuota {
 export interface UserQuotaUsage {
   rank_tracking_checks: number;
   api_calls: number;
+  is_unlimited?: boolean;
+  keywords_used?: number;
+  keywords_limit?: number;
 }
 
 export interface UserQuotaLimits {
@@ -100,6 +104,7 @@ export interface UserSubscription {
   id: string;
   user_id: string;
   package_id: string;
+  current_package_id?: string;
   status: SubscriptionStatus;
   start_date: Date;
   end_date: Date;

@@ -6,18 +6,29 @@
 // P4.1 Enhanced Type System - New organized structure
 export * from './global';
 export * from './api';
-// P4.1 Enhanced Type System - New organized structure
-export * from './global';
-export * from './api';
 export * from './components';
 export * from './services';
 export * from './monitoring/ErrorTrackingTypes';
 export * from './queues/QueueTypes';
-export * from './business/SeRankingTypes';
+// export * from './business/SeRankingTypes'; // Conflicts with api
 export * from './business/KeywordBankTypes';
 export * from './business/EnrichmentJobTypes';
 export * from './business/ServiceTypes';
-export * from './database';
+export * from './business/RankTrackingTypes';
+export * from './business/UserTypes';
+export * from './business/PaymentTypes';
+export type { 
+  Database, 
+  UserProfile as DbUserProfile, 
+  UserSettings as DbUserSettings, 
+  DashboardNotification as DbDashboardNotification, 
+  RankKeywordRow as DbRankKeywordRow, 
+  SystemErrorLog as DbSystemErrorLog,
+  InsertUserProfile,
+  UpdateUserProfile,
+  InsertUserSettings,
+  UpdateUserSettings
+} from './database';
 
 // Common utility types
 export {

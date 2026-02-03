@@ -1,203 +1,202 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { formatSuccess, formatError } from './api-response-formatter'
-export { formatSuccess, formatError }
-import { getServerAuthUser, getServerAdminUser } from '../auth/server-auth'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { AppConfig, ErrorHandlingService } from '@indexnow/shared'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
-import { type User, type SupabaseClient } from '@supabase/supabase-js'
+/**
+ * Enhanced API Response Middleware for Phase 2 Standardization
+ * 
+ * This module provides middleware that enforces standardized response formats
+ * across ALL API routes (admin, authenticated, public) with automatic error handling,
+ * logging, and monitoring integration.
+ */
 
-export interface AuthenticatedContext {
-    user: User | null;
-    supabase: SupabaseClient;
-    [key: string]: unknown;
-}
+import { NextRequest, NextResponse } from 'next/server';
+import { requireServerSuperAdminAuth } from '@indexnow/auth';
+import { ErrorHandlingService, logger } from '../monitoring/error-handling';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { formatSuccess, formatError, type ApiSuccessResponse, type ApiErrorResponse } from './api-response-formatter';
+import { authenticateRequest, type AuthenticatedRequest } from './api-middleware';
+import { AdminSecurityLogger } from '../services/security/AdminSecurityLogger';
 
-export const authenticatedApiWrapper = <TAuth extends AuthenticatedContext = AuthenticatedContext>(handler: (req: NextRequest, auth: TAuth) => Promise<unknown>) => {
-  return async (req: NextRequest) => {
+// Re-export formatter functions for convenience
+export { formatSuccess, formatError } from './api-response-formatter';
+export type { ApiSuccessResponse, ApiErrorResponse } from './api-response-formatter';
+
+/**
+ * Admin API wrapper - Requires super admin authentication
+ */
+export function adminApiWrapper<T = unknown>(
+  handler: (
+    request: NextRequest, 
+    adminUser: { id: string; email: string }, 
+    context?: { params: Promise<any> }
+  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse>
+) {
+  return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
+    const endpoint = new URL(request.url).pathname;
+    const method = request.method;
+
     try {
-      const auth = await getServerAuthUser(req)
-      if (!auth) {
-        return NextResponse.json(
-          formatError({
-            id: 'auth_required',
-            type: ErrorType.AUTHENTICATION,
-            message: 'Authentication required',
-            severity: ErrorSeverity.LOW,
-            timestamp: new Date(),
-            statusCode: 401
-          }),
-          { status: 401 }
-        )
-      }
-
-      // Create supabase client for the handler
-      const supabase = createServerClient(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
-        {
-          cookies: {
-            getAll() {
-              const cookieHeader = req.headers.get('cookie')
-              if (!cookieHeader) return []
-              return cookieHeader.split(';').map(cookie => {
-                const [name, value] = cookie.trim().split('=')
-                return { name, value: decodeURIComponent(value || '') }
-              })
-            },
-            setAll(cookiesToSet) {
-              // No-op for API routes usually, or handle response headers if needed
-            },
-          },
-        }
-      )
-
-      const context = { ...auth, supabase } as TAuth; 
-      // We cast here because TAuth extends AuthenticatedContext, and we constructed it. 
-      // But to avoid 'unknown', we can just type it as AuthenticatedContext if TAuth is default.
-      // However, getServerAuthUser returns a specific structure. 
-      // Let's assume TAuth is compatible.
+      // Verify super admin authentication
+      const adminUser = await requireServerSuperAdminAuth(request);
       
-      const result = await handler(req, context)
-      if (result instanceof NextResponse) return result
-      return NextResponse.json(result)
-    } catch (error) {
-      ErrorHandlingService.handle(error, { context: 'API Middleware' });
-      const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-      const statusCode = (error as { statusCode?: number }).statusCode || 500;
-      return NextResponse.json(
-        formatError({
-          id: 'internal_error',
-          type: ErrorType.SYSTEM,
-          message: errorMessage,
-          severity: ErrorSeverity.HIGH,
-          timestamp: new Date(),
-          statusCode: statusCode
-        }),
-        { status: statusCode }
-      )
-    }
-  }
-}
-
-export const adminApiWrapper = <TAuth extends AuthenticatedContext = AuthenticatedContext>(handler: (req: NextRequest, auth: TAuth) => Promise<unknown>) => {
-  return async (req: NextRequest) => {
-    try {
-      const auth = await getServerAdminUser(req)
-      if (!auth || !auth.isAdmin) {
-        return NextResponse.json(
-          formatError({
-            id: 'admin_required',
-            type: ErrorType.AUTHORIZATION,
-            message: 'Admin access required',
+      if (!adminUser) {
+        const { ipAddress, userAgent } = AdminSecurityLogger.extractRequestMetadata(request);
+        
+        await AdminSecurityLogger.logUnauthorizedAccess({
+          eventType: 'unauthorized_access',
+          endpoint,
+          method,
+          ipAddress,
+          userAgent,
+          reason: 'Attempted to access admin endpoint without super admin privileges',
+          requiredRole: 'super_admin',
+          severity: 'high'
+        });
+        
+        const error = await ErrorHandlingService.createError(
+          ErrorType.AUTHORIZATION,
+          'Super admin access required',
+          {
             severity: ErrorSeverity.MEDIUM,
-            timestamp: new Date(),
-            statusCode: 403
-          }),
-          { status: 403 }
-        )
+            endpoint,
+            method,
+            statusCode: 403,
+            userMessageKey: 'default'
+          }
+        );
+        
+        return NextResponse.json(formatError(error), { status: 403 });
       }
 
-      // Create supabase client for the handler
-      const supabase = createServerClient(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
+      logger.info({
+        userId: adminUser.id,
+        endpoint,
+        method,
+        adminEmail: adminUser.email
+      }, `Admin API access: ${method} ${endpoint}`);
+
+      const response = await handler(request, adminUser, context);
+      
+      if (response.success) {
+        const statusCode = response.statusCode || 200;
+        return NextResponse.json(response, { status: statusCode });
+      } else {
+        const statusCode = response.error.statusCode || 500;
+        return NextResponse.json(response, { status: statusCode });
+      }
+
+    } catch (error) {
+      const structuredError = await ErrorHandlingService.createError(
+        ErrorType.SYSTEM,
+        error as Error,
         {
-          cookies: {
-            getAll() {
-              const cookieHeader = req.headers.get('cookie')
-              if (!cookieHeader) return []
-              return cookieHeader.split(';').map(cookie => {
-                const [name, value] = cookie.trim().split('=')
-                return { name, value: decodeURIComponent(value || '') }
-              })
-            },
-            setAll(cookiesToSet) {
-              // No-op
-            },
-          },
+          severity: ErrorSeverity.HIGH,
+          endpoint,
+          method,
+          statusCode: 500,
+          userMessageKey: 'default'
         }
-      )
-
-      const context = { ...auth, supabase } as TAuth;
-      const result = await handler(req, context)
-      if (result instanceof NextResponse) return result
-      return NextResponse.json(result)
-    } catch (error) {
-      ErrorHandlingService.handle(error, { context: 'Admin API Middleware' });
-      const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-      const statusCode = (error as { statusCode?: number }).statusCode || 500;
-      return NextResponse.json(
-        formatError({
-          id: 'admin_internal_error',
-          type: ErrorType.SYSTEM,
-          message: errorMessage,
-          severity: ErrorSeverity.HIGH,
-          timestamp: new Date(),
-          statusCode: statusCode
-        }),
-        { status: statusCode }
-      )
+      );
+      
+      return NextResponse.json(formatError(structuredError), { status: 500 });
     }
-  }
+  };
 }
 
-export const publicApiWrapper = (handler: (req: NextRequest) => Promise<unknown>) => {
-  return async (req: NextRequest) => {
+/**
+ * Authenticated API wrapper - Requires user authentication
+ */
+export function authenticatedApiWrapper<T = unknown>(
+  handler: (
+    request: NextRequest, 
+    auth: AuthenticatedRequest, 
+    context?: { params: Promise<any> }
+  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse>
+) {
+  return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
+    const endpoint = new URL(request.url).pathname;
+    const method = request.method;
+
     try {
-      const result = await handler(req)
-      if (result instanceof NextResponse) return result
-      return NextResponse.json(result)
+      const authResult = await authenticateRequest(request, endpoint, method);
+      
+      if (!authResult.success) {
+        return NextResponse.json(formatError(authResult.error as StructuredError), { status: (authResult.error as StructuredError).statusCode || 401 });
+      }
+
+      logger.debug({
+        userId: authResult.data.userId,
+        endpoint,
+        method,
+        userEmail: authResult.data.user.email
+      }, `Authenticated API access: ${method} ${endpoint}`);
+
+      const response = await handler(request, authResult.data, context);
+      
+      if (response.success) {
+        const statusCode = response.statusCode || 200;
+        return NextResponse.json(response, { status: statusCode });
+      } else {
+        const statusCode = response.error.statusCode || 500;
+        return NextResponse.json(response, { status: statusCode });
+      }
+
     } catch (error) {
-      ErrorHandlingService.handle(error, { context: 'Public API Middleware' });
-      const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-      const statusCode = (error as { statusCode?: number }).statusCode || 500;
-      return NextResponse.json(
-        formatError({
-          id: 'public_internal_error',
-          type: ErrorType.SYSTEM,
-          message: errorMessage,
+      const structuredError = await ErrorHandlingService.createError(
+        ErrorType.SYSTEM,
+        error as Error,
+        {
           severity: ErrorSeverity.HIGH,
-          timestamp: new Date(),
-          statusCode: statusCode
-        }),
-        { status: statusCode }
-      )
+          endpoint,
+          method,
+          statusCode: 500,
+          userMessageKey: 'default'
+        }
+      );
+      
+      return NextResponse.json(formatError(structuredError), { status: 500 });
     }
-  }
+  };
 }
 
-// Additional helpers mentioned in migration-examples.ts
-export const createSuccessResponse = (data: unknown, statusCode: number = 200) => {
-  return formatSuccess(data, undefined, statusCode)
-}
+/**
+ * Public API wrapper - No authentication required
+ */
+export function publicApiWrapper<T = unknown>(
+  handler: (request: NextRequest, context?: { params: Promise<any> }) => Promise<ApiSuccessResponse<T> | ApiErrorResponse>
+) {
+  return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
+    const endpoint = new URL(request.url).pathname;
+    const method = request.method;
 
-export const createStandardError = (type: ErrorType, error: Error | string, statusCode: number = 500, severity: ErrorSeverity = ErrorSeverity.MEDIUM, details?: unknown) => {
-  return formatError({
-    id: 'standard_error',
-    type,
-    message: typeof error === 'string' ? error : error.message,
-    severity,
-    timestamp: new Date(),
-    statusCode,
-    details
-  })
-}
+    try {
+      logger.debug({
+        endpoint,
+        method,
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+      }, `Public API access: ${method} ${endpoint}`);
 
-export const withDatabaseOperation = async (fn: () => Promise<unknown>, context: Record<string, unknown>) => {
-  try {
-    const data = await fn()
-    return formatSuccess(data)
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Database operation failed';
-    return formatError({
-      id: 'db_operation_error',
-      type: ErrorType.DATABASE,
-      message: errorMessage,
-      severity: ErrorSeverity.HIGH,
-      timestamp: new Date(),
-      statusCode: 500,
-      details: context
-    })
-  }
+      const response = await handler(request, context);
+      
+      if (response.success) {
+        const statusCode = response.statusCode || 200;
+        return NextResponse.json(response, { status: statusCode });
+      } else {
+        const statusCode = response.error.statusCode || 500;
+        return NextResponse.json(response, { status: statusCode });
+      }
+
+    } catch (error) {
+      const structuredError = await ErrorHandlingService.createError(
+        ErrorType.SYSTEM,
+        error as Error,
+        {
+          severity: ErrorSeverity.MEDIUM,
+          endpoint,
+          method,
+          statusCode: 500,
+          userMessageKey: 'default'
+        }
+      );
+      
+      return NextResponse.json(formatError(structuredError), { status: 500 });
+    }
+  };
 }

@@ -1,4 +1,3 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
 /**
  * Simple Keyword Enrichment Background Worker
  * Checks user keywords and enriches them using SeRanking API
@@ -6,7 +5,8 @@ import { SecureServiceRoleWrapper } from '@indexnow/database';
  */
 
 import * as cron from 'node-cron';
-import { supabaseAdmin } from '../database/supabase';
+import { supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
 import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
@@ -41,9 +41,8 @@ export class KeywordEnrichmentWorker {
     // Initialize integration service to get API key from database
     this.integrationService = new IntegrationService({
       defaultQuotaLimit: 1000,
-      enableMetrics: true,
       logLevel: 'info'
-    } as any, {} as any); // We'll only use getIntegrationSettings method
+    }, undefined); // Fix: removed as any casting
 
     // Get API key directly from database using correct column name 'apikey'
     const integrationData = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -414,20 +413,12 @@ export class KeywordEnrichmentWorker {
   }
 
   /**
-   * Main entry point for enrichment job
-   */
-  async processEnrichmentJob(): Promise<void> {
-    logger.info({}, 'Keyword Enrichment: Enrichment job started');
-    await this.processKeywords();
-    logger.info({}, 'Keyword Enrichment: Enrichment job completed');
-  }
-
-  /**
    * Manual trigger for testing
-   * @deprecated Use processEnrichmentJob instead
    */
   async runManually(): Promise<void> {
-    await this.processEnrichmentJob();
+    logger.info({}, 'Keyword Enrichment: Manual trigger started');
+    await this.processKeywords();
+    logger.info({}, 'Keyword Enrichment: Manual trigger completed');
   }
 }
 

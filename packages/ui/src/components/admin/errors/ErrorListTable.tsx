@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@indexnow/shared';
+import { apiRequest } from '@indexnow/database';
 import {
   Table,
   TableBody,
@@ -33,6 +33,17 @@ interface ErrorRow {
   endpoint?: string;
 }
 
+interface ErrorListResponse {
+  errors: ErrorRow[];
+  pagination: {
+    page: number;
+    totalPages: number;
+    total: number;
+    hasPrevPage: boolean;
+    hasNextPage: boolean;
+  };
+}
+
 export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
   const [page, setPage] = useState(1);
   const limit = 50;
@@ -49,7 +60,7 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
         if (value) params.append(key, value);
       });
       
-      return apiRequest(`/api/v1/admin/errors?${params}`);
+      return apiRequest<ErrorListResponse>(`/api/v1/admin/errors?${params}`);
     },
     refetchInterval: 30000 // Refresh every 30 seconds
   });

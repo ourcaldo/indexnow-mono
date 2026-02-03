@@ -2,6 +2,7 @@ import { Job } from 'bullmq'
 import { queueManager } from '../QueueManager'
 import { KeywordEnrichmentJob, KeywordEnrichmentJobSchema } from '../types'
 import { logger } from '@/lib/monitoring/error-handling'
+import { keywordEnrichmentWorker } from '@/lib/job-management/keyword-enrichment-worker'
 
 async function processKeywordEnrichment(job: Job<KeywordEnrichmentJob>): Promise<{
   processed: boolean
@@ -11,10 +12,18 @@ async function processKeywordEnrichment(job: Job<KeywordEnrichmentJob>): Promise
   try {
     const validatedData = KeywordEnrichmentJobSchema.parse(job.data)
 
-    const { KeywordEnrichmentWorker } = await import('@/lib/job-management/keyword-enrichment-worker')
-    const worker = await KeywordEnrichmentWorker.getInstance()
+    // Use the singleton instance
+    await keywordEnrichmentWorker.start() // Ensure it's started/initialized
+    // The worker runs on schedule, but we can also trigger manually if needed for this job
+    // However, the original code imported the class dynamically. Here we import the singleton.
     
-    await worker.processEnrichmentJob()
+    // Actually, the original code did:
+    // const { KeywordEnrichmentWorker } = await import('@/lib/job-management/keyword-enrichment-worker')
+    // const worker = await KeywordEnrichmentWorker.getInstance()
+    // await worker.processEnrichmentJob() -> Wait, the original code had `processEnrichmentJob`?
+    // My restored class has `processKeywords` (private) and `runManually` (public).
+    
+    await keywordEnrichmentWorker.runManually()
 
     logger.info({ jobId: job.id }, 'Keyword enrichment job completed')
 

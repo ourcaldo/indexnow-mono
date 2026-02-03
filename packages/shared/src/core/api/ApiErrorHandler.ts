@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { ErrorType, ErrorSeverity } from '../../types/common/ErrorTypes';
 import { formatError } from '../api-response';
 import { type Json } from '../../types/common/Json';
+import { logger } from '../../utils/logger';
 
 export interface ApiError {
   id?: string;

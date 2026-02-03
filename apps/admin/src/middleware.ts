@@ -33,20 +33,34 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // 3. Verify admin role directly via Supabase (faster than external fetch)
+  // 3. Verify admin role via API (Centralized logic)
   try {
-    const { data: profile, error: profileError } = await supabase
-      .from('indb_auth_user_profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single()
+    // Call the centralized verify-role endpoint
+    const verifyUrl = new URL(ADMIN_ENDPOINTS.VERIFY_ROLE)
+    
+    const authResponse = await fetch(verifyUrl.toString(), {
+      headers: {
+        // Forward cookies for authentication
+        cookie: request.headers.get('cookie') || '',
+      },
+    })
 
-    if (profileError || !profile || profile.role !== 'super_admin') {
+    if (!authResponse.ok) {
       logger.warn({ 
         userId: user.id, 
-        role: profile?.role,
-        error: profileError?.message 
-      }, 'Admin middleware: Unauthorized access attempt')
+        status: authResponse.status 
+      }, 'Admin middleware: API verification failed')
+      const loginUrl = new URL('/login', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    const result = (await authResponse.json()) as ApiResponse<VerifyRoleResponse>
+    
+    if (!result.success || !result.data || !result.data.isSuperAdmin) {
+      logger.warn({ 
+        userId: user.id, 
+        role: result.data?.role 
+      }, 'Admin middleware: Unauthorized role')
       const loginUrl = new URL('/login', request.url)
       return NextResponse.redirect(loginUrl)
     }

@@ -1,52 +1,93 @@
-import { logger } from '@/lib/monitoring/error-handling';
+/**
+ * Job Error Handler
+ * Standardized error handling for background jobs and worker processes
+ */
+
+import { logger } from '../monitoring/error-handling';
+import { JobError, JobErrorType } from '../rank-tracking/seranking/types/EnrichmentJobTypes';
 
 export interface JobErrorContext {
   jobId: string;
   jobType: string;
   jobName: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export class JobErrorHandler {
   /**
-   * Wrapper for job execution with error handling and logging
+   * Execute a job operation with standardized error handling and logging
    */
   static async withJobErrorHandling<T>(
     operation: () => Promise<T>,
     context: JobErrorContext
   ): Promise<T> {
-    const startTime = Date.now();
-    
     try {
-      logger.info({ 
-        jobId: context.jobId, 
-        jobType: context.jobType,
-        jobName: context.jobName,
-        ...context.metadata 
-      }, `Starting job: ${context.jobName}`);
-      
-      const result = await operation();
-      
-      const duration = Date.now() - startTime;
-      logger.info({ 
-        jobId: context.jobId, 
-        duration,
-        ...context.metadata 
-      }, `Job completed successfully: ${context.jobName}`);
-      
-      return result;
+      return await operation();
     } catch (error) {
-      const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      logger.error({ 
-        jobId: context.jobId, 
-        error: errorMessage,
-        duration,
-        ...context.metadata 
-      }, `Job failed: ${context.jobName} - ${errorMessage}`);
-      
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      // Log the error with full context
+      logger.error(
+        {
+          ...context,
+          error: errorMessage,
+          stack: errorStack,
+          timestamp: new Date().toISOString()
+        },
+        `Job execution failed: ${context.jobName} (${context.jobId})`
+      );
+
+      // Wrap in a JobError if it isn't already
+      if (!(error as Record<string, unknown>).type) {
+        const jobError: JobError = {
+          type: JobErrorType.WORKER_ERROR,
+          message: errorMessage,
+          retryable: this.isRetryableError(error),
+          timestamp: new Date(),
+          context: {
+            jobId: context.jobId,
+            details: errorStack
+          }
+        };
+        throw jobError;
+      }
+
       throw error;
     }
+  }
+
+  /**
+   * Determine if an error is retryable based on common patterns
+   */
+  private static isRetryableError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    // Common network/timeout/concurrency errors that should be retried
+    const retryablePatterns = [
+      'timeout',
+      'network error',
+      'connection reset',
+      'socket hang up',
+      'econnreset',
+      'etimedout',
+      'rate limit',
+      'too many requests',
+      '429',
+      '502',
+      '503',
+      '504',
+      'deadlock',
+      'serialization failure'
+    ];
+
+    return retryablePatterns.some(pattern => message.includes(pattern));
+  }
+
+  /**
+   * Format a JobError for API responses
+   */
+  static formatJobError(error: JobError): string {
+    return `[${error.type}] ${error.message}${error.retryable ? ' (Will retry)' : ''}`;
   }
 }

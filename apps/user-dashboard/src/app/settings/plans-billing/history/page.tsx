@@ -14,10 +14,9 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { authService } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/shared'
-import { LoadingSpinner } from '@indexnow/ui'
-import { BILLING_ENDPOINTS, formatCurrency, formatDate, useApiError } from '@indexnow/shared'
+import { authService, BILLING_ENDPOINTS, formatCurrency, formatDate } from '@indexnow/shared'
+import { supabaseBrowser as supabase } from '@indexnow/database'
+import { LoadingSpinner, BillingHistory, useApiError } from '@indexnow/ui'
 
 interface Transaction {
   id: string
@@ -191,234 +190,30 @@ export default function BillingHistoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Billing History</h1>
-          <p className="text-muted-foreground mt-1">View and manage your payment transactions</p>
-        </div>
-        <button
-          onClick={loadBillingHistory}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          Refresh
-        </button>
-      </div>
-
-      {/* Summary Stats */}
-      {historyData?.summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-card p-3 rounded-lg border border-border">
-            <div className="text-xl font-bold text-foreground">
-              {historyData.summary.total_transactions}
-            </div>
-            <div className="text-xs text-muted-foreground">Total Transactions</div>
-          </div>
-          <div className="bg-card p-3 rounded-lg border border-border">
-            <div className="text-xl font-bold text-success">
-              {historyData.summary.completed_transactions}
-            </div>
-            <div className="text-xs text-muted-foreground">Completed</div>
-          </div>
-          <div className="bg-card p-3 rounded-lg border border-border">
-            <div className="text-xl font-bold text-warning">
-              {historyData.summary.pending_transactions}
-            </div>
-            <div className="text-xs text-muted-foreground">Pending</div>
-          </div>
-          <div className="bg-card p-3 rounded-lg border border-border">
-            <div className="text-xl font-bold text-foreground">
-              {formatCurrency(historyData.summary.total_amount_spent)}
-            </div>
-            <div className="text-xs text-muted-foreground">Total Spent</div>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="bg-card p-6 rounded-lg border border-border">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by package, order ID, or transaction ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Status Filter */}
-          <div className="min-w-[150px]">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-            >
-              <option value="">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-
-          {/* Type Filter */}
-          <div className="min-w-[150px]">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-            >
-              <option value="">All Types</option>
-              <option value="subscription">New Subscription</option>
-              <option value="renewal">Renewal</option>
-              <option value="upgrade">Upgrade</option>
-              <option value="downgrade">Downgrade</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Transactions Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        {filteredTransactions.length > 0 ? (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-secondary border-b border-border">
-                  <tr>
-                    <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground">Transaction</th>
-                    <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground">Package</th>
-                    <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground">Amount</th>
-                    <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground">Status</th>
-                    <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground">Date</th>
-                    <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground">Method</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredTransactions.map((transaction) => (
-                    <tr 
-                      key={transaction.id} 
-                      className="hover:bg-secondary/50 transition-colors cursor-pointer"
-                      onClick={() => window.location.href = `/dashboard/settings/plans-billing/order/${transaction.id}`}
-                    >
-                      <td className="py-3 px-4">
-                        <div>
-                          <div className="font-medium text-foreground text-sm">
-                            {formatTransactionType(transaction.transaction_type)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            ID: {transaction.id}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-foreground text-sm">
-                          {transaction.package.name}
-                        </div>
-                        {transaction.subscription && (
-                          <div className="text-xs text-muted-foreground">
-                            {transaction.subscription.billing_period}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-foreground text-sm">
-                          {formatCurrency(transaction.amount, transaction.currency)}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          {getStatusIcon(transaction.transaction_status)}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
-                            getStatusColor(transaction.transaction_status).bg
-                          } ${getStatusColor(transaction.transaction_status).text} ${
-                            getStatusColor(transaction.transaction_status).border
-                          }`}>
-                            {transaction.transaction_status === 'proof_uploaded' ? 'WAITING FOR CONFIRMATION' : transaction.transaction_status.toUpperCase()}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-xs text-foreground">
-                          {formatDate(transaction.created_at)}
-                        </div>
-                        {transaction.verified_at && (
-                          <div className="text-xs text-muted-foreground">
-                            Verified: {formatDate(transaction.verified_at)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-xs text-foreground">
-                          {transaction.gateway.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {transaction.payment_method || 'N/A'}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {historyData?.pagination && historyData.pagination.total_pages > 1 && (
-              <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {((historyData.pagination.current_page - 1) * historyData.pagination.items_per_page) + 1} to{' '}
-                  {Math.min(historyData.pagination.current_page * historyData.pagination.items_per_page, historyData.pagination.total_items)} of{' '}
-                  {historyData.pagination.total_items} transactions
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={!historyData.pagination.has_prev}
-                    className={`p-2 rounded-lg transition-colors ${
-                      historyData.pagination.has_prev
-                        ? 'hover:bg-secondary text-foreground'
-                        : 'text-muted-foreground cursor-not-allowed'
-                    }`}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm text-foreground px-3 py-1">
-                    Page {historyData.pagination.current_page} of {historyData.pagination.total_pages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={!historyData.pagination.has_next}
-                    className={`p-2 rounded-lg transition-colors ${
-                      historyData.pagination.has_next
-                        ? 'hover:bg-secondary text-foreground'
-                        : 'text-muted-foreground cursor-not-allowed'
-                    }`}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No Transactions Found</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || statusFilter || typeFilter
-                ? 'No transactions match your current filters.'
-                : 'You haven\'t made any transactions yet.'
-              }
-            </p>
-          </div>
-        )}
-      </div>
+      <BillingHistory 
+        historyData={historyData}
+        currentPage={currentPage}
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        searchTerm={searchTerm}
+        setCurrentPage={setCurrentPage}
+        setStatusFilter={setStatusFilter}
+        setTypeFilter={setTypeFilter}
+        setSearchTerm={setSearchTerm}
+        handlePageChange={setCurrentPage}
+        resetFilters={() => {
+          setStatusFilter('')
+          setTypeFilter('')
+          setSearchTerm('')
+          setCurrentPage(1)
+        }}
+        getStatusIcon={getStatusIcon}
+        getStatusText={(status: string) => status.replace('_', ' ').toUpperCase()}
+        getStatusColor={getStatusColor}
+        formatCurrency={formatCurrency}
+        formatDate={formatDate}
+        onRowClick={(id: string) => window.location.href = `/dashboard/settings/plans-billing/order/${id}`}
+      />
     </div>
   )
 }

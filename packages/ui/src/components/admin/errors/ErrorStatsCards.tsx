@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@indexnow/shared';
+import { apiRequest } from '@indexnow/database';
 import { Card, CardContent, CardHeader, CardTitle } from '../../..';
 import { AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -9,11 +9,25 @@ interface ErrorStatsProps {
   timeRange: '24h' | '7d' | '30d';
 }
 
+interface ErrorStatsResponse {
+  summary: {
+    totalErrors: number;
+    criticalErrors: number;
+  };
+  trend: {
+    direction: 'up' | 'down' | 'neutral';
+    value: number;
+  };
+  distributions: {
+    byType: Record<string, number>;
+  };
+}
+
 export function ErrorStatsCards({ timeRange }: ErrorStatsProps) {
   const { data, isLoading } = useQuery({
     queryKey: ['/api/v1/admin/errors/stats', timeRange],
     queryFn: async () => {
-      return apiRequest(`/api/v1/admin/errors/stats?range=${timeRange}`);
+      return apiRequest<ErrorStatsResponse>(`/api/v1/admin/errors/stats?range=${timeRange}`);
     },
     refetchInterval: 30000 // Refresh every 30 seconds
   });

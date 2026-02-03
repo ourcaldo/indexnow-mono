@@ -6,17 +6,15 @@
 
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@/lib/monitoring/error-handling';
-import { JobErrorHandler } from './ErrorHandlingService';
+import { EnrichmentQueue } from './EnrichmentQueue';
+import { KeywordEnrichmentService } from './KeywordEnrichmentService';
+import { ErrorHandlingService } from './ErrorHandlingService';
+import { JobErrorHandler } from '../../../job-management/JobErrorHandler';
+import { logger } from '../../../monitoring/error-handling';
 import {
-  IEnrichmentQueue,
-  IKeywordEnrichmentService,
-  ISeRankingErrorHandler,
-  IJobProcessor,
   EnrichmentJob,
   EnrichmentJobType,
   EnrichmentJobStatus,
-  JobPriority,
   WorkerConfig,
   WorkerStatus,
   JobResult,
@@ -26,13 +24,8 @@ import {
   CacheRefreshJobData,
   JobError,
   JobErrorType,
-  JobEventType,
-  ServiceResponse,
-  SeRankingKeywordData,
-  QuotaStatus,
-  BulkProcessingJob,
-  KeywordBankEntity
-} from '@indexnow/shared';
+  JobEventType
+} from '../types/EnrichmentJobTypes';
 
 // Processor configuration
 export interface ProcessorConfig {
@@ -78,18 +71,17 @@ class Worker extends EventEmitter {
   public lastHeartbeat: Date = new Date();
   
   private config: WorkerConfig;
-  private queue: IEnrichmentQueue;
-  private enrichmentService: IKeywordEnrichmentService;
-  private errorHandler: ISeRankingErrorHandler;
-  private processingTimer?: NodeJS.Timeout;
-  private heartbeatTimer?: NodeJS.Timeout;
+  private queue: EnrichmentQueue;
+  private enrichmentService: KeywordEnrichmentService;
+  private errorHandler: ErrorHandlingService;
   private isShuttingDown: boolean = false;
+  private heartbeatTimer?: NodeJS.Timeout;
 
   constructor(
     config: WorkerConfig,
-    queue: IEnrichmentQueue,
-    enrichmentService: IKeywordEnrichmentService,
-    errorHandler: ISeRankingErrorHandler
+    queue: EnrichmentQueue,
+    enrichmentService: KeywordEnrichmentService,
+    errorHandler: ErrorHandlingService
   ) {
     super();
     this.id = config.workerId;
@@ -106,7 +98,7 @@ class Worker extends EventEmitter {
    */
   async start(): Promise<void> {
     if (this.status !== 'idle') {
-      logger.warn({ workerId: this.id }, `Worker ${this.id} is already running`);
+      logger.warn({}, `Worker ${this.id} is already running`);
       return;
     }
 
@@ -246,9 +238,6 @@ class Worker extends EventEmitter {
    * Process single keyword enrichment job
    */
   private async processSingleKeywordJob(job: EnrichmentJob): Promise<JobResult> {
-    if (job.type !== EnrichmentJobType.SINGLE_KEYWORD) {
-      throw new Error(`Invalid job type for single keyword processing: ${job.type}`);
-    }
     const data = job.data as SingleKeywordJobData;
     const startTime = Date.now();
     
@@ -321,9 +310,6 @@ class Worker extends EventEmitter {
    * Process bulk enrichment job
    */
   private async processBulkEnrichmentJob(job: EnrichmentJob): Promise<JobResult> {
-    if (job.type !== EnrichmentJobType.BULK_ENRICHMENT) {
-      throw new Error(`Invalid job type for bulk enrichment processing: ${job.type}`);
-    }
     const data = job.data as BulkEnrichmentJobData;
     const startTime = Date.now();
     const results: KeywordEnrichmentResult[] = [];
@@ -399,9 +385,6 @@ class Worker extends EventEmitter {
    * Process cache refresh job
    */
   private async processCacheRefreshJob(job: EnrichmentJob): Promise<JobResult> {
-    if (job.type !== EnrichmentJobType.CACHE_REFRESH) {
-      throw new Error(`Invalid job type for cache refresh processing: ${job.type}`);
-    }
     const data = job.data as CacheRefreshJobData;
     const startTime = Date.now();
     
@@ -503,7 +486,6 @@ class Worker extends EventEmitter {
       } else {
         // Handle promise rejection
         const keywordData = keywords[index];
-        const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason || 'Promise rejected');
         results.push({
           keyword: keywordData.keyword,
           countryCode: keywordData.countryCode,
@@ -515,7 +497,7 @@ class Worker extends EventEmitter {
           quotaUsed: 0,
           error: {
             type: 'promise_error',
-            message: errorMessage,
+            message: (result as PromiseRejectedResult).reason?.message || 'Promise rejected',
             retryable: true
           }
         });
@@ -544,9 +526,9 @@ class Worker extends EventEmitter {
   }
 
   /**
-   * Shutdown the worker
+   * Stop the worker
    */
-  async shutdown(): Promise<void> {
+  async stop(): Promise<void> {
     this.isShuttingDown = true;
     this.status = 'stopping';
     
@@ -582,30 +564,28 @@ class Worker extends EventEmitter {
   }
 }
 
-export interface ProcessorMetrics {
-  totalJobsProcessed: number;
-  totalErrors: number;
-  averageProcessingTime: number;
-  startTime: Date;
-}
-
 // Main JobProcessor class
-export class JobProcessor extends EventEmitter implements IJobProcessor {
+export class JobProcessor extends EventEmitter {
   private config: ProcessorConfig;
-  private queue: IEnrichmentQueue;
-  private enrichmentService: IKeywordEnrichmentService;
-  private errorHandler: ISeRankingErrorHandler;
+  private queue: EnrichmentQueue;
+  private enrichmentService: KeywordEnrichmentService;
+  private errorHandler: ErrorHandlingService;
   private workers: Map<string, Worker> = new Map();
   private isRunning: boolean = false;
   private scalingTimer?: NodeJS.Timeout;
   private quotaCheckTimer?: NodeJS.Timeout;
-  private metrics: ProcessorMetrics;
+  private metrics: {
+    totalJobsProcessed: number;
+    totalErrors: number;
+    averageProcessingTime: number;
+    startTime: Date;
+  };
 
   constructor(
-    queue: IEnrichmentQueue,
-    enrichmentService: IKeywordEnrichmentService,
-    errorHandler: ISeRankingErrorHandler,
-    config: Partial<ProcessorConfig> = {}
+    config: Partial<ProcessorConfig> = {},
+    queue: EnrichmentQueue,
+    enrichmentService: KeywordEnrichmentService,
+    errorHandler: ErrorHandlingService
   ) {
     super();
     this.config = { ...DEFAULT_PROCESSOR_CONFIG, ...config };
@@ -683,7 +663,7 @@ export class JobProcessor extends EventEmitter implements IJobProcessor {
     isRunning: boolean;
     workerCount: number;
     activeJobs: number;
-    metrics: ProcessorMetrics;
+    metrics: typeof this.metrics;
     workerStatuses: WorkerStatus[];
   } {
     const workerStatuses = Array.from(this.workers.values()).map(worker => worker.getStatus());
@@ -767,14 +747,14 @@ export class JobProcessor extends EventEmitter implements IJobProcessor {
       .sort((a, b) => a.currentJobs.size - b.currentJobs.size) // Remove workers with fewer jobs first
       .slice(0, count);
 
-    await Promise.all(workersToRemove.map(worker => worker.shutdown()));
+    await Promise.all(workersToRemove.map(worker => worker.stop()));
   }
 
   /**
    * Stop all workers
    */
   private async stopAllWorkers(): Promise<void> {
-    await Promise.all(Array.from(this.workers.values()).map(worker => worker.shutdown()));
+    await Promise.all(Array.from(this.workers.values()).map(worker => worker.stop()));
     this.workers.clear();
   }
 
@@ -856,104 +836,9 @@ export class JobProcessor extends EventEmitter implements IJobProcessor {
   }
 
   /**
-   * IJobProcessor implementation: Process enrichment job
-   */
-  async processEnrichmentJob(jobId: string): Promise<BulkProcessingJob> {
-    const response = await this.queue.getJobStatus(jobId);
-    if (!response.success || !response.job) {
-      throw new Error(response.error || 'Job not found');
-    }
-
-    const job = response.job;
-    
-    // Explicit status mapping to avoid 'as any'
-    let status: BulkProcessingJob['status'];
-    switch (job.status) {
-      case EnrichmentJobStatus.QUEUED:
-      case EnrichmentJobStatus.RETRYING:
-        status = 'queued';
-        break;
-      case EnrichmentJobStatus.PROCESSING:
-        status = 'processing';
-        break;
-      case EnrichmentJobStatus.COMPLETED:
-        status = 'completed';
-        break;
-      case EnrichmentJobStatus.FAILED:
-        status = 'failed';
-        break;
-      case EnrichmentJobStatus.CANCELLED:
-      case EnrichmentJobStatus.PAUSED:
-        status = 'cancelled';
-        break;
-      default:
-        status = 'queued';
-    }
-
-    return {
-      id: job.id,
-      keywords: 'keywords' in job.data ? job.data.keywords.map(k => ({ keyword: k.keyword, country_code: k.countryCode })) : [],
-      status,
-      progress: {
-        total: job.progress.total,
-        processed: job.progress.processed,
-        successful: job.progress.successful,
-        failed: job.progress.failed
-      },
-      created_at: job.createdAt,
-      updated_at: job.updatedAt
-    };
-  }
-
-  /**
-   * IJobProcessor implementation: Process single keyword enrichment
-   */
-  async processKeywordEnrichment(keyword: string, countryCode: string): Promise<ServiceResponse<KeywordBankEntity>> {
-    return this.enrichmentService.enrichKeyword(keyword, countryCode);
-  }
-
-  /**
-   * IJobProcessor implementation: Get processor status
-   */
-  async getProcessorStatus(): Promise<{
-    isRunning: boolean;
-    currentJob?: string;
-    queueSize: number;
-    lastProcessed?: Date;
-  }> {
-    const stats = this.getStats();
-    const queueStatus = await this.queue.getQueueStatus();
-    
-    return {
-      isRunning: this.isRunning,
-      currentJob: stats.workerStatuses.find(w => w.currentJobs > 0)?.workerId,
-      queueSize: queueStatus.pending,
-      lastProcessed: this.metrics.totalJobsProcessed > 0 ? new Date() : undefined // Approximation
-    };
-  }
-
-  /**
-   * Shutdown the processor and all workers
+   * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    this.isRunning = false;
-    
-    if (this.scalingTimer) {
-      clearInterval(this.scalingTimer);
-      this.scalingTimer = undefined;
-    }
-    
-    if (this.quotaCheckTimer) {
-      clearInterval(this.quotaCheckTimer);
-      this.quotaCheckTimer = undefined;
-    }
-
-    // Shutdown all workers
-    const workerShutdowns = Array.from(this.workers.values()).map(worker => worker.shutdown());
-    await Promise.all(workerShutdowns);
-    this.workers.clear();
-
-    this.removeAllListeners();
-    logger.info({}, 'JobProcessor shutdown completed');
+    await this.stop();
   }
 }

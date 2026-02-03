@@ -14,30 +14,27 @@ import {
   KeywordBankUpdate,
   KeywordBankQuery
 } from '@indexnow/shared';
-// SeRankingError will be created inline to avoid import issues
 
 // Validation result types
-export interface ValidationResult<T> {
+export interface ValidationResult<T = unknown> {
   isValid: boolean;
   data?: T;
   errors: ValidationError[];
   warnings: ValidationWarning[];
 }
 
-export type ValidationValue = string | number | boolean | null | { [key: string]: ValidationValue } | ValidationValue[];
-
 export interface ValidationError {
   field: string;
   message: string;
   code: string;
-  value?: ValidationValue;
+  value?: unknown;
 }
 
 export interface ValidationWarning {
   field: string;
   message: string;
   code: string;
-  value?: ValidationValue;
+  value?: unknown;
 }
 
 // Zod schemas for API validation
@@ -82,8 +79,8 @@ const KeywordBankUpdateSchema = z.object({
   difficulty: z.number().int().min(0).max(100).nullable().optional(),
   history_trend: z.record(z.string(), z.number()).nullable().optional(),
   keyword_intent: z.string().max(50).nullable().optional(),
-  data_updated_at: z.date().optional(),
-  updated_at: z.date().optional()
+  data_updated_at: z.union([z.date(), z.string()]).optional(),
+  updated_at: z.union([z.date(), z.string()]).optional()
 });
 
 const KeywordBankQuerySchema = z.object({
@@ -96,7 +93,7 @@ const KeywordBankQuerySchema = z.object({
   min_difficulty: z.number().int().min(0).max(100).optional(),
   max_difficulty: z.number().int().min(0).max(100).optional(),
   keyword_intent: z.string().max(50).optional(),
-  updated_since: z.date().optional(),
+  updated_since: z.union([z.date(), z.string()]).optional(),
   limit: z.number().int().min(1).max(1000).default(50),
   offset: z.number().int().min(0).default(0),
   order_by: z.enum(['keyword', 'volume', 'difficulty', 'cpc', 'competition', 'data_updated_at']).default('data_updated_at'),
@@ -117,63 +114,11 @@ const VALID_LANGUAGES = new Set([
   'he', 'th', 'vi', 'id', 'ms', 'tl', 'uk', 'cs', 'sk', 'hu'
 ]);
 
-interface SeRankingError extends Error {
-  type?: string;
-  retryable?: boolean;
-  response?: { errors: ValidationError[], warnings: ValidationWarning[] };
-}
-
 export class ValidationService {
-  /**
-   * Validate keyword input (single keyword)
-   */
-  static validateKeywordInput(keyword: string, countryCode: string): ValidationResult<{keyword: string, countryCode: string}> {
-    const countryValidation = this.validateCountryCode(countryCode);
-    if (!countryValidation.isValid) {
-      return {
-        isValid: false,
-        errors: countryValidation.errors,
-        warnings: countryValidation.warnings
-      };
-    }
-
-    if (typeof keyword !== 'string' || keyword.trim().length === 0) {
-      return {
-        isValid: false,
-        errors: [{
-          field: 'keyword',
-          message: 'Keyword must be a non-empty string',
-          code: 'INVALID_KEYWORD',
-          value: keyword
-        }],
-        warnings: []
-      };
-    }
-
-    return {
-      isValid: true,
-      data: { keyword: keyword.trim(), countryCode: countryValidation.data! },
-      errors: [],
-      warnings: []
-    };
-  }
-
-  /**
-   * Validate bulk keywords (alias for validateKeywordsBatch for compatibility)
-   */
-  static validateBulkKeywords(keywords: string[] | Array<{keyword: string}>): ValidationResult<string[]> {
-    if (Array.isArray(keywords) && keywords.length > 0 && typeof keywords[0] === 'object') {
-       // Handle array of objects {keyword, countryCode}
-       const keywordsList = (keywords as Array<{keyword: string}>).map(k => k.keyword);
-       return this.validateKeywordsBatch(keywordsList);
-    }
-    return this.validateKeywordsBatch(keywords as string[]);
-  }
-
   /**
    * Validate SeRanking API response
    */
-  static validateApiResponse(response: ValidationValue): ValidationResult<SeRankingApiResponse> {
+  static validateApiResponse(response: unknown): ValidationResult<SeRankingApiResponse> {
     try {
       const result = SeRankingApiResponseSchema.safeParse(response);
       
@@ -243,7 +188,7 @@ export class ValidationService {
   /**
    * Validate keyword export request
    */
-  static validateKeywordExportRequest(request: ValidationValue): ValidationResult<SeRankingKeywordExportRequest> {
+  static validateKeywordExportRequest(request: unknown): ValidationResult<SeRankingKeywordExportRequest> {
     try {
       const result = KeywordExportRequestSchema.safeParse(request);
       
@@ -256,7 +201,7 @@ export class ValidationService {
         };
       }
 
-      const data = result.data;
+      const data = result.data as SeRankingKeywordExportRequest;
       const warnings: ValidationWarning[] = [];
       const errors: ValidationError[] = [];
 
@@ -271,7 +216,7 @@ export class ValidationService {
       }
 
       // Check for duplicate keywords
-      const uniqueKeywords = new Set(data.keywords.map(k => k.toLowerCase()));
+      const uniqueKeywords = new Set(data.keywords.map((k: string) => k.toLowerCase()));
       if (uniqueKeywords.size < data.keywords.length) {
         warnings.push({
           field: 'keywords',
@@ -282,7 +227,7 @@ export class ValidationService {
       }
 
       // Check for very long keywords
-      const longKeywords = data.keywords.filter(k => k.length > 100);
+      const longKeywords = data.keywords.filter((k: string) => k.length > 100);
       if (longKeywords.length > 0) {
         warnings.push({
           field: 'keywords',
@@ -312,7 +257,7 @@ export class ValidationService {
 
       return {
         isValid: true,
-        data,
+        data: result.data,
         errors: [],
         warnings
       };
@@ -333,7 +278,7 @@ export class ValidationService {
   /**
    * Validate keyword bank insert data
    */
-  static validateKeywordBankInsert(data: ValidationValue): ValidationResult<KeywordBankInsert> {
+  static validateKeywordBankInsert(data: unknown): ValidationResult<KeywordBankInsert> {
     try {
       const result = KeywordBankInsertSchema.safeParse(data);
       
@@ -419,7 +364,7 @@ export class ValidationService {
   /**
    * Validate keyword bank update data
    */
-  static validateKeywordBankUpdate(data: ValidationValue): ValidationResult<KeywordBankUpdate> {
+  static validateKeywordBankUpdate(data: unknown): ValidationResult<KeywordBankUpdate> {
     try {
       const result = KeywordBankUpdateSchema.safeParse(data);
       
@@ -468,7 +413,7 @@ export class ValidationService {
   /**
    * Validate keyword bank query parameters
    */
-  static validateKeywordBankQuery(query: ValidationValue): ValidationResult<KeywordBankQuery> {
+  static validateKeywordBankQuery(query: unknown): ValidationResult<KeywordBankQuery> {
     try {
       const result = KeywordBankQuerySchema.safeParse(query);
       
@@ -751,7 +696,7 @@ export class ValidationService {
   /**
    * Validate language code
    */
-  static validateLanguageCode(languageCode: ValidationValue): ValidationResult<string> {
+  static validateLanguageCode(languageCode: unknown): ValidationResult<string> {
     if (typeof languageCode !== 'string') {
       return {
         isValid: false,
@@ -810,12 +755,12 @@ export class ValidationService {
   ): Error {
     const error = new Error(
       `Validation failed: ${errors.map(e => e.message).join(', ')}`
-    ) as SeRankingError;
+    );
     
     // Add custom properties
-    error.type = SeRankingErrorType.INVALID_REQUEST_ERROR;
-    error.retryable = false;
-    error.response = { errors, warnings };
+    (error as Error & { type: SeRankingErrorType; retryable: boolean; response: { errors: ValidationError[]; warnings: ValidationWarning[] } }).type = SeRankingErrorType.INVALID_REQUEST_ERROR;
+    (error as Error & { type: SeRankingErrorType; retryable: boolean; response: { errors: ValidationError[]; warnings: ValidationWarning[] } }).retryable = false;
+    (error as Error & { type: SeRankingErrorType; retryable: boolean; response: { errors: ValidationError[]; warnings: ValidationWarning[] } }).response = { errors, warnings };
     
     return error;
   }
@@ -828,7 +773,7 @@ export class ValidationService {
       field: err.path.join('.'),
       message: err.message,
       code: err.code.toUpperCase(),
-      value: 'input' in err ? err.input : undefined
+      value: (err as z.ZodIssue & { input?: unknown }).input
     }));
   }
 

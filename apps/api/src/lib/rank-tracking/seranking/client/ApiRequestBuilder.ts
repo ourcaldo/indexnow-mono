@@ -6,8 +6,8 @@
 import {
   SeRankingKeywordExportRequest,
   ApiRequestConfig
-} from '@indexnow/shared';
-import { logger } from '@/lib/monitoring/error-handling';
+} from '../types/SeRankingTypes';
+import { logger } from '../../../monitoring/error-handling';
 
 export class ApiRequestBuilder {
   private baseUrl: string;
@@ -79,11 +79,11 @@ export class ApiRequestBuilder {
   /**
    * Build FormData from request object
    */
-  private buildFormData(request: SeRankingKeywordExportRequest): FormData {
-    const formData = new FormData();
+  private buildFormData(request: SeRankingKeywordExportRequest): any {
+    const formData = new URLSearchParams();
     
     // Add keywords as separate form fields (required by SeRanking API)
-    request.keywords.forEach((keyword: string) => {
+    request.keywords.forEach(keyword => {
       formData.append('keywords[]', keyword.trim());
     });
     
@@ -98,7 +98,7 @@ export class ApiRequestBuilder {
       formData.append('cols', request.cols);
     }
     
-    return formData;
+    return formData.toString();
   }
 
   /**
@@ -142,11 +142,6 @@ export class ApiRequestBuilder {
       if (trimmedKeyword.length > 100) {
         throw new Error(`Keyword at index ${index} exceeds maximum length of 100 characters`);
       }
-
-      // Check for invalid characters (basic validation)
-      if (!/^[\w\s\-.,!?'"()&+%$#@]+$/.test(trimmedKeyword)) {
-        throw new Error(`Keyword at index ${index} contains invalid characters: "${trimmedKeyword}"`);
-      }
     });
   }
 
@@ -166,19 +161,6 @@ export class ApiRequestBuilder {
     // Basic country code validation (2-3 characters, common codes)
     if (!/^[a-z]{2,3}$/.test(trimmedCode)) {
       throw new Error('Country code must be 2-3 lowercase letters');
-    }
-
-    // List of commonly supported country codes by SeRanking
-    const supportedCountries = [
-      'us', 'uk', 'ca', 'au', 'de', 'fr', 'es', 'it', 'nl', 'br', 'mx', 'ar',
-      'jp', 'kr', 'in', 'cn', 'sg', 'hk', 'th', 'id', 'my', 'ph', 'vn',
-      'ru', 'ua', 'pl', 'cz', 'hu', 'ro', 'bg', 'hr', 'si', 'sk', 'ee', 'lv', 'lt',
-      'se', 'no', 'dk', 'fi', 'is', 'ie', 'pt', 'gr', 'tr', 'il', 'ae', 'sa',
-      'eg', 'ma', 'ng', 'ke', 'za', 'gh', 'tz', 'ug', 'ao', 'mz'
-    ];
-
-    if (!supportedCountries.includes(trimmedCode)) {
-      logger.warn({ countryCode: trimmedCode }, `Country code '${trimmedCode}' may not be supported by SeRanking API`);
     }
   }
 
@@ -225,7 +207,6 @@ export class ApiRequestBuilder {
    * Estimate request size for quota calculation
    */
   static estimateRequestCost(keywords: string[]): number {
-    // SeRanking typically charges 1 credit per keyword
     return keywords.length;
   }
 
@@ -234,26 +215,9 @@ export class ApiRequestBuilder {
    */
   static batchKeywords(keywords: string[], batchSize: number = 50): string[][] {
     const batches: string[][] = [];
-    
     for (let i = 0; i < keywords.length; i += batchSize) {
       batches.push(keywords.slice(i, i + batchSize));
     }
-    
     return batches;
-  }
-
-  /**
-   * Build URL search parameters for GET requests (if needed)
-   */
-  static buildUrlParams(params: Record<string, string | number | boolean>): URLSearchParams {
-    const urlParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        urlParams.append(key, String(value));
-      }
-    });
-    
-    return urlParams;
   }
 }

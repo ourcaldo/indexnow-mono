@@ -1,14 +1,14 @@
 /**
  * Rate Limiter
  * API rate limiting and throttling for SeRanking integration
- * @mccoremem id="p4.1-enhanced-type-system"
  */
 
 import {
-  SeRankingRateLimitConfig as RateLimitConfig,
+  RateLimitConfig,
   RateLimitState,
-  SeRankingErrorType
-} from '@indexnow/shared';
+  SeRankingErrorType,
+  SeRankingError
+} from '../types/SeRankingTypes';
 
 export class RateLimiter {
   private config: RateLimitConfig;
@@ -182,14 +182,18 @@ export class RateLimiter {
       
       const error = new Error(
         `Rate limit exceeded: ${requestCount} requests would exceed ${limitType} limit. Retry after ${retryAfter} seconds.`
-      );
+      ) as SeRankingError;
       
       // Add rate limit specific properties
-      (error as any).type = SeRankingErrorType.RATE_LIMIT_ERROR;
-      (error as any).retryable = true;
-      (error as any).retryAfter = retryAfter;
-      (error as any).limitType = limitType;
-      (error as any).remaining = status.remaining;
+      error.type = SeRankingErrorType.RATE_LIMIT_ERROR;
+      error.retryable = true;
+      error.context = {
+        retryAfter,
+        limitType,
+        remaining: status.remaining,
+        currentUsage: status.currentUsage
+      };
+      error.timestamp = new Date();
       
       return error;
     }
@@ -262,19 +266,19 @@ export class RateLimiter {
     // Clean minute window (keep last 60 seconds)
     const minuteThreshold = currentTime - (60 * 1000);
     this.state.minuteRequests = this.state.minuteRequests.filter(
-      (timestamp: number) => timestamp > minuteThreshold
+      timestamp => timestamp > minuteThreshold
     );
     
     // Clean hour window (keep last 60 minutes)
     const hourThreshold = currentTime - (60 * 60 * 1000);
     this.state.hourRequests = this.state.hourRequests.filter(
-      (timestamp: number) => timestamp > hourThreshold
+      timestamp => timestamp > hourThreshold
     );
     
     // Clean daily window (keep last 24 hours)
     const dailyThreshold = currentTime - (24 * 60 * 60 * 1000);
     this.state.dailyRequests = this.state.dailyRequests.filter(
-      (timestamp: number) => timestamp > dailyThreshold
+      timestamp => timestamp > dailyThreshold
     );
     
     // Update last reset times

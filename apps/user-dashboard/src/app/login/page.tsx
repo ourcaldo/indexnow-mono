@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from '@indexnow/shared'
-import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/shared'
+import { useSiteName, useSiteLogo } from '@indexnow/database'
 
 import { 
   Card, 
@@ -120,7 +120,6 @@ export default function Login() {
   // Site settings hooks
   const siteName = useSiteName()
   const logoUrl = useSiteLogo(true) // Always use full logo for login page
-  useFavicon() // Automatically updates favicon
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

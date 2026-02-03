@@ -1,4 +1,3 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
 /**
  * Quota Monitor Service
  * Advanced quota management with real-time tracking, predictive alerting,
@@ -9,18 +8,12 @@ import {
   QuotaStatus,
   QuotaAlert,
   ServiceResponse,
-  SeRankingErrorType,
-  ApiMetrics,
-  EnhancedQuotaStatus,
-  QuotaUsageEntry,
-  UsagePattern,
-  QuotaPrediction,
-  IQuotaMonitor,
-  IIntegrationService,
-  Json
-} from '@indexnow/shared';
-import { supabaseAdmin } from '../../../database/supabase';
-import { logger } from '@/lib/monitoring/error-handling';
+  SeRankingErrorType
+} from '../types/SeRankingTypes';
+import { IQuotaMonitor, IIntegrationService } from '../types/ServiceTypes';
+import { supabaseAdmin } from '@indexnow/shared';
+import { SecureServiceRoleWrapper } from '@indexnow/services';
+import { logger } from '@indexnow/shared';
 
 // Enhanced quota configuration
 export interface QuotaMonitorConfig {
@@ -56,6 +49,97 @@ export interface QuotaMonitorConfig {
   };
   retentionDays: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+}
+
+// Usage tracking data structure
+export interface QuotaUsageEntry {
+  id?: string;
+  timestamp: Date;
+  user_id?: string;
+  service_account_id?: string;
+  operation_type: string;
+  quota_consumed: number;
+  quota_remaining: number;
+  quota_limit: number;
+  usage_percentage: number;
+  session_id?: string;
+  endpoint?: string;
+  country_code?: string;
+  keywords_count?: number;
+  cost_per_request?: number;
+  metadata?: Record<string, unknown>;
+}
+
+// Usage pattern analysis results
+export interface UsagePattern {
+  pattern_id: string;
+  pattern_type: 'hourly' | 'daily' | 'weekly' | 'seasonal' | 'burst';
+  confidence: number; // 0-1
+  description: string;
+  detected_at: Date;
+  pattern_data: {
+    peak_hours?: number[];
+    peak_days?: string[];
+    average_usage_rate: number;
+    peak_usage_rate: number;
+    variance: number;
+    trend: 'increasing' | 'stable' | 'decreasing';
+  };
+  predictions: {
+    next_peak_time?: Date;
+    expected_usage_rate: number;
+    confidence_interval: [number, number];
+  };
+  recommendations: Array<{
+    type: 'quota_increase' | 'usage_optimization' | 'rate_limiting' | 'scheduling';
+    priority: 'low' | 'medium' | 'high';
+    description: string;
+    estimated_impact: string;
+  }>;
+}
+
+// Quota prediction results
+export interface QuotaPrediction {
+  prediction_id: string;
+  generated_at: Date;
+  prediction_horizon_hours: number;
+  current_usage: number;
+  current_limit: number;
+  predicted_usage: number;
+  exhaustion_eta?: Date;
+  confidence: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  contributing_factors: string[];
+  recommended_actions: Array<{
+    action: string;
+    priority: 'low' | 'medium' | 'high';
+    estimated_impact: string;
+    implementation_effort: 'low' | 'medium' | 'high';
+  }>;
+}
+
+// Advanced quota status with analytics
+export interface EnhancedQuotaStatus extends QuotaStatus {
+  velocity: {
+    requests_per_minute: number;
+    requests_per_hour: number;
+    trend_direction: 'up' | 'stable' | 'down';
+    acceleration: number;
+  };
+  efficiency_metrics: {
+    cost_per_successful_request: number;
+    cache_hit_rate: number;
+    error_rate: number;
+    optimization_score: number;
+  };
+  historical_comparison: {
+    same_time_yesterday: number;
+    same_time_last_week: number;
+    average_this_period: number;
+    peak_this_period: number;
+  };
+  active_patterns: UsagePattern[];
+  current_prediction: QuotaPrediction;
 }
 
 export class QuotaMonitor implements IQuotaMonitor {
@@ -142,6 +226,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     quotaConsumed: number,
     metadata?: {
       userId?: string;
+      serviceAccountId?: string;
       operationType?: string;
       endpoint?: string;
       countryCode?: string;
@@ -165,6 +250,7 @@ export class QuotaMonitor implements IQuotaMonitor {
       const usageEntry: QuotaUsageEntry = {
         timestamp: new Date(),
         user_id: metadata?.userId,
+        service_account_id: metadata?.serviceAccountId,
         operation_type: metadata?.operationType || 'api_request',
         quota_consumed: quotaConsumed,
         quota_remaining: currentQuota.quota_limit - newUsage,
@@ -175,7 +261,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         country_code: metadata?.countryCode,
         keywords_count: metadata?.keywordsCount,
         cost_per_request: metadata?.costPerRequest,
-        metadata
+        metadata: metadata as Record<string, unknown>
       };
 
       // Store in usage buffer for real-time analysis
@@ -286,8 +372,9 @@ export class QuotaMonitor implements IQuotaMonitor {
           success: true,
           data: [],
           metadata: {
-            source: 'cache' as const,
-            timestamp: new Date()
+            source: 'cache',
+            timestamp: new Date(),
+            message: 'Insufficient data for pattern analysis'
           }
         };
       }
@@ -324,8 +411,9 @@ export class QuotaMonitor implements IQuotaMonitor {
         success: true,
         data: patterns,
         metadata: {
-          source: 'api' as const,
-          timestamp: new Date()
+          source: 'api',
+          timestamp: new Date(),
+          analysis_period_days: daysPeriod
         }
       };
     } catch (error) {
@@ -501,10 +589,9 @@ export class QuotaMonitor implements IQuotaMonitor {
       
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
-          userId: 'system',
           operation: 'get_quota_usage_history',
           reason: 'Retrieving quota usage history for analytics and pattern analysis',
-          source: 'rank-tracking/seranking/services/QuotaMonitor',
+          source: 'QuotaMonitor',
           metadata: {
             start_date: start.toISOString(),
             end_date: end.toISOString(),
@@ -514,12 +601,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         },
         {
           table: 'indb_seranking_quota_usage',
-          operationType: 'select',
-          columns: ['*'],
-          whereConditions: {
-            timestamp_gte: start.toISOString(),
-            timestamp_lte: end.toISOString()
-          }
+          operationType: 'select'
         },
         async () => {
           const { data, error } = await supabaseAdmin
@@ -527,15 +609,15 @@ export class QuotaMonitor implements IQuotaMonitor {
             .select('*')
             .gte('timestamp', start.toISOString())
             .lte('timestamp', end.toISOString())
-            .order('timestamp', { ascending: true })
+            .order('timestamp', { ascending: true });
 
           if (error) {
-            throw new Error(`Failed to get quota usage history: ${error.message}`)
+            throw new Error(`Failed to get quota usage history: ${error.message}`);
           }
 
-          return data || []
+          return data || [];
         }
-      )
+      );
 
       // Process data into daily aggregates
       const dailyAggregates = new Map<string, {
@@ -623,12 +705,12 @@ export class QuotaMonitor implements IQuotaMonitor {
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
-          userId: 'system',
           operation: 'persist_quota_usage_entry',
           reason: 'Persisting quota usage entry for monitoring and analytics tracking',
-          source: 'rank-tracking/seranking/services/QuotaMonitor',
+          source: 'QuotaMonitor',
           metadata: {
             user_id: entry.user_id,
+            service_account_id: entry.service_account_id,
             operation_type: entry.operation_type,
             quota_consumed: entry.quota_consumed,
             usage_percentage: entry.usage_percentage,
@@ -637,22 +719,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         },
         {
           table: 'indb_seranking_quota_usage',
-          operationType: 'insert',
-          data: {
-            timestamp: entry.timestamp.toISOString(),
-            user_id: entry.user_id,
-            operation_type: entry.operation_type,
-            quota_consumed: entry.quota_consumed,
-            quota_remaining: entry.quota_remaining,
-            quota_limit: entry.quota_limit,
-            usage_percentage: entry.usage_percentage,
-            session_id: entry.session_id,
-            endpoint: entry.endpoint,
-            country_code: entry.country_code,
-            keywords_count: entry.keywords_count,
-            cost_per_request: entry.cost_per_request,
-            metadata: entry.metadata
-          }
+          operationType: 'insert'
         },
         async () => {
           const { error } = await supabaseAdmin
@@ -660,6 +727,7 @@ export class QuotaMonitor implements IQuotaMonitor {
             .insert({
               timestamp: entry.timestamp.toISOString(),
               user_id: entry.user_id,
+              service_account_id: entry.service_account_id,
               operation_type: entry.operation_type,
               quota_consumed: entry.quota_consumed,
               quota_remaining: entry.quota_remaining,
@@ -671,15 +739,15 @@ export class QuotaMonitor implements IQuotaMonitor {
               keywords_count: entry.keywords_count,
               cost_per_request: entry.cost_per_request,
               metadata: entry.metadata
-            })
+            });
 
           if (error) {
-            throw new Error(`Failed to persist usage entry: ${error.message}`)
+            throw new Error(`Failed to persist usage entry: ${error.message}`);
           }
 
-          return { success: true }
+          return { success: true };
         }
-      )
+      );
     } catch (error) {
       this.log('error', `Failed to persist usage entry: ${error}`);
     }
@@ -799,7 +867,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     // Implementation depends on your notification channels
   }
 
-  private calculatePredictionConfidence(velocity: EnhancedQuotaStatus['velocity'], corrections: number): number {
+  private calculatePredictionConfidence(velocity: { acceleration: number }, corrections: number): number {
     // Simplified confidence calculation
     const baseConfidence = 0.7;
     const velocityStability = Math.min(1, Math.abs(velocity.acceleration) / 10);
@@ -818,7 +886,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     return 'low';
   }
 
-  private identifyContributingFactors(velocity: EnhancedQuotaStatus['velocity'], corrections: number): string[] {
+  private identifyContributingFactors(velocity: { trend_direction: string; acceleration: number }, corrections: number): string[] {
     const factors: string[] = [];
     
     if (velocity.trend_direction === 'up') {
@@ -836,8 +904,8 @@ export class QuotaMonitor implements IQuotaMonitor {
 
   private async generateRecommendedActions(
     riskLevel: QuotaPrediction['risk_level'],
-    eta?: Date,
-    predictedUsage?: number
+    _eta?: Date,
+    _predictedUsage?: number
   ): Promise<QuotaPrediction['recommended_actions']> {
     const actions: QuotaPrediction['recommended_actions'] = [];
     
@@ -870,27 +938,27 @@ export class QuotaMonitor implements IQuotaMonitor {
   }
 
   // Pattern detection methods (simplified implementations)
-  private async detectHourlyPattern(usage: QuotaUsageEntry[]): Promise<UsagePattern | null> {
+  private async detectHourlyPattern(_usage: unknown[]): Promise<UsagePattern | null> {
     // Simplified hourly pattern detection
     return null;
   }
 
-  private async detectDailyPattern(usage: QuotaUsageEntry[]): Promise<UsagePattern | null> {
+  private async detectDailyPattern(_usage: unknown[]): Promise<UsagePattern | null> {
     // Simplified daily pattern detection
     return null;
   }
 
-  private async detectWeeklyPattern(usage: QuotaUsageEntry[]): Promise<UsagePattern | null> {
+  private async detectWeeklyPattern(_usage: unknown[]): Promise<UsagePattern | null> {
     // Simplified weekly pattern detection
     return null;
   }
 
-  private async detectBurstPatterns(usage: QuotaUsageEntry[]): Promise<UsagePattern[]> {
+  private async detectBurstPatterns(_usage: unknown[]): Promise<UsagePattern[]> {
     // Simplified burst pattern detection
     return [];
   }
 
-  private async applyPatternCorrections(baseRate: number): Promise<number> {
+  private async applyPatternCorrections(_baseRate: number): Promise<number> {
     // Apply pattern-based corrections to predictions
     return 0; // Simplified
   }
@@ -900,9 +968,8 @@ export class QuotaMonitor implements IQuotaMonitor {
     
     try {
       await this.generateQuotaPredictions(this.config.predictionWindow.lookAheadHours);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.log('error', `Failed to update quota predictions: ${message}`);
+    } catch (error) {
+      this.log('error', `Failed to update quota predictions: ${error}`);
     }
   }
 
@@ -917,9 +984,8 @@ export class QuotaMonitor implements IQuotaMonitor {
           await this.analyzeUsagePatterns();
           this.lastAnalysis = new Date();
         }
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.log('error', `Monitoring cycle failed: ${message}`);
+      } catch (error) {
+        this.log('error', `Monitoring cycle failed: ${error}`);
       }
     }, 60000); // Every minute
   }
@@ -937,15 +1003,15 @@ export class QuotaMonitor implements IQuotaMonitor {
     // Save configuration to database
   }
 
-  private async persistDetectedPatterns(patterns: UsagePattern[]): Promise<void> {
+  private async persistDetectedPatterns(_patterns: UsagePattern[]): Promise<void> {
     // Persist patterns to database
   }
 
-  private async persistPrediction(prediction: QuotaPrediction): Promise<void> {
+  private async persistPrediction(_prediction: QuotaPrediction): Promise<void> {
     // Persist prediction to database
   }
 
-  private async checkThresholdAlerts(percentage: number): Promise<void> {
+  private async checkThresholdAlerts(_percentage: number): Promise<void> {
     // Check threshold-based alerts
   }
 
@@ -957,7 +1023,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     // Check pattern-based alerts
   }
 
-  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
+  private log(level: string, message: string, ...args: unknown[]): void {
     if (this.shouldLog(level)) {
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[QuotaMonitor] ${message}`;
@@ -981,8 +1047,8 @@ export class QuotaMonitor implements IQuotaMonitor {
     }
   }
 
-  private shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
-    const levels: Array<'debug' | 'info' | 'warn' | 'error'> = ['debug', 'info', 'warn', 'error'];
+  private shouldLog(level: string): boolean {
+    const levels = ['debug', 'info', 'warn', 'error'];
     const configLevel = levels.indexOf(this.config.logLevel);
     const messageLevel = levels.indexOf(level);
     return messageLevel >= configLevel;

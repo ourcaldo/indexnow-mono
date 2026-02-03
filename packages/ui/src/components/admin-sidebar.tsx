@@ -22,7 +22,8 @@ import {
   Moon,
   Sun
 } from 'lucide-react'
-import { useFavicon, useSiteName, useSiteLogo, authService } from '@indexnow/shared'
+import { authService } from '@indexnow/shared'
+import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/database'
 
 interface AdminSidebarUser {
   email?: string;

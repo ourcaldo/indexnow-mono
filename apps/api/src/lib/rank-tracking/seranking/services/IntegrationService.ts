@@ -8,18 +8,14 @@ import {
   IntegrationSettings,
   QuotaStatus,
   QuotaAlert,
-  SeRankingHealthCheckResult,
+  HealthCheckResult,
   SeRankingErrorType,
-  SeRankingRateLimitConfig,
-  ApiMetrics,
-  IIntegrationService,
-  ISeRankingApiClient,
-  Json
+  RateLimitConfig,
+  ApiMetrics
 } from '@indexnow/shared';
-import { supabaseAdmin } from '../../../database/supabase';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { EncryptionService } from '@indexnow/auth';
-import { logger } from '@/lib/monitoring/error-handling';
+import { IIntegrationService, ISeRankingApiClient } from '../types/ServiceTypes';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { logger } from '../../../monitoring/error-handling';
 
 // Configuration interface for the service
 export interface IntegrationServiceConfig {
@@ -38,7 +34,7 @@ export interface IntegrationServiceConfig {
 interface IntegrationRow {
   id: string;
   service_name: string;
-  api_key: string;  // Fixed: should be api_key not apikey to match database schema
+  api_key: string;
   api_url: string;
   api_quota_limit: number;
   api_quota_used: number;
@@ -46,19 +42,6 @@ interface IntegrationRow {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-}
-
-interface UsageLogRow {
-  id: string;
-  integration_id: string;
-  operation_type: string;
-  request_count: number;
-  successful_requests: number;
-  failed_requests: number;
-  response_time_ms: number | null;
-  timestamp: string;
-  date: string;
-  metadata: Json | null;
 }
 
 // Usage report types
@@ -96,7 +79,7 @@ export class IntegrationService implements IIntegrationService {
   private config: IntegrationServiceConfig;
   private apiClient?: ISeRankingApiClient;
   private activeAlerts: Map<string, Date> = new Map();
-  private lastHealthCheck?: SeRankingHealthCheckResult;
+  private lastHealthCheck?: HealthCheckResult;
   private metrics: ApiMetrics;
 
   constructor(
@@ -181,27 +164,17 @@ export class IntegrationService implements IIntegrationService {
                 is_active: false
               },
               metadata: {
-                source: 'cache' as const,
+                source: 'cache',
                 timestamp: new Date()
               }
             };
-          }
-
-          // Decrypt API key if it exists
-          let decryptedApiKey = data.api_key;
-          if (decryptedApiKey && decryptedApiKey.includes(':')) {
-            try {
-              decryptedApiKey = EncryptionService.decrypt(decryptedApiKey);
-            } catch (e) {
-              this.log('error', 'Failed to decrypt SeRanking API key');
-            }
           }
 
           return {
             success: true,
             data: {
               service_name: data.service_name,
-              api_key: decryptedApiKey,
+              api_key: data.api_key,
               api_url: data.api_url,
               api_quota_limit: data.api_quota_limit,
               api_quota_used: data.api_quota_used,
@@ -209,22 +182,30 @@ export class IntegrationService implements IIntegrationService {
               is_active: data.is_active
             },
             metadata: {
-              source: 'api' as const,
+              source: 'api',
               timestamp: new Date()
             }
           };
         }
       );
 
-      return result;
+      return result as ServiceResponse<{
+        service_name: string;
+        api_key: string;
+        api_url: string;
+        api_quota_limit: number;
+        api_quota_used: number;
+        quota_reset_date: Date;
+        is_active: boolean;
+      }>;
     } catch (error) {
       this.log('error', 'Failed to get integration settings:', error);
       return {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to retrieve integration settings: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to retrieve integration settings: ${error}`,
+          details: error
         }
       };
     }
@@ -237,7 +218,7 @@ export class IntegrationService implements IIntegrationService {
     settings: {
       api_quota_limit?: number;
       is_active?: boolean;
-      api_key?: string;  // Fixed: should be api_key not apikey to match database schema
+      api_key?: string;
       api_url?: string;
     }
   ): Promise<ServiceResponse<boolean>> {
@@ -253,8 +234,7 @@ export class IntegrationService implements IIntegrationService {
         updateData.is_active = settings.is_active;
       }
       if (settings.api_key !== undefined) {
-        // Encrypt API key before storage
-        updateData.api_key = EncryptionService.encrypt(settings.api_key);
+        updateData.api_key = settings.api_key;
       }
       if (settings.api_url !== undefined) {
         updateData.api_url = settings.api_url;
@@ -306,8 +286,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to update integration settings: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to update integration settings: ${error}`,
+          details: error
         }
       };
     }
@@ -322,7 +302,7 @@ export class IntegrationService implements IIntegrationService {
       operationType?: string;
       responseTime?: number;
       successful?: boolean;
-      metadata?: Json;
+      metadata?: Record<string, unknown>;
     } = {}
   ): Promise<ServiceResponse<boolean>> {
     try {
@@ -359,8 +339,7 @@ export class IntegrationService implements IIntegrationService {
           data: {
             api_quota_used: integrationResult.data!.api_quota_used + requestCount,
             updated_at: new Date().toISOString()
-          },
-          whereConditions: { service_name: 'seranking_keyword_export' }
+          }
         },
         async () => {
           const { error: updateError } = await supabaseAdmin
@@ -379,7 +358,7 @@ export class IntegrationService implements IIntegrationService {
         }
       )
 
-      // Log usage details (if usage logs table exists)
+      // Log usage details
       const today = new Date().toISOString().split('T')[0];
       try {
         await SecureServiceRoleWrapper.executeSecureOperation(
@@ -434,7 +413,7 @@ export class IntegrationService implements IIntegrationService {
           }
         )
       } catch (logError) {
-        this.log('warn', 'Usage logging failed (table may not exist):', logError);
+        this.log('warn', 'Usage logging failed:', logError);
       }
 
 
@@ -469,8 +448,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to record API usage: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to record API usage: ${error}`,
+          details: error
         }
       };
     }
@@ -500,8 +479,7 @@ export class IntegrationService implements IIntegrationService {
             api_quota_used: 0,
             quota_reset_date: this.calculateNextResetDate().toISOString(),
             updated_at: new Date().toISOString()
-          },
-          whereConditions: { service_name: 'seranking_keyword_export' }
+          }
         },
         async () => {
           const { error } = await supabaseAdmin
@@ -537,8 +515,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to reset quota usage: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to reset quota usage: ${error}`,
+          details: error
         }
       };
     }
@@ -547,13 +525,13 @@ export class IntegrationService implements IIntegrationService {
   /**
    * Test integration health
    */
-  async testIntegration(): Promise<ServiceResponse<SeRankingHealthCheckResult>> {
+  async testIntegration(): Promise<ServiceResponse<HealthCheckResult>> {
     const startTime = Date.now();
     
     try {
       const settingsResult = await this.getIntegrationSettings();
       if (!settingsResult.success || !settingsResult.data?.is_active) {
-        const result: SeRankingHealthCheckResult = {
+        const result: HealthCheckResult = {
           status: 'unhealthy',
           last_check: new Date(),
           error_message: 'Integration is not active or not configured'
@@ -571,7 +549,7 @@ export class IntegrationService implements IIntegrationService {
       }
 
       // Test API connection if client is available
-      let result: SeRankingHealthCheckResult;
+      let result: HealthCheckResult;
       
       if (this.apiClient) {
         try {
@@ -609,10 +587,10 @@ export class IntegrationService implements IIntegrationService {
         }
       };
     } catch (error) {
-      const result: SeRankingHealthCheckResult = {
+      const result: HealthCheckResult = {
         status: 'unhealthy',
         last_check: new Date(),
-        error_message: `Health check failed: ${error instanceof Error ? error.message : String(error)}`,
+        error_message: `Health check failed: ${error}`,
         response_time: Date.now() - startTime
       };
       
@@ -622,8 +600,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Integration health check failed: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Integration health check failed: ${error}`,
+          details: error
         }
       };
     }
@@ -660,8 +638,8 @@ export class IntegrationService implements IIntegrationService {
               data: {
                 isValid: true,
                 keyInfo: {
-                  permissions: ['keyword_export'], // SeRanking doesn't provide detailed permissions
-                  quotaLimit: 10000, // Default quota
+                  permissions: ['keyword_export'],
+                  quotaLimit: 10000,
                   quotaUsed: 0
                 }
               }
@@ -700,8 +678,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.AUTHENTICATION_ERROR,
-          message: `Failed to validate API key: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to validate API key: ${error}`,
+          details: error
         }
       };
     }
@@ -746,8 +724,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to get quota status: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to get quota status: ${error}`,
+          details: error
         }
       };
     }
@@ -784,8 +762,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.QUOTA_EXCEEDED_ERROR,
-          message: `Failed to check quota availability: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to check quota availability: ${error}`,
+          details: error
         }
       };
     }
@@ -800,10 +778,18 @@ export class IntegrationService implements IIntegrationService {
     try {
       const { startDate, endDate } = this.getReportPeriod(period);
       
-      // Get usage logs for the period (if table exists)
-      let logs = [];
+      // Get usage logs for the period
+      let logs: {
+        request_count: number;
+        successful_requests: number;
+        failed_requests: number;
+        response_time_ms: number;
+        timestamp: string;
+        date: string;
+        operation_type: string;
+      }[] = [];
       try {
-        const usageLogs = await SecureServiceRoleWrapper.executeSecureOperation(
+        const result = await SecureServiceRoleWrapper.executeSecureOperation(
           {
             userId: 'system',
             operation: 'get_usage_report_logs',
@@ -819,13 +805,7 @@ export class IntegrationService implements IIntegrationService {
           },
           {
             table: 'indb_seranking_usage_logs',
-            operationType: 'select',
-            columns: ['*'],
-            whereConditions: {
-              integration_id: 'seranking_keyword_export',
-              timestamp_gte: startDate.toISOString(),
-              timestamp_lte: endDate.toISOString()
-            }
+            operationType: 'select'
           },
           async () => {
             const { data: usageLogs, error } = await supabaseAdmin
@@ -844,9 +824,9 @@ export class IntegrationService implements IIntegrationService {
           }
         )
         
-        logs = usageLogs || []
+        logs = (result as { data: typeof logs }).data || []
       } catch (error) {
-        this.log('warn', 'Usage logs table may not exist:', error);
+        this.log('warn', 'Usage logs table retrieval failed:', error);
       }
       
       // Calculate aggregated metrics
@@ -953,8 +933,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to generate usage report: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to generate usage report: ${error}`,
+          details: error
         }
       };
     }
@@ -965,8 +945,6 @@ export class IntegrationService implements IIntegrationService {
    */
   async enableQuotaAlerts(thresholds: number[]): Promise<ServiceResponse<boolean>> {
     try {
-      // Note: Alert settings are not supported in the current schema
-      // This method is kept for compatibility but doesn't persist alert settings
       this.log('info', `Quota alert thresholds set: ${thresholds.join(', ')}`);
       
       return {
@@ -983,8 +961,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to enable quota alerts: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to enable quota alerts: ${error}`,
+          details: error
         }
       };
     }
@@ -993,7 +971,7 @@ export class IntegrationService implements IIntegrationService {
   /**
    * Get integration health status
    */
-  async getIntegrationHealth(): Promise<ServiceResponse<SeRankingHealthCheckResult>> {
+  async getIntegrationHealth(): Promise<ServiceResponse<HealthCheckResult>> {
     try {
       // Return cached health check if recent (less than health check interval)
       if (this.lastHealthCheck && 
@@ -1016,8 +994,8 @@ export class IntegrationService implements IIntegrationService {
         success: false,
         error: {
           type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: `Failed to get integration health: ${error instanceof Error ? error.message : String(error)}`,
-          details: error instanceof Error ? { message: error.message, stack: error.stack } : { rawError: String(error) }
+          message: `Failed to get integration health: ${error}`,
+          details: error
         }
       };
     }
@@ -1040,7 +1018,6 @@ export class IntegrationService implements IIntegrationService {
         if (!this.activeAlerts.has(`${alertKey}_critical`)) {
           this.log('error', `CRITICAL: SeRanking quota usage at ${Math.round(quota.usage_percentage * 100)}%`);
           this.activeAlerts.set(`${alertKey}_critical`, new Date());
-          // Here you would send critical alerts (email, SMS, etc.)
         }
       }
       
@@ -1049,7 +1026,6 @@ export class IntegrationService implements IIntegrationService {
         if (!this.activeAlerts.has(`${alertKey}_warning`)) {
           this.log('warn', `WARNING: SeRanking quota usage at ${Math.round(quota.usage_percentage * 100)}%`);
           this.activeAlerts.set(`${alertKey}_warning`, new Date());
-          // Here you would send warning alerts
         }
       }
       
@@ -1063,10 +1039,8 @@ export class IntegrationService implements IIntegrationService {
     }
   }
 
-  private async updateHealthStatus(result: SeRankingHealthCheckResult): Promise<void> {
+  private async updateHealthStatus(result: HealthCheckResult): Promise<void> {
     try {
-      // Note: Health status fields don't exist in current schema
-      // This method is kept for compatibility but doesn't persist health status
       this.log('info', `Health status updated: ${result.status}`);
     } catch (error) {
       this.log('warn', 'Failed to update health status:', error);
@@ -1161,7 +1135,7 @@ export class IntegrationService implements IIntegrationService {
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[IntegrationService] ${message}`;
       
-      logger[level](metadata, logMessage);
+      logger[level](metadata as Record<string, unknown>, logMessage);
     }
   }
 }

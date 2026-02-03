@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ADMIN_ENDPOINTS, useNotification } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { useNotification } from '@indexnow/ui'
 
 interface UserActions {
   suspend: boolean

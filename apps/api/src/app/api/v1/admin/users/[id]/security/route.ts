@@ -1,9 +1,8 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { supabaseAdmin } from '@/lib/database'
-import { ActivityLogger } from '@/lib/monitoring'
+import { ServerActivityLogger } from '@/lib/monitoring'
 import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 
 export const GET = adminApiWrapper(async (
@@ -118,7 +117,7 @@ export const GET = adminApiWrapper(async (
 
   const riskLevel = securityScore >= 80 ? 'low' : securityScore >= 60 ? 'medium' : 'high'
 
-  await ActivityLogger.logAdminAction(
+  await ServerActivityLogger.logAdminAction(
     adminUser.id,
     'security_analysis',
     userId,

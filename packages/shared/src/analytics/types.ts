@@ -1,4 +1,4 @@
-import { type Json } from '@indexnow/database';
+import { type Json } from '../types/common/Json';
 
 export interface TrackEventProperties {
   [key: string]: Json | undefined;

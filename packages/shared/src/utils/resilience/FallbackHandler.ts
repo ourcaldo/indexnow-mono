@@ -23,10 +23,8 @@ export interface FallbackConfig<T> {
   logFallbacks?: boolean;
 }
 
-import { type Json } from '../common/Json';
+import { type Json } from '../../types/common/Json';
 
-export type FallbackStrategy<T> = 
-// ...
 export class FallbackHandler<T = Json> {
   private cache = new Map<string, { value: T; timestamp: number }>();
   private readonly defaultCacheTTL = 300000; // 5 minutes

@@ -7,15 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../card'
 import { Badge } from '../badge'
 import { Clock, CreditCard, CheckCircle, Star } from 'lucide-react'
 import { useToast } from '../toast'
-import { supabaseBrowser, AUTH_ENDPOINTS } from '@indexnow/shared'
-
-import { PackageRow } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, type PackageData } from '@indexnow/shared'
+import { supabaseBrowser } from '@indexnow/database'
 
 interface TrialEligibility {
   eligible: boolean;
   reason?: string;
   message: string;
-  available_packages?: PackageRow[];
+  available_packages?: PackageData[];
 }
 
 interface TrialOptionsProps {}
@@ -72,15 +71,14 @@ export function TrialOptions({}: TrialOptionsProps) {
     }
   }
 
-  const calculatePrice = (pkg: PackageRow, period: string = 'monthly') => {
+  const calculatePrice = (pkg: PackageData, period: string = 'monthly') => {
     if (!pkg.pricing_tiers) return { price: 0, originalPrice: 0 }
 
-    // Use flat USD pricing structure (Paddle handles currency conversion)
     const pricingTiers = pkg.pricing_tiers as Record<string, { promo_price?: number, regular_price?: number }>;
     if (pricingTiers[period]) {
       const tier = pricingTiers[period]
       return {
-        price: tier.promo_price || tier.regular_price,
+        price: tier.promo_price || tier.regular_price || 0,
         originalPrice: (tier.regular_price && tier.regular_price > 0 && tier.regular_price !== (tier.promo_price || tier.regular_price)) ? tier.regular_price : 0
       }
     }
@@ -163,7 +161,7 @@ export function TrialOptions({}: TrialOptionsProps) {
         </div>
 
         <div className="space-y-3">
-          {eligibility.available_packages?.map((pkg: PackageRow) => {
+          {eligibility.available_packages?.map((pkg: PackageData) => {
             const pricing = calculatePrice(pkg, 'monthly')
             return (
               <div 

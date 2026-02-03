@@ -56,3 +56,21 @@ export const KeywordEnrichmentJobSchema = z.object({
 })
 
 export type KeywordEnrichmentJob = z.infer<typeof KeywordEnrichmentJobSchema>
+
+export const QuotaResetJobSchema = z.object({
+  scheduledAt: z.string().datetime(),
+})
+
+export type QuotaResetJob = z.infer<typeof QuotaResetJobSchema>
+
+export const IndexingMonitorJobSchema = z.object({
+  scheduledAt: z.string().datetime(),
+})
+
+export type IndexingMonitorJob = z.infer<typeof IndexingMonitorJobSchema>
+
+export const HourlyRankRetryJobSchema = z.object({
+  scheduledAt: z.string().datetime(),
+})
+
+export type HourlyRankRetryJob = z.infer<typeof HourlyRankRetryJobSchema>

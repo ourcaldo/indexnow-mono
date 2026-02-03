@@ -94,7 +94,7 @@ export function trackError(error: Error, context?: Record<string, Json>) {
 
   trackEvent('error', {
     error: error.message,
-    stack: error.stack,
+    stack: error.stack || null,
     ...context,
   });
 }
@@ -102,3 +102,4 @@ export function trackError(error: Error, context?: Record<string, Json>) {
 export { getAnalyticsConfig, getSubdomainContext };
 export { captureException, captureMessage, setSentryUser, clearSentryUser };
 export { trackPosthogEvent, identifyPosthogUser, resetPosthogUser };
+export * from './sentry-server';

@@ -1,11 +1,9 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, type TransactionRow, type PackageRow, type UserProfile, type Json } from '@indexnow/database';
+import { type Json, type PackageRow, SecureServiceRoleHelpers, SecureServiceRoleWrapper, type TransactionRow, type UserProfile, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, withDatabaseOperation, createStandardError } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
-import { ActivityLogger } from '@/lib/monitoring'
+import { ServerActivityLogger } from '@/lib/monitoring'
 import { logger, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
-import { supabaseAdmin } from '@/lib/database'
-
 interface OrderWithRelations extends TransactionRow {
   package: PackageRow;
   gateway: {
@@ -410,7 +408,7 @@ export const GET = adminApiWrapper(async (
 
     // Log admin activity
     try {
-      await ActivityLogger.logAdminAction(
+      await ServerActivityLogger.logAdminAction(
         adminUser.id,
         'order_detail_view',
         orderId,

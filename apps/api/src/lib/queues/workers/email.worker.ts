@@ -17,7 +17,7 @@ async function processEmail(job: Job<EmailJob>): Promise<{
   try {
     const validatedData = EmailJobSchema.parse(job.data)
 
-    const emailOptions: any = {
+    const emailOptions = {
       to: validatedData.to,
       subject: validatedData.subject,
       template: validatedData.template,

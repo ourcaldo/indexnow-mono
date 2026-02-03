@@ -1,418 +1,93 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-/**
- * Firecrawl Rank Tracker API Integration Service
- * Handles rank checking via Firecrawl API for search result analysis
- */
-
-import { supabaseAdmin } from '../database/supabase'
-import { logger } from '@/lib/monitoring/error-handling'
-import { firecrawlRateLimiter } from './firecrawl-rate-limiter'
-
-interface RankTrackerConfig {
-  apiKey: string
-  baseUrl: string
-}
-
-interface FirecrawlSearchRequest {
-  query: string
-  sources: string[]
-  categories: string[]
-  limit: number
-  location: string
-}
-
-interface FirecrawlSearchResult {
-  url: string
-  title: string
-  description: string
-  position: number
-}
-
-interface FirecrawlApiResponse {
-  success: boolean
-  data: {
-    web: FirecrawlSearchResult[]
-    creditsUsed: number
-  }
-}
-
-interface FirecrawlCreditResponse {
-  success: boolean
-  data: {
-    remainingCredits: number
-    planCredits: number | null
-    billingPeriodStart: string | null
-    billingPeriodEnd: string | null
-  }
-}
-
-interface RankCheckRequest {
-  keyword: string
-  domain: string
-  country: string // Full country name (e.g., "Indonesia", "Malaysia")
-  deviceType: 'desktop' | 'mobile'
-}
-
-interface RankCheckResponse {
-  position: number | null
-  url: string | null
-  found: boolean
-  totalResults: number
-  errorMessage?: string
-  firecrawlResponse?: any
-}
-
+import { db as supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+import { logger } from '../monitoring/error-handling'
+import { RankTracker, RankResult } from './rank-tracker'
+import { removeUrlParameters } from '../utils/url-utils'
 
 export class RankTrackerService {
-  private config: RankTrackerConfig | null = null
-
   /**
-   * Initialize service with API key from database
+   * Process a single rank check job and update database
    */
-  private async initialize(): Promise<void> {
-    if (this.config) return // Already initialized
-
+  static async processRankCheck(
+    keywordId: string,
+    userId: string,
+    domainId: string,
+    keyword: string,
+    country: string,
+    device: 'desktop' | 'mobile'
+  ): Promise<RankResult> {
     try {
-      await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: 'system',
-          operation: 'initialize_rank_tracker_service',
-          reason: 'System initialization - loading Firecrawl API configuration for rank tracking service',
-          source: 'RankTrackerService.initialize',
-          metadata: {
-            service_name: 'firecrawl',
-            operation_type: 'service_initialization'
-          }
-        },
-        {
-          table: 'indb_site_integration',
-          operationType: 'select'
-        },
-        async () => {
-          // Get API key and URL from database
-          const { data: integration, error } = await supabaseAdmin
-            .from('indb_site_integration')
-            .select('apikey, api_url')
-            .eq('service_name', 'firecrawl')
-            .eq('is_active', true)
-            .single()
+      // 1. Get domain name
+      const { data: domainData, error: domainError } = await SecureServiceRoleWrapper.run(
+        () => supabaseAdmin
+          .from('indb_domains')
+          .select('domain_name')
+          .eq('id', domainId)
+          .single(),
+        `Fetching domain for rank check: ${domainId}`
+      )
 
-          if (error || !integration?.apikey) {
-            throw new Error('No active Firecrawl API integration found in database')
-          }
+      if (domainError || !domainData) {
+        throw new Error(`Domain not found: ${domainId}`)
+      }
 
-          this.config = {
-            apiKey: integration.apikey,
-            baseUrl: integration.api_url || 'https://api.firecrawl.dev'
-          }
+      // 2. Perform rank check
+      const result = await RankTracker.checkRank(
+        keyword,
+        domainData.domain_name,
+        country,
+        device
+      )
 
-          logger.info({}, 'Firecrawl Rank Tracker service initialized with database API key')
-        }
-      );
+      // 3. Update keyword status and last check timestamp
+      await SecureServiceRoleWrapper.run(
+        () => supabaseAdmin
+          .from('indb_keywords')
+          .update({
+            last_check_at: new Date().toISOString(),
+            status: 'active',
+            last_position: result.position,
+            error_message: result.error || null
+          })
+          .eq('id', keywordId),
+        `Updating keyword status: ${keywordId}`
+      )
 
+      // 4. Store rank history
+      await SecureServiceRoleWrapper.run(
+        () => supabaseAdmin
+          .from('indb_rank_history')
+          .insert({
+            keyword_id: keywordId,
+            user_id: userId,
+            domain_id: domainId,
+            position: result.position,
+            found_url: removeUrlParameters(result.url),
+            found_title: result.title,
+            device: device,
+            country: country,
+            checked_at: new Date().toISOString()
+          }),
+        `Storing rank history: ${keywordId}`
+      )
+
+      return result
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to initialize Rank Tracker service')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      logger.error({ error: errorMessage, keywordId }, 'RankTrackerService: Failed to process rank check')
+      
+      // Update keyword with error status
+      await SecureServiceRoleWrapper.run(
+        () => supabaseAdmin
+          .from('indb_keywords')
+          .update({
+            status: 'error',
+            error_message: errorMessage
+          })
+          .eq('id', keywordId),
+        'Updating keyword error status'
+      )
+
       throw error
     }
-  }
-
-  /**
-   * Check keyword ranking position for a specific domain using Firecrawl
-   */
-  async checkKeywordRank(request: RankCheckRequest): Promise<RankCheckResponse> {
-    try {
-      // Initialize service if not already done
-      await this.initialize()
-      
-      if (!this.config) {
-        throw new Error('Firecrawl service not properly initialized')
-      }
-
-      logger.info({ keyword: request.keyword, domain: request.domain, country: request.country }, 'Firecrawl: Checking rank')
-
-      // Build Firecrawl search request using country name from database
-      const searchRequest: FirecrawlSearchRequest = {
-        query: request.keyword,
-        sources: ['web'],
-        categories: [],
-        limit: 100,
-        location: request.country
-      }
-
-      // Make API request to Firecrawl
-      const response = await this.makeFirecrawlRequest(searchRequest)
-      
-      if (!response.success) {
-        throw new Error('Firecrawl API request failed')
-      }
-
-      // Process response to find domain position
-      const result = this.processFirecrawlResponse(response, request.domain)
-      
-      // Attach full Firecrawl response for metadata storage
-      result.firecrawlResponse = response
-      
-      // Update credit usage in database
-      await this.updateCreditUsage(response.data.creditsUsed)
-      
-      return result
-
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Firecrawl rank check failed')
-      return {
-        position: null,
-        url: null,
-        found: false,
-        totalResults: 0,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error'
-      }
-    }
-  }
-
-  /**
-   * Process Firecrawl API response to extract domain ranking
-   */
-  private processFirecrawlResponse(response: FirecrawlApiResponse, targetDomain: string): RankCheckResponse {
-    logger.info({ resultCount: response.data.web.length }, 'Firecrawl: Processing search results')
-
-    const cleanTargetDomain = this.extractDomain(targetDomain)
-    
-    // Search through results to find our domain
-    for (const result of response.data.web) {
-      const resultDomain = this.extractDomain(result.url)
-      
-      if (resultDomain === cleanTargetDomain) {
-        logger.info({ domain: cleanTargetDomain, position: result.position }, 'Firecrawl: Found domain')
-        return {
-          position: result.position,
-          url: result.url,
-          found: true,
-          totalResults: response.data.web.length
-        }
-      }
-    }
-
-    logger.info({ domain: cleanTargetDomain }, 'Firecrawl: Domain not found in search results')
-    return {
-      position: null,
-      url: null,
-      found: false,
-      totalResults: response.data.web.length
-    }
-  }
-
-  /**
-   * Extract clean domain from URL
-   */
-  private extractDomain(url: string): string {
-    try {
-      const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
-      return urlObj.hostname.toLowerCase().replace(/^www\./, '')
-    } catch (error) {
-      // If URL parsing fails, try to extract domain manually
-      const cleanUrl = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
-      return cleanUrl.toLowerCase()
-    }
-  }
-
-  /**
-   * Make HTTP request to Firecrawl API with rate limiting, error handling and retries
-   */
-  private async makeFirecrawlRequest(searchRequest: FirecrawlSearchRequest): Promise<FirecrawlApiResponse> {
-    if (!this.config) {
-      throw new Error('Service not initialized')
-    }
-
-    const url = `${this.config.baseUrl}/v2/search`
-
-    logger.info(`Firecrawl: Making search request for keyword "${searchRequest.query}" in location "${searchRequest.location}"`)
-
-    // CRITICAL: Acquire rate limit slot before making request
-    // This prevents 429 errors by respecting 30 req/min limit
-    const rateLimitAcquired = await firecrawlRateLimiter.acquireSlot(this.config.apiKey, 65000)
-    
-    if (!rateLimitAcquired) {
-      throw new Error('Rate limit timeout: Could not acquire slot within 65 seconds. Please retry later.')
-    }
-
-    const remainingSlots = firecrawlRateLimiter.getRemainingSlots(this.config.apiKey)
-    logger.info({ remainingSlots }, 'Firecrawl: Rate limit slot acquired')
-
-    // Retry logic with special handling for 429 rate limits
-    let lastError: Error | null = null
-    let attempt = 1
-    const maxAttemptsForNonRateLimit = 3
-    
-    while (true) {
-      try {
-        logger.info({ attempt }, `Firecrawl: Sending request to ${url}`)
-        logger.debug(`Firecrawl: Request body: ${JSON.stringify(searchRequest)}`)
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.config.apiKey}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'IndexNow-Studio-Rank-Tracker/1.0'
-          },
-          body: JSON.stringify(searchRequest)
-        })
-
-        logger.info(`Firecrawl: Response status: ${response.status} ${response.statusText}`)
-
-        if (!response.ok) {
-          let errorDetails = ''
-          try {
-            errorDetails = await response.text()
-            logger.error(`Firecrawl: Error response body: ${errorDetails}`)
-          } catch (e) {
-            logger.error('Firecrawl: Could not read error response body')
-          }
-          
-          // Special handling for 429 rate limit errors
-          if (response.status === 429) {
-            logger.error({ 
-              currentCount: firecrawlRateLimiter.getCurrentCount(this.config.apiKey),
-              limit: 30,
-              attempt
-            }, 'Firecrawl: 429 Rate limit exceeded - waiting 60 seconds before retry')
-            
-            // Wait 60 seconds (1 minute) for rate limit reset
-            await this.delay(60000)
-            
-            // Increment attempt counter and retry indefinitely for 429
-            attempt++
-            continue
-          }
-          
-          throw new Error(`HTTP ${response.status}: ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`)
-        }
-
-        const data = await response.json() as FirecrawlApiResponse
-        logger.info(`Firecrawl: Request successful after ${attempt} attempt(s), found ${data.data.web.length} results, used ${data.data.creditsUsed} credits`)
-        return data
-
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
-        
-        // Check if error is from 429 (already handled above with continue)
-        const is429Error = lastError.message.includes('HTTP 429')
-        
-        if (is429Error) {
-          // This shouldn't be reached due to continue above, but just in case
-          logger.warn({ error: lastError.message, attempt }, `Firecrawl: Rate limit error - waiting 60s and retrying`)
-          await this.delay(60000)
-          attempt++
-          continue
-        }
-        
-        // For non-429 errors, use standard retry logic with max attempts
-        logger.warn({ error: lastError.message, attempt, maxAttempts: maxAttemptsForNonRateLimit }, `Firecrawl: Attempt ${attempt}/${maxAttemptsForNonRateLimit} failed`)
-        
-        if (attempt < maxAttemptsForNonRateLimit) {
-          // Wait before retry: 2s, 4s
-          await this.delay(attempt * 2000)
-          attempt++
-        } else {
-          // Max attempts reached for non-429 errors
-          throw lastError
-        }
-      }
-    }
-  }
-
-
-  /**
-   * Update credit usage in database after API call
-   */
-  private async updateCreditUsage(creditsUsed: number): Promise<void> {
-    try {
-      await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: 'system',
-          operation: 'update_firecrawl_credit_usage',
-          reason: 'System quota tracking - updating Firecrawl API credit usage after rank check API call',
-          source: 'RankTrackerService.updateCreditUsage',
-          metadata: {
-            creditsUsed,
-            service_name: 'firecrawl',
-            operation_type: 'api_credit_tracking'
-          }
-        },
-        {
-          table: 'indb_site_integration',
-          operationType: 'update'
-        },
-        async () => {
-          // Get current credit info
-          const creditInfo = await this.getCreditUsage()
-          if (!creditInfo) {
-            logger.error('Could not get credit usage info to update database')
-            throw new Error('Failed to get credit usage info')
-          }
-
-          // Update the database with remaining credits
-          const { error } = await supabaseAdmin
-            .from('indb_site_integration')
-            .update({
-              api_quota_used: creditInfo.data.planCredits ? (creditInfo.data.planCredits - creditInfo.data.remainingCredits) : 0,
-              api_quota_limit: creditInfo.data.planCredits || creditInfo.data.remainingCredits,
-              updated_at: new Date().toISOString()
-            })
-            .eq('service_name', 'firecrawl')
-            .eq('is_active', true)
-
-          if (error) {
-            logger.error({ error: error.message || String(error) }, 'Error updating credit usage')
-            throw error
-          } else {
-            logger.info(`Updated credit usage: ${creditsUsed} credits used, ${creditInfo.data.remainingCredits} remaining`)
-          }
-        }
-      );
-
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating credit usage')
-    }
-  }
-
-  /**
-   * Get current credit usage from Firecrawl API
-   */
-  private async getCreditUsage(): Promise<FirecrawlCreditResponse | null> {
-    try {
-      if (!this.config) {
-        throw new Error('Service not initialized')
-      }
-
-      const url = `${this.config.baseUrl}/v2/team/credit-usage`
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json() as FirecrawlCreditResponse
-      logger.info(`Credit usage check: ${data.data.remainingCredits} credits remaining`)
-      return data
-
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting credit usage')
-      return null
-    }
-  }
-
-  /**
-   * Utility function for delays
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
   }
 }

@@ -1,11 +1,10 @@
 import { ConnectionOptions } from 'bullmq'
-import { AppConfig } from '@indexnow/shared'
 
 export const redisConnection: ConnectionOptions = {
-  host: AppConfig.redis.host || 'localhost',
-  port: AppConfig.redis.port || 6379,
-  password: AppConfig.redis.password || undefined,
-  username: AppConfig.redis.user || undefined,
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || undefined,
+  username: process.env.REDIS_USER || undefined,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
 }
@@ -28,10 +27,10 @@ export const defaultJobOptions = {
 export const queueConfig = {
   rankCheck: {
     name: 'rank-check',
-    concurrency: AppConfig.bullmq.concurrency.rankCheck,
+    concurrency: parseInt(process.env.BULLMQ_CONCURRENCY_RANK_CHECK || '5'),
     limiter: {
-      max: AppConfig.bullmq.rateLimit.rankCheck.max,
-      duration: AppConfig.bullmq.rateLimit.rankCheck.duration,
+      max: parseInt(process.env.BULLMQ_RATE_LIMIT_RANK_CHECK_MAX || '28'),
+      duration: parseInt(process.env.BULLMQ_RATE_LIMIT_RANK_CHECK_DURATION || '60000'),
     },
   },
   rankSchedule: {
@@ -40,19 +39,27 @@ export const queueConfig = {
   },
   email: {
     name: 'email',
-    concurrency: AppConfig.bullmq.concurrency.email,
+    concurrency: parseInt(process.env.BULLMQ_CONCURRENCY_EMAIL || '10'),
     limiter: {
-      max: AppConfig.bullmq.rateLimit.email.max,
-      duration: AppConfig.bullmq.rateLimit.email.duration,
+      max: parseInt(process.env.BULLMQ_RATE_LIMIT_EMAIL_MAX || '50'),
+      duration: parseInt(process.env.BULLMQ_RATE_LIMIT_EMAIL_DURATION || '60000'),
     },
   },
   payments: {
     name: 'payments',
-    concurrency: AppConfig.bullmq.concurrency.payments,
+    concurrency: parseInt(process.env.BULLMQ_CONCURRENCY_PAYMENTS || '3'),
   },
   keywordEnrichment: {
     name: 'keyword-enrichment',
     concurrency: 1,
+  },
+  quotaReset: {
+    name: 'quota-reset',
+    concurrency: 1,
+  },
+  indexingMonitor: {
+    name: 'indexing-monitor',
+    concurrency: 2,
   },
   autoCancel: {
     name: 'auto-cancel',

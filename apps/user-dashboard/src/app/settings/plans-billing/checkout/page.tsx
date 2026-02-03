@@ -2,18 +2,27 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { usePageViewLogger, useActivityLogger, supabaseBrowser, ApiEndpoints as API, usePaddle } from '@indexnow/shared'
-import BillingPeriodSelector from '@/components/checkout/BillingPeriodSelector'
-import OrderSummary from '@/components/checkout/OrderSummary'
-import PaymentErrorBoundary from '@/components/checkout/PaymentErrorBoundary'
-import { Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@indexnow/ui'
-import { Loader2 } from 'lucide-react'
 import {
-  CheckoutFormComponent,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  useToast,
+  BillingPeriodSelector,
+  OrderSummary,
+  PaymentErrorBoundary,
+  CheckoutForm,
   CheckoutHeader,
   CheckoutLoading,
-  PackageNotFound
-} from './components'
+  PackageNotFound,
+  CheckoutSubmitButton,
+  PaymentMethodSelector
+} from '@indexnow/ui'
+import { ApiEndpoints as API, usePaddle, PaymentSchemas } from '@indexnow/shared'
+import { usePageViewLogger, useActivityLogger, supabaseBrowser } from '@indexnow/database'
+import { Loader2 } from 'lucide-react'
+import { z } from 'zod'
 
 // Types
 interface PricingTier {
@@ -216,6 +225,30 @@ function CheckoutPageContent() {
       return
     }
 
+    // Validate form data
+    try {
+      PaymentSchemas.customerInfo.parse({
+        firstName: form.first_name,
+        lastName: form.last_name,
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        postalCode: form.zip_code,
+        country: 'ID' // Hardcoded for now as the schema expects 2 chars, or I should map it
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0]
+        addToast({
+          title: "Validation Error",
+          description: firstError.message,
+          type: "error"
+        })
+        return
+      }
+    }
+
     setProcessing(true)
 
     try {
@@ -291,16 +324,19 @@ function CheckoutPageContent() {
 
   // Package not found state
   if (!selectedPackage) {
-    return <PackageNotFound />
+    return <PackageNotFound onBack={() => router.push('/dashboard/settings/plans-billing')} />
   }
 
   const { price, discount, originalPrice } = calculatePrice()
 
   return (
     <PaymentErrorBoundary>
-      <div className="min-h-screen bg-secondary">
-        <div className="container mx-auto px-4 py-8">
-          <CheckoutHeader selectedPackage={selectedPackage} />
+      <div className="min-h-screen bg-secondary py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <CheckoutHeader 
+            selectedPackage={selectedPackage} 
+            onBack={() => router.push('/dashboard/settings/plans-billing')} 
+          />
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Main Form */}
@@ -314,7 +350,7 @@ function CheckoutPageContent() {
                 />
 
                 {/* Checkout Form */}
-                <CheckoutFormComponent form={form} setForm={setForm} />
+                <CheckoutForm form={form} setForm={setForm} />
 
                 {/* Paddle Checkout Information */}
                 <Card>

@@ -1,7 +1,16 @@
 'use client'
 
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../card'
-import { formatCurrency } from '@indexnow/shared'
+
+// Note: formatCurrency should ideally be passed as a prop or imported from a shared utils in UI
+// For now, we'll use a local mock or expect it from shared if available
+const formatCurrency = (amount: number, currency: string = 'USD') => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(amount)
+}
 
 interface PricingTier {
   period_label?: string;
@@ -12,8 +21,17 @@ interface PricingTier {
 }
 
 interface PaymentPackage {
+  currency?: string;
   pricing_tiers?: Record<string, PricingTier> | null;
-  [key: string]: unknown; // Allow other properties
+  [key: string]: unknown;
+}
+
+interface BillingPeriodOption {
+  period: string
+  period_label: string
+  regular_price: number
+  promo_price?: number
+  paddle_price_id?: string
 }
 
 interface BillingPeriodSelectorProps {
@@ -31,18 +49,19 @@ export function BillingPeriodSelector({
     return null
   }
 
+  const pricingTiers = selectedPackage.pricing_tiers;
   const periodOrder = ['monthly', 'quarterly', 'biannual', 'annual']
   const availablePeriods = periodOrder.filter(period => 
-    selectedPackage.pricing_tiers[period]
+    pricingTiers[period]
   )
 
   const formatPeriodOptions = (): BillingPeriodOption[] => {
-    if (!selectedPackage?.pricing_tiers) return []
+    if (!pricingTiers) return []
     return availablePeriods.map(period => {
-      const tierData = selectedPackage.pricing_tiers![period]
+      const tierData = pricingTiers[period]
       return {
         period,
-        period_label: tierData.period_label || period,
+        period_label: tierData.period_label || period.charAt(0).toUpperCase() + period.slice(1),
         regular_price: tierData.regular_price,
         promo_price: tierData.promo_price,
         paddle_price_id: tierData.paddle_price_id
@@ -70,7 +89,6 @@ export function BillingPeriodSelector({
             const finalPrice = option.promo_price || option.regular_price
             const isSelected = selectedPeriod === option.period
             
-
             return (
               <div
                 key={`${option.period}-${index}`}
@@ -117,11 +135,11 @@ export function BillingPeriodSelector({
                     <div className="flex items-center space-x-2">
                       {option.promo_price && option.regular_price > 0 && option.regular_price !== option.promo_price && (
                         <span className="text-sm text-muted-foreground line-through">
-                          {formatCurrency(option.regular_price)}
+                          {formatCurrency(option.regular_price, selectedPackage.currency)}
                         </span>
                       )}
                       <span className="text-lg font-bold text-foreground" data-testid={`price-${option.period}`}>
-                        {formatCurrency(finalPrice)}
+                        {formatCurrency(finalPrice, selectedPackage.currency)}
                       </span>
                     </div>
                   </div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Package } from 'lucide-react'
-import { supabaseBrowser as supabase, DASHBOARD_ENDPOINTS } from '@indexnow/shared'
+import { DASHBOARD_ENDPOINTS } from '@indexnow/shared'
+import { supabaseBrowser as supabase } from '@indexnow/database'
 
 interface QuotaInfo {
   daily_quota_used: number

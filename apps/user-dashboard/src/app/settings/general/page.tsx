@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabaseBrowser as supabase } from '@indexnow/shared'
-import { usePageViewLogger, useActivityLogger } from '@indexnow/shared'
+import { usePageViewLogger, useActivityLogger, supabaseBrowser as supabase } from '@indexnow/database'
 import { useToast } from '@indexnow/ui'
 import { useAuth } from '@indexnow/auth'
 import { AUTH_ENDPOINTS } from '@indexnow/shared'

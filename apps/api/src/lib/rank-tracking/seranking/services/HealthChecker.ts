@@ -5,21 +5,20 @@
  */
 
 import {
-  SeRankingHealthCheckResult,
+  HealthCheckResult,
   ServiceResponse,
-  SeRankingErrorType,
   QuotaStatus,
-  ApiMetrics,
-  DetailedHealthCheck,
-  SystemHealthSummary,
-  RecoveryActionResult,
+  ApiMetrics
+} from '../types/SeRankingTypes';
+import {
   IHealthChecker,
   ISeRankingApiClient,
   IKeywordBankService,
   IIntegrationService
-} from '@indexnow/shared';
-import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { logger } from '@/lib/monitoring/error-handling';
+} from '../types/ServiceTypes';
+import { supabaseAdmin } from '@indexnow/shared';
+import { SecureServiceRoleWrapper } from '@indexnow/services';
+import { logger } from '@indexnow/shared';
 
 // Comprehensive health check configuration
 export interface HealthCheckConfig {
@@ -73,14 +72,98 @@ export interface HealthCheckConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
-export interface Incident {
-  id: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  component: string;
-  description: string;
-  started_at: Date;
-  resolved_at?: Date;
-  recovery_actions: string[];
+// Individual health check result with detailed metrics
+export interface DetailedHealthCheck extends HealthCheckResult {
+  service_name: string;
+  check_type: 'api' | 'database' | 'cache' | 'queue' | 'dependency' | 'custom';
+  dependency_level: 'critical' | 'important' | 'optional';
+  metrics: {
+    response_time: number;
+    availability_percent: number;
+    error_rate_percent: number;
+    throughput: number;
+    resource_utilization?: {
+      cpu?: number;
+      memory?: number;
+      disk?: number;
+    };
+  };
+  diagnostics: {
+    checks_performed: string[];
+    anomalies_detected: string[];
+    performance_issues: string[];
+    recovery_attempts: number;
+  };
+  historical_comparison: {
+    compared_to_yesterday: 'better' | 'same' | 'worse';
+    compared_to_last_week: 'better' | 'same' | 'worse';
+    trend_direction: 'improving' | 'stable' | 'degrading';
+  };
+  recommendations: Array<{
+    type: 'immediate' | 'short_term' | 'long_term';
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    description: string;
+    implementation_effort: 'low' | 'medium' | 'high';
+    estimated_impact: string;
+  }>;
+}
+
+// System-wide health summary
+export interface SystemHealthSummary {
+  overall_status: 'healthy' | 'degraded' | 'unhealthy' | 'critical';
+  overall_score: number; // 0-100
+  component_health: {
+    api_gateway: DetailedHealthCheck;
+    database: DetailedHealthCheck;
+    cache_layer: DetailedHealthCheck;
+    keyword_bank: DetailedHealthCheck;
+    integration_service: DetailedHealthCheck;
+    quota_monitor: DetailedHealthCheck;
+    metrics_collector: DetailedHealthCheck;
+  };
+  system_metrics: {
+    total_dependencies: number;
+    healthy_dependencies: number;
+    degraded_dependencies: number;
+    unhealthy_dependencies: number;
+    average_response_time: number;
+    system_uptime_hours: number;
+    last_incident_hours_ago?: number;
+  };
+  active_incidents: Array<{
+    id: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    component: string;
+    description: string;
+    started_at: Date;
+    estimated_resolution?: Date;
+    recovery_actions: string[];
+  }>;
+  predictive_alerts: Array<{
+    component: string;
+    predicted_issue: string;
+    probability: number;
+    estimated_occurrence: Date;
+    preventive_actions: string[];
+  }>;
+  performance_bottlenecks: Array<{
+    component: string;
+    bottleneck_type: 'cpu' | 'memory' | 'network' | 'database' | 'api_limit';
+    severity_score: number;
+    impact_description: string;
+    optimization_suggestions: string[];
+  }>;
+}
+
+// Recovery action result
+export interface RecoveryActionResult {
+  action_id: string;
+  action_type: string;
+  success: boolean;
+  execution_time_ms: number;
+  impact_description: string;
+  follow_up_required: boolean;
+  follow_up_actions?: string[];
 }
 
 export class HealthChecker implements IHealthChecker {
@@ -91,7 +174,7 @@ export class HealthChecker implements IHealthChecker {
   
   // Runtime state
   private healthCache: Map<string, DetailedHealthCheck> = new Map();
-  private activeIncidents: Map<string, Incident> = new Map();
+  private activeIncidents: Map<string, any> = new Map();
   private recoveryAttempts: Map<string, number> = new Map();
   private lastHealthCheck?: Date;
   private monitoringTimer?: NodeJS.Timeout;
@@ -190,7 +273,7 @@ export class HealthChecker implements IHealthChecker {
   /**
    * Perform comprehensive health check across all system components
    */
-  async performHealthCheck(): Promise<SeRankingHealthCheckResult> {
+  async performHealthCheck(): Promise<HealthCheckResult> {
     try {
       this.log('debug', 'Starting comprehensive health check');
       const startTime = Date.now();
@@ -236,7 +319,7 @@ export class HealthChecker implements IHealthChecker {
       const totalTime = Date.now() - startTime;
       this.lastHealthCheck = new Date();
 
-      const result: SeRankingHealthCheckResult = {
+      const result: HealthCheckResult = {
         status: overallStatus,
         response_time: totalTime,
         last_check: this.lastHealthCheck,
@@ -260,7 +343,7 @@ export class HealthChecker implements IHealthChecker {
   /**
    * Check API endpoint health with detailed metrics
    */
-  async checkApiHealth(): Promise<SeRankingHealthCheckResult> {
+  async checkApiHealth(): Promise<HealthCheckResult> {
     const startTime = Date.now();
     
     try {
@@ -309,17 +392,16 @@ export class HealthChecker implements IHealthChecker {
   /**
    * Check database health including connectivity and performance
    */
-  async checkDatabaseHealth(): Promise<SeRankingHealthCheckResult> {
+  async checkDatabaseHealth(): Promise<HealthCheckResult> {
     const startTime = Date.now();
     
     try {
-      // Test database connectivity
-      const data = await SecureServiceRoleWrapper.executeSecureOperation(
+      // Test database connectivity using SecureServiceRoleWrapper
+      await SecureServiceRoleWrapper.executeSecureOperation(
         {
-          userId: 'system',
           operation: 'test_database_connectivity',
           reason: 'Health checker performing database connectivity test to verify database health status',
-          source: 'rank-tracking/seranking/services/HealthChecker',
+          source: 'HealthChecker',
           metadata: {
             check_type: 'database_health',
             operation_type: 'connectivity_test'
@@ -327,26 +409,22 @@ export class HealthChecker implements IHealthChecker {
         },
         {
           table: 'indb_site_integration',
-          operationType: 'select',
-          columns: ['id'],
-          whereConditions: {}
+          operationType: 'select'
         },
         async () => {
-          const { data, error } = await supabaseAdmin
+          const { error } = await supabaseAdmin
             .from('indb_site_integration')
             .select('id')
-            .limit(1)
+            .limit(1);
 
           if (error) {
-            throw new Error(`Database query failed: ${error.message}`)
+            throw new Error(`Database query failed: ${error.message}`);
           }
-
-          return data || []
+          return [];
         }
-      )
+      );
 
-      const responseTime = Date.now() - startTime
-
+      const responseTime = Date.now() - startTime;
       const status = this.evaluateResponseTime(responseTime, 'database');
 
       const healthCheck: DetailedHealthCheck = {
@@ -384,7 +462,7 @@ export class HealthChecker implements IHealthChecker {
   /**
    * Check cache layer health and performance
    */
-  async checkCacheHealth(): Promise<SeRankingHealthCheckResult> {
+  async checkCacheHealth(): Promise<HealthCheckResult> {
     const startTime = Date.now();
     
     try {
@@ -399,7 +477,7 @@ export class HealthChecker implements IHealthChecker {
       const hitRatio = cacheStats.total_keywords > 0 ? 
         cacheStats.with_data / cacheStats.total_keywords : 1;
 
-      let status: SeRankingHealthCheckResult['status'] = 'healthy';
+      let status: HealthCheckResult['status'] = 'healthy';
       if (hitRatio < 0.5) status = 'unhealthy';
       else if (hitRatio < 0.7) status = 'degraded';
 
@@ -438,7 +516,7 @@ export class HealthChecker implements IHealthChecker {
   /**
    * Check integration service health and quota status
    */
-  async checkIntegrationHealth(): Promise<SeRankingHealthCheckResult> {
+  async checkIntegrationHealth(): Promise<HealthCheckResult> {
     const startTime = Date.now();
     
     try {
@@ -491,12 +569,12 @@ export class HealthChecker implements IHealthChecker {
   /**
    * Check system resources and performance
    */
-  async checkSystemHealth(): Promise<SeRankingHealthCheckResult> {
+  async checkSystemHealth(): Promise<HealthCheckResult> {
     const startTime = Date.now();
     
     try {
       // Calculate system uptime
-      const uptimeHours = (Date.now() - this.systemStartTime.getTime()) / (1000 * 60 * 60);
+      // const uptimeHours = (Date.now() - this.systemStartTime.getTime()) / (1000 * 60 * 60);
       
       // Basic system health indicators
       const memoryUsage = process.memoryUsage();
@@ -599,7 +677,7 @@ export class HealthChecker implements IHealthChecker {
    * Private helper methods
    */
 
-  private extractResult(settledResult: PromiseSettledResult<SeRankingHealthCheckResult>): DetailedHealthCheck | null {
+  private extractResult(settledResult: PromiseSettledResult<HealthCheckResult>): DetailedHealthCheck | null {
     if (settledResult.status === 'fulfilled') {
       return settledResult.value as DetailedHealthCheck;
     } else {
@@ -636,13 +714,13 @@ export class HealthChecker implements IHealthChecker {
     return Math.round(weightedScore / totalWeight);
   }
 
-  private determineOverallStatus(score: number): SeRankingHealthCheckResult['status'] {
+  private determineOverallStatus(score: number): HealthCheckResult['status'] {
     if (score >= 85) return 'healthy';
     if (score >= 70) return 'degraded';
     return 'unhealthy';
   }
 
-  private evaluateResponseTime(responseTime: number, component: string): SeRankingHealthCheckResult['status'] {
+  private evaluateResponseTime(responseTime: number, component: string): HealthCheckResult['status'] {
     const thresholds = this.config.thresholds.responseTime;
     
     if (responseTime <= thresholds.good) return 'healthy';
@@ -651,7 +729,7 @@ export class HealthChecker implements IHealthChecker {
   }
 
   private createHealthResult(
-    status: SeRankingHealthCheckResult['status'], 
+    status: HealthCheckResult['status'], 
     startTime: number, 
     error?: string
   ): DetailedHealthCheck {
@@ -734,7 +812,7 @@ export class HealthChecker implements IHealthChecker {
 
   private async generateRecommendations(
     serviceName: string, 
-    status: SeRankingHealthCheckResult['status'], 
+    status: HealthCheckResult['status'], 
     responseTime: number
   ): Promise<DetailedHealthCheck['recommendations']> {
     const recommendations: DetailedHealthCheck['recommendations'] = [];
@@ -844,26 +922,26 @@ export class HealthChecker implements IHealthChecker {
   private async recoverDatabase(healthCheck: DetailedHealthCheck): Promise<boolean> {
     // Database recovery logic - typically involves connection pool refresh using secure service role wrapper
     try {
-      const operationContext = {
-        userId: 'system',
-        operation: 'health_check_database_recovery',
-        reason: 'SeRanking health checker verifying database connectivity for recovery',
-        source: 'lib/rank-tracking/seranking/services/HealthChecker',
-        metadata: {
-          healthCheck: healthCheck.status,
-          recoveryAttempt: true
-        }
-      };
-
-      const result = await SecureServiceRoleWrapper.executeSecureOperation(
-        operationContext,
-        { table: 'indb_site_integration', operationType: 'select' },
+      await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          operation: 'health_check_database_recovery',
+          reason: 'SeRanking health checker verifying database connectivity for recovery',
+          source: 'HealthChecker',
+          metadata: {
+            healthCheck: healthCheck.status,
+            recoveryAttempt: true
+          }
+        },
+        {
+          table: 'indb_site_integration',
+          operationType: 'select'
+        },
         async () => {
-          const { data, error } = await supabaseAdmin
+          await supabaseAdmin
             .from('indb_site_integration')
             .select('id')
-            .limit(1)
-          return data || []
+            .limit(1);
+          return [];
         }
       );
       
@@ -948,7 +1026,7 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
+  private log(level: string, message: string, ...args: any[]): void {
     if (this.shouldLog(level)) {
       const logMessage = `[HealthChecker] ${message}`;
       const metadata = args.length > 0 ? { details: args } : {};
@@ -972,8 +1050,8 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
-    const levels: Array<'debug' | 'info' | 'warn' | 'error'> = ['debug', 'info', 'warn', 'error'];
+  private shouldLog(level: string): boolean {
+    const levels = ['debug', 'info', 'warn', 'error'];
     const configLevel = levels.indexOf(this.config.logLevel);
     const messageLevel = levels.indexOf(level);
     return messageLevel >= configLevel;

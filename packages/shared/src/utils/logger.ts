@@ -7,7 +7,7 @@ import { type Json } from '../types/common/Json';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
-interface LogContext extends Record<string, Json | Error | undefined> {
+interface LogContext extends Record<string, Json | Error | object | undefined> {
   error?: Error | string | object;
   userId?: string;
   eventType?: string;

@@ -8,7 +8,7 @@
  * Different from user quota management - this tracks actual API calls per minute
  */
 
-import { logger } from '@/lib/monitoring/error-handling'
+import { logger } from '../monitoring/error-handling'
 
 interface RateLimitWindow {
   apiKey: string

@@ -27,7 +27,8 @@
     "@indexnow/shared": "workspace:*",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.45.0",
-    "crypto-js": "^4.2.0"
+    "crypto-js": "^4.2.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",

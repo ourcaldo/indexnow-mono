@@ -5,13 +5,8 @@
  */
 
 export async function register() {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { initializeServerSentry } = await import('./lib/analytics/sentry-server');
-    initializeServerSentry();
-  }
-
-  if (process.env.NEXT_RUNTIME === 'edge') {
-    const { initializeServerSentry } = await import('./lib/analytics/sentry-server');
+  if (process.env.NEXT_RUNTIME === 'nodejs' || process.env.NEXT_RUNTIME === 'edge') {
+    const { initializeServerSentry } = await import('@indexnow/shared');
     initializeServerSentry();
   }
 }

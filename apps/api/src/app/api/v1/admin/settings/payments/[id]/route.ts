@@ -1,9 +1,7 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { supabaseAdmin } from '@/lib/database'
-
 export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => {
   // Extract ID from URL path
   const id = request.url.split('/').filter(Boolean).pop() || ''

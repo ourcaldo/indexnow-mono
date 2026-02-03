@@ -1,10 +1,10 @@
-import { SecureServiceRoleWrapper, supabase, supabaseAdmin, type Database } from '@indexnow/database';
 /**
  * Keyword Bank Service
  * Database operations and intelligent caching for SeRanking keyword intelligence data
  */
 
-import { logger } from '@/lib/monitoring/error-handling';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { type Database, logger } from '@indexnow/shared';
 import {
   KeywordBankEntity,
   KeywordBankInsert,
@@ -13,13 +13,12 @@ import {
   KeywordBankQueryResult,
   KeywordBankOperationResult,
   KeywordBankBatchResult,
-  KeywordLookupParams,
   CacheStatus,
-  KeywordBankCacheStats,
-  SeRankingKeywordData,
-  IKeywordBankService,
+  CacheStats,
   BulkKeywordBankOperationResult
 } from '@indexnow/shared';
+import { SeRankingKeywordData } from '../types/SeRankingTypes';
+import { IKeywordBankService } from '../types/ServiceTypes';
 
 // Type aliases for convenience
 type KeywordBankRow = Database['public']['Tables']['indb_keyword_bank']['Row'];
@@ -59,7 +58,9 @@ export class KeywordBankService implements IKeywordBankService {
             .single();
 
           if (error) {
-            logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching keyword data');
+            if (error.code !== 'PGRST116') {
+              logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching keyword data');
+            }
             return null;
           }
 
@@ -247,7 +248,7 @@ export class KeywordBankService implements IKeywordBankService {
         }
       );
 
-      return result;
+      return result as KeywordBankOperationResult;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in storeKeywordData');
@@ -574,15 +575,13 @@ export class KeywordBankService implements IKeywordBankService {
     }
   }
 
-  // Removed duplicate deleteKeywordData method - interface version below is the correct one
-
   /**
    * Get cache statistics
    */
   async getCacheStats(
     countryCode?: string,
     languageCode?: string
-  ): Promise<KeywordBankCacheStats> {
+  ): Promise<CacheStats> {
     try {
       let query = supabaseAdmin
         .from('indb_keyword_bank')
@@ -631,9 +630,9 @@ export class KeywordBankService implements IKeywordBankService {
         cache_hits: dataFound,
         cache_misses: total - dataFound,
         hit_ratio: total > 0 ? dataFound / total : 0,
-        average_age: 0, // Could be calculated from creation dates
+        average_age: 0, // Could be enhanced
         expired_entries: stale,
-        memory_usage: 0, // Not applicable for database cache
+        memory_usage: 0,
         total_keywords: total,
         keywords_with_data: dataFound,
         keywords_without_data: total - dataFound,
@@ -750,7 +749,7 @@ export class KeywordBankService implements IKeywordBankService {
   }
 
   /**
-   * Map database row to entity
+   * Convert database record to entity
    */
   private mapRowToEntity(row: KeywordBankRow): KeywordBankEntity {
     return {
@@ -966,15 +965,11 @@ export class KeywordBankService implements IKeywordBankService {
   }> {
     try {
       const cacheStats = await this.getCacheStats();
-      
-      // Calculate average age (simplified)
-      const averageAge = 0; // Could be enhanced to calculate actual average age
-      
       return {
         total_keywords: cacheStats.total_keywords,
         with_data: cacheStats.keywords_with_data,
         without_data: cacheStats.keywords_without_data,
-        average_age_days: averageAge
+        average_age_days: 0
       };
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getBankStats');
@@ -1034,34 +1029,26 @@ export class KeywordBankService implements IKeywordBankService {
    * Extract keyword intent from API data (basic implementation)
    */
   private extractKeywordIntent(apiData: SeRankingKeywordData): string | null {
-    // Basic keyword intent classification based on patterns
-    // This could be enhanced with ML or more sophisticated rules
-    
     if (!apiData.is_data_found || !apiData.keyword) return null;
     
     const keyword = apiData.keyword.toLowerCase();
     
-    // Commercial intent keywords
     if (/\b(buy|purchase|order|shop|store|price|cost|cheap|deal|discount|sale)\b/.test(keyword)) {
       return 'commercial';
     }
     
-    // Informational intent keywords  
     if (/\b(how|what|why|when|where|guide|tutorial|learn|tips|help|advice)\b/.test(keyword)) {
       return 'informational';
     }
     
-    // Navigational intent keywords
     if (/\b(login|sign in|account|website|official|homepage)\b/.test(keyword)) {
       return 'navigational';
     }
     
-    // Transactional intent keywords
     if (/\b(download|subscribe|register|signup|trial|demo|quote|contact)\b/.test(keyword)) {
       return 'transactional';
     }
     
-    // Default to informational for longer queries, commercial for shorter ones
     const wordCount = keyword.split(/\s+/).length;
     return wordCount >= 3 ? 'informational' : 'commercial';
   }

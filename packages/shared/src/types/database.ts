@@ -142,6 +142,8 @@ export type Database = {
                     is_suspended: boolean
                     is_trial_active: boolean
                     trial_ends_at: string | null
+                    suspension_reason: string | null
+                    suspended_at: string | null
                     last_login_at: string | null
                     last_login_ip: string | null
                     created_at: string
@@ -166,6 +168,8 @@ export type Database = {
                     is_suspended?: boolean
                     is_trial_active?: boolean
                     trial_ends_at?: string | null
+                    suspension_reason?: string | null
+                    suspended_at?: string | null
                     last_login_at?: string | null
                     last_login_ip?: string | null
                     created_at?: string
@@ -186,6 +190,14 @@ export type Database = {
                     daily_quota_limit?: number
                     daily_quota_used?: number
                     quota_reset_date?: string | null
+                    is_active?: boolean
+                    is_suspended?: boolean
+                    is_trial_active?: boolean
+                    trial_ends_at?: string | null
+                    suspension_reason?: string | null
+                    suspended_at?: string | null
+                    last_login_at?: string | null
+                    last_login_ip?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -474,6 +486,61 @@ export type Database = {
             }
 
 
+            indb_rank_keywords: {
+                Row: {
+                    id: string
+                    user_id: string
+                    keyword: string
+                    domain: string | null
+                    device: string | null
+                    country: string | null
+                    search_engine: string | null
+                    target_url: string | null
+                    tags: string[] | null
+                    position: number | null
+                    previous_position: number | null
+                    is_active: boolean
+                    last_checked: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    keyword: string
+                    domain?: string | null
+                    device?: string | null
+                    country?: string | null
+                    search_engine?: string | null
+                    target_url?: string | null
+                    tags?: string[] | null
+                    position?: number | null
+                    previous_position?: number | null
+                    is_active?: boolean
+                    last_checked?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    keyword?: string
+                    domain?: string | null
+                    device?: string | null
+                    country?: string | null
+                    position?: number | null
+                    previous_position?: number | null
+                    last_checked?: string | null
+                    created_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "indb_rank_keywords_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "users"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             indb_notifications_dashboard: {
                 Row: {
                     id: string
@@ -1965,7 +2032,7 @@ export type Database = {
                     url: string | null
                     search_volume: number | null
                     difficulty_score: number | null
-                    check_date: string
+                    checked_at: string
                     created_at: string
                     updated_at: string
                     device_type: string | null
@@ -1980,7 +2047,7 @@ export type Database = {
                     url?: string | null
                     search_volume?: number | null
                     difficulty_score?: number | null
-                    check_date: string
+                    checked_at: string
                     created_at?: string
                     updated_at?: string
                     device_type?: string | null
@@ -1995,7 +2062,7 @@ export type Database = {
                     url?: string | null
                     search_volume?: number | null
                     difficulty_score?: number | null
-                    check_date?: string
+                    checked_at?: string
                     created_at?: string
                     updated_at?: string
                     device_type?: string | null
@@ -2210,11 +2277,13 @@ export type KeywordDomain = Database['public']['Tables']['indb_keyword_domains']
 export type KeywordKeyword = Database['public']['Tables']['indb_keyword_keywords']['Row']
 export type KeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Row']
 export type KeywordUsage = Database['public']['Tables']['indb_keyword_usage']['Row']
+export type RankKeywordRow = Database['public']['Tables']['indb_rank_keywords']['Row']
 export type SiteIntegration = Database['public']['Tables']['indb_site_integration']['Row']
 export type SeRankingIntegration = Database['public']['Tables']['indb_site_integration']['Row']
 export type SeRankingUsageLog = Database['public']['Tables']['indb_seranking_usage_logs']['Row']
 export type SecurityAuditLog = Database['public']['Tables']['indb_security_audit_logs']['Row']
 export type SecurityActivityLog = Database['public']['Tables']['indb_security_activity_logs']['Row']
+export type SystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Row']
 
 export type PackageRow = Database['public']['Tables']['indb_payment_packages']['Row']
 export type SubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row']

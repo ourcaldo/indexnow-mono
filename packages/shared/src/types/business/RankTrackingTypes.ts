@@ -59,8 +59,6 @@ export interface SerchResult {
   isTargetDomain: boolean;
 }
 
-import { type Json } from '../common/Json';
-
 // ...
 
 export interface SearchFeature {

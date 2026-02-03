@@ -1,8 +1,7 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, SecurityActivityLog } from '@indexnow/database';
+import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, SecurityActivityLog, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { supabaseAdmin } from '@/lib/database'
 import { logger, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 
 interface ActivityLogsResult {

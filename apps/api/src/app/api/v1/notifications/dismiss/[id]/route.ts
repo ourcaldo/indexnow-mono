@@ -1,6 +1,5 @@
-import { SecureServiceRoleWrapper, UpdateDashboardNotification } from '@indexnow/database';
+import { SecureServiceRoleWrapper, UpdateDashboardNotification, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { supabaseAdmin } from '@/lib/database'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'

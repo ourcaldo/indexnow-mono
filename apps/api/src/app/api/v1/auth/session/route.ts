@@ -1,67 +1,99 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { createServerClient } from '@supabase/ssr'
-import { NextRequest } from 'next/server'
-import { cookies } from 'next/headers'
-import { ActivityLogger } from '@/lib/monitoring'
-import { publicApiWrapper } from '@/lib/core/api-response-middleware'
-import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
-import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { AppConfig } from '@indexnow/shared';
+import { 
+  publicApiWrapper, 
+  formatSuccess, 
+  formatError 
+} from '../../../../../lib/core/api-response-middleware';
+import { 
+  ErrorHandlingService, 
+  ErrorType, 
+  ErrorSeverity 
+} from '../../../../../lib/monitoring/error-handling';
+import { ActivityLogger, ActivityEventTypes } from '../../../../../lib/monitoring/activity-logger';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { loginNotificationService } from '../../../../../lib/email/login-notification-service';
+import { getRequestInfo } from '../../../../../lib/utils/ip-device-utils';
 
-// GET /api/v1/auth/session - Check if user has active session (public - no auth required)
+/**
+ * GET /api/v1/auth/session
+ * Check if user has an active session via cookies
+ */
 export const GET = publicApiWrapper(async (request: NextRequest) => {
-  const sessionData = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: 'system',
-      operation: 'get_user_session',
-      source: 'auth/session', 
-      reason: 'System checking user session status',
-      metadata: {
-        endpoint: '/api/v1/auth/session',
-        method: 'GET'
-      },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
-      userAgent: request.headers.get('user-agent') || undefined || undefined
-    },
-    { table: 'auth.sessions', operationType: 'select' },
-    async () => {
-      const cookieStore = await cookies()
-      
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll()
-            },
-            setAll(cookiesToSet: Array<{ name: string; value: string; options: { path?: string; domain?: string; maxAge?: number; httpOnly?: boolean; secure?: boolean; sameSite?: 'strict' | 'lax' | 'none'; } }>) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options)
-              })
-            },
-          },
-        }
-      )
+  const endpoint = '/api/v1/auth/session';
+  const method = 'GET';
 
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      return {
-        hasSession: !!session,
-        user: session?.user ? {
-          id: session.user.id,
-          email: session.user.email
-        } : null
-      }
-    }
-  )
-  
-  return formatSuccess(sessionData)
-})
-
-// POST /api/v1/auth/session - Create/restore session from tokens (public - creates auth)
-export const POST = publicApiWrapper(async (request: NextRequest) => {
   try {
-    const { access_token, refresh_token } = await request.json()
+    const sessionData = await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: 'system',
+        operation: 'get_user_session',
+        reason: 'Checking user session status',
+        source: 'auth/session',
+        metadata: { endpoint, method },
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+      },
+      { table: 'auth.sessions', operationType: 'select' },
+      async () => {
+        const cookieStore = await cookies();
+        
+        const supabase = createServerClient(
+          AppConfig.supabase.url,
+          AppConfig.supabase.anonKey,
+          {
+            cookies: {
+              getAll() { return cookieStore.getAll(); },
+              setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value, options }) => {
+                  cookieStore.set(name, value, options);
+                });
+              },
+            },
+          }
+        );
+
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        return {
+          hasSession: !!session,
+          user: session?.user ? {
+            id: session.user.id,
+            email: session.user.email,
+            role: session.user.role
+          } : null
+        };
+      }
+    );
+    
+    return formatSuccess(sessionData);
+  } catch (error) {
+    const structuredError = await ErrorHandlingService.createError(
+      ErrorType.SYSTEM,
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        severity: ErrorSeverity.MEDIUM,
+        endpoint,
+        method,
+        statusCode: 500,
+        userMessageKey: 'default'
+      }
+    );
+    return formatError(structuredError);
+  }
+});
+
+/**
+ * POST /api/v1/auth/session
+ * Set or refresh session using access and refresh tokens
+ */
+export const POST = publicApiWrapper(async (request: NextRequest) => {
+  const endpoint = '/api/v1/auth/session';
+  const method = 'POST';
+
+  try {
+    const { access_token, refresh_token } = await request.json();
     
     if (!access_token || !refresh_token) {
       const error = await ErrorHandlingService.createError(
@@ -69,230 +101,158 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         'Missing required tokens',
         {
           severity: ErrorSeverity.MEDIUM,
+          endpoint,
+          method,
           statusCode: 400,
           userMessageKey: 'missing_required'
         }
-      )
-      return formatError(error)
+      );
+      return formatError(error);
     }
 
-    const cookieStore = await cookies()
-    
-    // Get base domain for cross-subdomain cookies
-    const getBaseDomain = (): string => {
-      try {
-        return new URL(process.env.NEXT_PUBLIC_BASE_URL!).hostname
-      } catch (e) {
-        return ''
-      }
-    }
-    
-    const baseDomain = getBaseDomain()
+    const cookieStore = await cookies();
     
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      AppConfig.supabase.url,
+      AppConfig.supabase.anonKey,
       {
         cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet: Array<{ name: string; value: string; options: { path?: string; domain?: string; maxAge?: number; httpOnly?: boolean; secure?: boolean; sameSite?: 'strict' | 'lax' | 'none'; } }>) {
+          getAll() { return cookieStore.getAll(); },
+          setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              // Add cross-subdomain support to Supabase cookies
-              const cookieOptions = {
-                ...options,
-                ...(baseDomain && { domain: `.${baseDomain}` })
-              }
-              cookieStore.set(name, value, cookieOptions)
-            })
+              cookieStore.set(name, value, options);
+            });
           },
         },
       }
-    )
+    );
 
-    // Set session using secure wrapper (system operation - no existing session required)
     const sessionResult = await SecureServiceRoleWrapper.executeSecureOperation(
       {
         userId: 'system',
         operation: 'set_user_session',
-        reason: 'System restoring user session from stored tokens',
+        reason: 'Restoring user session from tokens',
         source: 'auth/session',
-        metadata: {
-          endpoint: '/api/v1/auth/session',
-          hasTokens: !!(access_token && refresh_token)
-        },
-        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
-        userAgent: request.headers.get('user-agent') || undefined || 'unknown'
+        metadata: { endpoint, method },
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
       },
       { table: 'auth.sessions', operationType: 'insert' },
       async () => {
         const { data, error } = await supabase.auth.setSession({
           access_token,
           refresh_token
-        })
-        return { data, error }
+        });
+        return { data, error };
       }
-    )
+    );
 
-    const { data, error } = sessionResult
+    const { data, error: sessionError } = sessionResult;
 
-    if (error) {
-      const structuredError = await ErrorHandlingService.createError(
+    if (sessionError) {
+      const error = await ErrorHandlingService.createError(
         ErrorType.AUTHENTICATION,
-        `Failed to set session: ${error.message}`,
+        `Failed to set session: ${sessionError.message}`,
         {
           severity: ErrorSeverity.MEDIUM,
-          statusCode: 400,
+          endpoint,
+          method,
+          statusCode: 401,
           userMessageKey: 'default'
         }
-      )
-      return formatError(structuredError)
+      );
+      return formatError(error);
     }
 
-    // Log session activity if user is available
-    if (data.session?.user?.id) {
-      try {
-        await ActivityLogger.logUserDashboardActivity(
-          data.session.user.id,
-          'Session established',
-          'User session restored from stored tokens',
-          request
-        )
+    if (data.session?.user) {
+      const user = data.session.user;
+      
+      // Log session established activity
+      await ActivityLogger.logActivity({
+        userId: user.id,
+        eventType: 'session_established',
+        actionDescription: 'User session established from tokens',
+        request,
+        success: true
+      });
 
-        // Send login notification email for session restoration (fire-and-forget)
-        process.nextTick(async () => {
-          try {
-            const { LoginNotificationService } = await import('@/lib/email/login-notification-service')
-            const { getRequestInfo } = await import('@/lib/utils/ip-device-utils')
-            
-            // Extract request information for notification
-            const requestInfo = await getRequestInfo(request)
-            
-            // Send notification asynchronously with timeout protection
-            Promise.race([
-              LoginNotificationService.getInstance().sendLoginNotification({
-                userId: data.session!.user.id,
-                userEmail: data.session!.user.email || '',
-                userName: data.session!.user.user_metadata?.full_name || data.session!.user.email?.split('@')[0] || 'User',
-                ipAddress: requestInfo.ipAddress || 'Unknown',
-                userAgent: requestInfo.userAgent || 'Unknown',
-                deviceInfo: requestInfo.deviceInfo || undefined,
-                locationData: requestInfo.locationData || undefined,
-                loginTime: new Date().toISOString()
-              }),
-              // Timeout after 30 seconds
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Email sending timeout')), 30000))
-            ]).catch(() => {
-              // Silent fail for notification errors
-            })
-            
-          } catch (importError) {
-            // Silent fail for import errors
-          }
-        })
-
-      } catch (logError) {
-        // Continue even if activity logging fails
-      }
+      // Send login notification (async)
+      getRequestInfo(request).then(info => {
+        loginNotificationService.sendLoginNotification({
+          userId: user.id,
+          userEmail: user.email!,
+          userName: user.user_metadata?.full_name || user.email!.split('@')[0],
+          ipAddress: info.ipAddress || 'Unknown',
+          userAgent: info.userAgent || 'Unknown',
+          deviceInfo: info.deviceInfo,
+          locationData: info.locationData,
+          loginTime: new Date().toISOString()
+        }).catch(() => {});
+      });
     }
 
-    return formatSuccess({ success: true })
+    return formatSuccess({ success: true });
 
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
-      error as Error,
+      error instanceof Error ? error : new Error(String(error)),
       {
         severity: ErrorSeverity.HIGH,
+        endpoint,
+        method,
         statusCode: 500,
         userMessageKey: 'default'
       }
-    )
-    return formatError(structuredError)
+    );
+    return formatError(structuredError);
   }
-})
+});
 
-// DELETE /api/v1/auth/session - Delete session/logout (public - destroys auth)
+/**
+ * DELETE /api/v1/auth/session
+ * Logout and clear session cookies
+ */
 export const DELETE = publicApiWrapper(async (request: NextRequest) => {
-  const cookieStore = await cookies()
-  
-  // Get base domain for cross-subdomain cookie clearing
-  const getBaseDomain = (): string => {
-    // Extract base domain from environment URLs
-    const envUrls = [
-      process.env.NEXT_PUBLIC_DASHBOARD_URL,
-      process.env.NEXT_PUBLIC_BACKEND_URL, 
-      process.env.NEXT_PUBLIC_API_BASE_URL,
-      process.env.NEXT_PUBLIC_BASE_URL
-    ].filter(Boolean) as string[]
+  const endpoint = '/api/v1/auth/session';
+  const method = 'DELETE';
+
+  try {
+    const cookieStore = await cookies();
     
-    for (const url of envUrls) {
-      try {
-        const urlHostname = new URL(url).hostname
-        const parts = urlHostname.split('.')
-        if (parts.length >= 2) {
-          return parts.slice(-2).join('.') // Get last two parts (domain.com)
-        }
-      } catch (e) {}
-    }
-    
-    return ''
-  }
-  
-  const baseDomain = getBaseDomain()
-  
-  // Create Supabase client for logout
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
+    const supabase = createServerClient(
+      AppConfig.supabase.url,
+      AppConfig.supabase.anonKey,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, { ...options, maxAge: 0 });
+            });
+          },
         },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: { path?: string; domain?: string; maxAge?: number; httpOnly?: boolean; secure?: boolean; sameSite?: 'strict' | 'lax' | 'none'; } }>) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            // Add cross-subdomain support for cookie clearing
-            const cookieOptions = {
-              ...options,
-              maxAge: 0, // Clear the cookie
-              ...(baseDomain && { domain: `.${baseDomain}` })
-            }
-            cookieStore.set(name, value, cookieOptions)
-          })
-        },
-      },
-    }
-  )
+      }
+    );
 
-  // Sign out from Supabase using secure wrapper (system operation)
-  const signoutResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: 'system',
-      operation: 'delete_user_session',
-      reason: 'System deleting user session via logout',
-      source: 'auth/session',
-      metadata: {
-        endpoint: '/api/v1/auth/session'
+    await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: 'system',
+        operation: 'delete_user_session',
+        reason: 'User logging out',
+        source: 'auth/session',
+        metadata: { endpoint, method },
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
-      userAgent: request.headers.get('user-agent') || undefined || 'unknown'
-    },
-    { table: 'auth.sessions', operationType: 'delete' },
-    async () => {
-      const { error } = await supabase.auth.signOut()
-      return { error }
-    }
-  )
+      { table: 'auth.sessions', operationType: 'delete' },
+      async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      }
+    );
 
-  const { error } = signoutResult
-  
-  if (error) {
-    // Log error but still return success (logout should always succeed)
+    return formatSuccess({ success: true });
+  } catch (error) {
+    // Return success anyway for logout
+    return formatSuccess({ success: true });
   }
-
-  return formatSuccess({ success: true })
-})
-
-
+});

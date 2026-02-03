@@ -1,105 +1,173 @@
+import { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { registerSchema, AppConfig } from '@indexnow/shared';
+import { 
+  publicApiWrapper, 
+  formatSuccess, 
+  formatError 
+} from '../../../../../lib/core/api-response-middleware';
+import { 
+  ErrorHandlingService, 
+  ErrorType, 
+  ErrorSeverity 
+} from '../../../../../lib/monitoring/error-handling';
+import { ActivityLogger, ActivityEventTypes } from '../../../../../lib/monitoring/activity-logger';
 import { SecureServiceRoleHelpers } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/database'
-import { registerSchema } from '@indexnow/shared'
-import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware'
-import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
-import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring'
 
+/**
+ * POST /api/v1/auth/register
+ * Handles user registration via Supabase and initializes user profile
+ */
 export const POST = publicApiWrapper(async (request: NextRequest) => {
-  try {
-    const body = await request.json()
-    const validation = registerSchema.safeParse(body)
+  const endpoint = '/api/v1/auth/register';
+  const method = 'POST';
 
-    if (!validation.success) {
-      const validationError = await ErrorHandlingService.createError(
+  try {
+    // 1. Validate request body
+    const body = await request.json();
+    const validationResult = registerSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
-        validation.error.issues[0].message,
-        { severity: ErrorSeverity.LOW, statusCode: 400 }
-      )
-      return formatError(validationError)
+        'Invalid registration data format',
+        {
+          severity: ErrorSeverity.LOW,
+          endpoint,
+          method,
+          statusCode: 400,
+          userMessageKey: 'invalid_format',
+          metadata: { errors: validationResult.error.errors }
+        }
+      );
+      return formatError(error);
     }
 
-    const { name, email, password, phoneNumber, country } = validation.data
+    const { name, email, password, phoneNumber, country } = validationResult.data;
 
-    const { data, error } = await supabase.auth.signUp({
+    // 2. Initialize Supabase client
+    const supabase = createServerClient(
+      AppConfig.supabase.url,
+      AppConfig.supabase.anonKey,
+      {
+        cookies: {
+          getAll() { return []; },
+          setAll() {},
+        },
+      }
+    );
+
+    // 3. Attempt registration with Supabase
+    const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone_number: phoneNumber, country } }
-    })
+      options: { 
+        data: { 
+          full_name: name, 
+          phone_number: phoneNumber, 
+          country 
+        } 
+      }
+    });
 
-    if (error) {
-      const authError = await ErrorHandlingService.createError(
+    if (authError) {
+      // Log failed registration attempt
+      await ActivityLogger.logAuth(
+        email,
+        ActivityEventTypes.REGISTER,
+        false,
+        request,
+        authError.message
+      );
+
+      const error = await ErrorHandlingService.createError(
         ErrorType.AUTHENTICATION,
-        `Registration failed for ${email}: ${error.message}`,
-        { severity: ErrorSeverity.MEDIUM, statusCode: 400, metadata: { email, errorCode: error.code || 'unknown', operation: 'user_registration' } }
-      )
-
-      try {
-        await ActivityLogger.logAuth(email, ActivityEventTypes.REGISTER, false, request, error.message)
-      } catch (logError) {}
-
-      return formatError(authError)
+        `Registration failed: ${authError.message}`,
+        {
+          severity: ErrorSeverity.MEDIUM,
+          endpoint,
+          method,
+          statusCode: 400,
+          userMessageKey: 'default',
+          metadata: { email, errorCode: authError.code }
+        }
+      );
+      return formatError(error);
     }
 
-    if (data.user?.id) {
+    if (!data.user) {
+      throw new Error('User creation failed in Supabase');
+    }
+
+    const userId = data.user.id;
+
+    // 4. Update user profile with additional details (async/parallel)
+    // We use a small delay to ensure the database trigger has created the initial profile
+    setTimeout(async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 3000))
-        
         const operationContext = {
-          userId: data.user.id,
+          userId: userId,
           operation: 'registration_profile_update',
           reason: 'Complete user profile after successful registration',
           source: 'auth/register',
           metadata: { hasPhoneNumber: !!phoneNumber, hasCountry: !!country, hasName: !!name },
-          ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip') || 'unknown',
-          userAgent: request.headers.get('user-agent') || undefined || 'unknown'
-        }
+          ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+        };
         
-        const existingProfiles = await SecureServiceRoleHelpers.secureSelect(
+        // Sanitize and format data
+        const updateData = {
+          phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
+          country: country?.toString().substring(0, 100) || null,
+          full_name: name?.toString().substring(0, 255) || null
+        };
+        
+        await SecureServiceRoleHelpers.secureUpdate(
           operationContext,
           'indb_auth_user_profiles',
-          ['id', 'phone_number', 'country', 'full_name'],
-          { user_id: data.user.id }
-        )
+          updateData,
+          { user_id: userId }
+        );
+      } catch (profileError) {
+        console.error('Failed to update user profile during registration:', profileError);
+      }
+    }, 2000);
 
-        if (existingProfiles.length > 0) {
-          const updateData = {
-            phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
-            country: country?.toString().substring(0, 100) || null,
-            full_name: name?.toString().substring(0, 255) || null
-          }
-          
-          await SecureServiceRoleHelpers.secureUpdate(
-            operationContext,
-            'indb_auth_user_profiles',
-            updateData,
-            { user_id: data.user.id }
-          )
-        }
-      } catch (profileError) {}
-    }
+    // 5. Log successful registration activity
+    await ActivityLogger.logAuth(
+      userId,
+      ActivityEventTypes.REGISTER,
+      true,
+      request
+    );
 
-    if (data.user?.id) {
-      try {
-        await ActivityLogger.logAuth(data.user.id, ActivityEventTypes.REGISTER, true, request)
-      } catch (logError) {}
-    }
-
+    // 6. Return success response
     return formatSuccess({
-      user: data.user,
-      session: data.session,
+      user: {
+        id: userId,
+        email: data.user.email,
+        role: data.user.role
+      },
+      session: data.session ? {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at
+      } : null,
       message: 'Registration successful. Please check your email to verify your account.'
-    }, undefined, 201)
+    }, undefined, 201);
 
   } catch (error) {
-    const systemError = await ErrorHandlingService.createError(
+    const structuredError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
-      error as Error,
-      { severity: ErrorSeverity.CRITICAL, statusCode: 500, metadata: { operation: 'user_registration' } }
-    )
-    return formatError(systemError)
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        severity: ErrorSeverity.CRITICAL,
+        endpoint,
+        method,
+        statusCode: 500,
+        userMessageKey: 'default',
+        metadata: { operation: 'user_registration' }
+      }
+    );
+    return formatError(structuredError);
   }
-})
-
-
+});

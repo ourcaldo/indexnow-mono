@@ -1,8 +1,8 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { Job } from 'bullmq'
 import { queueManager } from '../QueueManager'
 import { AutoCancelJob, AutoCancelJobSchema } from '../types'
-import { supabaseAdmin } from '@/lib/database'
+import { supabaseAdmin } from '@indexnow/database'
+import { SecureServiceRoleWrapper } from '@indexnow/database'
 import { emailService } from '@/lib/email/emailService'
 import { logger } from '@/lib/monitoring/error-handling'
 

@@ -1,28 +1,75 @@
+import 'server-only'
 import { createServerClient as createSupabaseServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js'
 import { Database, AppConfig } from '@indexnow/shared'
 
-interface CookieStore {
+/**
+ * CookieStore interface for SSR
+ */
+export interface CookieStore {
     getAll: () => { name: string; value: string }[]
     set: (name: string, value: string, options?: CookieOptions) => void
 }
 
 /**
- * Creates a Supabase client for use in Server Components and Server Actions
- * Uses cookies for auth state
+ * Generic request type that works with Next.js and other frameworks
+ */
+export interface MiddlewareRequest {
+    cookies: {
+        getAll: () => { name: string; value: string }[]
+        set: (name: string, value: string) => void
+    }
+    headers: Headers
+}
+
+/**
+ * Generic response type that works with Next.js and other frameworks
+ */
+export interface MiddlewareResponse {
+    cookies: {
+        set: (name: string, value: string, options?: CookieOptions) => void
+    }
+}
+
+/**
+ * Factory interface for creating responses in middleware
+ */
+export interface MiddlewareResponseFactory {
+    next: (options?: { request?: { headers: Headers } }) => MiddlewareResponse
+}
+
+/**
+ * Internal interface for cookie options during setAll
+ */
+interface CookieToSet {
+    name: string
+    value: string
+    options?: CookieOptions
+}
+
+/**
+ * Creates a Supabase client for use in Server Components and Server Actions.
+ * Uses cookies for authentication state management.
  * 
  * @param cookieStore - The cookie store from `cookies()` call in Next.js
  */
-export function createClient(cookieStore: CookieStore): SupabaseClient<Database, 'public'> {
+export function createServerClient(cookieStore: CookieStore): ReturnType<typeof createSupabaseServerClient<Database>> {
+    const supabaseUrl = AppConfig.supabase.url
+    const supabaseAnonKey = AppConfig.supabase.anonKey
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase URL or Anon Key in configuration')
+    }
+
     return createSupabaseServerClient<Database>(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {
                     return cookieStore.getAll()
                 },
-                setAll(cookiesToSet) {
+                setAll(cookiesToSet: CookieToSet[]) {
                     try {
                         cookiesToSet.forEach(({ name, value, options }) =>
                             cookieStore.set(name, value, options)
@@ -38,10 +85,12 @@ export function createClient(cookieStore: CookieStore): SupabaseClient<Database,
 }
 
 /**
- * Creates a Supabase admin client with service role key
- * Use this for operations that bypass RLS (admin operations only)
+ * Creates a Supabase admin client with the service role key.
+ * Use this for operations that bypass Row Level Security (admin operations only).
+ * 
+ * @warning Never expose the service role key to the client.
  */
-export function createAdminClient(): SupabaseClient<Database, 'public'> {
+export function createAdminClient(): ReturnType<typeof createSupabaseClient<Database>> {
     const supabaseUrl = AppConfig.supabase.url
     const serviceRoleKey = AppConfig.supabase.serviceRoleKey
 
@@ -49,7 +98,7 @@ export function createAdminClient(): SupabaseClient<Database, 'public'> {
         throw new Error('Missing Supabase URL or Service Role Key in configuration')
     }
 
-    return createSupabaseClient<Database, 'public'>(supabaseUrl, serviceRoleKey, {
+    return createSupabaseClient<Database>(supabaseUrl, serviceRoleKey, {
         auth: {
             autoRefreshToken: false,
             persistSession: false
@@ -61,8 +110,51 @@ export function createAdminClient(): SupabaseClient<Database, 'public'> {
 }
 
 /**
- * Singleton Supabase admin client for server-side operations
+ * Singleton Supabase admin client for server-side operations.
  */
-export const supabaseAdmin: SupabaseClient<Database, 'public'> = createAdminClient()
+export const supabaseAdmin = createAdminClient()
 
-export type { CookieStore }
+/**
+ * Creates a Supabase client for use in middleware
+ * Handles cookie refresh for auth sessions
+ * 
+ * @param request - The middleware request object
+ * @param ResponseFactory - The response factory (e.g. NextResponse)
+ */
+export function createMiddlewareClient<TRequest extends MiddlewareRequest>(
+    request: TRequest,
+    ResponseFactory: MiddlewareResponseFactory
+) {
+    let response = ResponseFactory.next({
+        request: {
+            headers: request.headers,
+        },
+    })
+
+    const supabase = createSupabaseServerClient<Database>(
+        AppConfig.supabase.url,
+        AppConfig.supabase.anonKey,
+        {
+            cookies: {
+                getAll() {
+                    return request.cookies.getAll()
+                },
+                setAll(cookiesToSet: CookieToSet[]) {
+                    cookiesToSet.forEach(({ name, value }) => {
+                        request.cookies.set(name, value)
+                    })
+                    response = ResponseFactory.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        response.cookies.set(name, value, options)
+                    })
+                },
+            },
+        }
+    )
+
+    return { supabase, response }
+}

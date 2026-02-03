@@ -1,27 +1,29 @@
 'use client'
 
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../card'
 import { RadioGroup, RadioGroupItem } from '../radio-group'
 import { Label } from '../label'
 import { PaymentErrorBoundary } from './PaymentErrorBoundary'
 
-interface PaymentMethod {
+export interface PaymentMethod {
   id: string;
   name: string;
   icon?: React.ReactNode;
   disabled?: boolean;
+  is_default?: boolean;
 }
 
-interface PaymentMethodSelectorProps {
+export interface PaymentMethodSelectorProps {
   paymentMethods: PaymentMethod[]
-  selectedMethod: PaymentMethod | null
-  onSelect: (method: PaymentMethod) => void
+  selectedMethodId: string | null
+  onSelect: (methodId: string) => void
   isLoading?: boolean
 }
 
 export function PaymentMethodSelector({
   paymentMethods,
-  selectedMethod,
+  selectedMethodId,
   onSelect,
   isLoading = false
 }: PaymentMethodSelectorProps) {
@@ -36,28 +38,43 @@ export function PaymentMethodSelector({
   }
 
   return (
-    <div className="space-y-3">
-      {paymentMethods.map((method) => (
-        <div
-          key={method.id}
-          className={`relative border rounded-lg p-4 cursor-pointer transition-all ${
-            selectedMethod?.id === method.id
-              ? 'border-accent bg-accent/5'
-              : 'border-border hover:border-accent hover:bg-secondary'
-          } ${method.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={() => !method.disabled && onSelect(method)}
-        >
+    <PaymentErrorBoundary>
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-foreground">
+            Payment Method
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup 
+            value={selectedMethodId || ''} 
+            onValueChange={onSelect}
+            className="grid gap-4"
+          >
+            {paymentMethods.map((method) => (
+              <div
+                key={method.id}
+                className={`flex items-center space-x-4 border rounded-lg p-4 transition-all ${
+                  selectedMethodId === method.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                } ${method.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                onClick={() => !method.disabled && onSelect(method.id)}
+              >
                 <RadioGroupItem 
-                  value={gateway.id} 
-                  id={gateway.id}
-                  className={selectedMethod === gateway.id ? 'border-primary text-primary' : 'border-border text-foreground'}
+                  value={method.id} 
+                  id={method.id}
+                  disabled={method.disabled}
                 />
                 <div className="flex-1">
-                  <Label htmlFor={gateway.id} className="flex items-center justify-between cursor-pointer">
+                  <Label 
+                    htmlFor={method.id} 
+                    className="flex items-center justify-between cursor-pointer"
+                  >
                     <div className="flex items-center">
-                      <div className="font-medium text-foreground">{gateway.name}</div>
+                      <div className="font-medium text-foreground">{method.name}</div>
                     </div>
-                    {gateway.is_default && (
+                    {method.is_default && (
                       <span className="text-xs bg-warning text-white px-2 py-1 rounded-full font-medium">
                         Recommended
                       </span>
@@ -65,9 +82,8 @@ export function PaymentMethodSelector({
                   </Label>
                 </div>
               </div>
-            </div>
-          ))}
-        </RadioGroup>
+            ))}
+          </RadioGroup>
         </CardContent>
       </Card>
     </PaymentErrorBoundary>

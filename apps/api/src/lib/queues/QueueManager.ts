@@ -1,6 +1,5 @@
 import type { Queue, Worker, QueueEvents, Job } from 'bullmq'
-import { logger } from '@/lib/monitoring/error-handling'
-import { type Json } from '@indexnow/shared'
+import { logger } from '../monitoring/error-handling'
 
 export class QueueManager {
   private static instance: QueueManager
@@ -57,7 +56,7 @@ export class QueueManager {
 
   async registerWorker(
     queueName: string,
-    processor: (job: Job) => Promise<Json>,
+    processor: (job: Job) => Promise<any>,
     options: {
       concurrency?: number
       limiter?: { max: number; duration: number }
@@ -104,8 +103,8 @@ export class QueueManager {
   async enqueueJob(
     queueName: string,
     jobName: string,
-    data: Json,
-    options: Record<string, Json> = {}
+    data: any,
+    options: any = {}
   ): Promise<string> {
     const queue = await this.getQueue(queueName)
     const job = await queue.add(jobName, data, options)
@@ -145,8 +144,8 @@ export const queueManager = QueueManager.getInstance()
 export async function enqueueJob(
   queueName: string,
   jobName: string,
-  data: Json,
-  options: Record<string, Json> = {}
+  data: any,
+  options: any = {}
 ): Promise<string> {
   return queueManager.enqueueJob(queueName, jobName, data, options)
 }

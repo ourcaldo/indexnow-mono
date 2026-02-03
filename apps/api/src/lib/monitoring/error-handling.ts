@@ -1,42 +1,23 @@
-import { SecureServiceRoleHelpers, Json } from '@indexnow/database'
-import pino from 'pino'
-import { v4 as uuidv4 } from 'uuid'
-import { supabaseAdmin } from '@/lib/database'
-import { trackServerError } from '@/lib/analytics/sentry-server'
-import { formatError, ErrorType, ErrorSeverity, sanitizePII } from '@indexnow/shared'
-export { ErrorType, ErrorSeverity }
+import pino from 'pino';
+import { v4 as uuidv4 } from 'uuid';
+import { supabaseAdmin, SecureServiceRoleHelpers } from '@indexnow/database';
+import { trackServerError } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type StructuredError } from '@indexnow/shared';
+import { formatError } from '../core/api-response-formatter';
 
-// Configure Pino logger to avoid worker threads completely
+// Configure Pino logger
 export const logger = pino({
-  level: 'debug', // Always use debug level
+  level: 'debug',
   formatters: {
     level: (label) => {
       return { level: label.toUpperCase() };
     },
   },
   timestamp: pino.stdTimeFunctions.isoTime,
-  // Completely disable pino-pretty transport to avoid worker thread issues
-  // Use basic console output instead of pino-pretty which creates workers
-})
-
-// Structured error interface
-export interface StructuredError {
-  id: string
-  type: ErrorType
-  severity: ErrorSeverity
-  message: string
-  userMessage: string
-  userId?: string
-  endpoint?: string
-  method?: string
-  statusCode: number
-  metadata?: Record<string, Json>
-  stack?: string
-  timestamp: Date
-}
+});
 
 // User-friendly error messages mapping
-const USER_ERROR_MESSAGES: Record<string, Record<string, string>> = {
+const USER_ERROR_MESSAGES: Record<ErrorType, Record<string, string>> = {
   [ErrorType.AUTHENTICATION]: {
     default: 'Authentication failed. Please log in again.',
     invalid_credentials: 'Invalid email or password.',
@@ -87,14 +68,17 @@ const USER_ERROR_MESSAGES: Record<string, Record<string, string>> = {
     default: 'Unable to process your request.',
     invalid_operation: 'This operation is not allowed.',
     resource_conflict: 'A conflict occurred with existing data.'
+  },
+  [ErrorType.NOT_FOUND]: {
+    default: 'The requested resource was not found.'
+  },
+  [ErrorType.INTERNAL]: {
+    default: 'An internal error occurred. Please try again later.'
+  },
+  [ErrorType.PAYMENT]: {
+    default: 'A payment processing error occurred. Please try again.'
   }
-}
-
-// Service Account specific error messages
-
-
-// Job management specific error messages
-
+};
 
 /**
  * Enhanced error handling service
@@ -107,25 +91,25 @@ export class ErrorHandlingService {
     type: ErrorType,
     error: Error | string,
     options: {
-      severity?: ErrorSeverity
-      userId?: string
-      endpoint?: string
-      method?: string
-      statusCode?: number
-      metadata?: Record<string, Json>
-      userMessageKey?: string
+      severity?: ErrorSeverity;
+      userId?: string;
+      endpoint?: string;
+      method?: string;
+      statusCode?: number;
+      metadata?: Record<string, any>;
+      userMessageKey?: string;
     } = {}
   ): Promise<StructuredError> {
-    const errorId = uuidv4()
-    const timestamp = new Date()
+    const errorId = uuidv4();
+    const timestamp = new Date();
 
-    const errorMessage = typeof error === 'string' ? error : error.message
-    const stack = typeof error === 'string' ? undefined : error.stack
+    const errorMessage = typeof error === 'string' ? error : error.message;
+    const stack = typeof error === 'string' ? undefined : error.stack;
 
     // Get user-friendly message
     const userMessage = options.userMessageKey
       ? USER_ERROR_MESSAGES[type][options.userMessageKey] || USER_ERROR_MESSAGES[type].default
-      : USER_ERROR_MESSAGES[type].default
+      : USER_ERROR_MESSAGES[type].default;
 
     const structuredError: StructuredError = {
       id: errorId,
@@ -140,10 +124,10 @@ export class ErrorHandlingService {
       metadata: options.metadata,
       stack,
       timestamp
-    }
+    };
 
     // Log the error based on severity
-    const logContext: Record<string, Json | undefined> = {
+    const logContext = {
       errorId,
       type,
       severity: structuredError.severity,
@@ -151,28 +135,28 @@ export class ErrorHandlingService {
       endpoint: options.endpoint,
       method: options.method,
       statusCode: structuredError.statusCode,
-      metadata: sanitizePII(options.metadata) as Record<string, Json> | undefined
-    }
+      metadata: options.metadata
+    };
 
     switch (structuredError.severity) {
       case ErrorSeverity.CRITICAL:
-        logger.fatal(logContext, errorMessage)
-        break
+        logger.fatal(logContext, errorMessage);
+        break;
       case ErrorSeverity.HIGH:
-        logger.error(logContext, errorMessage)
-        break
+        logger.error(logContext, errorMessage);
+        break;
       case ErrorSeverity.MEDIUM:
-        logger.warn(logContext, errorMessage)
-        break
+        logger.warn(logContext, errorMessage);
+        break;
       case ErrorSeverity.LOW:
-        logger.info(logContext, errorMessage)
-        break
+        logger.info(logContext, errorMessage);
+        break;
     }
 
     // Record error in database (async, don't block response)
     this.recordErrorInDatabase(structuredError).catch(dbError => {
-      logger.error({ errorId, dbError: dbError.message }, 'Failed to record error in database')
-    })
+      logger.error({ errorId, dbError: dbError.message }, 'Failed to record error in database');
+    });
 
     // Also send to Sentry for server-side error tracking
     if (typeof window === 'undefined') {
@@ -186,14 +170,13 @@ export class ErrorHandlingService {
           method: options.method,
           statusCode: structuredError.statusCode,
           metadata: options.metadata,
-        })
+        });
       } catch (sentryError) {
         // Silent fail - analytics should never break the app
       }
     }
 
-
-    return structuredError
+    return structuredError;
   }
 
   /**
@@ -213,7 +196,7 @@ export class ErrorHandlingService {
           endpoint: error.endpoint,
           statusCode: error.statusCode
         }
-      }
+      };
 
       await SecureServiceRoleHelpers.secureInsert(
         operationContext,
@@ -228,57 +211,25 @@ export class ErrorHandlingService {
           endpoint: error.endpoint || null,
           http_method: error.method || null,
           status_code: error.statusCode,
-          metadata: sanitizePII(error.metadata) as Json || null,
+          metadata: error.metadata || null,
           stack_trace: error.stack || null,
           created_at: error.timestamp.toISOString()
         }
-      )
+      );
     } catch (dbError) {
       // Don't throw here to avoid infinite loop
       logger.error({
         originalErrorId: error.id,
         dbError: dbError instanceof Error ? dbError.message : 'Unknown database error'
-      }, 'Failed to record error in database')
-    }
-  }
-
-  /**
-   * Static helper to handle errors consistently
-   */
-  static handle(error: unknown, options: { context?: string; userId?: string; severity?: ErrorSeverity } = {}) {
-    const message = error instanceof Error ? error.message : String(error);
-    const context = options.context || 'Unknown';
-    
-    const logContext: Record<string, Json | undefined> = {
-      context,
-      userId: options.userId,
-      severity: options.severity || ErrorSeverity.HIGH
-    };
-
-    if (error instanceof Error && error.stack) {
-      logContext.stack = error.stack;
-    }
-
-    logger.error(logContext, `[${context}] ${message}`);
-
-    // Optionally record in DB if severity is high enough
-    if (options.severity === ErrorSeverity.HIGH || options.severity === ErrorSeverity.CRITICAL) {
-      this.createError(ErrorType.SYSTEM, error instanceof Error ? error : message, {
-        severity: options.severity,
-        userId: options.userId,
-        metadata: { context }
-      }).catch(() => {
-        // Ignore DB recording errors to avoid recursion
-      });
+      }, 'Failed to record error in database');
     }
   }
 
   /**
    * Create a standardized API error response
-   * Uses the new standard format with success: false
    */
   static createErrorResponse(structuredError: StructuredError, requestId?: string) {
-    return formatError(structuredError, requestId)
+    return formatError(structuredError, requestId);
   }
 
   /**
@@ -287,24 +238,24 @@ export class ErrorHandlingService {
   static async withErrorHandling<T>(
     fn: () => Promise<T>,
     errorContext: {
-      type: ErrorType
-      severity?: ErrorSeverity
-      userId?: string
-      endpoint?: string
-      method?: string
-      userMessageKey?: string
+      type: ErrorType;
+      severity?: ErrorSeverity;
+      userId?: string;
+      endpoint?: string;
+      method?: string;
+      userMessageKey?: string;
     }
   ): Promise<{ success: true; data: T } | { success: false; error: StructuredError }> {
     try {
-      const data = await fn()
-      return { success: true, data }
+      const data = await fn();
+      return { success: true, data };
     } catch (error) {
       const structuredError = await this.createError(
         errorContext.type,
         error as Error,
         errorContext
-      )
-      return { success: false, error: structuredError }
+      );
+      return { success: false, error: structuredError };
     }
   }
 }
@@ -328,15 +279,13 @@ export const HTTP_STATUS = {
 
 /**
  * Determine if an error is a transient service/network error
- * vs a true authentication failure
  */
-export function isTransientError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
+export function isTransientError(error: any): boolean {
+  if (!error) return false;
 
-  const err = error as Record<string, unknown>
-  const errorMessage = String(err.message || '').toLowerCase()
-  const errorCode = String(err.code || '').toLowerCase()
-  const errorStatus = Number(err.status || err.statusCode || 0)
+  const errorMessage = error.message?.toLowerCase() || '';
+  const errorCode = error.code?.toLowerCase() || '';
+  const errorStatus = error.status || error.statusCode || 0;
 
   // Network and connection errors
   const networkErrors = [
@@ -349,7 +298,7 @@ export function isTransientError(error: unknown): boolean {
     'connection',
     'socket',
     'aborted'
-  ]
+  ];
 
   // Service availability errors
   const serviceErrors = [
@@ -359,36 +308,32 @@ export function isTransientError(error: unknown): boolean {
     'internal server error',
     'bad gateway',
     'gateway timeout'
-  ]
+  ];
 
-  // Check HTTP status codes for server errors (5xx)
   if (errorStatus >= 500 && errorStatus < 600) {
-    return true
+    return true;
   }
 
-  // Check error message for network issues
   for (const pattern of networkErrors) {
     if (errorMessage.includes(pattern)) {
-      return true
+      return true;
     }
   }
 
-  // Check error message for service issues
   for (const pattern of serviceErrors) {
     if (errorMessage.includes(pattern)) {
-      return true
+      return true;
     }
   }
 
-  // Check error codes
-  const transientCodes = ['network_error', 'timeout', 'unavailable', 'server_error']
+  const transientCodes = ['network_error', 'timeout', 'unavailable', 'server_error'];
   for (const code of transientCodes) {
     if (errorCode.includes(code)) {
-      return true
+      return true;
     }
   }
 
-  return false
+  return false;
 }
 
 /**
@@ -442,7 +387,7 @@ export const CommonErrors = {
   ),
 
   NOT_FOUND: (resource: string, userId?: string) => ErrorHandlingService.createError(
-    ErrorType.AUTHORIZATION,
+    ErrorType.NOT_FOUND,
     `Resource not found: ${resource}`,
     {
       severity: ErrorSeverity.MEDIUM,

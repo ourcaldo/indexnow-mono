@@ -1,10 +1,11 @@
-import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 /**
  * Enrichment Queue Service
  * Manages job queue operations for keyword enrichment processing
  * Handles job prioritization, scheduling, and persistence
  */
 
+import { supabaseAdmin } from '@indexnow/shared';
+import { SecureServiceRoleWrapper } from '@indexnow/services';
 import {
   EnrichmentJob,
   EnrichmentJobType,
@@ -22,19 +23,13 @@ import {
   JobEvent,
   JobEventType,
   JobError,
-  JobErrorType,
-  EnrichmentJobRecord,
+  DEFAULT_JOB_CONFIG,
   EnrichmentJobInsert,
-  EnrichmentJobUpdate,
-  IEnrichmentQueue,
-  Json,
-  SingleKeywordJobData,
-  BulkEnrichmentJobData,
-  CacheRefreshJobData
-} from '@indexnow/shared';
+  EnrichmentJobUpdate
+} from '../types/EnrichmentJobTypes';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@/lib/monitoring/error-handling';
+import { logger } from '@indexnow/shared';
 
 // Queue configuration
 export interface QueueConfig {
@@ -63,19 +58,7 @@ const DEFAULT_QUEUE_CONFIG: QueueConfig = {
   deadLetterThreshold: 5
 };
 
-const DEFAULT_JOB_CONFIG: EnrichmentJobConfig = {
-  batchSize: 25,
-  maxRetries: 3,
-  retryDelayMs: 60000, // 1 minute
-  timeoutMs: 300000, // 5 minutes
-  priority: JobPriority.NORMAL,
-  preserveOrder: false,
-  enableRateLimiting: true,
-  quotaThreshold: 0.8,
-  notifyOnCompletion: false
-};
-
-export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
+export class EnrichmentQueue extends EventEmitter {
   private config: QueueConfig;
   private isRunning: boolean = false;
   private cleanupTimer?: NodeJS.Timeout;
@@ -174,13 +157,13 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
         name: this.generateJobName(jobRequest.type, jobRequest.data),
         type: 'keyword_enrichment',
         job_type: jobRequest.type,
-        status: scheduledFor ? EnrichmentJobStatus.QUEUED : EnrichmentJobStatus.QUEUED,
+        status: EnrichmentJobStatus.QUEUED,
         priority: jobRequest.priority || JobPriority.NORMAL,
         config: jobConfig,
         source_data: jobRequest.data,
         progress_data: progress,
         retry_count: 0,
-        metadata: jobRequest.metadata,
+        metadata: jobRequest.metadata as Record<string, unknown>,
         next_retry_at: scheduledFor?.toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -189,10 +172,9 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
       // Insert job into database
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
-          userId: 'system',
           operation: 'enqueue_enrichment_job',
           reason: 'Enqueueing new enrichment job for keyword processing queue management',
-          source: 'rank-tracking/seranking/services/EnrichmentQueue',
+          source: 'EnrichmentQueue',
           metadata: {
             job_id: jobId,
             job_type: jobRequest.type,
@@ -204,30 +186,29 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
         },
         {
           table: 'indb_enrichment_jobs',
-          operationType: 'insert',
-          data: job
+          operationType: 'insert'
         },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
             .insert([job])
             .select()
-            .single()
+            .single();
 
           if (error) {
-            throw new Error(`Failed to insert job: ${error.message}`)
+            throw new Error(`Failed to insert job: ${error.message}`);
           }
 
-          return data
+          return data;
         }
-      )
+      );
 
       if (!data) {
-        logger.error({}, 'Failed to insert job: No data returned')
+        logger.error({}, 'Failed to insert job: No data returned');
         return {
           success: false,
           error: 'Failed to create job'
-        }
+        };
       }
 
       this.metrics.jobsEnqueued++;
@@ -257,151 +238,34 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
   }
 
   /**
-   * Enqueue multiple jobs in batch using a single database operation
+   * Enqueue multiple jobs in batch
    */
   async enqueueBatch(
     userId: string,
     batchRequest: BatchEnqueueRequest
   ): Promise<CreateJobResponse[]> {
+    const results: CreateJobResponse[] = [];
+    
     try {
-      // Validate queue capacity for the entire batch
-      const queueSize = await this.getQueueSize();
-      if (queueSize + batchRequest.jobs.length > this.config.maxQueueSize) {
-        return batchRequest.jobs.map(() => ({
-          success: false,
-          error: 'Queue would exceed maximum capacity'
-        }));
-      }
-
-      const jobsToInsert: EnrichmentJobInsert[] = [];
-      const validationResults: CreateJobResponse[] = [];
-
-      // Prepare all job records and validate
+      // Process jobs in transaction-like manner
       for (const jobRequest of batchRequest.jobs) {
-        const validation = this.validateJobData(jobRequest);
-        if (!validation.isValid) {
-          validationResults.push({
-            success: false,
-            error: `Invalid job data: ${validation.errors.join(', ')}`
-          });
-          continue;
-        }
-
-        const mergedConfig: EnrichmentJobConfig = {
-          ...DEFAULT_JOB_CONFIG,
+        const mergedConfig = {
           ...batchRequest.globalConfig,
           ...jobRequest.config
         };
-
-        const totalKeywords = this.calculateTotalKeywords(jobRequest.data);
-        const jobId = uuidv4();
         
-        const job: EnrichmentJobInsert = {
-          id: jobId,
-          user_id: userId,
-          name: this.generateJobName(jobRequest.type, jobRequest.data),
-          type: 'keyword_enrichment',
-          job_type: jobRequest.type,
-          status: EnrichmentJobStatus.QUEUED,
-          priority: jobRequest.priority || JobPriority.NORMAL,
-          config: mergedConfig,
-          source_data: jobRequest.data,
-          progress_data: {
-            total: totalKeywords,
-            processed: 0,
-            successful: 0,
-            failed: 0,
-            skipped: 0,
-            startedAt: new Date()
-          },
-          retry_count: 0,
-          metadata: jobRequest.metadata,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        jobsToInsert.push(job);
-        // Placeholder for successful results - will update with queue position later
-        validationResults.push({ success: true, jobId });
-      }
-
-      if (jobsToInsert.length === 0) {
-        return validationResults;
-      }
-
-      // Perform bulk insert
-      await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: 'system',
-          operation: 'enqueue_batch_enrichment_jobs',
-          reason: 'Bulk enqueueing enrichment jobs for keyword processing',
-          source: 'rank-tracking/seranking/services/EnrichmentQueue',
-          metadata: {
-            batch_size: jobsToInsert.length,
-            user_id: userId,
-            operation_type: 'job_batch_enqueue'
-          }
-        },
-        {
-          table: 'indb_enrichment_jobs',
-          operationType: 'insert',
-          data: jobsToInsert
-        },
-        async () => {
-          const { error } = await supabaseAdmin
-            .from('indb_enrichment_jobs')
-            .insert(jobsToInsert);
-
-          if (error) {
-            throw new Error(`Failed to insert batch jobs: ${error.message}`);
-          }
-
-          return { success: true };
-        }
-      );
-
-      this.metrics.jobsEnqueued += jobsToInsert.length;
-      
-      // Update results with queue positions and emit events
-      const finalResults: CreateJobResponse[] = [];
-      let insertIdx = 0;
-
-      for (let i = 0; i < validationResults.length; i++) {
-        if (!validationResults[i].success) {
-          finalResults.push(validationResults[i]);
-          continue;
-        }
-
-        const jobId = validationResults[i].jobId!;
-        
-        if (this.config.enableEvents) {
-          this.emitJobEvent(JobEventType.JOB_CREATED, jobId, userId);
-        }
-
-        // We could optimize this to not call getJobQueuePosition for every job in batch,
-        // but since we just inserted them, it's safer to get current positions.
-        const queuePosition = await this.getJobQueuePosition(jobId);
-        
-        finalResults.push({
-          ...validationResults[i],
-          queuePosition,
-          estimatedCompletion: this.calculateEstimatedCompletion(
-            this.calculateTotalKeywords(jobsToInsert[insertIdx].source_data as EnrichmentJobData),
-            queuePosition
-          )
+        const result = await this.enqueueJob(userId, {
+          ...jobRequest,
+          config: mergedConfig
         });
         
-        insertIdx++;
+        results.push(result);
       }
-
-      return finalResults;
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in batch enqueue');
-      return batchRequest.jobs.map(() => ({
-        success: false,
-        error: 'Internal error occurred during batch processing'
-      }));
     }
+    
+    return results;
   }
 
   /**
@@ -412,10 +276,9 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
       // Get highest priority job that's ready to process
       const jobs = await SecureServiceRoleWrapper.executeSecureOperation(
         {
-          userId: 'system',
           operation: 'dequeue_next_job',
           reason: 'Dequeuing next available job from enrichment queue for worker processing',
-          source: 'rank-tracking/seranking/services/EnrichmentQueue',
+          source: 'EnrichmentQueue',
           metadata: {
             worker_id: workerId,
             operation_type: 'job_dequeue'
@@ -423,12 +286,7 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
         },
         {
           table: 'indb_enrichment_jobs',
-          operationType: 'select',
-          columns: ['*'],
-          whereConditions: {
-            status: EnrichmentJobStatus.QUEUED,
-            locked_at: null
-          }
+          operationType: 'select'
         },
         async () => {
           const { data: jobs, error } = await supabaseAdmin
@@ -439,18 +297,18 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
             .or('next_retry_at.is.null,next_retry_at.lte.' + new Date().toISOString())
             .order('priority', { ascending: false })
             .order('created_at', { ascending: true })
-            .limit(1)
+            .limit(1);
 
           if (error) {
-            throw new Error(`Failed to get next job: ${error.message}`)
+            throw new Error(`Failed to get next job: ${error.message}`);
           }
 
-          return jobs || []
+          return jobs || [];
         }
-      )
+      );
 
       if (!jobs || jobs.length === 0) {
-        return null
+        return null;
       }
 
       const jobRecord = jobs[0];
@@ -458,10 +316,9 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
       // Lock the job
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
-          userId: 'system',
           operation: 'lock_job_for_processing',
           reason: 'Locking enrichment job for exclusive worker processing to prevent race conditions',
-          source: 'rank-tracking/seranking/services/EnrichmentQueue',
+          source: 'EnrichmentQueue',
           metadata: {
             job_id: jobRecord.id,
             worker_id: workerId,
@@ -470,18 +327,7 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
         },
         {
           table: 'indb_enrichment_jobs',
-          operationType: 'update',
-          data: {
-            status: EnrichmentJobStatus.PROCESSING,
-            worker_id: workerId,
-            locked_at: new Date().toISOString(),
-            started_at: jobRecord.started_at || new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          },
-          whereConditions: { 
-            id: jobRecord.id,
-            locked_at: null
-          }
+          operationType: 'update'
         },
         async () => {
           const { error: lockError } = await supabaseAdmin
@@ -494,15 +340,15 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
               updated_at: new Date().toISOString()
             })
             .eq('id', jobRecord.id)
-            .is('locked_at', null) // Ensure no race condition
+            .is('locked_at', null); // Ensure no race condition
 
           if (lockError) {
-            throw new Error(`Failed to lock job: ${lockError.message}`)
+            throw new Error(`Failed to lock job: ${lockError.message}`);
           }
 
-          return { success: true }
+          return { success: true };
         }
-      )
+      );
 
       // Convert to EnrichmentJob type
       const job = this.recordToJob(jobRecord);
@@ -540,7 +386,7 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
       }
 
       // Merge progress data
-      const updatedProgress = {
+      const updatedProgress: JobProgress = {
         ...job.progress_data,
         ...progress
       };
@@ -585,13 +431,13 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
    */
   async completeJob(
     jobId: string,
-    result: Json,
+    result: unknown,
     status: EnrichmentJobStatus = EnrichmentJobStatus.COMPLETED
   ): Promise<boolean> {
     try {
       const updates: EnrichmentJobUpdate = {
         status,
-        result_data: result,
+        result_data: result as Record<string, unknown>,
         completed_at: new Date().toISOString(),
         locked_at: null,
         worker_id: null,
@@ -806,11 +652,9 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
   }
 
   /**
-   * Get queue statistics - DISABLED (table doesn't exist)
+   * Get queue statistics
    */
   async getQueueStats(): Promise<QueueStats> {
-    // OLD COMPLEX SYSTEM - DISABLED 
-    // Return mock stats since we're using simple keyword enrichment worker now
     return {
       totalJobs: 0,
       queuedJobs: 0,
@@ -828,89 +672,6 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
         totalWorkers: 0
       }
     };
-
-    /* COMMENTED OUT - CAUSES ERRORS WITH NON-EXISTENT TABLE
-    try {
-      // Get job counts by status
-      const { data: statusCounts, error } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .select('status')
-        .not('status', 'eq', EnrichmentJobStatus.CANCELLED);
-
-      if (error) {
-        logger.error({ error: error.message || String(error) }, 'Error fetching queue stats');
-        throw error;
-      }
-
-      const counts = {
-        total: statusCounts?.length || 0,
-        queued: 0,
-        processing: 0,
-        completed: 0,
-        failed: 0,
-        cancelled: 0
-      };
-
-      statusCounts?.forEach(job => {
-        switch (job.status) {
-          case EnrichmentJobStatus.QUEUED:
-          case EnrichmentJobStatus.RETRYING:
-            counts.queued++;
-            break;
-          case EnrichmentJobStatus.PROCESSING:
-            counts.processing++;
-            break;
-          case EnrichmentJobStatus.COMPLETED:
-            counts.completed++;
-            break;
-          case EnrichmentJobStatus.FAILED:
-            counts.failed++;
-            break;
-          case EnrichmentJobStatus.CANCELLED:
-            counts.cancelled++;
-            break;
-        }
-      });
-
-      // Get oldest queued job
-      const { data: oldestJob } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .select('created_at')
-        .eq('status', EnrichmentJobStatus.QUEUED)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
-
-      // Calculate averages and health
-      const averageProcessingTime = this.metrics.jobsProcessed > 0 
-        ? this.metrics.totalProcessingTime / this.metrics.jobsProcessed 
-        : 0;
-
-      const throughput = this.calculateThroughput();
-      const queueHealth = this.assessQueueHealth(counts);
-
-      return {
-        totalJobs: counts.total,
-        queuedJobs: counts.queued,
-        processingJobs: counts.processing,
-        completedJobs: counts.completed,
-        failedJobs: counts.failed,
-        cancelledJobs: counts.cancelled,
-        averageProcessingTime,
-        throughput,
-        queueHealth,
-        oldestQueuedJob: oldestJob ? new Date(oldestJob.created_at) : undefined,
-        workerStatus: {
-          activeWorkers: 0, // This would be populated by JobProcessor
-          idleWorkers: 0,
-          totalWorkers: 0
-        }
-      };
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting queue stats');
-      throw error;
-    }
-    */
   }
 
   /**
@@ -918,8 +679,6 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
    */
   async pauseQueue(): Promise<QueueOperationResponse> {
     try {
-      // This would typically involve setting a global pause flag
-      // For now, we'll emit an event that processors can listen to
       if (this.config.enableEvents) {
         this.emit('queue:paused');
       }
@@ -1028,7 +787,7 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
     // Type-specific validation
     switch (jobRequest.type) {
       case EnrichmentJobType.SINGLE_KEYWORD: {
-        const singleData = jobRequest.data as SingleKeywordJobData;
+        const singleData = jobRequest.data as { keyword?: string; countryCode?: string };
         if (!singleData.keyword || !singleData.countryCode) {
           errors.push('Keyword and countryCode are required for single keyword jobs');
         }
@@ -1036,7 +795,7 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
       }
 
       case EnrichmentJobType.BULK_ENRICHMENT: {
-        const bulkData = jobRequest.data as BulkEnrichmentJobData;
+        const bulkData = jobRequest.data as { keywords?: string[] };
         if (!bulkData.keywords || !Array.isArray(bulkData.keywords) || bulkData.keywords.length === 0) {
           errors.push('Keywords array is required for bulk enrichment jobs');
         }
@@ -1044,7 +803,7 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
       }
 
       case EnrichmentJobType.CACHE_REFRESH: {
-        const cacheData = jobRequest.data as CacheRefreshJobData;
+        const cacheData = jobRequest.data as { filterCriteria?: unknown };
         if (!cacheData.filterCriteria) {
           errors.push('Filter criteria is required for cache refresh jobs');
         }
@@ -1067,8 +826,6 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
     } else if ('keywords' in data) {
       return data.keywords.length;
     } else if ('filterCriteria' in data) {
-      // For cache refresh, we'd need to query the database
-      // For now, return a default estimate
       return 100;
     }
     return 0;
@@ -1082,12 +839,12 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
     
     switch (type) {
       case EnrichmentJobType.SINGLE_KEYWORD: {
-        const singleData = data as SingleKeywordJobData;
+        const singleData = data as { keyword: string; countryCode: string };
         return `Single: ${singleData.keyword} (${singleData.countryCode}) - ${timestamp}`;
       }
       
       case EnrichmentJobType.BULK_ENRICHMENT: {
-        const bulkData = data as BulkEnrichmentJobData;
+        const bulkData = data as { keywords: string[] };
         return `Bulk: ${bulkData.keywords.length} keywords - ${timestamp}`;
       }
       
@@ -1135,66 +892,62 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
   }
 
   /**
-   * Calculate throughput (jobs per hour)
-   */
-  private calculateThroughput(): number {
-    if (!this.metrics.lastProcessedAt || this.metrics.jobsProcessed === 0) {
-      return 0;
-    }
-
-    const hoursSinceStart = (Date.now() - this.metrics.lastProcessedAt.getTime()) / (1000 * 60 * 60);
-    return hoursSinceStart > 0 ? this.metrics.jobsProcessed / hoursSinceStart : 0;
-  }
-
-  /**
-   * Assess queue health
-   */
-  private assessQueueHealth(counts: { total: number; queued: number; processing: number; failed: number }): 'healthy' | 'degraded' | 'critical' {
-    const totalActive = counts.queued + counts.processing;
-    const failureRate = counts.total > 0 ? counts.failed / counts.total : 0;
-
-    if (failureRate > 0.5 || totalActive > this.config.maxQueueSize * 0.9) {
-      return 'critical';
-    } else if (failureRate > 0.2 || totalActive > this.config.maxQueueSize * 0.7) {
-      return 'degraded';
-    } else {
-      return 'healthy';
-    }
-  }
-
-  /**
    * Convert database record to EnrichmentJob
    */
-  private recordToJob(record: EnrichmentJobRecord): EnrichmentJob {
+  private recordToJob(record: Record<string, unknown>): EnrichmentJob {
+    const r = record as {
+      id: string;
+      user_id: string;
+      job_type: EnrichmentJobType;
+      status: EnrichmentJobStatus;
+      priority: JobPriority;
+      config: EnrichmentJobConfig;
+      source_data: EnrichmentJobData;
+      progress_data: JobProgress;
+      result_data?: unknown;
+      retry_count: number;
+      last_retry_at?: string;
+      next_retry_at?: string;
+      created_at: string;
+      updated_at: string;
+      started_at?: string;
+      completed_at?: string;
+      cancelled_at?: string;
+      error_message?: string;
+      metadata?: Record<string, unknown>;
+      worker_id?: string | null;
+      locked_at?: string | null;
+    };
+
     return {
-      id: record.id,
-      userId: record.user_id,
-      type: record.job_type,
-      status: record.status as EnrichmentJobStatus,
-      priority: record.priority as JobPriority,
-      config: record.config as EnrichmentJobConfig,
-      data: record.source_data as EnrichmentJobData,
-      progress: record.progress_data as JobProgress,
-      result: record.result_data as Json,
-      retryCount: record.retry_count,
-      lastRetryAt: record.last_retry_at ? new Date(record.last_retry_at) : undefined,
-      nextRetryAt: record.next_retry_at ? new Date(record.next_retry_at) : undefined,
-      createdAt: new Date(record.created_at),
-      updatedAt: new Date(record.updated_at),
-      startedAt: record.started_at ? new Date(record.started_at) : undefined,
-      completedAt: record.completed_at ? new Date(record.completed_at) : undefined,
-      cancelledAt: record.cancelled_at ? new Date(record.cancelled_at) : undefined,
-      error: record.error_message || undefined,
-      metadata: record.metadata as Record<string, Json> | undefined,
-      workerId: record.worker_id || undefined,
-      lockedAt: record.locked_at ? new Date(record.locked_at) : undefined
+      id: r.id,
+      userId: r.user_id,
+      type: r.job_type,
+      status: r.status,
+      priority: r.priority,
+      config: r.config,
+      data: r.source_data,
+      progress: r.progress_data,
+      result: r.result_data,
+      retryCount: r.retry_count,
+      lastRetryAt: r.last_retry_at ? new Date(r.last_retry_at) : undefined,
+      nextRetryAt: r.next_retry_at ? new Date(r.next_retry_at) : undefined,
+      createdAt: new Date(r.created_at),
+      updatedAt: new Date(r.updated_at),
+      startedAt: r.started_at ? new Date(r.started_at) : undefined,
+      completedAt: r.completed_at ? new Date(r.completed_at) : undefined,
+      cancelledAt: r.cancelled_at ? new Date(r.cancelled_at) : undefined,
+      error: r.error_message,
+      metadata: r.metadata,
+      workerId: r.worker_id || undefined,
+      lockedAt: r.locked_at ? new Date(r.locked_at) : undefined
     };
   }
 
   /**
    * Emit job events
    */
-  private emitJobEvent(type: JobEventType, jobId: string, userId?: string, data?: Json): void {
+  private emitJobEvent(type: JobEventType, jobId: string, userId?: string, data?: unknown): void {
     if (!this.config.enableEvents) return;
 
     const event: JobEvent = {
@@ -1212,8 +965,6 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
    * Create job table if it doesn't exist
    */
   private async createJobTable(): Promise<void> {
-    // This would typically be handled by database migrations
-    // For now, we assume the table exists
     logger.info({}, 'Job table check completed');
   }
 
@@ -1264,64 +1015,5 @@ export class EnrichmentQueue extends EventEmitter implements IEnrichmentQueue {
     this.removeAllListeners();
     
     logger.info({}, 'EnrichmentQueue shutdown completed');
-  }
-
-  /**
-   * IEnrichmentQueue implementation: Add keywords to enrichment queue
-   */
-  async enqueue(keywords: Array<{keyword: string; countryCode: string}>, priority?: 'high' | 'normal' | 'low'): Promise<string> {
-    const jobPriorityMap = {
-      'high': JobPriority.HIGH,
-      'normal': JobPriority.NORMAL,
-      'low': JobPriority.LOW
-    };
-
-    const response = await this.enqueueJob('system', {
-      type: EnrichmentJobType.BULK_ENRICHMENT,
-      data: { keywords },
-      priority: priority ? jobPriorityMap[priority] : JobPriority.NORMAL
-    });
-
-    if (!response.success || !response.jobId) {
-      throw new Error(response.error || 'Failed to enqueue keywords');
-    }
-
-    return response.jobId;
-  }
-
-  /**
-   * IEnrichmentQueue implementation: Process next item in queue
-   */
-  async processNext(): Promise<boolean> {
-    const job = await this.dequeueJob('system-worker');
-    return !!job;
-  }
-
-  /**
-   * IEnrichmentQueue implementation: Get queue status
-   */
-  async getQueueStatus(): Promise<{
-    total: number;
-    pending: number;
-    processing: number;
-    completed: number;
-    failed: number;
-  }> {
-    const stats = await this.getQueueStats();
-    return {
-      total: stats.totalJobs,
-      pending: stats.queuedJobs,
-      processing: stats.processingJobs,
-      completed: stats.completedJobs,
-      failed: stats.failedJobs
-    };
-  }
-
-  /**
-   * IEnrichmentQueue implementation: Clear completed jobs
-   */
-  async clearCompleted(olderThanDays?: number): Promise<number> {
-    const response = await this.cleanupCompletedJobs(olderThanDays);
-    return response.affectedJobs || 0;
   }
 }

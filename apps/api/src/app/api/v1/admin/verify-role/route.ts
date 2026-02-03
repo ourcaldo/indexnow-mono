@@ -1,95 +1,55 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
-import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { supabaseAdmin } from '@/lib/database'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { NextRequest, NextResponse } from 'next/server'
+import { requireSuperAdminAuth } from '@indexnow/auth'
+import { logger } from '@indexnow/shared'
 
-export const POST = adminApiWrapper(async (
-  request: NextRequest,
-  adminUser
-) => {
-  const { userId } = await request.json()
+/**
+ * GET /api/v1/admin/verify-role
+ * Verifies if the authenticated user has super_admin privileges.
+ * This is used by the Admin app middleware to enforce access control.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // 1. Verify super admin access
+    const adminUser = await requireSuperAdminAuth(request)
 
-  if (!userId) {
-    return await createStandardError(
-      ErrorType.VALIDATION,
-      'User ID is required',
-      400,
-      ErrorSeverity.LOW,
-      { field: 'userId' }
-    )
-  }
-
-  const authProfileContext = {
-    userId: adminUser.id,
-    operation: 'get_auth_user_profile',
-    reason: 'Verify role endpoint checking authenticated user profile for authorization',
-    source: 'admin/verify-role',
-    metadata: {
-      endpoint: '/api/v1/admin/verify-role',
-      authUserId: adminUser.id
+    if (!adminUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Super admin access required' },
+        { status: 403 }
+      )
     }
-  }
 
-  const authProfiles = await SecureServiceRoleHelpers.secureSelect(
-    authProfileContext,
-    'indb_auth_user_profiles',
-    ['role'],
-    { user_id: adminUser.id }
-  )
-  
-  const authProfile = authProfiles.length > 0 ? authProfiles[0] : null
-  const isRequestingSuperAdmin = authProfile?.role === 'super_admin'
-
-  if (userId !== adminUser.id && !isRequestingSuperAdmin) {
-    return await createStandardError(
-      ErrorType.AUTHORIZATION,
-      'Access denied - can only check your own role',
-      403,
-      ErrorSeverity.MEDIUM,
-      { userId, requesterId: adminUser.id }
-    )
-  }
-
-  const profileContext = {
-    userId: adminUser.id,
-    operation: 'get_target_user_profile',
-    reason: `Fetching user profile for role verification of user ${userId}`,
-    source: 'admin/verify-role',
-    metadata: {
-      endpoint: '/api/v1/admin/verify-role',
-      targetUserId: userId,
-      isOwnProfile: userId === adminUser.id,
-      isSuperAdminRequest: authProfile?.role === 'super_admin'
+    // 2. Return role information
+    return NextResponse.json({
+      success: true,
+      data: {
+        isAdmin: adminUser.isAdmin,
+        isSuperAdmin: adminUser.isSuperAdmin,
+        role: adminUser.role,
+        name: adminUser.name || 'Admin User'
+      }
+    })
+  } catch (error) {
+    logger.error({ error }, 'Error in verify-role endpoint')
+    
+    // Check if it's an authentication error
+    if (error instanceof Error && error.message === 'Super admin access required') {
+      return NextResponse.json(
+        { error: 'Forbidden', message: error.message },
+        { status: 403 }
+      )
     }
-  }
 
-  const profiles = await SecureServiceRoleHelpers.secureSelect(
-    profileContext,
-    'indb_auth_user_profiles',
-    ['role', 'full_name'],
-    { user_id: userId }
-  )
+    if (error instanceof Error && error.message === 'Admin access required') {
+      return NextResponse.json(
+        { error: 'Forbidden', message: error.message },
+        { status: 403 }
+      )
+    }
 
-  if (!profiles || profiles.length === 0) {
-    return await createStandardError(
-      ErrorType.AUTHORIZATION,
-      'User profile not found or access denied',
-      403,
-      ErrorSeverity.MEDIUM,
-      { userId }
+    return NextResponse.json(
+      { error: 'Internal Server Error', message: 'Failed to verify admin role' },
+      { status: 500 }
     )
   }
-
-  const profile = profiles[0]
-  const isAdmin = profile.role === 'admin' || profile.role === 'super_admin'
-  const isSuperAdmin = profile.role === 'super_admin'
-
-  return formatSuccess({
-    isAdmin,
-    isSuperAdmin,
-    role: profile.role,
-    name: profile.full_name || 'Unknown'
-  })
-})
+}

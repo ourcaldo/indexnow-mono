@@ -234,7 +234,7 @@ export class ActivityLogger {
       actionDescription: `Visited ${pageTitle || pagePath}`,
       metadata: {
         pagePath,
-        pageTitle,
+        pageTitle: pageTitle || null,
         pageView: true,
         ...metadata
       }

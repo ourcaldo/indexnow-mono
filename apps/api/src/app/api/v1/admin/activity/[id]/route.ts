@@ -1,9 +1,7 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, withDatabaseOperation, createStandardError, formatSuccess } from '@/lib/core/api-response-middleware'
 import { ErrorType, ErrorSeverity, logger } from '@/lib/monitoring/error-handling'
-import { supabaseAdmin } from '@/lib/database'
-
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,

@@ -54,7 +54,7 @@ function createUnauthorizedResponse(): NextResponse {
   })
 }
 
-let bullBoard: any = null
+let bullBoard: ReturnType<typeof createBullBoard> | null = null
 
 async function initializeBullBoard() {
   if (bullBoard) {
@@ -80,7 +80,7 @@ async function initializeBullBoard() {
 
     bullBoard = createBullBoard({
       queues: queueAdapters,
-      serverAdapter: null as any,
+      serverAdapter: {} as any, // Bull Board requires a server adapter, but we're using it as an API
     })
 
     logger.info({ queueCount: queues.length }, 'Bull Board initialized')

@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS, apiRequest } from '@indexnow/shared'
+import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { apiRequest } from '@indexnow/database'
 import { useApiError } from '../../../hooks'
 import { 
   Dialog,
@@ -42,7 +43,7 @@ export function AddKeywordModal({ open, onClose, onSuccess }: AddKeywordModalPro
   const { data: domainsData, error: domainsError, isLoading: domainsLoading, refetch: refetchDomains } = useQuery({
     queryKey: [RANK_TRACKING_ENDPOINTS.DOMAINS],
     queryFn: async () => {
-      return await apiRequest(RANK_TRACKING_ENDPOINTS.DOMAINS)
+      return await apiRequest<{ data: any[] }>(RANK_TRACKING_ENDPOINTS.DOMAINS)
     },
     enabled: open
   })
@@ -51,7 +52,7 @@ export function AddKeywordModal({ open, onClose, onSuccess }: AddKeywordModalPro
   const { data: countriesData, error: countriesError, isLoading: countriesLoading, refetch: refetchCountries } = useQuery({
     queryKey: [RANK_TRACKING_ENDPOINTS.COUNTRIES],
     queryFn: async () => {
-      return await apiRequest(RANK_TRACKING_ENDPOINTS.COUNTRIES)
+      return await apiRequest<{ data: any[] }>(RANK_TRACKING_ENDPOINTS.COUNTRIES)
     },
     enabled: open
   })

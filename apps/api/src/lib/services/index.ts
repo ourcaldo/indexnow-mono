@@ -1,21 +1,8 @@
-/**
- * Services barrel export for IndexNow Studio
- * Centralized export for all service modules
- * Note: Google and Indexing services have been removed
- */
+import { RankTrackingService, UserManagementService } from '@indexnow/services';
+import { createEmailServiceFromEnv } from './external/EmailService';
 
-// External services
-export * from './external/SupabaseService';
-export * from './external/EmailService';
+export { createEmailServiceFromEnv };
 
-// Business services
-export * from './business/RankTrackingService';
-export * from './business/UserManagementService';
-
-// Infrastructure services
-export * from './infrastructure/CacheService';
-
-// Service factory functions
-export { getSupabaseService } from './external/SupabaseService';
-export { getCacheService } from './infrastructure/CacheService';
-export { createEmailServiceFromEnv } from './external/EmailService';
+// Singletons
+export const rankTrackingService = new RankTrackingService();
+export const userManagementService = new UserManagementService();

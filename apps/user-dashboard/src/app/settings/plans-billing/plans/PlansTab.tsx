@@ -14,8 +14,8 @@ import {
   X,
   Clock
 } from 'lucide-react'
-import { authService, formatCurrency, useApiError } from '@indexnow/shared'
-import { LoadingSpinner } from '@indexnow/ui'
+import { authService, formatCurrency } from '@indexnow/shared'
+import { LoadingSpinner, useApiError } from '@indexnow/ui'
 import { AUTH_ENDPOINTS, BILLING_ENDPOINTS } from '@indexnow/shared'
 
 interface PackageFeature {

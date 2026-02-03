@@ -3,13 +3,14 @@
  * Provides authentication functions for API routes and server components
  */
 
+import 'server-only'
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { supabaseAdmin, SecureServiceRoleHelpers, type UserProfile } from '@indexnow/database'
-import { type SupabaseClient } from '@supabase/supabase-js'
+import { SecureServiceRoleHelpers } from '@indexnow/database'
+import { AppConfig } from '@indexnow/shared'
 
 // Define types
-interface AdminUser {
+export interface AdminUser {
   id: string
   email: string
   role: string
@@ -20,44 +21,63 @@ interface AdminUser {
 /**
  * Get server-side admin user from request using proper Supabase server client
  */
-async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | null> {
+export async function getServerAdminUser(
+  request?: NextRequest,
+  options: { forceHeaderAuth?: boolean } = {}
+): Promise<AdminUser | null> {
   try {
     if (!request) {
       console.log('Server auth: No request provided')
       return null
     }
 
-    // Create proper Supabase server client that handles cookies automatically
+    const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+    const forceHeader = options.forceHeaderAuth || isStateChanging;
+
+    const authHeader = request.headers.get('authorization')
+    const hasBearer = authHeader && authHeader.startsWith('Bearer ')
+
+    // Create Supabase client
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      AppConfig.supabase.url,
+      AppConfig.supabase.anonKey,
       {
         cookies: {
           get(name: string) {
+            if (forceHeader) return undefined;
             const cookieHeader = request.headers.get('cookie')
             if (!cookieHeader) return undefined
-            
             const cookies = Object.fromEntries(
               cookieHeader.split(';').map(cookie => {
                 const [key, value] = cookie.trim().split('=')
                 return [key, decodeURIComponent(value || '')]
               })
             )
-
             return cookies[name]
           },
-          set() {
-            // No-op for server-side requests
-          },
-          remove() {
-            // No-op for server-side requests
-          },
+          set() {},
+          remove() {},
         },
       }
     )
 
-    // Get user from session (this will automatically handle Supabase cookies)
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    let user = null;
+    let authError = null;
+
+    // 1. Try Authorization header first
+    if (hasBearer) {
+      const token = authHeader!.substring(7)
+      const result = await supabase.auth.getUser(token)
+      user = result.data.user
+      authError = result.error
+    }
+    
+    // 2. Fallback to cookies
+    if (!user && !forceHeader) {
+      const result = await supabase.auth.getUser()
+      user = result.data.user
+      authError = result.error
+    }
     
     if (authError || !user) {
       return null
@@ -68,10 +88,10 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
       userId: user.id,
       operation: 'get_user_profile_for_admin_auth',
       reason: 'Server admin auth getting user role for admin authorization check',
-      source: 'lib/auth/server-auth.getServerAdminUser',
+      source: '@indexnow/auth.getServerAdminUser',
       metadata: {
-        authMethod: 'server_cookie',
-        userEmail: user.email || null,
+        authMethod: hasBearer ? 'bearer_token' : 'server_cookie',
+        userEmail: user.email,
         operation_type: 'admin_role_verification'
       }
     }
@@ -98,8 +118,7 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
     }
 
   } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error))
-    console.error('Server auth error:', err.message)
+    console.error('Server auth error:', error instanceof Error ? error.message : String(error))
     return null
   }
 }
@@ -131,24 +150,32 @@ export async function requireServerAdminAuth(request?: NextRequest): Promise<Adm
 /**
  * Get authenticated user (no role requirement)
  */
-export async function getServerAuthUser(request?: NextRequest): Promise<AdminUser | null> {
+export async function getServerAuthUser(
+  request?: NextRequest, 
+  options: { forceHeaderAuth?: boolean } = {}
+): Promise<AdminUser | null> {
   try {
     if (!request) {
       console.log('🔐 Server auth: No request provided')
       return null
     }
     
-    console.log('🔐 Server auth: Processing authentication request...')
-    const cookieHeader = request.headers.get('cookie')
-    console.log('🔐 Cookie header:', cookieHeader ? 'Present' : 'Missing')
-
-    // Create proper Supabase server client that handles cookies automatically
+    const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+    const forceHeader = options.forceHeaderAuth || isStateChanging;
+    
+    const authHeader = request.headers.get('authorization')
+    const hasBearer = authHeader && authHeader.startsWith('Bearer ')
+    
+    // Create Supabase client
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      AppConfig.supabase.url,
+      AppConfig.supabase.anonKey,
       {
         cookies: {
           get(name: string) {
+            // If forcing header auth, ignore cookies
+            if (forceHeader) return undefined;
+            
             const cookieHeader = request.headers.get('cookie')
             if (!cookieHeader) return undefined
             
@@ -161,38 +188,31 @@ export async function getServerAuthUser(request?: NextRequest): Promise<AdminUse
 
             return cookies[name]
           },
-          set() {
-            // No-op for server-side requests
-          },
-          remove() {
-            // No-op for server-side requests
-          },
+          set() {},
+          remove() {},
         },
       }
     )
 
-    // Try to get user from session first
-    let { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    // If cookies failed, try Authorization header as fallback
-    if (!user && authError) {
-      const authHeader = request.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7)
-        console.log('🔐 Trying Authorization header token...')
-        const result = await supabase.auth.getUser(token)
-        user = result.data.user
-        authError = result.error
-      }
+    let user = null;
+    let authError = null;
+
+    // 1. Try Authorization header first (most secure)
+    if (hasBearer) {
+      const token = authHeader!.substring(7)
+      const result = await supabase.auth.getUser(token)
+      user = result.data.user
+      authError = result.error
     }
     
-    console.log('🔐 Supabase auth getUser result:', { 
-      user: user ? { id: user.id, email: user.email } : null, 
-      error: authError?.message 
-    })
+    // 2. Fallback to cookies only if not state-changing or explicitly allowed
+    if (!user && !forceHeader) {
+      const result = await supabase.auth.getUser()
+      user = result.data.user
+      authError = result.error
+    }
     
     if (authError || !user) {
-      console.log('🔐 Authentication failed:', authError?.message || 'No user found')
       return null
     }
 
@@ -201,10 +221,10 @@ export async function getServerAuthUser(request?: NextRequest): Promise<AdminUse
       userId: user.id,
       operation: 'get_user_profile_for_auth',
       reason: 'Server auth getting user role for authorization check',
-      source: 'lib/auth/server-auth',
+      source: '@indexnow/auth.getServerAuthUser',
       metadata: {
-        authMethod: 'server_cookie_or_bearer',
-        userEmail: user.email || null
+        authMethod: hasBearer ? 'bearer_token' : 'server_cookie',
+        userEmail: user.email
       }
     }
 

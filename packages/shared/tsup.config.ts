@@ -7,5 +7,15 @@ export default defineConfig({
     splitting: false,
     sourcemap: true,
     clean: true,
-    external: ['react', 'react-dom', 'next', 'next/navigation', 'lucide-react', '@supabase/supabase-js'],
+    external: [
+        'react', 
+        'react-dom', 
+        'next', 
+        'next/navigation', 
+        'lucide-react', 
+        '@supabase/supabase-js',
+        '@supabase/ssr',
+        '@tanstack/react-query',
+        '@indexnow/ui'
+    ],
 })

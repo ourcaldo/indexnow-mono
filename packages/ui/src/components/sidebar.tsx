@@ -15,7 +15,8 @@ import {
   Search,
   ChevronDown
 } from 'lucide-react'
-import { useSiteName, useSiteLogo, useDashboardData, authService, type Json } from '@indexnow/shared'
+import { authService, type Json } from '@indexnow/shared'
+import { useSiteName, useSiteLogo, useDashboardData } from '@indexnow/database'
 import { SharedDomainSelector } from '..'
 
 interface SidebarUser {

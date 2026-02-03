@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/shared'
+import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { ArrowLeft, Send } from "lucide-react"
 import { 
   Card, 
@@ -27,7 +27,6 @@ export default function ResendVerification() {
   // Site settings hooks
   const siteName = useSiteName()
   const logoUrl = useSiteLogo(true)
-  useFavicon()
 
   useEffect(() => {
     const checkIfMobile = () => {

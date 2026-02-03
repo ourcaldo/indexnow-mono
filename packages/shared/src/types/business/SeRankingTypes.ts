@@ -75,6 +75,8 @@ export enum SeRankingErrorType {
   UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
 
+export type CircuitBreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+
 export interface SeRankingError extends Error {
   type: SeRankingErrorType;
   statusCode?: number;
@@ -397,7 +399,8 @@ export interface RecoveryActionResult {
 import { ErrorContext } from '../global/Application';
 
 // Error context for handling and logging
-export interface SeRankingErrorContext extends ErrorContext {
+export interface SeRankingErrorContext extends Omit<ErrorContext, 'timestamp'> {
+  timestamp: Date;
   operation: string;
   userId?: string;
   keywords?: string[];
@@ -406,7 +409,7 @@ export interface SeRankingErrorContext extends ErrorContext {
   apiEndpoint?: string;
   requestId?: string;
   sessionId?: string;
-  [key: string]: Json | undefined;
+  [key: string]: Json | Date | undefined;
 }
 
 // Recovery result from error handling

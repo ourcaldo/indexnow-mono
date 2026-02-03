@@ -10,13 +10,16 @@ import {
   SeRankingKeywordData,
   QuotaStatus,
   ApiMetrics,
-  SeRankingHealthCheckResult,
+  HealthCheckResult,
   BulkProcessingJob,
   SeRankingError,
   SeRankingErrorType,
   KeywordBankEntity,
   KeywordBankQueryResult,
-  KeywordBankCacheStats,
+  CacheStats
+} from '@indexnow/shared';
+
+import {
   ISeRankingService,
   IKeywordEnrichmentService,
   IKeywordBankService,
@@ -24,14 +27,8 @@ import {
   IApiMetricsCollector,
   IQuotaMonitor,
   IHealthChecker,
-  ISeRankingApiClient,
-  IEnrichmentQueue,
-  IJobProcessor,
-  IKeywordValidator,
-  IApiResponseValidator,
-  IQuotaValidator,
-  QueueStats
-} from '@indexnow/shared';
+  ISeRankingApiClient
+} from '../types/ServiceTypes';
 
 // Service imports
 import { KeywordEnrichmentService } from './KeywordEnrichmentService';
@@ -45,7 +42,7 @@ import { ErrorHandlingService } from './ErrorHandlingService';
 import { ValidationService } from './ValidationService';
 import { KeywordBankService } from './KeywordBankService';
 import { SeRankingApiClient } from '../client/SeRankingApiClient';
-import { logger } from '@/lib/monitoring/error-handling';
+import { logger } from '../../../monitoring/error-handling';
 
 // Configuration interfaces
 export interface SeRankingServiceConfig {
@@ -131,7 +128,7 @@ export interface KeywordIntelligenceResult {
 
 export interface BulkEnrichmentResult {
   jobId: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: 'queued' | 'processing' | 'completed' | 'failed';
   totalKeywords: number;
   processedKeywords: number;
   successfulKeywords: number;
@@ -193,8 +190,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   private integrationService!: IIntegrationService;
   
   // Queue Services
-  private enrichmentQueue!: IEnrichmentQueue;
-  private jobProcessor!: IJobProcessor;
+  private enrichmentQueue!: EnrichmentQueue;
+  private jobProcessor!: JobProcessor;
   
   // Monitoring Services
   private metricsCollector!: IApiMetricsCollector;
@@ -203,15 +200,16 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   
   // Support Services
   private errorHandler!: ErrorHandlingService;
+  private validationService = ValidationService;
   
   // Facade interface properties (required by ISeRankingService)
   public enrichment!: IKeywordEnrichmentService;
   public keywordBank!: IKeywordBankService;
   public integration!: IIntegrationService;
   public validation!: {
-    keyword: IKeywordValidator;
-    response: IApiResponseValidator;
-    quota: IQuotaValidator;
+    keyword: any;
+    response: any;
+    quota: any;
   };
   public monitoring!: {
     metrics: IApiMetricsCollector;
@@ -219,8 +217,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
     health: IHealthChecker;
   };
   public queue!: {
-    enrichment: IEnrichmentQueue;
-    processor: IJobProcessor;
+    enrichment: EnrichmentQueue;
+    processor: JobProcessor;
   };
 
   constructor(config: Partial<SeRankingServiceConfig> = {}) {
@@ -293,6 +291,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       logLevel: this.config.logging.level
     });
 
+    // ValidationService is static, no need to instantiate
+    
     // Initialize API client
     this.apiClient = new SeRankingApiClient({
       baseUrl: this.config.apiUrl,
@@ -345,19 +345,14 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       enableEvents: true
     });
 
-    this.jobProcessor = new JobProcessor(
-      this.enrichmentQueue,
-      this.enrichmentService,
-      this.errorHandler,
-      {
-        maxWorkers: this.config.queue.maxConcurrentJobs,
-        maxConcurrentJobsPerWorker: 2,
-        jobProcessingTimeout: this.config.queue.processingTimeout,
-        enableAutoScaling: true,
-        enableMetrics: this.config.monitoring.enableMetrics,
-        enableDetailedLogging: this.config.logging.enableDetailedLogging
-      }
-    );
+    this.jobProcessor = new JobProcessor({
+      maxWorkers: this.config.queue.maxConcurrentJobs,
+      maxConcurrentJobsPerWorker: 2,
+      jobProcessingTimeout: this.config.queue.processingTimeout,
+      enableAutoScaling: true,
+      enableMetrics: this.config.monitoring.enableMetrics,
+      enableDetailedLogging: this.config.logging.enableDetailedLogging
+    }, this.enrichmentQueue, this.enrichmentService, this.errorHandler);
   }
 
   /**
@@ -372,100 +367,61 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       logLevel: this.config.logging.level
     });
 
-    this.quotaMonitor = new QuotaMonitor(
-      this.integrationService,
-      {
-        alertThresholds: {
-          warning: this.config.monitoring.quotaWarningThreshold,
-          critical: this.config.monitoring.quotaCriticalThreshold,
-          emergency: 0.99
-        },
-        predictionWindow: {
-          enabled: true,
-          lookAheadHours: 24,
-          minimumDataPoints: 10,
-          accuracyThreshold: 0.8
-        },
-        notifications: {
-          channels: ['email', 'webhook'],
-          escalationLevels: {
-            level1: ['user'],
-            level2: ['admin'],
-            level3: ['emergency']
-          }
-        },
-        usagePatterns: {
-          enableAnalysis: true,
-          patternDetectionDays: 30,
-          anomalyThreshold: 2.0
-        },
-        autoScaling: {
-          enabled: true,
-          scaleUpThreshold: 0.85,
-          scaleDownThreshold: 0.25,
-          cooldownMinutes: 15
-        },
-        logLevel: this.config.logging.level
-      }
-    );
-
-    this.healthChecker = new HealthChecker(
-      {
-        apiClient: this.apiClient,
-        keywordBankService: this.keywordBankService,
-        integrationService: this.integrationService
+    this.quotaMonitor = new QuotaMonitor({
+      alertThresholds: {
+        warning: this.config.monitoring.quotaWarningThreshold,
+        critical: this.config.monitoring.quotaCriticalThreshold,
+        emergency: 0.99
       },
-      {
-        intervals: {
-          quickCheck: 60000, // 1 minute
-          fullCheck: 300000, // 5 minutes
-          deepDiagnostics: 1800000 // 30 minutes
+      predictionWindow: {
+        enabled: true,
+        lookAheadHours: 24,
+        minimumDataPoints: 10,
+        accuracyThreshold: 0.8
+      },
+      notifications: {
+        channels: ['email', 'webhook'],
+        escalationLevels: {
+          level1: ['user'],
+          level2: ['admin'],
+          level3: ['emergency']
+        }
+      },
+      retentionDays: this.config.monitoring.metricsRetentionDays,
+      logLevel: this.config.logging.level
+    }, this.integrationService);
+
+    this.healthChecker = new HealthChecker({
+      intervals: {
+        quickCheck: 60000, // 1 minute
+        fullCheck: 300000, // 5 minutes
+        deepDiagnostics: 1800000 // 30 minutes
+      },
+      thresholds: {
+        responseTime: {
+          good: 1000,
+          degraded: 5000,
+          unhealthy: 10000
         },
-        thresholds: {
-          responseTime: {
-            good: 1000,
-            degraded: 5000,
-            unhealthy: 10000
-          },
-          errorRate: {
-            good: 1,
-            degraded: 5,
-            unhealthy: 10
-          },
-          availability: {
-            good: 99,
-            degraded: 95,
-            unhealthy: 90
-          }
+        errorRate: {
+          good: 1,
+          degraded: 5,
+          unhealthy: 10
         },
-        dependencies: {
-          critical: ['api_gateway', 'database'],
-          important: ['keyword_bank', 'integration_service'],
-          optional: ['cache_layer', 'metrics_collector']
-        },
-        recovery: {
-          enableAutoRecovery: true,
-          maxRetryAttempts: 3,
-          retryBackoffMs: 5000,
-          escalationTimeoutMinutes: 15
-        },
-        alerting: {
-          channels: ['email', 'slack'],
-          severityLevels: {
-            info: false,
-            warning: true,
-            error: true,
-            critical: true
-          }
-        },
-        monitoring: {
-          retentionDays: this.config.monitoring.metricsRetentionDays,
-          enableTrending: true,
-          enablePredictiveAnalysis: true
-        },
-        logLevel: this.config.logging.level
-      }
-    );
+        availability: {
+          good: 99,
+          degraded: 95,
+          unhealthy: 90
+        }
+      },
+      recovery: {
+        enableAutoRecovery: true,
+        maxRetryAttempts: 3,
+        retryBackoffMs: 5000,
+        escalationTimeoutMinutes: 15
+      },
+      logLevel: this.config.logging.level
+    }, this.apiClient, this.keywordBankService, this.integrationService);
   }
 
   /**
@@ -477,13 +433,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
     this.integration = this.integrationService;
     
     this.validation = {
-      keyword: {
-        validateKeywordInput: (keyword: string, countryCode: string) => ValidationService.validateKeywordInput(keyword, countryCode),
-        validateBulkKeywords: (keywords: string[] | Array<{keyword: string}>) => ValidationService.validateBulkKeywords(keywords)
-      },
-      response: {
-        validateApiResponse: (response: unknown) => ValidationService.validateApiResponse(response)
-      },
+      keyword: ValidationService,
+      response: ValidationService,
       quota: this.integrationService
     };
     
@@ -533,13 +484,15 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       await this.ensureInitialized();
       
       // Validate input
-      const keywordValidation = await ValidationService.validateKeywordInput(keyword, countryCode);
+      const keywordValidation = ValidationService.validateKeywordsBatch([keyword]);
+      const countryValidation = ValidationService.validateCountryCode(countryCode);
       
-      if (!keywordValidation.isValid) {
+      if (!keywordValidation.isValid || !countryValidation.isValid) {
+        const errors = [...(keywordValidation.errors || []), ...(countryValidation.errors || [])];
         return {
           success: false,
           error: {
-            message: `Validation failed: ${keywordValidation.errors.join(', ')}`,
+            message: `Validation failed: ${errors.map(e => e.message).join(', ')}`,
             type: SeRankingErrorType.INVALID_REQUEST_ERROR
           }
         };
@@ -547,16 +500,13 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
 
       // Use enrichment service
       const enrichResult = await this.enrichmentService.enrichKeyword(
-        keyword,
-        countryCode,
+        keyword, 
+        countryCode, 
         options.forceRefresh
       );
 
       if (!enrichResult.success) {
-        return {
-          success: false,
-          error: enrichResult.error
-        };
+        return enrichResult as ServiceResponse<KeywordIntelligenceResult>;
       }
 
       const processingTime = Date.now() - startTime;
@@ -564,8 +514,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         keyword,
         countryCode,
         data: enrichResult.data!,
-        source: enrichResult.metadata?.source === 'cache' ? 'cache' : 'api',
-        fromCache: enrichResult.metadata?.source === 'cache',
+        source: enrichResult.data ? 'cache' : 'api',
+        fromCache: !options.forceRefresh,
         processingTime,
         warnings: []
       };
@@ -576,39 +526,12 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       };
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      const recoveryResult = await this.errorHandler.handleError<KeywordBankEntity | null>(error as Error, {
+      return await this.errorHandler.handleError(error as Error, {
         operation: 'getKeywordIntelligence',
         timestamp: new Date(),
         keywords: [keyword],
         countryCode
-      });
-
-      if (recoveryResult.success) {
-        return {
-          success: true,
-          data: {
-            keyword,
-            countryCode,
-            data: recoveryResult.data ?? null,
-            source: recoveryResult.fallbackUsed ? 'fallback' : 'api',
-            fromCache: !!recoveryResult.fallbackUsed,
-            processingTime,
-            warnings: ['Recovered from error using ' + (recoveryResult.fallbackUsed ? 'fallback' : 'retry')]
-          }
-        };
-      }
-
-      return {
-        success: false,
-        error: recoveryResult.error ? {
-          type: recoveryResult.error.type,
-          message: recoveryResult.error.message,
-          details: recoveryResult.error.context
-        } : {
-          type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: error instanceof Error ? error.message : 'An unrecognized error occurred'
-        }
-      };
+      }) as ServiceResponse<KeywordIntelligenceResult>;
     }
   }
 
@@ -627,13 +550,13 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       await this.ensureInitialized();
       
       // Validate input
-      const validation = await ValidationService.validateBulkKeywords(keywords);
-      if (validation.isValid === false) {
-        const totalInvalid = (validation as { totalInvalid?: number }).totalInvalid || 0;
+      const keywordList = keywords.map(k => k.keyword);
+      const validation = ValidationService.validateKeywordsBatch(keywordList);
+      if (!validation.isValid) {
         return {
           success: false,
           error: {
-            message: `Validation failed for ${totalInvalid || 'some'} keywords`,
+            message: `Validation failed: ${validation.errors.join(', ')}`,
             type: SeRankingErrorType.INVALID_REQUEST_ERROR
           }
         };
@@ -643,21 +566,18 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       const bulkResult = await this.enrichmentService.enrichKeywordsBulk(keywords);
       
       if (!bulkResult.success || !bulkResult.data) {
-        return {
-          success: false,
-          error: bulkResult.error
-        };
+        return bulkResult as ServiceResponse<BulkEnrichmentResult>;
       }
 
       const job = bulkResult.data;
       const result: BulkEnrichmentResult = {
-        jobId: job.id,
-        status: job.status as 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled',
-        totalKeywords: job.progress.total,
-        processedKeywords: job.progress.processed,
-        successfulKeywords: job.progress.successful,
-        failedKeywords: job.progress.failed,
-        estimatedCompletion: job.completed_at ? new Date(job.completed_at) : undefined,
+        jobId: job.job_id,
+        status: job.status,
+        totalKeywords: job.total_keywords,
+        processedKeywords: job.processed_keywords,
+        successfulKeywords: job.successful_keywords,
+        failedKeywords: job.failed_keywords,
+        estimatedCompletion: job.estimated_completion,
         results: [] // Would be populated from job results
       };
 
@@ -666,68 +586,93 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         data: result
       };
     } catch (error) {
-      const recoveryResult = await this.errorHandler.handleError<BulkEnrichmentResult>(error as Error, {
+      return await this.errorHandler.handleError(error, {
         operation: 'bulkEnrichKeywords',
         timestamp: new Date(),
         keywords: keywords.map(k => k.keyword),
         batchSize: keywords.length
-      });
-
-      if (recoveryResult.success && recoveryResult.data) {
-        return {
-          success: true,
-          data: recoveryResult.data
-        };
-      }
-
-      return {
-        success: false,
-        error: recoveryResult.error ? {
-          type: recoveryResult.error.type,
-          message: recoveryResult.error.message,
-          details: recoveryResult.error.context
-        } : {
-          type: SeRankingErrorType.UNKNOWN_ERROR,
-          message: error instanceof Error ? error.message : 'Unknown error'
-        }
-      };
+      }) as ServiceResponse<BulkEnrichmentResult>;
     }
   }
 
   /**
    * Get comprehensive system status
    */
-  async getStatus(): Promise<{
-    isInitialized: boolean;
-    isHealthy: boolean;
-    services: Record<string, boolean>;
-  }> {
+  async getStatus(): Promise<SystemStatus> {
     try {
-      const healthResult = await this.healthChecker?.performHealthCheck().catch(() => ({ status: 'unknown' as const }));
+      const [healthResult, quotaStatus, metrics] = await Promise.all([
+        this.healthChecker?.performHealthCheck().catch(() => ({ status: 'unknown' as const })),
+        this.integrationService?.getQuotaStatus().catch(() => ({ success: false })),
+        this.metricsCollector?.getMetrics().catch(() => ({}))
+      ]);
+
+      const queueStatus = await this.enrichmentQueue?.getQueueStatus().catch(() => ({ processing: 0 }));
       
       return {
         isInitialized: this.isInitialized,
         isHealthy: healthResult?.status === 'healthy',
+        overallScore: this.calculateOverallScore(healthResult, quotaStatus),
         services: {
           api: this.apiClient ? await this.apiClient.isHealthy().catch(() => false) : false,
           keywordBank: !!this.keywordBankService,
           queue: !!this.enrichmentQueue,
           monitoring: !!this.healthChecker,
           integration: !!this.integrationService
-        }
+        },
+        lastHealthCheck: new Date(),
+        quotaStatus: quotaStatus?.success ? quotaStatus.data! : {
+          current_usage: 0,
+          quota_limit: 0,
+          quota_remaining: 0,
+          usage_percentage: 0,
+          reset_date: new Date(),
+          is_approaching_limit: false,
+          is_quota_exceeded: false
+        },
+        metrics: metrics as ApiMetrics || {
+          total_requests: 0,
+          successful_requests: 0,
+          failed_requests: 0,
+          average_response_time: 0,
+          cache_hits: 0,
+          cache_misses: 0
+        },
+        activeJobs: queueStatus?.processing || 0,
+        systemUptime: Date.now() - this.startedAt.getTime()
       };
     } catch (error) {
       this.log('error', 'Failed to get system status:', error);
       return {
         isInitialized: this.isInitialized,
         isHealthy: false,
+        overallScore: 0,
         services: {
           api: false,
           keywordBank: false,
           queue: false,
           monitoring: false,
           integration: false
-        }
+        },
+        lastHealthCheck: new Date(),
+        quotaStatus: {
+          current_usage: 0,
+          quota_limit: 0,
+          quota_remaining: 0,
+          usage_percentage: 0,
+          reset_date: new Date(),
+          is_approaching_limit: false,
+          is_quota_exceeded: false
+        },
+        metrics: {
+          total_requests: 0,
+          successful_requests: 0,
+          failed_requests: 0,
+          average_response_time: 0,
+          cache_hits: 0,
+          cache_misses: 0
+        },
+        activeJobs: 0,
+        systemUptime: Date.now() - this.startedAt.getTime()
       };
     }
   }
@@ -737,8 +682,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
    */
   async getSystemMetrics(): Promise<ServiceResponse<{
     metrics: ApiMetrics;
-    cacheStats: KeywordBankCacheStats;
-    queueStats: QueueStats;
+    cacheStats: CacheStats;
+    queueStats: any;
     quotaStatus: QuotaStatus;
   }>> {
     try {
@@ -769,7 +714,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         }
       };
     } catch (error) {
-      return await this.errorHandler.handleApiError(error as Error, {
+      return await this.errorHandler.handleError(error as Error, {
         operation: 'getSystemMetrics',
         timestamp: new Date()
       });
@@ -805,7 +750,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         data: true
       };
     } catch (error) {
-      return await this.errorHandler.handleApiError(error as Error, {
+      return await this.errorHandler.handleError(error as Error, {
         operation: 'configureBulkProcessing',
         timestamp: new Date()
       });
@@ -839,7 +784,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         data: true
       };
     } catch (error) {
-      return await this.errorHandler.handleApiError(error as Error, {
+      return await this.errorHandler.handleError(error as Error, {
         operation: 'enableMonitoring',
         timestamp: new Date()
       });
@@ -870,20 +815,20 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       
       // Shutdown services in reverse order
       if (this.jobProcessor) {
-        await this.jobProcessor.shutdown();
+        await this.jobProcessor.shutdown?.();
       }
       
       if (this.enrichmentQueue) {
-        await this.enrichmentQueue.shutdown();
+        await this.enrichmentQueue.shutdown?.();
       }
       
       // Stop monitoring services
       if (this.quotaMonitor) {
-        await this.quotaMonitor.shutdown();
+        await this.quotaMonitor.shutdown?.();
       }
       
       if (this.healthChecker) {
-        await this.healthChecker.shutdown();
+        await this.healthChecker.shutdown?.();
       }
 
       this.isInitialized = false;
@@ -928,9 +873,39 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   }
 
   /**
+   * Calculate overall system health score
+   */
+  private calculateOverallScore(healthResult: any, quotaStatus: any): number {
+    let score = 0;
+    
+    // Health status (40% weight)
+    if (healthResult?.status === 'healthy') score += 40;
+    else if (healthResult?.status === 'degraded') score += 20;
+    
+    // Quota status (30% weight)
+    if (quotaStatus?.success && quotaStatus.data) {
+      const usagePercent = quotaStatus.data.usage_percentage;
+      if (usagePercent < 0.8) score += 30;
+      else if (usagePercent < 0.95) score += 20;
+      else score += 10;
+    }
+    
+    // Service availability (30% weight)
+    const servicesUp = [
+      this.apiClient,
+      this.keywordBankService,
+      this.enrichmentQueue,
+      this.integrationService
+    ].filter(Boolean).length;
+    score += (servicesUp / 4) * 30;
+    
+    return Math.round(score);
+  }
+
+  /**
    * Log messages with appropriate level
    */
-  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: any[]): void {
     const logLevel = this.config.logging.level;
     
     // Simple level filtering

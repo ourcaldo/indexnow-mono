@@ -52,10 +52,24 @@ export type {
 } from '@indexnow/shared'
 
 // Client exports
-export { createBrowserClient, getBrowserClient, supabaseBrowser as supabase, supabaseBrowser } from '@indexnow/shared'
+export { 
+    createBrowserClient, 
+    getBrowserClient, 
+    supabaseBrowser,
+    supabase
+} from './client'
 
 // Server exports
-export { createClient as createServerClient, createAdminClient, supabaseAdmin, type CookieStore } from './server'
+export { 
+    createServerClient, 
+    createAdminClient, 
+    supabaseAdmin, 
+    type CookieStore,
+    createMiddlewareClient,
+    type MiddlewareRequest,
+    type MiddlewareResponse,
+    type MiddlewareResponseFactory
+} from './server'
 
 // Security exports
 export { 
@@ -65,3 +79,14 @@ export {
     type UserOperationContext,
     type ServiceRoleQueryOptions
 } from './security/SecureServiceRoleWrapper'
+
+// Service exports
+export { DatabaseService, db } from './DatabaseService'
+
+// Utility exports
+export * from './utils/ApiClient'
+export * from './utils/site-settings'
+export * from './utils/queryClient'
+
+// Hook exports
+export * from './hooks'

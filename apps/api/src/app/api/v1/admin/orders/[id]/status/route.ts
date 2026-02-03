@@ -1,10 +1,9 @@
-import { SecureServiceRoleWrapper, type TransactionRow, type UpdateTransaction, type UpdateUserProfile, type TransactionMetadata } from '@indexnow/database';
+import { SecureServiceRoleWrapper, type TransactionMetadata, type TransactionRow, type UpdateTransaction, type UpdateUserProfile, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ActivityLogger } from '@/lib/monitoring'
+import { ServerActivityLogger } from '@/lib/monitoring'
 import { ErrorType, ErrorSeverity, logger } from '@/lib/monitoring/error-handling'
-import { supabaseAdmin } from '@/lib/database'
 import { type Json } from '@indexnow/shared'
 
 // Extended transaction type with runtime joined properties
@@ -93,7 +92,7 @@ async function activateUserPlan(transaction: TransactionRow, adminUserId: string
 
   // Log plan activation
   try {
-    await ActivityLogger.logAdminAction(
+    await ServerActivityLogger.logAdminAction(
       adminUserId,
       'plan_activation',
       transaction.user_id,
@@ -427,7 +426,7 @@ export const PATCH = adminApiWrapper(async (
 
     // Log admin activity
     try {
-      await ActivityLogger.logAdminAction(
+      await ServerActivityLogger.logAdminAction(
         adminUser.id,
         'order_status_update',
         orderId,

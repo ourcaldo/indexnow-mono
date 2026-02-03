@@ -17,7 +17,7 @@ export function ServerErrorBoundary({
 }) {
   useEffect(() => {
     trackError(error, {
-      errorDigest: error.digest,
+      errorDigest: error.digest || null,
       errorType: 'server-component',
       errorName: error.name,
     });

@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react'
 import { 
   authService, 
-  supabaseBrowser as supabase,
-  ApiEndpoints as AUTH_ENDPOINTS,
-  usePageViewLogger,
-  useActivityLogger
+  ApiEndpoints as AUTH_ENDPOINTS
 } from '@indexnow/shared'
+import { supabaseBrowser as supabase, usePageViewLogger, useActivityLogger } from '@indexnow/database'
 import { useAuth } from '@indexnow/auth'
 import { 
   Card,

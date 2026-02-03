@@ -3,13 +3,26 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Download } from 'lucide-react'
-import { supabaseBrowser as supabase, AppConfig } from '@indexnow/shared'
-import { authService } from '@indexnow/shared'
-import { usePageViewLogger, useActivityLogger } from '@indexnow/shared'
-import { LoadingSpinner, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, Progress, useToast, useApiError } from '@indexnow/ui'
-import { BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate } from '@indexnow/shared'
-import { CancelSubscriptionDialog } from './components/CancelSubscriptionDialog'
-import { SubscriptionStatusBadge } from './components/SubscriptionStatusBadge'
+import { authService, AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate } from '@indexnow/shared'
+import { supabaseBrowser as supabase, usePageViewLogger, useActivityLogger } from '@indexnow/database'
+import { 
+  LoadingSpinner, 
+  Button, 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle, 
+  Badge, 
+  Progress, 
+  useToast, 
+  useApiError,
+  CancelSubscriptionDialog,
+  SubscriptionStatusBadge,
+  BillingStats,
+  PricingCards,
+  BillingHistory
+} from '@indexnow/ui'
 
 // Type definitions
 interface PricingTier {
@@ -545,276 +558,62 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-8">
-      {/* Current Plan Card */}
-      {currentPlan ? (
-        <div className="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
-          <div className="px-6 py-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Current Plan</h2>
-                <p className="mt-2 text-3xl font-bold text-gray-900" data-testid="text-plan-name">{currentPlan.name}</p>
-                <p className="text-sm text-gray-500" data-testid="text-billing-info">
-                  {currentPlanPricing && `${formatCurrency(currentPlanPricing.price)} / mo`}
-                  {billingData?.billingStats?.next_billing_date && ` — Next bill on ${formatDate(billingData.billingStats.next_billing_date)}`}
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* Current Plan & Usage */}
+      <BillingStats 
+        billingData={billingData}
+        currentPackageId={packagesData?.current_package_id || null}
+        formatCurrency={formatCurrency}
+        keywordUsage={keywordUsage}
+        usageLoading={loading}
+        expirationText={billingData?.currentSubscription?.expires_at ? formatDate(billingData.currentSubscription.expires_at) : 'Active'}
+      />
 
-          <div className="border-t border-gray-200 px-6 py-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Current Usage</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Keywords */}
-              <div>
-                <div className="flex justify-between text-sm font-medium text-gray-600">
-                  <span>Keywords</span>
-                  <span><span className="text-gray-900 font-bold">{formatNumber(totalKeywords || keywordUsage?.keywords_used || 0)}</span> / {keywordUsage?.is_unlimited ? '∞' : formatNumber(keywordUsage?.keywords_limit || 0)}</span>
-                </div>
-                <div className="mt-2 bg-gray-200 rounded-full h-1.5">
-                  <div 
-                    className="bg-gray-900 h-1.5 rounded-full" 
-                    style={{ width: `${getUsagePercentage(totalKeywords || keywordUsage?.keywords_used || 0, keywordUsage?.keywords_limit || 0, keywordUsage?.is_unlimited || false)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl p-6" data-testid="card-no-plan">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-gray-900 mb-1">No Active Package</h3>
-              <p className="text-sm text-gray-600">
-                You don't have an active package. Subscribe to a plan below to start tracking your keywords and accessing all features.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plans */}
+      {/* Plans Section */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900" data-testid="text-heading-plans">Available Plans</h2>
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-gray-700">Monthly</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only" 
-                checked={selectedBillingPeriod === 'yearly'}
-                onChange={(e) => setSelectedBillingPeriod(e.target.checked ? 'yearly' : 'monthly')}
-              />
-              <div className={`w-11 h-6 rounded-full border border-gray-200 transition-colors duration-200 ease-in-out ${selectedBillingPeriod === 'yearly' ? 'bg-gray-900' : 'bg-gray-200'}`}>
-                <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${selectedBillingPeriod === 'yearly' ? 'translate-x-5' : 'translate-x-0'}`}></div>
-              </div>
-            </label>
-            <span className="text-sm font-medium text-gray-700">Yearly</span>
-            <span className="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Save 20%</span>
-          </div>
+          <h2 className="text-2xl font-bold text-foreground" data-testid="text-heading-plans">Available Plans</h2>
+          <div className="bg-success/10 text-success px-3 py-1 rounded-full text-xs font-medium">Save 20% on Annual Plans</div>
         </div>
         
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {packagesData?.packages && packagesData.packages.length > 0 ? packagesData.packages.map((plan) => {
-            const pricing = getBillingPeriodPrice(plan, selectedBillingPeriod)
-            const apiPeriod = selectedBillingPeriod === 'yearly' ? 'annual' : 'monthly'
-            const currentApiPeriod = currentUserBillingPeriod === 'annual' ? 'annual' : 'monthly'
-            const isCurrentPlan = plan.id === packagesData.current_package_id && apiPeriod === currentApiPeriod
-            
-            return (
-              <div 
-                key={plan.id} 
-                className={`relative rounded-xl p-6 flex flex-col ${isCurrentPlan ? 'border-2 border-gray-900' : 'border border-gray-200'}`}
-                data-testid={`card-plan-${plan.slug}`}
-              >
-                {isCurrentPlan && (
-                  <span className="absolute top-0 -translate-y-1/2 inline-flex items-center rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-800">Current Plan</span>
-                )}
-                {!isCurrentPlan && pricing.discount && pricing.discount > 0 && (
-                  <span className="absolute top-0 -translate-y-1/2 inline-flex items-center rounded-full bg-green-100 px-3 py-0.5 text-xs font-medium text-green-800">Save {pricing.discount}%</span>
-                )}
-                
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
-                  <p className="mt-2 text-4xl font-bold text-gray-900">
-                    {formatCurrency(pricing.price)}
-                    <span className="text-xl font-medium text-gray-500">/mo</span>
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">{plan.description}</p>
-                </div>
-                
-                <button 
-                  className={`mt-6 w-full rounded-md py-2 px-4 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 ${
-                    isCurrentPlan 
-                      ? 'border border-transparent bg-gray-900 text-white cursor-not-allowed opacity-60'
-                      : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                  disabled={isCurrentPlan || subscribing === plan.id}
-                  onClick={() => !isCurrentPlan && handleSubscribe(plan.id, selectedBillingPeriod)}
-                >
-                  {subscribing === plan.id ? (
-                    <>
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      Processing...
-                    </>
-                  ) : isCurrentPlan ? (
-                    'Currently Selected'
-                  ) : (
-                    `Switch to ${plan.name}`
-                  )}
-                </button>
-              </div>
-            )
-          }) : (
-            <div className="col-span-3 text-center py-8">
-              <p className="text-gray-500">No plans available</p>
-            </div>
-          )}
-        </div>
+        <PricingCards 
+          packages={packagesData?.packages || []}
+          selectedBillingPeriod={selectedBillingPeriod === 'yearly' ? 'annual' : 'monthly'}
+          setSelectedBillingPeriod={(period: string) => setSelectedBillingPeriod(period === 'annual' ? 'yearly' : 'monthly')}
+          subscribing={subscribing}
+          trialEligible={trialEligible}
+          startingTrial={startingTrial}
+          showDetails={{}}
+          showComparePlans={false}
+          getBillingPeriodPrice={getBillingPeriodPrice}
+          formatCurrency={formatCurrency}
+          handleSubscribe={(pkgId: string) => handleSubscribe(pkgId, selectedBillingPeriod)}
+          handleStartTrial={handleStartTrial}
+          isTrialEligiblePackage={isTrialEligiblePackage}
+          togglePlanDetails={() => {}}
+        />
       </div>
 
-      {/* Billing History */}
-      <div className="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-xl">
-        <div className="px-6 py-5">
-          <h2 className="text-lg font-semibold text-gray-900">Billing History</h2>
-          <p className="mt-1 text-sm text-gray-500">View and download your past invoices</p>
+      {/* Billing History Section */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <BillingHistory 
+            historyData={historyData}
+            statusFilter=""
+            typeFilter=""
+            searchTerm=""
+            setStatusFilter={() => {}}
+            setTypeFilter={() => {}}
+            setSearchTerm={() => {}}
+            handlePageChange={handlePageChange}
+            resetFilters={() => {}}
+            getStatusIcon={getStatusIcon}
+            getStatusText={getStatusText}
+            getStatusColor={getStatusColor}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            onRowClick={(id: string) => window.location.href = `/dashboard/settings/plans-billing/order/${id}`}
+          />
         </div>
-        
-        {historyData?.transactions && historyData.transactions.length > 0 ? (
-          <div className="border-t border-gray-200">
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {historyData.transactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(transaction.created_at)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{transaction.id}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                          transaction.transaction_status === 'completed' || transaction.transaction_status === 'confirmed'
-                            ? 'bg-green-100 text-green-800'
-                            : transaction.transaction_status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {transaction.transaction_status === 'completed' || transaction.transaction_status === 'confirmed' ? 'Paid' : getStatusText(transaction.transaction_status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(transaction.amount)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
-                          onClick={() => window.location.href = `/dashboard/settings/plans-billing/order/${transaction.id}`}
-                          className="inline-flex items-center text-gray-700 hover:text-gray-900"
-                        >
-                          <Download className="w-4 h-4 mr-1" />
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Mobile Card View */}
-            <div className="md:hidden divide-y divide-gray-200">
-              {historyData.transactions.map((transaction) => (
-                <div 
-                  key={transaction.id} 
-                  className="px-4 py-4 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => window.location.href = `/dashboard/settings/plans-billing/order/${transaction.id}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">{formatDate(transaction.created_at)}</span>
-                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
-                      transaction.transaction_status === 'completed' || transaction.transaction_status === 'confirmed'
-                        ? 'bg-green-100 text-green-800'
-                        : transaction.transaction_status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {transaction.transaction_status === 'completed' || transaction.transaction_status === 'confirmed' ? 'Paid' : getStatusText(transaction.transaction_status)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-gray-500 truncate max-w-[200px]">{transaction.id}</div>
-                    <div className="text-sm font-semibold text-gray-900">{formatCurrency(transaction.amount)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {historyData.pagination && historyData.pagination.total_pages > 1 && (
-              <div className="bg-gray-50 px-6 py-4 flex items-center justify-between rounded-b-xl">
-                <div className="text-sm text-gray-500">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, historyData.pagination.total_items)} of {historyData.pagination.total_items} transactions
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={!historyData.pagination.has_prev}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, historyData.pagination.total_pages) }, (_, i) => {
-                      let pageNum
-                      if (historyData.pagination.total_pages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (currentPage >= historyData.pagination.total_pages - 2) {
-                        pageNum = historyData.pagination.total_pages - 4 + i
-                      } else {
-                        pageNum = currentPage - 2 + i
-                      }
-                      
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`w-9 h-9 text-sm rounded-md ${
-                            currentPage === pageNum 
-                              ? 'bg-gray-900 text-white' 
-                              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={!historyData.pagination.has_next}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="border-t border-gray-200 px-6 py-12 text-center">
-            <p className="text-gray-500">No transactions found</p>
-          </div>
-        )}
       </div>
 
       {/* Danger Zone Card - Cancel Subscription */}

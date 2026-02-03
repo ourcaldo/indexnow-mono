@@ -12,7 +12,7 @@ import {
   Shield,
   Server
 } from 'lucide-react'
-import { type Json } from '@indexnow/shared'
+import { type Json, formatDate } from '@indexnow/shared'
 
 interface ActivityLog {
   id: string
@@ -62,12 +62,7 @@ export function UserActivityCard({ activityLogs, activityLoading }: UserActivity
   }
 
   const formatActivityDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    return formatDate(dateString, true)
   }
 
   return (

@@ -1,9 +1,8 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { supabaseAdmin } from '@/lib/database'
-import { ActivityLogger } from '@/lib/monitoring'
+import { ServerActivityLogger } from '@/lib/monitoring'
 import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
 
 export const POST = adminApiWrapper(async (
@@ -109,7 +108,7 @@ export const POST = adminApiWrapper(async (
     )
   }
 
-  await ActivityLogger.logAdminAction(
+  await ServerActivityLogger.logAdminAction(
     adminUser.id,
     'password_reset',
     userId,

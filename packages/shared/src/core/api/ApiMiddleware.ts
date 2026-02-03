@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { type Json } from '../../types/common/Json';
+import { AppConfig } from '../config/AppConfig';
 
 export interface MiddlewareContext {
   req: NextRequest;
@@ -43,11 +44,40 @@ export const requestLogger: MiddlewareFunction = async (context, next) => {
 
 // CORS middleware
 export const corsMiddleware: MiddlewareFunction = async (context, next) => {
+  const { req } = context;
+  const origin = req.headers.get('origin');
+  const allowedOrigins = AppConfig.app.allowedOrigins;
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    const preflightResponse = new NextResponse(null, { status: 204 });
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      preflightResponse.headers.set('Access-Control-Allow-Origin', origin);
+    } else if (!origin && process.env.NODE_ENV === 'development') {
+      // Allow local development without origin header (e.g. Postman)
+      preflightResponse.headers.set('Access-Control-Allow-Origin', '*');
+    }
+    
+    preflightResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    preflightResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-signature, x-timestamp');
+    preflightResponse.headers.set('Access-Control-Max-Age', '86400');
+    preflightResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+    
+    return preflightResponse;
+  }
+
   const response = await next();
   
-  response.headers.set('Access-Control-Allow-Origin', '*');
+  if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin && process.env.NODE_ENV === 'development') {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+  }
+  
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-signature, x-timestamp');
   response.headers.set('Access-Control-Max-Age', '86400');
   
   return response;

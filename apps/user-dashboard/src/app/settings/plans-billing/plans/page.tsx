@@ -10,10 +10,9 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { authService, useApiError } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/shared'
-import { BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
-import { LoadingSpinner } from '@indexnow/ui'
+import { authService, BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
+import { supabaseBrowser as supabase } from '@indexnow/database'
+import { LoadingSpinner, PricingCards, useApiError } from '@indexnow/ui'
 
 interface PackageFeature {
   name: string
@@ -171,152 +170,22 @@ export default function PlansPage() {
         </p>
       </div>
 
-      {/* Billing Period Toggle */}
-      <div className="flex justify-center">
-        <div className="flex bg-secondary p-1 rounded-lg">
-          {billingPeriods.map((period) => (
-            <button
-              key={period.key}
-              onClick={() => setSelectedBillingPeriod(period.key)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                selectedBillingPeriod === period.key
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {period.label}
-              {period.key === 'annual' && (
-                <span className="ml-1 text-xs bg-success text-success-foreground px-1.5 py-0.5 rounded-full">
-                  Save 20%
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-        {packagesData?.packages.map((pkg) => {
-          const pricingInfo = getBillingPeriodPrice(pkg, selectedBillingPeriod)
-          const currentPeriod = billingPeriods.find(p => p.key === selectedBillingPeriod)
-
-          return (
-            <div
-              key={pkg.id}
-              className={`relative bg-card rounded-xl border-2 p-8 transition-all hover:shadow-lg ${
-                pkg.is_popular 
-                  ? 'border-accent shadow-md' 
-                  : pkg.is_current
-                  ? 'border-success'
-                  : 'border-border hover:border-accent'
-              }`}
-            >
-              {/* Popular Badge */}
-              {pkg.is_popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="flex items-center bg-accent text-accent-foreground px-4 py-2 rounded-full text-sm font-medium">
-                    <Star className="h-4 w-4 mr-1" />
-                    Most Popular
-                  </div>
-                </div>
-              )}
-
-              {/* Current Plan Badge */}
-              {pkg.is_current && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="flex items-center bg-success text-success-foreground px-4 py-2 rounded-full text-sm font-medium">
-                    <Crown className="h-4 w-4 mr-1" />
-                    Current Plan
-                  </div>
-                </div>
-              )}
-
-              {/* Plan Header */}
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-foreground mb-2">{pkg.name}</h3>
-                <p className="text-muted-foreground mb-6">{pkg.description}</p>
-
-                <div className="mb-6">
-                  {pricingInfo.originalPrice && (
-                    <div className="text-muted-foreground line-through text-lg mb-1">
-                      {formatCurrency(pricingInfo.originalPrice, pkg.currency)}
-                    </div>
-                  )}
-                  <div className="flex items-baseline justify-center">
-                    <span className="text-4xl font-bold text-foreground">
-                      {formatCurrency(pricingInfo.price, pkg.currency)}
-                    </span>
-                    <span className="text-muted-foreground ml-1">
-                      {currentPeriod?.suffix}
-                    </span>
-                  </div>
-                  {pricingInfo.discount && (
-                    <div className="text-success text-sm font-medium mt-1">
-                      Save {pricingInfo.discount}%
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Features List */}
-              <div className="space-y-4 mb-8">
-                {(pkg.features || []).map((feature, index) => (
-                  <div key={index} className="flex items-start">
-                    <Check className="h-5 w-5 text-success mr-3 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground">{feature}</span>
-                  </div>
-                ))}
-
-                {/* Quota Limits */}
-                <div className="pt-4 border-t border-border">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Keywords:</span>
-                      <span className="font-medium text-foreground">
-                        {pkg.quota_limits?.rank_tracking_limit === -1 ? 'Unlimited' : pkg.quota_limits?.rank_tracking_limit?.toLocaleString() || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Concurrent Jobs:</span>
-                      <span className="font-medium text-foreground">
-                        {pkg.quota_limits?.concurrent_jobs_limit === -1 ? 'Unlimited' : pkg.quota_limits?.concurrent_jobs_limit || 0}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <button
-                onClick={() => handleSubscribe(pkg.id)}
-                disabled={pkg.is_current || subscribing === pkg.id}
-                className={`w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center ${
-                  pkg.is_current
-                    ? 'bg-success/10 text-success cursor-not-allowed'
-                    : pkg.is_popular
-                    ? 'bg-accent text-accent-foreground hover:bg-accent/90 hover:shadow-md'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
-                } ${subscribing === pkg.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {subscribing === pkg.id ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : pkg.is_current ? (
-                  'Current Plan'
-                ) : (
-                  <>
-                    Get Started
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </button>
-            </div>
-          )
-        })}
-      </div>
+      <PricingCards 
+        packages={packagesData?.packages || []}
+        selectedBillingPeriod={selectedBillingPeriod}
+        setSelectedBillingPeriod={setSelectedBillingPeriod}
+        subscribing={subscribing}
+        trialEligible={false} // Adjust as needed
+        startingTrial={null}
+        showDetails={{}}
+        showComparePlans={false}
+        getBillingPeriodPrice={getBillingPeriodPrice}
+        formatCurrency={formatCurrency}
+        handleSubscribe={handleSubscribe}
+        handleStartTrial={() => {}}
+        isTrialEligiblePackage={() => false}
+        togglePlanDetails={() => {}}
+      />
 
       {/* Additional Info */}
       <div className="text-center py-8">

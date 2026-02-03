@@ -18,7 +18,7 @@ export class ErrorTracker {
       userId: error.userId,
       errorType: error.errorType,
       severity: error.severity,
-      ...error.context
+      ...(error.context || {})
     });
     
     trackEvent('rank_check_error', {

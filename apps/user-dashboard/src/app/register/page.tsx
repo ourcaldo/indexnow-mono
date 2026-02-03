@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { authService, countries, findCountryByCode, useFavicon, useSiteName, useSiteLogo } from '@indexnow/shared'
+import { authService, countries, findCountryByCode } from '@indexnow/shared'
+import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { Eye, EyeOff } from 'lucide-react'
 import { registerSchema } from '@indexnow/shared/schema'
 // We'll use a simple fetch to our detect-location API instead
@@ -38,7 +39,6 @@ export default function Register() {
   // Site settings hooks
   const siteName = useSiteName()
   const logoUrl = useSiteLogo(true) // Always use full logo for register page
-  useFavicon() // Automatically updates favicon
 
   useEffect(() => {
     const checkIfMobile = () => {

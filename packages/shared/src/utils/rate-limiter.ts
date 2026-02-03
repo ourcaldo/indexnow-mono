@@ -43,7 +43,7 @@ function getClientIp(request: RequestLike): string {
     if (typeof request.headers.get === 'function') {
       return request.headers.get(name);
     }
-    return (request.headers as Record<string, string | undefined>)[name] || null;
+    return (request.headers as unknown as Record<string, string | undefined>)[name] || null;
   };
 
   const forwardedFor = getHeader('x-forwarded-for');

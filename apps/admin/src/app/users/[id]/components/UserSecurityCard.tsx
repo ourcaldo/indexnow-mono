@@ -8,7 +8,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react'
-import { type Json } from '@indexnow/shared'
+import { type Json, formatDate } from '@indexnow/shared'
 
 interface SecurityData {
   ipAddresses: Array<{
@@ -152,7 +152,7 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
                 <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded">
                   <span className="font-mono text-sm text-foreground">{ip.ip}</span>
                   <div className="text-xs text-muted-foreground">
-                    Used {ip.usageCount} times • Last: {new Date(ip.lastUsed).toLocaleDateString()}
+                    Used {ip.usageCount} times • Last: {formatDate(ip.lastUsed)}
                   </div>
                 </div>
               ))}
@@ -194,7 +194,7 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(attempt.timestamp).toLocaleString()}
+                    {formatDate(attempt.timestamp, true)}
                   </span>
                 </div>
               ))}
@@ -209,7 +209,7 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Last Activity</p>
                 <p className="text-sm text-foreground">
                   {securityData.activity.lastActivity 
-                    ? new Date(securityData.activity.lastActivity).toLocaleDateString()
+                    ? formatDate(securityData.activity.lastActivity)
                     : 'Never'
                   }
                 </p>
@@ -222,7 +222,7 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">First Seen</p>
                 <p className="text-sm text-foreground">
                   {securityData.activity.firstSeen 
-                    ? new Date(securityData.activity.firstSeen).toLocaleDateString()
+                    ? formatDate(securityData.activity.firstSeen)
                     : 'N/A'
                   }
                 </p>

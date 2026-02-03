@@ -27,7 +27,7 @@ export interface RankCheckError {
   errorMessage: string;
   timestamp: Date;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  context?: Json;
+  context?: Record<string, Json>;
 }
 
 export interface ErrorStats {

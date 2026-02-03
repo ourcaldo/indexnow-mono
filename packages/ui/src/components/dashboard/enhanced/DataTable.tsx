@@ -1,15 +1,13 @@
+import React from 'react'
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
   useReactTable,
-  SortingState,
-  ColumnFiltersState,
-  VisibilityState,
 } from "@tanstack/react-table"
+import { Card, CardContent } from '../../card'
+import { Button } from '../../button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]

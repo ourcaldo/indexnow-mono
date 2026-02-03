@@ -1,121 +1,145 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { loginSchema } from '@indexnow/shared'
-import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware'
-import { ErrorHandlingService, ErrorType, ErrorSeverity, logger } from '@/lib/monitoring/error-handling'
-import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring'
+import { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { loginSchema, AppConfig } from '@indexnow/shared';
+import { 
+  publicApiWrapper, 
+  formatSuccess, 
+  formatError 
+} from '../../../../../lib/core/api-response-middleware';
+import { 
+  ErrorHandlingService, 
+  ErrorType, 
+  ErrorSeverity 
+} from '../../../../../lib/monitoring/error-handling';
+import { ActivityLogger, ActivityEventTypes } from '../../../../../lib/monitoring/activity-logger';
+import { loginNotificationService } from '../../../../../lib/email/login-notification-service';
+import { getRequestInfo } from '../../../../../lib/utils/ip-device-utils';
 
+/**
+ * POST /api/v1/auth/login
+ * Handles user authentication via Supabase and logs activity
+ */
 export const POST = publicApiWrapper(async (request: NextRequest) => {
-  try {
-    const body = await request.json()
-    const validation = loginSchema.safeParse(body)
+  const endpoint = '/api/v1/auth/login';
+  const method = 'POST';
 
-    if (!validation.success) {
-      const validationError = await ErrorHandlingService.createError(
+  try {
+    // 1. Validate request body
+    const body = await request.json();
+    const validationResult = loginSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
-        validation.error.issues[0].message,
-        { severity: ErrorSeverity.LOW, statusCode: 400 }
-      )
-      return formatError(validationError)
+        'Invalid login credentials format',
+        {
+          severity: ErrorSeverity.LOW,
+          endpoint,
+          method,
+          statusCode: 400,
+          userMessageKey: 'invalid_format',
+          metadata: { errors: validationResult.error.errors }
+        }
+      );
+      return formatError(error);
     }
 
-    const { email, password } = validation.data
+    const { email, password } = validationResult.data;
 
-    const cookieStore = await cookies()
+    // 2. Initialize Supabase client
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      AppConfig.supabase.url,
+      AppConfig.supabase.anonKey,
       {
         cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll(cookiesToSet: Array<{ name: string; value: string; options: { path?: string; domain?: string; maxAge?: number; httpOnly?: boolean; secure?: boolean; sameSite?: 'strict' | 'lax' | 'none'; } }>) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options)
-              })
-            } catch (error) {}
-          },
+          getAll() { return []; },
+          setAll() {},
         },
       }
-    )
+    );
 
-    const { data, error } = await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: 'system',
-        operation: 'user_login_password',
-        source: 'auth/login',
-        reason: 'System processing user password-based authentication',
-        metadata: { email, loginMethod: 'password', hasPassword: !!password },
-        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
-        userAgent: request.headers.get('user-agent') || undefined || 'unknown'
-      },
-      { table: 'auth.users', operationType: 'select' },
-      async () => {
-        const result = await supabase.auth.signInWithPassword({ email, password })
-        if (result.error) throw new Error(`Login failed: ${result.error.message}`)
-        return result
-      }
-    )
+    // 3. Attempt login with Supabase
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (error) {
-      const errorObj = error as { message?: string; code?: string }
-      const errorMessage = errorObj?.message || 'Unknown error'
-      const errorCode = errorObj?.code || 'unknown'
-      
-      const authError = await ErrorHandlingService.createError(
+    if (authError || !authData.user) {
+      // Log failed login attempt
+      await ActivityLogger.logAuth(
+        'anonymous',
+        ActivityEventTypes.LOGIN,
+        false,
+        request,
+        authError?.message || 'Invalid credentials'
+      );
+
+      const error = await ErrorHandlingService.createError(
         ErrorType.AUTHENTICATION,
-        `Login failed for ${email}: ${errorMessage}`,
-        { severity: ErrorSeverity.MEDIUM, statusCode: 401, metadata: { email, errorCode, attempt: 'password_login' } }
-      )
-
-      try {
-        await ActivityLogger.logAuth(email, ActivityEventTypes.LOGIN, false, request, errorMessage)
-      } catch (logError) {}
-
-      return formatError(authError)
+        authError?.message || 'Invalid email or password',
+        {
+          severity: ErrorSeverity.MEDIUM,
+          endpoint,
+          method,
+          statusCode: 401,
+          userMessageKey: 'invalid_credentials'
+        }
+      );
+      return formatError(error);
     }
 
-    if (data.user?.id) {
-      try {
-        await ActivityLogger.logAuth(data.user.id, ActivityEventTypes.LOGIN, true, request)
-      } catch (logError) {}
+    const user = authData.user;
 
-      process.nextTick(async () => {
-        try {
-          const { loginNotificationService } = await import('@/lib/email/login-notification-service')
-          const { getRequestInfo } = await import('@/lib/utils/ip-device-utils')
-          
-          const requestInfo = await getRequestInfo(request)
-          
-          Promise.race([
-            loginNotificationService.sendLoginNotification({
-              userId: data.user.id,
-              userEmail: data.user.email || '',
-              userName: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-              ipAddress: requestInfo.ipAddress || 'Unknown',
-              userAgent: requestInfo.userAgent || 'Unknown',
-              deviceInfo: requestInfo.deviceInfo || undefined,
-              locationData: requestInfo.locationData || undefined,
-              loginTime: new Date().toISOString()
-            }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Email sending timeout')), 30000))
-          ]).catch(() => {})
-        } catch (importError) {}
-      })
-    }
+    // 4. Log successful login activity
+    const requestInfo = await getRequestInfo(request);
+    await ActivityLogger.logAuth(
+      user.id,
+      ActivityEventTypes.LOGIN,
+      true,
+      request
+    );
 
-    return formatSuccess({ user: data.user, session: data.session })
+    // 5. Send login notification email (async)
+    loginNotificationService.sendLoginNotification({
+      userId: user.id,
+      userEmail: user.email!,
+      userName: user.user_metadata?.full_name || user.email!.split('@')[0],
+      ipAddress: requestInfo.ipAddress || 'Unknown',
+      userAgent: requestInfo.userAgent || 'Unknown',
+      deviceInfo: requestInfo.deviceInfo,
+      locationData: requestInfo.locationData,
+      loginTime: new Date().toISOString()
+    }).catch(emailError => {
+      console.error('Failed to send login notification email:', emailError);
+    });
+
+    // 6. Return success response with session data
+    return formatSuccess({
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        last_sign_in_at: user.last_sign_in_at
+      },
+      session: {
+        access_token: authData.session.access_token,
+        refresh_token: authData.session.refresh_token,
+        expires_at: authData.session.expires_at
+      }
+    });
+
   } catch (error) {
-    const systemError = await ErrorHandlingService.createError(
+    const structuredError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
-      error as Error,
-      { severity: ErrorSeverity.HIGH, statusCode: 500, metadata: { operation: 'user_login' } }
-    )
-    return formatError(systemError)
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        severity: ErrorSeverity.HIGH,
+        endpoint,
+        method,
+        statusCode: 500,
+        userMessageKey: 'default'
+      }
+    );
+    return formatError(structuredError);
   }
-})
-
-
-
+});

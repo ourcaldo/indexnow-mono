@@ -6,91 +6,83 @@
  * - Failed authentication attempts
  * - Suspicious activity patterns
  * - Admin action auditing
- * 
- * Integrates with:
- * - ErrorHandlingService for structured logging
- * - Sentry for real-time alerts
- * - Database (indb_security_activity_logs) for audit trail
  */
 
-import { logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
-import { trackError } from '@/lib/analytics'
-import { type Json } from '@indexnow/shared'
+import { logger, ErrorHandlingService } from '../../monitoring/error-handling';
+import { trackError } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 
 export interface SecurityEvent {
   /**
    * Type of security event
    */
-  eventType: 'unauthorized_access' | 'failed_auth' | 'suspicious_activity' | 'admin_action'
+  eventType: 'unauthorized_access' | 'failed_auth' | 'suspicious_activity' | 'admin_action';
   
   /**
    * User ID (if authenticated) or 'anonymous'
    */
-  userId?: string
+  userId?: string;
   
   /**
    * Email address (if available)
    */
-  userEmail?: string
+  userEmail?: string;
   
   /**
    * Attempted endpoint or resource
    */
-  endpoint: string
+  endpoint: string;
   
   /**
    * HTTP method used
    */
-  method: string
+  method: string;
   
   /**
    * IP address of the request
    */
-  ipAddress?: string
+  ipAddress?: string;
   
   /**
    * User agent string
    */
-  userAgent?: string
+  userAgent?: string;
   
   /**
    * Reason for the security event
    */
-  reason: string
+  reason: string;
   
   /**
    * Current user role (if authenticated)
    */
-  currentRole?: string
+  currentRole?: string;
   
   /**
    * Required role for the endpoint
    */
-  requiredRole?: string
+  requiredRole?: string;
   
   /**
    * Additional metadata
    */
-  metadata?: Record<string, Json>
+  metadata?: Record<string, any>;
   
   /**
    * Severity level
    */
-  severity?: 'low' | 'medium' | 'high' | 'critical'
+  severity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 export class AdminSecurityLogger {
   /**
    * Log unauthorized admin access attempt
-   * 
-   * Called when a user attempts to access admin endpoints without proper authorization.
-   * Creates both structured log entry and sends alert to Sentry for high-severity events.
    */
   static async logUnauthorizedAccess(event: SecurityEvent): Promise<void> {
-    const severity = event.severity || 'medium'
+    const severity = event.severity || 'medium';
     
     // Structured logging
-    const logData: Record<string, Json | undefined> = {
+    logger.warn({
       eventType: event.eventType,
       userId: event.userId || 'anonymous',
       userEmail: event.userEmail || 'unknown',
@@ -104,29 +96,25 @@ export class AdminSecurityLogger {
       severity,
       timestamp: new Date().toISOString(),
       ...event.metadata
-    }
-    
-    logger.warn(logData, `Security Alert: ${event.eventType} - ${event.reason}`)
+    }, `Security Alert: ${event.eventType} - ${event.reason}`);
 
-    // Track high-severity events in Sentry
+    // Track high-severity events
     if (severity === 'high' || severity === 'critical') {
       try {
-        const error = new Error(`Security Event: ${event.reason}`)
-        const trackMetadata: Record<string, Json | undefined> = {
+        const error = new Error(`Security Event: ${event.reason}`);
+        trackError(error, {
           eventType: event.eventType,
-          userId: event.userId,
+          userId: event.userId || 'anonymous',
           endpoint: event.endpoint,
           severity,
           ...event.metadata
-        }
-        trackError(error, trackMetadata)
+        });
       } catch (sentryError) {
-        // Silently fail Sentry tracking - don't break the application
+        // Silently fail analytics tracking
       }
     }
 
     // Create structured error for database logging
-    // This ensures the event is persisted in indb_system_error_logs
     if (severity === 'high' || severity === 'critical') {
       try {
         await ErrorHandlingService.createError(
@@ -147,10 +135,9 @@ export class AdminSecurityLogger {
               ...event.metadata
             }
           }
-        )
+        );
       } catch (dbError) {
-        // Silently fail database logging - don't break the application
-        logger.error({ error: dbError instanceof Error ? dbError.message : String(dbError) }, 'Failed to log security event to database')
+        logger.error({ error: dbError }, 'Failed to log security event to database');
       }
     }
   }
@@ -162,7 +149,7 @@ export class AdminSecurityLogger {
     await this.logUnauthorizedAccess({
       ...event,
       eventType: 'failed_auth'
-    })
+    });
   }
 
   /**
@@ -173,37 +160,36 @@ export class AdminSecurityLogger {
       ...event,
       eventType: 'suspicious_activity',
       severity: event.severity || 'high'
-    })
+    });
   }
 
   /**
    * Log admin action for audit trail
    */
   static async logAdminAction(event: Omit<SecurityEvent, 'eventType'>): Promise<void> {
-    // Admin actions are logged with lower severity by default
     await this.logUnauthorizedAccess({
       ...event,
       eventType: 'admin_action',
       severity: event.severity || 'low'
-    })
+    });
   }
 
   /**
    * Extract request metadata for security logging
    */
   static extractRequestMetadata(request: Request): {
-    ipAddress: string
-    userAgent: string
+    ipAddress: string;
+    userAgent: string;
   } {
-    const headers = request.headers
+    const headers = request.headers;
     
     const ipAddress = 
       headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       headers.get('x-real-ip') ||
-      'unknown'
+      'unknown';
     
-    const userAgent = headers.get('user-agent') || 'unknown'
+    const userAgent = headers.get('user-agent') || 'unknown';
     
-    return { ipAddress, userAgent }
+    return { ipAddress, userAgent };
   }
 }

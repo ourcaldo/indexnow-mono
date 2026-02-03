@@ -6,14 +6,10 @@
 import {
   SeRankingErrorType,
   SeRankingError,
-  SeRankingHealthCheckResult,
-  ServiceResponse,
-  SeRankingErrorContext,
-  RecoveryResult,
-  ISeRankingErrorHandler,
-  JobErrorType
+  QuotaStatus,
+  HealthCheckResult,
+  logger
 } from '@indexnow/shared';
-import { logger } from '@/lib/monitoring/error-handling';
 
 // Error handling configuration
 export interface ErrorHandlingConfig {
@@ -25,6 +21,19 @@ export interface ErrorHandlingConfig {
   circuitBreakerTimeout: number;
   enableGracefulDegradation: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+}
+
+// Error context and metadata
+export interface ErrorContext {
+  operation: string;
+  timestamp: Date;
+  userId?: string;
+  keywords?: string[];
+  countryCode?: string;
+  batchSize?: number;
+  apiEndpoint?: string;
+  requestId?: string;
+  sessionId?: string;
 }
 
 // Recovery strategy types
@@ -43,6 +52,17 @@ export enum ErrorSeverity {
   CRITICAL = 'critical'
 }
 
+// Recovery result
+export interface RecoveryResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: SeRankingError;
+  strategy: RecoveryStrategy;
+  attempts: number;
+  totalTime: number;
+  fallbackUsed: boolean;
+}
+
 // Circuit breaker state
 export interface CircuitBreakerState {
   isOpen: boolean;
@@ -54,58 +74,25 @@ export interface CircuitBreakerState {
 // Error statistics
 export interface ErrorStats {
   totalErrors: number;
-  errorsByType: Record<string, number>;
+  errorsByType: Record<SeRankingErrorType, number>;
   errorsByOperations: Record<string, number>;
   averageRecoveryTime: number;
   successfulRecoveries: number;
   failedRecoveries: number;
   circuitBreakerTrips: number;
   lastError?: {
-    type: string;
+    type: SeRankingErrorType;
     message: string;
     timestamp: Date;
-    context: any;
+    context: ErrorContext;
   };
 }
 
-/**
- * Job Error Handler Utility
- */
-export class JobErrorHandler {
-  /**
-   * Execute a job with standardized error handling
-   */
-  static async withJobErrorHandling<T>(
-    operation: () => Promise<T>,
-    context: {
-      jobId: string;
-      jobType: string;
-      jobName: string;
-      metadata?: Record<string, any>;
-    }
-  ): Promise<T> {
-    try {
-      return await operation();
-    } catch (error) {
-      logger.error(
-        { 
-          jobId: context.jobId, 
-          jobType: context.jobType,
-          error: error instanceof Error ? error.message : String(error),
-          ...context.metadata 
-        }, 
-        `Job execution failed: ${context.jobName}`
-      );
-      throw error;
-    }
-  }
-}
-
-export class ErrorHandlingService implements ISeRankingErrorHandler {
+export class ErrorHandlingService {
   private config: ErrorHandlingConfig;
   private circuitBreakerStates: Map<string, CircuitBreakerState> = new Map();
   private errorStats: ErrorStats;
-  private errorHistory: Array<{error: any; context: any; timestamp: Date}> = [];
+  private errorHistory: Array<{error: SeRankingError; context: ErrorContext; timestamp: Date}> = [];
 
   constructor(config: Partial<ErrorHandlingConfig> = {}) {
     this.config = {
@@ -122,7 +109,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
 
     this.errorStats = {
       totalErrors: 0,
-      errorsByType: {},
+      errorsByType: {} as Record<SeRankingErrorType, number>,
       errorsByOperations: {},
       averageRecoveryTime: 0,
       successfulRecoveries: 0,
@@ -135,15 +122,15 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
    * Handle error with recovery strategies
    */
   async handleError<T>(
-    error: any,
-    context: SeRankingErrorContext,
+    error: unknown,
+    context: ErrorContext,
     recoveryFunction?: () => Promise<T>
   ): Promise<RecoveryResult<T>> {
     const startTime = Date.now();
     const seRankingError = this.normalizeError(error, context);
     
     this.recordError(seRankingError, context);
-    this.logErrorInternal(seRankingError, context);
+    this.logError(seRankingError, context);
 
     const strategy = this.determineRecoveryStrategy(seRankingError, context);
     
@@ -189,8 +176,8 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
    */
   async retryWithBackoff<T>(
     operation?: () => Promise<T>,
-    originalError?: any,
-    context?: SeRankingErrorContext,
+    originalError?: SeRankingError,
+    context?: ErrorContext,
     startTime: number = Date.now()
   ): Promise<RecoveryResult<T>> {
     if (!operation) {
@@ -235,7 +222,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
           break;
         }
         
-        this.logErrorInternal(lastError, context, `Retry attempt ${attempts} failed`);
+        this.logError(lastError, context, `Retry attempt ${attempts} failed`);
       }
     }
 
@@ -256,8 +243,8 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
    */
   async handleCircuitBreaker<T>(
     operation?: () => Promise<T>,
-    error?: any,
-    context?: SeRankingErrorContext,
+    error?: SeRankingError,
+    context?: ErrorContext,
     startTime: number = Date.now()
   ): Promise<RecoveryResult<T>> {
     const breakerKey = this.getCircuitBreakerKey(context);
@@ -313,7 +300,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
           breaker.nextAttemptTime = new Date(Date.now() + this.config.circuitBreakerTimeout);
           this.errorStats.circuitBreakerTrips++;
           
-          this.logErrorInternal(normalizedError, context, 'Circuit breaker opened');
+          this.logError(normalizedError, context, 'Circuit breaker opened');
         }
         
         return {
@@ -341,8 +328,8 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
    * Handle fallback strategy
    */
   async handleFallback<T>(
-    error?: any,
-    context?: SeRankingErrorContext,
+    error?: SeRankingError,
+    context?: ErrorContext,
     startTime: number = Date.now()
   ): Promise<RecoveryResult<T>> {
     // Implement fallback data based on operation type
@@ -352,7 +339,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
       fallbackData = await this.generateFallbackData<T>(context);
       
       if (fallbackData !== undefined) {
-        this.logErrorInternal(error, context, 'Using fallback data');
+        this.logError(error, context, 'Using fallback data');
         
         return {
           success: true,
@@ -364,7 +351,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
         };
       }
     } catch (fallbackError) {
-      this.logErrorInternal(
+      this.logError(
         this.normalizeError(fallbackError, context), 
         context, 
         'Fallback generation failed'
@@ -385,8 +372,8 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
    * Handle graceful degradation
    */
   async handleGracefulDegradation<T>(
-    error?: any,
-    context?: SeRankingErrorContext,
+    error?: SeRankingError,
+    context?: ErrorContext,
     startTime: number = Date.now()
   ): Promise<RecoveryResult<T>> {
     if (!this.config.enableGracefulDegradation) {
@@ -404,7 +391,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
     const degradedData = this.generateDegradedResponse<T>(context);
     
     if (degradedData !== undefined) {
-      this.logErrorInternal(error, context, 'Using degraded service response');
+      this.logError(error, context, 'Using degraded service response');
       
       return {
         success: true,
@@ -436,7 +423,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Get recent error history
    */
-  getErrorHistory(limit: number = 100): Array<{error: any; context: any; timestamp: Date}> {
+  getErrorHistory(limit: number = 100): Array<{error: SeRankingError; context: ErrorContext; timestamp: Date}> {
     return this.errorHistory.slice(-limit);
   }
 
@@ -446,7 +433,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   clearErrorStats(): void {
     this.errorStats = {
       totalErrors: 0,
-      errorsByType: {},
+      errorsByType: {} as Record<SeRankingErrorType, number>,
       errorsByOperations: {},
       averageRecoveryTime: 0,
       successfulRecoveries: 0,
@@ -459,7 +446,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Get health status based on error patterns
    */
-  getHealthStatus(): SeRankingHealthCheckResult {
+  getHealthStatus(): HealthCheckResult {
     const recentErrors = this.getRecentErrors(300000); // Last 5 minutes
     const errorRate = recentErrors.length;
     const circuitBreakersOpen = Array.from(this.circuitBreakerStates.values())
@@ -468,35 +455,29 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
     if (circuitBreakersOpen > 0 || errorRate > 20) {
       return {
         status: 'unhealthy',
-        response_time: undefined,
         last_check: new Date(),
-        error_message: `High error rate (${errorRate}) or circuit breakers open (${circuitBreakersOpen})`,
-        timestamp: new Date()
+        error_message: `High error rate (${errorRate}) or circuit breakers open (${circuitBreakersOpen})`
       };
     }
 
     if (errorRate > 10) {
       return {
         status: 'degraded',
-        response_time: this.errorStats.averageRecoveryTime,
         last_check: new Date(),
-        error_message: `Elevated error rate: ${errorRate} errors in last 5 minutes`,
-        timestamp: new Date()
+        warning: `Elevated error rate: ${errorRate} errors in last 5 minutes`
       };
     }
 
     return {
       status: 'healthy',
-      response_time: this.errorStats.averageRecoveryTime,
-      last_check: new Date(),
-      timestamp: new Date()
+      last_check: new Date()
     };
   }
 
   /**
    * Normalize any error to SeRankingError format
    */
-  private normalizeError(error: unknown, context?: SeRankingErrorContext): SeRankingError {
+  private normalizeError(error: unknown, context?: ErrorContext): SeRankingError {
     if (this.isSeRankingError(error)) {
       return error;
     }
@@ -508,11 +489,11 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
     normalizedError.type = this.categorizeError(error);
     normalizedError.retryable = this.isRetryableError(normalizedError);
     normalizedError.context = context;
-    normalizedError.timestamp = context?.timestamp || new Date();
+    normalizedError.timestamp = new Date();
 
     if (error instanceof Error) {
       normalizedError.stack = error.stack;
-      normalizedError.originalError = error;
+      (normalizedError as SeRankingError & { originalError: Error }).originalError = error;
     }
 
     return normalizedError;
@@ -521,7 +502,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Determine appropriate recovery strategy based on error type
    */
-  private determineRecoveryStrategy(error: SeRankingError, context: SeRankingErrorContext): RecoveryStrategy {
+  private determineRecoveryStrategy(error: SeRankingError, context: ErrorContext): RecoveryStrategy {
     switch (error.type) {
       case SeRankingErrorType.RATE_LIMIT_ERROR:
         return 'retry';
@@ -564,6 +545,18 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
     );
     
     return Math.round(delay);
+  }
+
+  /**
+   * Check if error is retryable
+   */
+  private isRetryableError(error: SeRankingError): boolean {
+    return error.retryable !== false && [
+      SeRankingErrorType.NETWORK_ERROR,
+      SeRankingErrorType.TIMEOUT_ERROR,
+      SeRankingErrorType.RATE_LIMIT_ERROR,
+      SeRankingErrorType.UNKNOWN_ERROR
+    ].includes(error.type);
   }
 
   /**
@@ -615,15 +608,14 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Record error in statistics
    */
-  private recordError(error: SeRankingError, context: SeRankingErrorContext): void {
+  private recordError(error: SeRankingError, context: ErrorContext): void {
     this.errorStats.totalErrors++;
-    const typeKey = String(error.type);
-    this.errorStats.errorsByType[typeKey] = (this.errorStats.errorsByType[typeKey] || 0) + 1;
+    this.errorStats.errorsByType[error.type] = (this.errorStats.errorsByType[error.type] || 0) + 1;
     this.errorStats.errorsByOperations[context.operation] = 
       (this.errorStats.errorsByOperations[context.operation] || 0) + 1;
     
     this.errorStats.lastError = {
-      type: typeKey,
+      type: error.type,
       message: error.message,
       timestamp: new Date(),
       context
@@ -668,7 +660,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Get circuit breaker key for context
    */
-  private getCircuitBreakerKey(context?: SeRankingErrorContext): string {
+  private getCircuitBreakerKey(context?: ErrorContext): string {
     return `${context?.operation || 'default'}-${context?.apiEndpoint || 'general'}`;
   }
 
@@ -688,18 +680,19 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Create circuit breaker error
    */
-  private createCircuitBreakerError(breaker: CircuitBreakerState, context?: SeRankingErrorContext): SeRankingError {
+  private createCircuitBreakerError(breaker: CircuitBreakerState, context?: ErrorContext): SeRankingError {
     const error = new Error('Circuit breaker is open') as SeRankingError;
     error.type = SeRankingErrorType.NETWORK_ERROR;
     error.retryable = false;
     error.context = context;
+    (error as SeRankingError & { circuitBreakerState: CircuitBreakerState }).circuitBreakerState = breaker;
     return error;
   }
 
   /**
    * Generate fallback data based on context
    */
-  private async generateFallbackData<T>(context?: SeRankingErrorContext): Promise<T | undefined> {
+  private async generateFallbackData<T>(context?: ErrorContext): Promise<T | undefined> {
     if (!context || !context.operation) {
       return undefined;
     }
@@ -707,13 +700,13 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
     // Return empty/default data structures based on operation type
     switch (context.operation) {
       case 'fetchKeywordData':
-        return [] as T;
+        return [] as unknown as T;
       
       case 'getKeywordData':
-        return null as T;
+        return null as unknown as T;
       
       case 'queryKeywordData':
-        return { data: [], total: 0, has_more: false } as any;
+        return { data: [], total: 0, has_more: false } as unknown as T;
       
       default:
         return undefined;
@@ -723,7 +716,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Generate degraded response
    */
-  private generateDegradedResponse<T>(context?: SeRankingErrorContext): T | undefined {
+  private generateDegradedResponse<T>(context?: ErrorContext): T | undefined {
     // Similar to fallback but indicates degraded service
     if (!context || !context.operation) {
       return undefined;
@@ -732,13 +725,13 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
     // Return empty/default data structures based on operation type
     switch (context.operation) {
       case 'fetchKeywordData':
-        return [] as T;
+        return [] as unknown as T;
       
       case 'getKeywordData':
-        return null as T;
+        return null as unknown as T;
       
       case 'queryKeywordData':
-        return { data: [], total: 0, has_more: false } as any;
+        return { data: [], total: 0, has_more: false } as unknown as T;
       
       default:
         return undefined;
@@ -748,15 +741,15 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Get recent errors within time window
    */
-  private getRecentErrors(timeWindowMs: number): Array<{error: any; context: any; timestamp: Date}> {
+  private getRecentErrors(timeWindowMs: number): Array<{error: SeRankingError; context: ErrorContext; timestamp: Date}> {
     const cutoff = new Date(Date.now() - timeWindowMs);
     return this.errorHistory.filter(entry => entry.timestamp >= cutoff);
   }
 
   /**
-   * Log error based on configuration (internal)
+   * Log error based on configuration
    */
-  private logErrorInternal(error?: any, context?: any, prefix: string = ''): void {
+  private logError(error?: SeRankingError, context?: ErrorContext, prefix: string = ''): void {
     if (!error) return;
 
     const severity = this.getErrorSeverity(error);
@@ -767,21 +760,35 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
       context ? `(${context.operation})` : '',
     ].filter(Boolean).join(' ');
 
+    const metadata = { 
+      error: error.message, 
+      context, 
+      severity: severity.toUpperCase() 
+    };
+
     switch (severity) {
       case ErrorSeverity.CRITICAL:
-        logger.error({ error: error.message, context, severity: 'CRITICAL' }, `🔥 CRITICAL: ${logMessage}`);
+        if (['debug', 'info', 'warn', 'error'].includes(this.config.logLevel)) {
+          logger.error(metadata, `🔥 CRITICAL: ${logMessage}`);
+        }
         break;
       
       case ErrorSeverity.HIGH:
-        logger.error({ error: error.message, context, severity: 'HIGH' }, `❌ ERROR: ${logMessage}`);
+        if (['debug', 'info', 'warn', 'error'].includes(this.config.logLevel)) {
+          logger.error(metadata, `❌ ERROR: ${logMessage}`);
+        }
         break;
       
       case ErrorSeverity.MEDIUM:
-        logger.warn({ error: error.message, context, severity: 'MEDIUM' }, `⚠️  WARNING: ${logMessage}`);
+        if (['debug', 'info', 'warn'].includes(this.config.logLevel)) {
+          logger.warn(metadata, `⚠️  WARNING: ${logMessage}`);
+        }
         break;
       
       case ErrorSeverity.LOW:
-        logger.info({ error: error.message, context, severity: 'LOW' }, `ℹ️  INFO: ${logMessage}`);
+        if (['debug', 'info'].includes(this.config.logLevel)) {
+          logger.info(metadata, `ℹ️  INFO: ${logMessage}`);
+        }
         break;
     }
   }
@@ -789,7 +796,7 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   /**
    * Get error severity
    */
-  private getErrorSeverity(error: any): ErrorSeverity {
+  private getErrorSeverity(error: SeRankingError): ErrorSeverity {
     switch (error.type) {
       case SeRankingErrorType.AUTHENTICATION_ERROR:
         return ErrorSeverity.CRITICAL;
@@ -818,76 +825,6 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
   }
 
   /**
-   * ISeRankingErrorHandler implementation: Handle API errors with recovery strategies
-   */
-  async handleApiError(error: any, context?: any): Promise<ServiceResponse<any>> {
-    const recoveryResult = await this.handleError(error, {
-      operation: context?.operation || 'unknown_api_call',
-      timestamp: new Date(),
-      ...context
-    });
-
-    if (recoveryResult.success) {
-      return {
-        success: true,
-        data: recoveryResult.data,
-        metadata: {
-          source: recoveryResult.fallbackUsed ? 'cache' : 'api',
-          timestamp: new Date()
-        }
-      };
-    }
-
-    return {
-      success: false,
-      error: {
-        type: recoveryResult.error?.type || SeRankingErrorType.UNKNOWN_ERROR,
-        message: recoveryResult.error?.message || 'API error occurred',
-        details: recoveryResult.error?.context
-      }
-    };
-  }
-
-  /**
-   * ISeRankingErrorHandler implementation: Handle enrichment errors
-   */
-  async handleEnrichmentError(error: any, keyword: string, countryCode: string): Promise<void> {
-    await this.handleError(error, {
-      operation: 'keyword_enrichment',
-      timestamp: new Date(),
-      keywords: [keyword],
-      countryCode
-    });
-  }
-
-  /**
-   * ISeRankingErrorHandler implementation: Check if error is retryable
-   */
-  isRetryableError(error: any): boolean {
-    const normalized = this.normalizeError(error);
-    return normalized.retryable !== false && [
-      SeRankingErrorType.NETWORK_ERROR,
-      SeRankingErrorType.TIMEOUT_ERROR,
-      SeRankingErrorType.RATE_LIMIT_ERROR,
-      SeRankingErrorType.UNKNOWN_ERROR
-    ].includes(normalized.type);
-  }
-
-  /**
-   * ISeRankingErrorHandler implementation: Get retry delay for error
-   */
-  getRetryDelay(error: any, attemptNumber: number): number {
-    return this.calculateBackoffDelay(attemptNumber);
-  }
-
-  /**
-   * ISeRankingErrorHandler implementation: Log error with context
-   */
-  async logError(error: any, context?: any): Promise<void> {
-    this.logErrorInternal(error, context);
-  }
-
-  /**
    * Create default error handling configuration
    */
   static createDefaultConfig(): ErrorHandlingConfig {
@@ -900,6 +837,38 @@ export class ErrorHandlingService implements ISeRankingErrorHandler {
       circuitBreakerTimeout: 60000,
       enableGracefulDegradation: true,
       logLevel: 'error'
+    };
+  }
+
+  /**
+   * Create production-ready error handling configuration
+   */
+  static createProductionConfig(): ErrorHandlingConfig {
+    return {
+      maxRetryAttempts: 5,
+      baseRetryDelay: 2000,
+      maxRetryDelay: 60000,
+      retryMultiplier: 1.5,
+      circuitBreakerThreshold: 10,
+      circuitBreakerTimeout: 300000, // 5 minutes
+      enableGracefulDegradation: true,
+      logLevel: 'warn'
+    };
+  }
+
+  /**
+   * Create development error handling configuration
+   */
+  static createDevelopmentConfig(): ErrorHandlingConfig {
+    return {
+      maxRetryAttempts: 2,
+      baseRetryDelay: 500,
+      maxRetryDelay: 5000,
+      retryMultiplier: 2,
+      circuitBreakerThreshold: 3,
+      circuitBreakerTimeout: 30000,
+      enableGracefulDegradation: false,
+      logLevel: 'debug'
     };
   }
 }

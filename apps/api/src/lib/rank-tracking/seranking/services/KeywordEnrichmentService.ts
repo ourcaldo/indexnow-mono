@@ -1,6 +1,5 @@
-import { SecureServiceRoleWrapper } from '@indexnow/database';
 /**
- * Keyword Enrichment Service - FIXED VERSION
+ * Keyword Enrichment Service
  * Properly separates two distinct flows:
  * 1. Flow 1: Force enrichment for new keywords (keyword_bank_id IS NULL) - NO cache check
  * 2. Flow 2: Refresh stale keywords (data older than 30 days) - direct keyword_bank lookup
@@ -13,29 +12,22 @@ import {
   BulkProcessingJob,
   QuotaStatus,
   ApiMetrics,
-  HealthCheckResult,
-  SeRankingError,
   SeRankingErrorType,
   KeywordBankEntity,
   KeywordBankInsert,
-  KeywordBankUpdate,
-  KeywordBankQuery,
-  KeywordBankQueryResult,
-  KeywordBankOperationResult,
-  BulkKeywordBankOperationResult,
   CacheStatus,
-  CacheStats,
-  KeywordLookupParams,
-  ISeRankingApiClient,
-  IKeywordBankService,
-  IKeywordEnrichmentService,
-  type Json
+  logger
 } from '@indexnow/shared';
 
-import { ValidationService, ValidationResult } from './ValidationService';
+import {
+  ISeRankingApiClient,
+  IKeywordBankService,
+  IKeywordEnrichmentService
+} from '../types/ServiceTypes';
+
+import { ValidationService } from './ValidationService';
 import { ErrorHandlingService } from './ErrorHandlingService';
-import { supabaseAdmin } from '../../../database/supabase';
-import { logger } from '@/lib/monitoring/error-handling';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 
 // Configuration interface
 export interface KeywordEnrichmentConfig {
@@ -67,8 +59,6 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   private validationService: ValidationService;
   private metrics: ApiMetrics;
   private activeJobs: Map<string, BulkProcessingJob> = new Map();
-  private quotaStatus?: QuotaStatus;
-  private lastQuotaCheck?: Date;
 
   constructor(
     keywordBankService: IKeywordBankService,
@@ -135,8 +125,6 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     keyword: string,
     countryCode: string
   ): Promise<ServiceResponse<KeywordBankEntity>> {
-    const startTime = Date.now();
-    
     try {
       this.log('info', `[FLOW 1] Force enriching new keyword: ${keyword} (${countryCode})`);
       
@@ -227,8 +215,6 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     failed: number;
     keywords: string[];
   }>> {
-    const startTime = Date.now();
-    
     try {
       this.log('info', `[FLOW 2] Finding stale keywords to refresh (limit: ${limit})`);
       
@@ -357,7 +343,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         }
       )
 
-      return data || []
+      return data as StaleKeywordEntity[] || []
     } catch (error) {
       this.log('error', `[FLOW 2] Error in findStaleKeywords: ${error}`);
       return [];
@@ -425,7 +411,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   private async updateExistingKeywordData(
     keywordBankId: string,
     apiData: SeRankingKeywordData
-  ): Promise<KeywordBankOperationResult> {
+  ): Promise<{ success: boolean; data?: KeywordBankEntity; error?: unknown }> {
     try {
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -485,7 +471,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
 
       return {
         success: true,
-        data: data
+        data: data as KeywordBankEntity
       }
     } catch (error) {
       return {
@@ -519,7 +505,6 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     keywords: Array<{keyword: string; countryCode: string}>
   ): Promise<ServiceResponse<BulkProcessingJob>> {
     const jobId = this.generateJobId();
-    const startTime = Date.now();
 
     try {
       // Validate batch request
@@ -766,10 +751,10 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     countryCode: string,
     languageCode: string,
     apiData: SeRankingKeywordData
-  ): Promise<KeywordBankOperationResult> {
+  ): Promise<{ success: boolean; data?: KeywordBankEntity; error?: unknown }> {
     const insertData: KeywordBankInsert = {
       keyword: keyword.trim().toLowerCase(),
-      country_id: countryCode.toLowerCase(), // Fixed: use country_id to match schema
+      country_id: countryCode.toLowerCase(),
       language_code: languageCode.toLowerCase(),
       is_data_found: apiData.is_data_found,
       volume: apiData.volume,
@@ -777,11 +762,16 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
       competition: apiData.competition,
       difficulty: apiData.difficulty,
       history_trend: apiData.history_trend,
-      keyword_intent: null // Will be set by separate logic later
+      keyword_intent: null
     };
 
     try {
-      return await this.keywordBankService.upsertKeywordData(insertData);
+      const result = await this.keywordBankService.upsertKeywordData(insertData);
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
     } catch (error) {
       this.log('error', `Failed to store enriched data for ${keyword}: ${error}`);
       return {
@@ -869,7 +859,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   private createErrorResponse<T>(
     errorType: SeRankingErrorType,
     message: string,
-    details?: Json
+    details?: unknown
   ): ServiceResponse<T> {
     return {
       success: false,
@@ -914,14 +904,14 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: Json): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: unknown): void {
     if (this.shouldLog(level)) {
       const metadata = {
         service: 'KeywordEnrichmentService',
         ...(data ? { data } : {})
       };
       
-      logger[level](metadata, message);
+      logger[level](metadata as Record<string, unknown>, message);
     }
   }
 

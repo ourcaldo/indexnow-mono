@@ -12,7 +12,8 @@ import {
   XCircle,
   type LucideIcon
 } from 'lucide-react'
-import { useAdminDashboardLogger, ADMIN_ENDPOINTS, authService } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, authService } from '@indexnow/shared'
+import { useAdminDashboardLogger } from '@indexnow/database'
 
 interface DashboardStats {
   total_users: number

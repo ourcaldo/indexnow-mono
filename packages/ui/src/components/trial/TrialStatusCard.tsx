@@ -6,7 +6,8 @@ import { Button } from '../button'
 import { Badge } from '../badge'
 import { Clock, Calendar, CreditCard, AlertCircle } from 'lucide-react'
 import { useToast } from '../toast'
-import { supabaseBrowser, AUTH_ENDPOINTS, BILLING_ENDPOINTS, type Json } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, BILLING_ENDPOINTS, type Json } from '@indexnow/shared'
+import { supabaseBrowser } from '@indexnow/database'
 
 interface TrialStatusData {
   has_trial: boolean;

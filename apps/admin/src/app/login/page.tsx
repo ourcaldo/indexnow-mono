@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@indexnow/ui'
 import { Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
-import { useFavicon, useSiteName, useSiteLogo, authService } from '@indexnow/shared'
+import { authService } from '@indexnow/shared'
+import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS } from '@indexnow/shared'
 import { AuthErrorHandler } from '@indexnow/auth'
 
@@ -19,7 +20,6 @@ export default function AdminLoginPage() {
   // Site settings hooks
   const siteName = useSiteName()
   const logoUrl = useSiteLogo(true) // Always use full logo for admin login
-  useFavicon() // Automatically updates favicon
 
   useEffect(() => {
     const authStateHandler = AuthErrorHandler.createAuthStateChangeHandler(
