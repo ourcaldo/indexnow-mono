@@ -39,12 +39,7 @@ export type InsertSystemErrorLog = Database['public']['Tables']['indb_system_err
 export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Update']
 
 // Client exports
-export { 
-    createBrowserClient, 
-    getBrowserClient, 
-    supabaseBrowser,
-    supabase
-} from './client'
+export { createBrowserClient, getBrowserClient, supabaseBrowser, supabase } from '@indexnow/shared';
 
 // Server exports
 export { 
