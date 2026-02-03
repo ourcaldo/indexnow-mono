@@ -94,12 +94,13 @@ export function useUserManagement(): UseUserManagementReturn {
         try {
           setActionLoading(prev => ({ ...prev, suspend: true }))
           
-          const response = await fetch(ADMIN_ENDPOINTS.SUSPEND_USER(userId), {
-            method: 'POST',
+          const response = await fetch(ADMIN_ENDPOINTS.USER_BY_ID(userId), {
+            method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
             },
             credentials: 'include',
+            body: JSON.stringify({ status: 'suspended' }),
           })
 
           if (response.ok) {

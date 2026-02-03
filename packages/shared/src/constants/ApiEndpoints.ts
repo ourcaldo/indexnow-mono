@@ -239,7 +239,7 @@ export const isValidEndpoint = (endpoint: string): boolean => {
   // Check dynamic admin endpoints
   const adminPatterns = [
     /^\/api\/v1\/admin\/users\/[a-f0-9-]+$/,
-    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(suspend|reset-password|reset-quota|extend-subscription|change-package|security|service-accounts|quota-usage)$/,
+    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|reset-quota|extend-subscription|change-package|security|service-accounts|quota-usage)$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+\/status$/,
     /^\/api\/v1\/admin\/activity\/[a-f0-9-]+$/,

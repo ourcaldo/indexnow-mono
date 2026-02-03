@@ -159,7 +159,57 @@ export const PATCH = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
   const body = await request.json()
-  const { full_name, role, email_notifications, phone_number } = body
+  const { full_name, role, email_notifications, phone_number, status } = body
+
+  if (status === 'suspended' || status === 'active') {
+    const isSuspending = status === 'suspended'
+    const banDuration = isSuspending ? '10000h' : 'none'
+    const action = isSuspending ? 'ban' : 'unban'
+
+    const statusUpdateContext = {
+      userId: adminUser.id,
+      operation: isSuspending ? 'admin_suspend_user' : 'admin_unsuspend_user',
+      reason: `Admin ${isSuspending ? 'suspending' : 'unsuspending'} user account via profile update`,
+      source: 'admin/users/[id]',
+      metadata: {
+        targetUserId: userId,
+        suspensionAction: action,
+        banDuration,
+        endpoint: '/api/v1/admin/users/[id]'
+      },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+      userAgent: request.headers.get('user-agent') || undefined || 'unknown'
+    }
+
+    await SecureServiceRoleWrapper.executeSecureOperation(
+      statusUpdateContext,
+      {
+        table: 'supabase_auth_users',
+        operationType: 'update',
+        whereConditions: { id: userId }
+      },
+      async () => {
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          ban_duration: banDuration
+        })
+        if (error) throw error
+        return { success: true }
+      }
+    )
+
+    await ServerActivityLogger.logAdminAction(
+      adminUser.id,
+      isSuspending ? 'suspend' : 'unsuspend',
+      userId,
+      `${isSuspending ? 'Suspended' : 'Unsuspended'} user ${full_name || 'User'}`,
+      request,
+      {
+        suspensionAction: true,
+        action,
+        newStatus: status
+      }
+    )
+  }
 
   const currentProfile = await SecureServiceRoleHelpers.secureSelect(
     {
