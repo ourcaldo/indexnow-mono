@@ -824,3 +824,122 @@ ON CONFLICT (code) DO NOTHING;
 -- ============================================================
 -- SCHEMA COMPLETE
 -- ============================================================
+
+-- ============================================================
+-- IndexNow Studio - Missing Indexes Migration
+-- ============================================================
+-- Generated: 2026-02-03
+-- Purpose: Add critical performance indexes for rank tracking queries
+-- ============================================================
+
+-- 1. Composite index for faster user domain lookups
+-- This optimizes queries that filter keywords by user_id and domain
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_domain 
+ON indb_rank_keywords(user_id, domain);
+
+-- 2. GIN index for faster keyword searches
+-- This optimizes ILIKE queries on the keyword column
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_keyword_gin 
+ON indb_rank_keywords USING gin(keyword gin_trgm_ops);
+
+-- 3. Composite index for filtering by user and tags
+-- The tags column is an array, so we use GIN
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_tags 
+ON indb_rank_keywords USING gin(tags);
+
+-- 4. Composite index for filtering active keywords by user
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_active 
+ON indb_rank_keywords(user_id, is_active);
+
+-- 5. Index for last_checked to optimize stale keyword queries
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_last_checked 
+ON indb_rank_keywords(last_checked);
+
+-- 6. Add pg_trgm extension if not exists (required for GIN trgm ops)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ============================================================
+-- IndexNow Studio - Domain Stats RPC
+-- ============================================================
+-- Generated: 2026-02-03
+-- Purpose: Efficiently aggregate keyword counts per domain via RPC
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION get_user_domain_stats(target_user_id UUID)
+RETURNS TABLE (
+  domain TEXT,
+  keyword_count BIGINT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    rk.domain,
+    COUNT(*) as keyword_count
+  FROM indb_rank_keywords rk
+  WHERE rk.user_id = target_user_id
+  AND rk.domain IS NOT NULL
+  GROUP BY rk.domain
+  ORDER BY keyword_count DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- IndexNow Studio - Atomic Operations RPC
+-- ============================================================
+-- Generated: 2026-02-03
+-- Purpose: Prevent race conditions in rank tracking updates
+-- ============================================================
+
+-- 1. Atomic Keyword Position Update
+-- Prevents race conditions when updating rank positions
+CREATE OR REPLACE FUNCTION update_keyword_position_atomic(
+  target_keyword_id UUID,
+  new_rank_position INTEGER
+)
+RETURNS VOID AS $$
+DECLARE
+  current_pos INTEGER;
+BEGIN
+  -- Lock the row for update
+  SELECT position INTO current_pos
+  FROM indb_rank_keywords
+  WHERE id = target_keyword_id
+  FOR UPDATE;
+
+  -- Update with atomic swap logic
+  UPDATE indb_rank_keywords
+  SET 
+    previous_position = current_pos,
+    position = new_rank_position,
+    last_checked = NOW()
+  WHERE id = target_keyword_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- 2. Atomic Add Tags
+-- Prevents race conditions when adding tags from multiple sources
+CREATE OR REPLACE FUNCTION add_tags_to_keywords_atomic(
+  target_keyword_ids UUID[],
+  target_user_id UUID,
+  new_tags TEXT[]
+)
+RETURNS INTEGER AS $$
+DECLARE
+  updated_count INTEGER;
+BEGIN
+  WITH updated_rows AS (
+    UPDATE indb_rank_keywords
+    SET tags = (
+      SELECT array_agg(DISTINCT x)
+      FROM unnest(COALESCE(tags, ARRAY[]::TEXT[]) || new_tags) t(x)
+    )
+    WHERE id = ANY(target_keyword_ids)
+    AND user_id = target_user_id
+    RETURNING 1
+  )
+  SELECT count(*) INTO updated_count FROM updated_rows;
+
+  RETURN updated_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
