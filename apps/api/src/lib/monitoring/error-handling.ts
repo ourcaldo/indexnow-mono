@@ -2,7 +2,7 @@ import pino from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin, SecureServiceRoleHelpers } from '@indexnow/database';
 import { trackServerError } from '@indexnow/shared';
-import { ErrorType, ErrorSeverity, type StructuredError } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type StructuredError, type Json } from '@indexnow/shared';
 import { formatError } from '../core/api-response-formatter';
 
 // Configure Pino logger
@@ -96,7 +96,7 @@ export class ErrorHandlingService {
       endpoint?: string;
       method?: string;
       statusCode?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown> | Json;
       userMessageKey?: string;
     } = {}
   ): Promise<StructuredError> {
@@ -280,12 +280,13 @@ export const HTTP_STATUS = {
 /**
  * Determine if an error is a transient service/network error
  */
-export function isTransientError(error: any): boolean {
-  if (!error) return false;
+export function isTransientError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
 
-  const errorMessage = error.message?.toLowerCase() || '';
-  const errorCode = error.code?.toLowerCase() || '';
-  const errorStatus = error.status || error.statusCode || 0;
+  const err = error as Record<string, unknown>;
+  const errorMessage = typeof err.message === 'string' ? err.message.toLowerCase() : '';
+  const errorCode = typeof err.code === 'string' ? err.code.toLowerCase() : '';
+  const errorStatus = typeof err.status === 'number' ? err.status : (typeof err.statusCode === 'number' ? err.statusCode : 0);
 
   // Network and connection errors
   const networkErrors = [

@@ -6,6 +6,9 @@
 import { PaymentProcessor } from './core/PaymentProcessor'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
 import { PaddleService } from './paddle'
+import { Database } from '@indexnow/shared'
+
+type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row']
 
 export class PaymentServiceFactory {
   private static processor: PaymentProcessor | null = null
@@ -27,7 +30,7 @@ export class PaymentServiceFactory {
   private static async initializeGateways(processor: PaymentProcessor): Promise<void> {
     try {
       // Get active payment gateway configurations
-      const gateways = await SecureServiceRoleWrapper.executeSecureOperation(
+      const gateways = await SecureServiceRoleWrapper.executeSecureOperation<PaymentGatewayRow[]>(
         {
           userId: 'system',
           operation: 'load_active_payment_gateways',
@@ -58,8 +61,7 @@ export class PaymentServiceFactory {
       )
 
       // Register each gateway
-      // Note: gateways is typed as any or unknown by wrapper return, but we expect array
-      for (const gateway of (gateways as any[]) || []) {
+      for (const gateway of gateways || []) {
         await this.registerGateway(processor, gateway)
       }
 
@@ -71,7 +73,7 @@ export class PaymentServiceFactory {
   /**
    * Register individual gateway
    */
-  private static async registerGateway(processor: PaymentProcessor, config: any): Promise<void> {
+  private static async registerGateway(processor: PaymentProcessor, config: PaymentGatewayRow): Promise<void> {
     try {
       const gatewaySlug = config.slug.toLowerCase()
       

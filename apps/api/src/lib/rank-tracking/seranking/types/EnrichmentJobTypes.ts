@@ -3,7 +3,7 @@
  * Types for keyword enrichment job queue and processing system
  */
 
-import { Database } from '@indexnow/shared';
+import { Database, Json } from '@indexnow/shared';
 import { 
   SeRankingKeywordData,
   ServiceResponse,
@@ -246,29 +246,32 @@ export interface WorkerStatus {
   cpuUsage?: number;
 }
 
-// Database Integration Types (extends existing job tables)
+// Database Integration Types (matches DB schema)
 export interface EnrichmentJobRecord {
   id: string;
   user_id: string;
-  name: string;
-  type: string; // 'keyword_enrichment'
-  job_type: EnrichmentJobType;
-  status: EnrichmentJobStatus;
-  priority: JobPriority;
-  config: EnrichmentJobConfig;
-  source_data: EnrichmentJobData;
-  progress_data: JobProgress;
-  result_data?: JobResult;
-  retry_count: number;
-  last_retry_at?: string;
-  next_retry_at?: string;
-  worker_id?: string | null;
-  locked_at?: string | null;
-  started_at?: string;
-  completed_at?: string;
-  cancelled_at?: string;
-  error_message?: string;
-  metadata?: Record<string, unknown>;
+  name: string | null;
+  job_type: string;
+  status: string | null;
+  priority: number | null;
+  config: Json | null;
+  source_data: Json | null;
+  progress_data: Json | null;
+  result_data: Json | null;
+  worker_id: string | null;
+  locked_at: string | null;
+  retry_count: number | null;
+  last_retry_at: string | null;
+  next_retry_at: string | null;
+  total_keywords: number | null;
+  processed_keywords: number | null;
+  enriched_keywords: number | null;
+  failed_keywords: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  error_message: string | null;
+  metadata: Json | null;
   created_at: string;
   updated_at: string;
 }

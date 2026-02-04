@@ -124,7 +124,10 @@ export class ErrorHandlingService {
   async handleError<T>(
     error: unknown,
     context: ErrorContext,
-    recoveryFunction?: () => Promise<T>
+    options?: {
+      recoveryFunction?: () => Promise<T>;
+      fallbackValue?: T;
+    }
   ): Promise<RecoveryResult<T>> {
     const startTime = Date.now();
     const seRankingError = this.normalizeError(error, context);
@@ -137,16 +140,16 @@ export class ErrorHandlingService {
     try {
       switch (strategy) {
         case 'retry':
-          return await this.retryWithBackoff(recoveryFunction, seRankingError, context, startTime);
+          return await this.retryWithBackoff(options?.recoveryFunction, seRankingError, context, startTime);
           
         case 'circuit_breaker':
-          return await this.handleCircuitBreaker(recoveryFunction, seRankingError, context, startTime);
+          return await this.handleCircuitBreaker(options?.recoveryFunction, seRankingError, context, startTime);
           
         case 'fallback':
-          return await this.handleFallback(seRankingError, context, startTime);
+          return await this.handleFallback(seRankingError, context, startTime, options?.fallbackValue);
           
         case 'graceful_degradation':
-          return await this.handleGracefulDegradation(seRankingError, context, startTime);
+          return await this.handleGracefulDegradation(seRankingError, context, startTime, options?.fallbackValue);
           
         case 'fail_fast':
         default:
@@ -330,13 +333,16 @@ export class ErrorHandlingService {
   async handleFallback<T>(
     error?: SeRankingError,
     context?: ErrorContext,
-    startTime: number = Date.now()
+    startTime: number = Date.now(),
+    fallbackValue?: T
   ): Promise<RecoveryResult<T>> {
     // Implement fallback data based on operation type
-    let fallbackData: T | undefined;
+    let fallbackData: T | undefined = fallbackValue;
     
     try {
-      fallbackData = await this.generateFallbackData<T>(context);
+      if (fallbackData === undefined) {
+        fallbackData = await this.generateFallbackData<T>(context);
+      }
       
       if (fallbackData !== undefined) {
         this.logError(error, context, 'Using fallback data');
@@ -374,7 +380,8 @@ export class ErrorHandlingService {
   async handleGracefulDegradation<T>(
     error?: SeRankingError,
     context?: ErrorContext,
-    startTime: number = Date.now()
+    startTime: number = Date.now(),
+    fallbackValue?: T
   ): Promise<RecoveryResult<T>> {
     if (!this.config.enableGracefulDegradation) {
       return {
@@ -388,7 +395,11 @@ export class ErrorHandlingService {
     }
 
     // Provide minimal service with degraded functionality
-    const degradedData = this.generateDegradedResponse<T>(context);
+    let degradedData: T | undefined = fallbackValue;
+    
+    if (degradedData === undefined) {
+      degradedData = this.generateDegradedResponse<T>(context);
+    }
     
     if (degradedData !== undefined) {
       this.logError(error, context, 'Using degraded service response');
@@ -697,20 +708,8 @@ export class ErrorHandlingService {
       return undefined;
     }
 
-    // Return empty/default data structures based on operation type
-    switch (context.operation) {
-      case 'fetchKeywordData':
-        return [] as unknown as T;
-      
-      case 'getKeywordData':
-        return null as unknown as T;
-      
-      case 'queryKeywordData':
-        return { data: [], total: 0, has_more: false } as unknown as T;
-      
-      default:
-        return undefined;
-    }
+    // Default fallback is undefined unless explicit override is provided
+    return undefined;
   }
 
   /**
@@ -722,20 +721,8 @@ export class ErrorHandlingService {
       return undefined;
     }
 
-    // Return empty/default data structures based on operation type
-    switch (context.operation) {
-      case 'fetchKeywordData':
-        return [] as unknown as T;
-      
-      case 'getKeywordData':
-        return null as unknown as T;
-      
-      case 'queryKeywordData':
-        return { data: [], total: 0, has_more: false } as unknown as T;
-      
-      default:
-        return undefined;
-    }
+    // Default degraded response is undefined unless explicit override is provided
+    return undefined;
   }
 
   /**

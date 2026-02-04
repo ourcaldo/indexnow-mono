@@ -11,26 +11,24 @@ import {
   Save,
   X
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { 
+  ADMIN_ENDPOINTS, 
+  PaymentGatewayRow, 
+  PaymentGatewayConfiguration, 
+  PaymentGatewayCredentials 
+} from '@indexnow/shared'
 import { ConfirmationDialog } from '@indexnow/ui'
 
-interface PaymentGateway {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-  is_active: boolean
-  is_default: boolean
-  configuration: Record<string, any>
-  api_credentials: Record<string, any>
-  created_at: string
-  updated_at: string
+// Strict type helper for UI state
+type UI_PaymentGateway = Omit<PaymentGatewayRow, 'configuration' | 'api_credentials'> & {
+  configuration: PaymentGatewayConfiguration
+  api_credentials: PaymentGatewayCredentials
 }
 
 export default function PaymentGateways() {
-  const [gateways, setGateways] = useState<PaymentGateway[]>([])
+  const [gateways, setGateways] = useState<UI_PaymentGateway[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null)
+  const [editingGateway, setEditingGateway] = useState<UI_PaymentGateway | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -58,7 +56,13 @@ export default function PaymentGateways() {
       })
       if (response.ok) {
         const data = await response.json()
-        setGateways(data.data?.gateways || [])
+        // Ensure configuration and api_credentials are objects
+        const sanitizedGateways = (data.data?.gateways || []).map((g: PaymentGatewayRow) => ({
+          ...g,
+          configuration: (g.configuration as PaymentGatewayConfiguration) || {},
+          api_credentials: (g.api_credentials as PaymentGatewayCredentials) || {}
+        }))
+        setGateways(sanitizedGateways)
       }
     } catch (error) {
       console.error('Failed to fetch payment gateways:', error)
@@ -67,7 +71,7 @@ export default function PaymentGateways() {
     }
   }
 
-  const handleSave = async (gateway: Partial<PaymentGateway>) => {
+  const handleSave = async (gateway: Partial<UI_PaymentGateway>) => {
     try {
       const url = gateway.id 
         ? ADMIN_ENDPOINTS.PAYMENT_GATEWAY_BY_ID(gateway.id)
@@ -148,21 +152,42 @@ export default function PaymentGateways() {
   }
 
   const GatewayForm = ({ gateway, onSave, onCancel }: {
-    gateway: Partial<PaymentGateway>
-    onSave: (gateway: Partial<PaymentGateway>) => void
+    gateway: Partial<UI_PaymentGateway>
+    onSave: (gateway: Partial<UI_PaymentGateway>) => void
     onCancel: () => void
   }) => {
-    const [formData, setFormData] = useState(gateway)
+    // Initialize defaults if undefined
+    const [formData, setFormData] = useState<Partial<UI_PaymentGateway>>({
+      ...gateway,
+      configuration: gateway.configuration || {},
+      api_credentials: gateway.api_credentials || {}
+    })
 
-    const updateField = (field: keyof PaymentGateway, value: any) => {
+    const updateField = <K extends keyof UI_PaymentGateway>(field: K, value: UI_PaymentGateway[K]) => {
       setFormData(prev => ({ ...prev, [field]: value }))
     }
 
-    const updateConfigurationField = (field: string, value: any) => {
+    const updateConfigurationField = <K extends keyof PaymentGatewayConfiguration>(
+      field: K, 
+      value: PaymentGatewayConfiguration[K]
+    ) => {
       setFormData(prev => ({
         ...prev,
         configuration: {
-          ...prev.configuration,
+          ...(prev.configuration || {}),
+          [field]: value
+        }
+      }))
+    }
+
+    const updateCredentialsField = <K extends keyof PaymentGatewayCredentials>(
+      field: K, 
+      value: PaymentGatewayCredentials[K]
+    ) => {
+      setFormData(prev => ({
+        ...prev,
+        api_credentials: {
+          ...(prev.api_credentials || {}),
           [field]: value
         }
       }))
@@ -193,17 +218,6 @@ export default function PaymentGateways() {
             />
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-foreground mb-2">Description</label>
-            <textarea
-              value={formData.description || ''}
-              onChange={(e) => updateField('description', e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
-              placeholder="PayPal payment gateway integration"
-            />
-          </div>
-
           {/* Paddle Configuration */}
           {formData.slug === 'paddle' && (
             <>
@@ -220,7 +234,7 @@ export default function PaymentGateways() {
                 <label className="block text-sm font-medium text-foreground mb-2">Environment</label>
                 <select
                   value={formData.configuration?.environment || 'sandbox'}
-                  onChange={(e) => updateConfigurationField('environment', e.target.value)}
+                  onChange={(e) => updateConfigurationField('environment', e.target.value as 'sandbox' | 'production')}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 >
                   <option value="sandbox">Sandbox</option>
@@ -247,13 +261,7 @@ export default function PaymentGateways() {
                 <input
                   type="password"
                   value={formData.api_credentials?.api_key || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    api_credentials: {
-                      ...prev.api_credentials,
-                      api_key: e.target.value
-                    }
-                  }))}
+                  onChange={(e) => updateCredentialsField('api_key', e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   placeholder="paddle_api_..."
                 />
@@ -267,13 +275,7 @@ export default function PaymentGateways() {
                 <input
                   type="password"
                   value={formData.api_credentials?.webhook_secret || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    api_credentials: {
-                      ...prev.api_credentials,
-                      webhook_secret: e.target.value
-                    }
-                  }))}
+                  onChange={(e) => updateCredentialsField('webhook_secret', e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   placeholder="pdl_ntfset_..."
                 />
@@ -287,13 +289,7 @@ export default function PaymentGateways() {
                 <input
                   type="text"
                   value={formData.api_credentials?.client_token || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    api_credentials: {
-                      ...prev.api_credentials,
-                      client_token: e.target.value
-                    }
-                  }))}
+                  onChange={(e) => updateCredentialsField('client_token', e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   placeholder="test_... or live_..."
                 />
@@ -444,7 +440,6 @@ export default function PaymentGateways() {
                           {gateway.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{gateway.description}</p>
                       <p className="text-xs text-muted-foreground mt-1">Slug: {gateway.slug}</p>
                     </div>
                   </div>

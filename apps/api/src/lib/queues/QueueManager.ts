@@ -1,4 +1,4 @@
-import type { Queue, Worker, QueueEvents, Job } from 'bullmq'
+import type { Queue, Worker, QueueEvents, Job, JobsOptions } from 'bullmq'
 import { logger } from '../monitoring/error-handling'
 
 export class QueueManager {
@@ -56,7 +56,7 @@ export class QueueManager {
 
   async registerWorker(
     queueName: string,
-    processor: (job: Job) => Promise<any>,
+    processor: (job: Job) => Promise<unknown>,
     options: {
       concurrency?: number
       limiter?: { max: number; duration: number }
@@ -103,8 +103,8 @@ export class QueueManager {
   async enqueueJob(
     queueName: string,
     jobName: string,
-    data: any,
-    options: any = {}
+    data: Record<string, unknown> | unknown[],
+    options: JobsOptions = {}
   ): Promise<string> {
     const queue = await this.getQueue(queueName)
     const job = await queue.add(jobName, data, options)
@@ -144,8 +144,8 @@ export const queueManager = QueueManager.getInstance()
 export async function enqueueJob(
   queueName: string,
   jobName: string,
-  data: any,
-  options: any = {}
+  data: Record<string, unknown> | unknown[],
+  options: JobsOptions = {}
 ): Promise<string> {
   return queueManager.enqueueJob(queueName, jobName, data, options)
 }

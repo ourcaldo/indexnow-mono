@@ -16,9 +16,9 @@ import {
   IKeywordBankService,
   IIntegrationService
 } from '../types/ServiceTypes';
-import { supabaseAdmin } from '@indexnow/shared';
-import { SecureServiceRoleWrapper } from '@indexnow/services';
-import { logger } from '@indexnow/shared';
+import { supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { logger, Database } from '@indexnow/shared';
 
 // Comprehensive health check configuration
 export interface HealthCheckConfig {
@@ -70,6 +70,17 @@ export interface HealthCheckConfig {
     enablePredictiveAnalysis: boolean;
   };
   logLevel: 'debug' | 'info' | 'warn' | 'error';
+}
+
+export interface HealthIncident {
+  id: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  component: string;
+  description: string;
+  started_at: Date;
+  estimated_resolution?: Date;
+  recovery_actions: string[];
+  resolved_at?: Date;
 }
 
 // Individual health check result with detailed metrics
@@ -130,15 +141,7 @@ export interface SystemHealthSummary {
     system_uptime_hours: number;
     last_incident_hours_ago?: number;
   };
-  active_incidents: Array<{
-    id: string;
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    component: string;
-    description: string;
-    started_at: Date;
-    estimated_resolution?: Date;
-    recovery_actions: string[];
-  }>;
+  active_incidents: HealthIncident[];
   predictive_alerts: Array<{
     component: string;
     predicted_issue: string;
@@ -174,7 +177,7 @@ export class HealthChecker implements IHealthChecker {
   
   // Runtime state
   private healthCache: Map<string, DetailedHealthCheck> = new Map();
-  private activeIncidents: Map<string, any> = new Map();
+  private activeIncidents: Map<string, HealthIncident> = new Map();
   private recoveryAttempts: Map<string, number> = new Map();
   private lastHealthCheck?: Date;
   private monitoringTimer?: NodeJS.Timeout;
@@ -1026,7 +1029,7 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private log(level: string, message: string, ...args: any[]): void {
+  private log(level: string, message: string, ...args: unknown[]): void {
     if (this.shouldLog(level)) {
       const logMessage = `[HealthChecker] ${message}`;
       const metadata = args.length > 0 ? { details: args } : {};

@@ -27,29 +27,10 @@ import {
   Key
 } from 'lucide-react'
 import Link from 'next/link'
-import { ADMIN_ENDPOINTS, type Json, formatDate } from '@indexnow/shared'
-
-interface ActivityLog {
-  id: string
-  user_id: string
-  user_name: string
-  user_email: string
-  event_type: string
-  action_description: string
-  target_type?: string
-  target_id?: string
-  ip_address?: string
-  user_agent?: string
-  device_info?: Json
-  location_data?: Json
-  success: boolean
-  error_message?: string
-  metadata?: Json
-  created_at: string
-}
+import { ADMIN_ENDPOINTS, type Json, formatDate, type EnrichedActivityLog } from '@indexnow/shared'
 
 export default function ActivityLogsPage() {
-  const [logs, setLogs] = useState<ActivityLog[]>([])
+  const [logs, setLogs] = useState<EnrichedActivityLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -99,7 +80,7 @@ export default function ActivityLogsPage() {
     const matchesSearch = 
       log.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action_description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.action_description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.event_type.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesType = typeFilter === 'all' || log.event_type === typeFilter

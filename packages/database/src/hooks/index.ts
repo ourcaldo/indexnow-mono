@@ -25,7 +25,6 @@ export {
   useSiteName, 
   useFavicon 
 } from './use-site-settings'
-export { useDashboardData } from './useDashboardData'
 export { useAnalytics } from './useAnalytics'
 
 // Admin Hooks - Admin panel specific functionality

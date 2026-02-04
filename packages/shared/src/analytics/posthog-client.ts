@@ -1,4 +1,5 @@
 import { Json } from '../types/database';
+import { TrackEventProperties, UserTraits } from './types';
 
 interface PostHogWithDebug {
   debug: (enabled?: boolean) => void;
@@ -41,7 +42,7 @@ export function getPosthogClient() {
   return posthog;
 }
 
-export function trackPosthogEvent(event: string, properties?: Record<string, Json>) {
+export function trackPosthogEvent(event: string, properties?: TrackEventProperties) {
   const config = getAnalyticsConfig();
   
   if (!config.posthog.enabled) return;
@@ -52,7 +53,7 @@ export function trackPosthogEvent(event: string, properties?: Record<string, Jso
   });
 }
 
-export function identifyPosthogUser(userId: string, properties?: Record<string, Json>) {
+export function identifyPosthogUser(userId: string, properties?: UserTraits) {
   const config = getAnalyticsConfig();
   
   if (!config.posthog.enabled) return;

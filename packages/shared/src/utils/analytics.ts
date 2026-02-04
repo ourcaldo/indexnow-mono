@@ -5,7 +5,9 @@
 import { type Json } from '../types/common/Json';
 import { logger } from './logger';
 
-export interface AnalyticsTraits extends Record<string, Json | undefined> {
+export type AnalyticsProperties = Record<string, Json | undefined>;
+
+export interface AnalyticsTraits extends AnalyticsProperties {
   email?: string;
   username?: string;
   name?: string;
@@ -32,7 +34,7 @@ export function trackPageView(path?: string) {
 /**
  * Track a custom event
  */
-export function trackEvent(event: string, properties?: Record<string, Json>) {
+export function trackEvent(event: string, properties?: AnalyticsProperties) {
   logger.info(properties || {}, `Event: ${event}`);
 }
 
@@ -53,7 +55,7 @@ export function resetUser() {
 /**
  * Track an error
  */
-export function trackError(error: unknown, context?: Record<string, Json>) {
+export function trackError(error: unknown, context?: AnalyticsProperties) {
   const message = error instanceof Error ? error.message : String(error);
   logger.error(context || {}, message || 'An unexpected error occurred');
 }

@@ -1,58 +1,12 @@
-import { supabaseBrowser as supabase, type Database } from '@indexnow/database';
-import { type SupabaseClient } from '@supabase/supabase-js';
+import { supabaseBrowser as supabase } from '@indexnow/database';
 import { type RankTrackingDomain } from '@indexnow/shared';
-
-// Define RPC function types that are missing from the generated Database type
-type DatabaseFunctions = {
-  update_keyword_position_atomic: {
-    Args: {
-      target_keyword_id: string;
-      new_rank_position: number;
-    };
-    Returns: void;
-  };
-  add_tags_to_keywords_atomic: {
-    Args: {
-      target_keyword_ids: string[];
-      target_user_id: string;
-      new_tags: string[];
-    };
-    Returns: number;
-  };
-  get_user_domain_stats: {
-    Args: {
-      target_user_id: string;
-    };
-    Returns: Array<{
-      domain: string;
-      keyword_count: number;
-    }>;
-  };
-};
-
-// Define 'RpcDatabase' type containing only the custom 'DatabaseFunctions'
-type RpcDatabase = {
-  public: {
-    Tables: Record<string, never>;
-    Views: Record<string, never>;
-    Functions: DatabaseFunctions;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-};
-
-// Create 'rpcClient' casted to 'SupabaseClient<RpcDatabase>'
-const rpcClient = supabase as unknown as SupabaseClient<RpcDatabase>;
-
-// Create 'dbClient' casted to 'any' for fallback table operations to resolve 'never' type errors
-const dbClient = supabase as any;
 
 export class RankTrackingService {
   /**
    * Get all domains for a user with stats
    */
   async getUserDomains(userId: string): Promise<RankTrackingDomain[]> {
-    const { data, error } = await rpcClient.rpc('get_user_domain_stats', {
+    const { data, error } = await supabase.rpc('get_user_domain_stats', {
       target_user_id: userId
     });
 
@@ -83,7 +37,7 @@ export class RankTrackingService {
     // in a single standard PostgREST call easily without a stored procedure for the atomic swap,
     // we will create a dedicated RPC for this to ensure atomicity.
 
-    const { error } = await rpcClient.rpc('update_keyword_position_atomic', {
+    const { error } = await supabase.rpc('update_keyword_position_atomic', {
       target_keyword_id: keywordId,
       new_rank_position: newPosition
     });
@@ -92,7 +46,7 @@ export class RankTrackingService {
         // Fallback to standard update if RPC fails or doesn't exist
         console.warn('Atomic update failed, falling back to standard update', error);
         
-        const { data: currentKeyword } = await dbClient
+        const { data: currentKeyword } = await supabase
         .from('indb_rank_keywords')
         .select('position')
         .eq('id', keywordId)
@@ -100,7 +54,7 @@ export class RankTrackingService {
 
         const previousPosition = currentKeyword?.position ?? null;
 
-        await dbClient
+        await supabase
         .from('indb_rank_keywords')
         .update({
             position: newPosition,
@@ -124,7 +78,7 @@ export class RankTrackingService {
     
     // Use Postgres array concatenation operator via RPC for atomicity
     // tags = array_distinct(tags || new_tags)
-    const { data: updatedCount, error } = await rpcClient.rpc('add_tags_to_keywords_atomic', {
+    const { data: updatedCount, error } = await supabase.rpc('add_tags_to_keywords_atomic', {
         target_keyword_ids: keywordIds,
         target_user_id: userId,
         new_tags: tags
@@ -133,7 +87,7 @@ export class RankTrackingService {
     if (error) {
         console.warn('Atomic tag update failed, falling back to standard update', error);
         // Fallback to original read-modify-write logic
-        const { data: keywords, error: fetchError } = await dbClient
+        const { data: keywords, error: fetchError } = await supabase
         .from('indb_rank_keywords')
         .select('id, tags')
         .in('id', keywordIds)
@@ -147,7 +101,7 @@ export class RankTrackingService {
             const newTags = Array.from(new Set([...existingTags, ...tags]));
             
             if (newTags.length !== existingTags.length) {
-                await dbClient
+                await supabase
                 .from('indb_rank_keywords')
                 .update({ tags: newTags })
                 .eq('id', keyword.id);

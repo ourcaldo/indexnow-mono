@@ -194,13 +194,17 @@ export class ResilientOperationExecutor {
  */
 export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceName'>) {
   return function (
-    target: any,
+    target: Object,
     propertyKey: string,
-    descriptor: PropertyDescriptor
+    descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<T>>
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: unknown[]) {
+    if (!originalMethod) {
+      return descriptor;
+    }
+
+    descriptor.value = async function (this: any, ...args: any[]): Promise<T> {
       return ResilientOperationExecutor.execute(
         () => originalMethod.apply(this, args),
         {

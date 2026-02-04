@@ -258,9 +258,40 @@ export class SecurityService {
       }
       return data.id
     } catch (error) {
-      logger.error({ error: error as any }, 'Failed to create service role audit log')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error({ error: errorMessage }, 'Failed to create service role audit log')
       return 'unknown'
     }
+  }
+
+  /**
+   * Safely converts any result to a Json compatible format.
+   */
+  private static sanitizeResult(result: unknown): Json {
+    if (result === undefined) return null
+    if (result === null) return null
+    if (typeof result === 'string') return result.substring(0, 5000)
+    if (typeof result === 'number') return isNaN(result) ? 0 : result
+    if (typeof result === 'boolean') return result
+    
+    if (Array.isArray(result)) {
+      return result.map(item => this.sanitizeResult(item))
+    }
+    
+    if (typeof result === 'object') {
+      const sanitized: Record<string, Json> = {}
+      try {
+        // Handle simple objects
+        for (const [key, value] of Object.entries(result)) {
+           sanitized[key] = this.sanitizeResult(value)
+        }
+        return sanitized
+      } catch (e) {
+        return { error: 'Failed to sanitize object' }
+      }
+    }
+    
+    return String(result).substring(0, 1000)
   }
 
   /**
@@ -269,12 +300,14 @@ export class SecurityService {
   static async logOperationSuccess(
     auditId: string,
     context: ServiceRoleOperationContext,
-    result: Json
+    result: unknown
   ): Promise<void> {
     if (auditId === 'unknown') return
     try {
+      const sanitizedResult = this.sanitizeResult(result)
       const metadata: Record<string, Json | undefined> = {
         ...(context.metadata || {}),
+        result: sanitizedResult,
         resultType: typeof result,
         resultLength: Array.isArray(result) ? result.length : 1,
         completedAt: new Date().toISOString()
@@ -291,7 +324,8 @@ export class SecurityService {
       if (error) throw error
       logger.info({ auditId, operation: context.operation }, 'Service role operation completed successfully')
     } catch (error) {
-      logger.error({ error: error as any, auditId }, 'Failed to log service role operation success')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error({ error: errorMessage, auditId }, 'Failed to log service role operation success')
     }
   }
 
@@ -323,7 +357,8 @@ export class SecurityService {
       if (updateError) throw updateError
       logger.error({ auditId, operation: context.operation, error: error.message }, 'Service role operation failed')
     } catch (logError) {
-      logger.error({ logError: logError as any, auditId, originalError: error.message }, 'Failed to log service role operation failure')
+      const logErrorMessage = logError instanceof Error ? logError.message : String(logError)
+      logger.error({ logError: logErrorMessage, auditId, originalError: error.message }, 'Failed to log service role operation failure')
     }
   }
 
@@ -367,7 +402,8 @@ export class SecurityService {
       }
       return data.id
     } catch (error) {
-      logger.error({ error: error as any }, 'Failed to create user operation audit log')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error({ error: errorMessage }, 'Failed to create user operation audit log')
       return 'unknown'
     }
   }
@@ -378,12 +414,14 @@ export class SecurityService {
   static async logUserOperationSuccess(
     auditId: string,
     context: UserOperationContext,
-    result: Json
+    result: unknown
   ): Promise<void> {
     if (auditId === 'unknown') return
     try {
+      const sanitizedResult = this.sanitizeResult(result)
       const metadata: Record<string, Json | undefined> = {
         ...(context.metadata || {}),
+        result: sanitizedResult,
         resultType: typeof result,
         resultLength: Array.isArray(result) ? result.length : 1,
         completedAt: new Date().toISOString()
@@ -400,7 +438,8 @@ export class SecurityService {
       if (error) throw error
       logger.info({ auditId, operation: context.operation }, 'User operation completed successfully')
     } catch (error) {
-      logger.error({ error: error as any, auditId }, 'Failed to log user operation success')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error({ error: errorMessage, auditId }, 'Failed to log user operation success')
     }
   }
 
@@ -432,7 +471,8 @@ export class SecurityService {
       if (updateError) throw updateError
       logger.error({ auditId, operation: context.operation, error: error.message }, 'User operation failed')
     } catch (logError) {
-      logger.error({ logError: logError as any, auditId, originalError: error.message }, 'Failed to log user operation failure')
+      const logErrorMessage = logError instanceof Error ? logError.message : String(logError)
+      logger.error({ logError: logErrorMessage, auditId, originalError: error.message }, 'Failed to log user operation failure')
     }
   }
 }

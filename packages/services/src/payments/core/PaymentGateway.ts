@@ -3,6 +3,8 @@
  * Defines the interface that all payment gateways must implement
  */
 
+import { Json } from '@indexnow/shared';
+
 export interface CustomerDetails {
   first_name: string
   last_name: string
@@ -22,7 +24,7 @@ export interface PaymentRequest {
     name: string
     description?: string
   }
-  metadata?: Record<string, any>
+  metadata?: Record<string, Json>
 }
 
 export interface PaymentResponse {
@@ -34,7 +36,7 @@ export interface PaymentResponse {
   token?: string
   saved_token_id?: string
   requires_redirect?: boolean
-  metadata?: Record<string, any>
+  metadata?: Record<string, Json>
 }
 
 export interface SubscriptionRequest {
@@ -44,21 +46,25 @@ export interface SubscriptionRequest {
   customer_details: CustomerDetails
   saved_token?: string
   start_date?: Date
-  metadata?: Record<string, any>
+  metadata?: Record<string, Json>
 }
 
 export interface SubscriptionResponse {
   subscription_id: string
   status: string
   next_billing_date?: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, Json>
+}
+
+export interface GatewayConfig {
+  [key: string]: Json | undefined;
 }
 
 export abstract class PaymentGateway {
-  protected config: any
+  protected config: GatewayConfig
   protected gatewayName: string
 
-  constructor(config: any, gatewayName: string) {
+  constructor(config: GatewayConfig, gatewayName: string) {
     this.config = config
     this.gatewayName = gatewayName
   }
@@ -91,17 +97,17 @@ export abstract class PaymentGateway {
   /**
    * Validate webhook signature
    */
-  abstract validateWebhook(payload: any, signature: string): Promise<boolean>
+  abstract validateWebhook(payload: unknown, signature: string): Promise<boolean>
 
   /**
    * Process webhook notification
    */
-  abstract processWebhook(payload: any): Promise<{ order_id: string; status: string; data: any }>
+  abstract processWebhook(payload: unknown): Promise<{ order_id: string; status: string; data: Json }>
 
   /**
    * Get gateway configuration
    */
-  getConfig(): any {
+  getConfig(): GatewayConfig {
     return this.config
   }
 

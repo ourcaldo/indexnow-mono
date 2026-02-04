@@ -11,7 +11,8 @@ import {
   HealthCheckResult,
   SeRankingErrorType,
   RateLimitConfig,
-  ApiMetrics
+  ApiMetrics,
+  Database
 } from '@indexnow/shared';
 import { IIntegrationService, ISeRankingApiClient } from '../types/ServiceTypes';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
@@ -31,18 +32,8 @@ export interface IntegrationServiceConfig {
 }
 
 // Database types for SeRanking integration settings (matches actual DB schema)
-interface IntegrationRow {
-  id: string;
-  service_name: string;
-  api_key: string;
-  api_url: string;
-  api_quota_limit: number;
-  api_quota_used: number;
-  quota_reset_date: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type IntegrationRow = Database['public']['Tables']['indb_site_integration']['Row'];
+type UsageLogRow = Database['public']['Tables']['indb_seranking_usage_logs']['Row'];
 
 // Usage report types
 export interface UsageReport {
@@ -174,12 +165,12 @@ export class IntegrationService implements IIntegrationService {
             success: true,
             data: {
               service_name: data.service_name,
-              api_key: data.api_key,
-              api_url: data.api_url,
-              api_quota_limit: data.api_quota_limit,
-              api_quota_used: data.api_quota_used,
-              quota_reset_date: new Date(data.quota_reset_date),
-              is_active: data.is_active
+              api_key: data.api_key || '',
+              api_url: data.api_url || '',
+              api_quota_limit: data.api_quota_limit || 0,
+              api_quota_used: data.api_quota_used || 0,
+              quota_reset_date: new Date(data.quota_reset_date || new Date().toISOString()),
+              is_active: data.is_active || false
             },
             metadata: {
               source: 'api',
@@ -779,15 +770,7 @@ export class IntegrationService implements IIntegrationService {
       const { startDate, endDate } = this.getReportPeriod(period);
       
       // Get usage logs for the period
-      let logs: {
-        request_count: number;
-        successful_requests: number;
-        failed_requests: number;
-        response_time_ms: number;
-        timestamp: string;
-        date: string;
-        operation_type: string;
-      }[] = [];
+      let logs: UsageLogRow[] = [];
       try {
         const result = await SecureServiceRoleWrapper.executeSecureOperation(
           {
@@ -814,17 +797,17 @@ export class IntegrationService implements IIntegrationService {
               .eq('integration_id', 'seranking_keyword_export')
               .gte('timestamp', startDate.toISOString())
               .lte('timestamp', endDate.toISOString())
-              .order('timestamp', { ascending: true })
+              .order('timestamp', { ascending: true });
             
             if (error) {
-              throw new Error(`Usage logs table not accessible: ${error.message}`)
+              throw new Error(`Usage logs table not accessible: ${error.message}`);
             }
 
-            return usageLogs || []
+            return usageLogs || [];
           }
-        )
+        );
         
-        logs = (result as { data: typeof logs }).data || []
+        logs = result;
       } catch (error) {
         this.log('warn', 'Usage logs table retrieval failed:', error);
       }

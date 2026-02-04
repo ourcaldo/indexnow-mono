@@ -4,8 +4,8 @@
  * Handles job prioritization, scheduling, and persistence
  */
 
-import { supabaseAdmin } from '@indexnow/shared';
-import { SecureServiceRoleWrapper } from '@indexnow/services';
+import { Database, Json } from '@indexnow/shared';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import {
   EnrichmentJob,
   EnrichmentJobType,
@@ -25,7 +25,8 @@ import {
   JobError,
   DEFAULT_JOB_CONFIG,
   EnrichmentJobInsert,
-  EnrichmentJobUpdate
+  EnrichmentJobUpdate,
+  EnrichmentJobRecord
 } from '../types/EnrichmentJobTypes';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
@@ -155,15 +156,14 @@ export class EnrichmentQueue extends EventEmitter {
         id: jobId,
         user_id: userId,
         name: this.generateJobName(jobRequest.type, jobRequest.data),
-        type: 'keyword_enrichment',
         job_type: jobRequest.type,
         status: EnrichmentJobStatus.QUEUED,
         priority: jobRequest.priority || JobPriority.NORMAL,
-        config: jobConfig,
-        source_data: jobRequest.data,
-        progress_data: progress,
+        config: jobConfig as unknown as Json,
+        source_data: jobRequest.data as unknown as Json,
+        progress_data: progress as unknown as Json,
         retry_count: 0,
-        metadata: jobRequest.metadata as Record<string, unknown>,
+        metadata: jobRequest.metadata as unknown as Json,
         next_retry_at: scheduledFor?.toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -351,7 +351,7 @@ export class EnrichmentQueue extends EventEmitter {
       );
 
       // Convert to EnrichmentJob type
-      const job = this.recordToJob(jobRecord);
+      const job = this.recordToJob(jobRecord as unknown as EnrichmentJobRecord);
       
       // Emit event
       if (this.config.enableEvents) {
@@ -404,7 +404,7 @@ export class EnrichmentQueue extends EventEmitter {
       const { error: updateError } = await supabaseAdmin
         .from('indb_enrichment_jobs')
         .update({
-          progress_data: updatedProgress,
+          progress_data: updatedProgress as unknown as Json,
           updated_at: new Date().toISOString()
         })
         .eq('id', jobId);
@@ -437,7 +437,7 @@ export class EnrichmentQueue extends EventEmitter {
     try {
       const updates: EnrichmentJobUpdate = {
         status,
-        result_data: result as Record<string, unknown>,
+        result_data: result as unknown as Json,
         completed_at: new Date().toISOString(),
         locked_at: null,
         worker_id: null,
@@ -634,7 +634,7 @@ export class EnrichmentQueue extends EventEmitter {
         };
       }
 
-      const job = this.recordToJob(data);
+      const job = this.recordToJob(data as unknown as EnrichmentJobRecord);
 
       return {
         success: true,
@@ -894,53 +894,29 @@ export class EnrichmentQueue extends EventEmitter {
   /**
    * Convert database record to EnrichmentJob
    */
-  private recordToJob(record: Record<string, unknown>): EnrichmentJob {
-    const r = record as {
-      id: string;
-      user_id: string;
-      job_type: EnrichmentJobType;
-      status: EnrichmentJobStatus;
-      priority: JobPriority;
-      config: EnrichmentJobConfig;
-      source_data: EnrichmentJobData;
-      progress_data: JobProgress;
-      result_data?: unknown;
-      retry_count: number;
-      last_retry_at?: string;
-      next_retry_at?: string;
-      created_at: string;
-      updated_at: string;
-      started_at?: string;
-      completed_at?: string;
-      cancelled_at?: string;
-      error_message?: string;
-      metadata?: Record<string, unknown>;
-      worker_id?: string | null;
-      locked_at?: string | null;
-    };
-
+  private recordToJob(record: EnrichmentJobRecord): EnrichmentJob {
     return {
-      id: r.id,
-      userId: r.user_id,
-      type: r.job_type,
-      status: r.status,
-      priority: r.priority,
-      config: r.config,
-      data: r.source_data,
-      progress: r.progress_data,
-      result: r.result_data,
-      retryCount: r.retry_count,
-      lastRetryAt: r.last_retry_at ? new Date(r.last_retry_at) : undefined,
-      nextRetryAt: r.next_retry_at ? new Date(r.next_retry_at) : undefined,
-      createdAt: new Date(r.created_at),
-      updatedAt: new Date(r.updated_at),
-      startedAt: r.started_at ? new Date(r.started_at) : undefined,
-      completedAt: r.completed_at ? new Date(r.completed_at) : undefined,
-      cancelledAt: r.cancelled_at ? new Date(r.cancelled_at) : undefined,
-      error: r.error_message,
-      metadata: r.metadata,
-      workerId: r.worker_id || undefined,
-      lockedAt: r.locked_at ? new Date(r.locked_at) : undefined
+      id: record.id,
+      userId: record.user_id,
+      type: (record.job_type as EnrichmentJobType) || EnrichmentJobType.SINGLE_KEYWORD,
+      status: (record.status as EnrichmentJobStatus) || EnrichmentJobStatus.QUEUED,
+      priority: (record.priority as JobPriority) || JobPriority.NORMAL,
+      config: (record.config as unknown as EnrichmentJobConfig) || DEFAULT_JOB_CONFIG,
+      data: record.source_data as unknown as EnrichmentJobData,
+      progress: (record.progress_data as unknown as JobProgress) || { total: 0, processed: 0, successful: 0, failed: 0, skipped: 0, startedAt: new Date() },
+      result: (record.result_data as unknown as JobResult) || undefined,
+      retryCount: record.retry_count || 0,
+      lastRetryAt: record.last_retry_at ? new Date(record.last_retry_at) : undefined,
+      nextRetryAt: record.next_retry_at ? new Date(record.next_retry_at) : undefined,
+      createdAt: new Date(record.created_at),
+      updatedAt: new Date(record.updated_at),
+      startedAt: record.started_at ? new Date(record.started_at) : undefined,
+      completedAt: record.completed_at ? new Date(record.completed_at) : undefined,
+      cancelledAt: record.cancelled_at ? new Date(record.cancelled_at) : undefined,
+      error: record.error_message || undefined,
+      metadata: (record.metadata as unknown as Record<string, unknown>) || undefined,
+      workerId: record.worker_id || undefined,
+      lockedAt: record.locked_at ? new Date(record.locked_at) : undefined
     };
   }
 

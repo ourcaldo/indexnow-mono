@@ -3,35 +3,37 @@
  * Types for keyword bank table and related database operations
  */
 
+import { Database, Json } from '@indexnow/shared';
+
 // Keyword Bank Database Entity
 export interface KeywordBankEntity {
   id: string;
   keyword: string;
-  country_id: string;
+  country_code: string; // Renamed from country_id to match schema
   language_code: string;
   is_data_found: boolean;
   volume: number | null;
   cpc: number | null;
   competition: number | null;
   difficulty: number | null;
-  history_trend: Record<string, number> | null;
+  history_trend: Json | null;
   keyword_intent: string | null;
-  data_updated_at: Date;
-  created_at: Date;
-  updated_at: Date;
+  data_updated_at: string; // Date -> string for API/DB compatibility
+  created_at: string;
+  updated_at: string;
 }
 
 // Insert/Update Types
 export interface KeywordBankInsert {
   keyword: string;
-  country_id: string;
+  country_code: string;
   language_code?: string;
   is_data_found: boolean;
   volume?: number | null;
   cpc?: number | null;
   competition?: number | null;
   difficulty?: number | null;
-  history_trend?: Record<string, number> | null;
+  history_trend?: Json | null;
   keyword_intent?: string | null;
 }
 
@@ -41,10 +43,10 @@ export interface KeywordBankUpdate {
   cpc?: number | null;
   competition?: number | null;
   difficulty?: number | null;
-  history_trend?: Record<string, number> | null;
+  history_trend?: Json | null;
   keyword_intent?: string | null;
-  data_updated_at?: Date;
-  updated_at?: Date;
+  data_updated_at?: string;
+  updated_at?: string;
 }
 
 // Enhanced Keyword Entity (from indb_keyword_keywords with intelligence)
@@ -54,12 +56,12 @@ export interface EnhancedKeywordEntity {
   domain_id: string;
   keyword: string;
   device_type: string;
-  country_id: string;
+  country_code: string;
   tags: string[];
   is_active: boolean;
-  created_at: Date;
-  updated_at: Date;
-  last_check_date: Date | null;
+  created_at: string;
+  updated_at: string;
+  last_check_date: string | null;
   // Intelligence fields
   keyword_bank_id: string | null;
   search_volume: number | null;
@@ -67,8 +69,8 @@ export interface EnhancedKeywordEntity {
   competition: number | null;
   difficulty: number | null;
   keyword_intent: string | null;
-  history_trend: Record<string, number> | null;
-  intelligence_updated_at: Date | null;
+  history_trend: Json | null;
+  intelligence_updated_at: string | null;
 }
 
 // Search and Query Types
@@ -82,7 +84,7 @@ export interface KeywordBankQuery {
   min_difficulty?: number;
   max_difficulty?: number;
   keyword_intent?: string;
-  updated_since?: Date;
+  updated_since?: string;
   limit?: number;
   offset?: number;
   order_by?: 'keyword' | 'volume' | 'difficulty' | 'cpc' | 'competition' | 'data_updated_at';
@@ -106,7 +108,7 @@ export interface KeywordBankOperationResult {
   error?: {
     message: string;
     code?: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
@@ -128,10 +130,10 @@ export interface KeywordCacheEntry {
   keyword: string;
   country_code: string;
   data: KeywordBankEntity;
-  cached_at: Date;
-  expires_at: Date;
+  cached_at: string;
+  expires_at: string;
   access_count: number;
-  last_accessed: Date;
+  last_accessed: string;
 }
 
 export interface CacheStats {

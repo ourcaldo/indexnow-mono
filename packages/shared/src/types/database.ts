@@ -530,6 +530,10 @@ export type Database = {
                     previous_position?: number | null
                     last_checked?: string | null
                     created_at?: string
+                    tags?: string[] | null
+                    target_url?: string | null
+                    search_engine?: string | null
+                    is_active?: boolean
                 }
                 Relationships: [
                     {
@@ -751,31 +755,31 @@ export type Database = {
                 Row: {
                     id: string
                     user_id: string | null
-                    action: string
-                    description: string | null
+                    event_type: string
+                    details: Json
+                    severity: string
                     ip_address: string | null
                     user_agent: string | null
-                    metadata: Json
                     created_at: string
                 }
                 Insert: {
                     id?: string
                     user_id?: string | null
-                    action: string
-                    description?: string | null
+                    event_type: string
+                    details?: Json
+                    severity?: string
                     ip_address?: string | null
                     user_agent?: string | null
-                    metadata?: Json
                     created_at?: string
                 }
                 Update: {
                     id?: string
                     user_id?: string | null
-                    action?: string
-                    description?: string | null
+                    event_type?: string
+                    details?: Json
+                    severity?: string
                     ip_address?: string | null
                     user_agent?: string | null
-                    metadata?: Json
                     created_at?: string
                 }
                 Relationships: []
@@ -982,7 +986,6 @@ export type Database = {
                     amount: number
                     currency?: string
                     status?: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded'
-                    payment_status?: string | null
                     error_message?: string | null
                     transaction_id?: string | null
                     external_transaction_id?: string | null
@@ -1002,7 +1005,6 @@ export type Database = {
                     amount?: number
                     currency?: string
                     status?: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded'
-                    payment_status?: string | null
                     error_message?: string | null
                     transaction_id?: string | null
                     external_transaction_id?: string | null
@@ -2255,7 +2257,30 @@ export type Database = {
             [_ in never]: never
         }
         Functions: {
-            [_ in never]: never
+            update_keyword_position_atomic: {
+                Args: {
+                    target_keyword_id: string
+                    new_rank_position: number
+                }
+                Returns: void
+            }
+            add_tags_to_keywords_atomic: {
+                Args: {
+                    target_keyword_ids: string[]
+                    target_user_id: string
+                    new_tags: string[]
+                }
+                Returns: number
+            }
+            get_user_domain_stats: {
+                Args: {
+                    target_user_id: string
+                }
+                Returns: {
+                    domain: string
+                    keyword_count: number
+                }[]
+            }
         }
         Enums: {
             [_ in never]: never
@@ -2291,6 +2316,8 @@ export type TransactionRow = Database['public']['Tables']['indb_payment_transact
 export type ProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row']
 export type UserSettingsRow = Database['public']['Tables']['indb_auth_user_settings']['Row']
 
+export type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row']
+
 // Insert types
 export type InsertUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Insert']
 export type InsertUserSettings = Database['public']['Tables']['indb_auth_user_settings']['Insert']
@@ -2309,6 +2336,7 @@ export type InsertSecurityActivityLog = Database['public']['Tables']['indb_secur
 export type InsertSubscription = Database['public']['Tables']['indb_payment_subscriptions']['Insert']
 export type InsertTransaction = Database['public']['Tables']['indb_payment_transactions']['Insert']
 export type InsertPackage = Database['public']['Tables']['indb_payment_packages']['Insert']
+export type InsertPaymentGateway = Database['public']['Tables']['indb_payment_gateways']['Insert']
 
 // Update types
 export type UpdateUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Update']
@@ -2326,3 +2354,8 @@ export type UpdateDashboardNotification = Database['public']['Tables']['indb_not
 export type UpdateTransaction = Database['public']['Tables']['indb_payment_transactions']['Update']
 export type UpdateSubscription = Database['public']['Tables']['indb_payment_subscriptions']['Update']
 export type UpdatePackage = Database['public']['Tables']['indb_payment_packages']['Update']
+export type UpdatePaymentGateway = Database['public']['Tables']['indb_payment_gateways']['Update']
+
+export type SiteSettingsRow = Database['public']['Tables']['indb_site_settings']['Row']
+export type InsertSiteSettings = Database['public']['Tables']['indb_site_settings']['Insert']
+export type UpdateSiteSettings = Database['public']['Tables']['indb_site_settings']['Update']

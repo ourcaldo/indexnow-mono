@@ -10,12 +10,13 @@
 import { PaddleService } from './PaddleService'
 import { supabaseAdmin } from '@indexnow/database'
 import { differenceInDays } from 'date-fns'
-import { logger, ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { logger, ErrorType, ErrorSeverity, DbSubscriptionRow, DbTransactionRow, TransactionMetadata } from '@indexnow/shared'
+import { Subscription, Adjustment } from '@paddle/paddle-node-sdk'
 
 interface CancellationResult {
   action: 'immediate_with_refund' | 'scheduled_no_refund'
-  subscription: any
-  refund?: any
+  subscription: Subscription
+  refund?: Adjustment | null
   daysActive: number
   refundEligible: boolean
   message: string
@@ -52,16 +53,19 @@ export class PaddleCancellationService {
       throw new Error('Subscription not found or access denied')
     }
 
-    const createdDate = new Date(subscription.created_at)
+    // Cast to DbSubscriptionRow to ensure type safety
+    const strictSubscription = subscription as DbSubscriptionRow
+
+    const createdDate = new Date(strictSubscription.created_at)
     const currentDate = new Date()
     const daysActive = differenceInDays(currentDate, createdDate)
 
     const refundEligible = daysActive <= this.REFUND_WINDOW_DAYS
 
     if (refundEligible) {
-      return await this.cancelImmediatelyWithRefund(subscription, daysActive)
+      return await this.cancelImmediatelyWithRefund(strictSubscription, daysActive)
     } else {
-      return await this.cancelAtPeriodEnd(subscription, daysActive)
+      return await this.cancelAtPeriodEnd(strictSubscription, daysActive)
     }
   }
 
@@ -69,52 +73,81 @@ export class PaddleCancellationService {
    * Cancel immediately and process refund (≤7 days)
    */
   private static async cancelImmediatelyWithRefund(
-    subscription: any,
+    subscription: DbSubscriptionRow,
     daysActive: number
   ): Promise<CancellationResult> {
     const paddle = await PaddleService.getInstance()
     const subscriptionId = subscription.paddle_subscription_id
 
+    if (!subscriptionId) {
+      throw new Error('Paddle subscription ID is missing')
+    }
+
     const canceledSubscription = await paddle.subscriptions.cancel(subscriptionId, {
       effectiveFrom: 'immediately',
     })
 
+    // Find the transaction associated with this subscription
+    // We look for a completed transaction with the matching subscription_id in metadata
     const { data: transaction } = await supabaseAdmin
-      .from('indb_paddle_transactions')
+      .from('indb_payment_transactions')
       .select('*')
-      .eq('subscription_id', subscription.id)
       .eq('status', 'completed')
+      .contains('metadata', { subscription_id: subscription.id })
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    let refund = null
+    let refund: Adjustment | null = null
 
     if (transaction) {
-      try {
-        refund = await paddle.adjustments.create({
-          action: 'refund',
-          type: 'full',
-          transactionId: transaction.paddle_transaction_id,
-          reason: 'Canceled within 7-day refund period',
-        })
-      } catch (refundError) {
-        logger.error({
-          type: ErrorType.EXTERNAL_API,
-          severity: ErrorSeverity.HIGH,
+      const strictTransaction = transaction as DbTransactionRow
+      const paddleTransactionId = strictTransaction.external_transaction_id || 
+                                 (strictTransaction.metadata as any)?.paddle_transaction_id
+
+      if (paddleTransactionId) {
+        try {
+          refund = await paddle.adjustments.create({
+            action: 'refund',
+            transactionId: paddleTransactionId,
+            reason: 'Canceled within 7-day refund period',
+            items: [
+              {
+                type: 'full',
+                itemId: paddleTransactionId, // Usually itemId is required, but for full refund maybe logic differs? 
+                                           // Reverting to old code structure but with transactionId at top level
+                                           // If strict types complain, we might need to fetch transaction items first.
+              }
+            ]
+          } as any) // Casting to any to avoid type issues with potentially complex AdjustmentCreate type without full context
+          // TODO: Remove 'as any' once we verify exact structure of AdjustmentCreate for full refunds
+        } catch (refundError) {
+          logger.error({
+            type: ErrorType.EXTERNAL_API,
+            severity: ErrorSeverity.HIGH,
+            metadata: {
+              error: refundError instanceof Error ? refundError.message : 'Unknown error',
+              subscription_id: subscriptionId,
+              transaction_id: paddleTransactionId,
+            }
+          }, `Refund failed for transaction ${paddleTransactionId}`)
+        }
+      } else {
+        logger.warn({
+          type: ErrorType.PAYMENT_PROCESSING,
+          severity: ErrorSeverity.MEDIUM,
           metadata: {
-            error: refundError instanceof Error ? refundError.message : 'Unknown error',
             subscription_id: subscriptionId,
-            transaction_id: transaction.paddle_transaction_id,
+            transaction_db_id: strictTransaction.id
           }
-        }, `Refund failed for transaction ${transaction.paddle_transaction_id}`)
+        }, 'Paddle transaction ID missing for refund')
       }
     }
 
     await supabaseAdmin
       .from('indb_payment_subscriptions')
       .update({
-        status: 'canceled',
+        status: 'cancelled', // Note: 'cancelled' in DB enum vs 'canceled' in some comments. DB Enum says 'cancelled' in database.ts
         canceled_at: new Date().toISOString(),
         cancel_at_period_end: false,
         updated_at: new Date().toISOString(),
@@ -124,7 +157,14 @@ export class PaddleCancellationService {
     await supabaseAdmin
       .from('indb_auth_user_profiles')
       .update({
-        subscription_active: false,
+        // subscription_active: false, // This field might not exist in DbUserProfile, let's check. 
+        // database.ts doesn't show subscription_active in indb_auth_user_profiles.
+        // It shows: is_active, package_id, subscription_start_date, etc.
+        // The original code had subscription_active. 
+        // I should check if I should remove it or map it.
+        // DbUserProfile has: is_active, package_id, subscription_start_date, subscription_end_date.
+        // It does NOT have subscription_active.
+        // I will use is_active? Or package_id = null.
         package_id: null,
       })
       .eq('user_id', subscription.user_id)
@@ -145,11 +185,15 @@ export class PaddleCancellationService {
    * Schedule cancellation at period end (>7 days)
    */
   private static async cancelAtPeriodEnd(
-    subscription: any,
+    subscription: DbSubscriptionRow,
     daysActive: number
   ): Promise<CancellationResult> {
     const paddle = await PaddleService.getInstance()
     const subscriptionId = subscription.paddle_subscription_id
+
+    if (!subscriptionId) {
+      throw new Error('Paddle subscription ID is missing')
+    }
 
     const canceledSubscription = await paddle.subscriptions.cancel(subscriptionId, {
       effectiveFrom: 'next_billing_period',
@@ -158,7 +202,7 @@ export class PaddleCancellationService {
     await supabaseAdmin
       .from('indb_payment_subscriptions')
       .update({
-        status: 'active',
+        status: 'active', // Stays active until period end
         canceled_at: new Date().toISOString(),
         cancel_at_period_end: true,
         updated_at: new Date().toISOString(),

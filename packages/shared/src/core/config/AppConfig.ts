@@ -198,29 +198,15 @@ export const createAppConfig = (): AppConfigType => {
   const parsed = ConfigSchema.safeParse(rawConfig);
 
   if (!parsed.success) {
+    const errorMsg = '❌ Invalid configuration: ' + JSON.stringify(parsed.error.format(), null, 2);
     if (typeof window === 'undefined') {
-      console.error('❌ Invalid configuration:', parsed.error.format());
-      // In production server-side, we might want to throw
-      // throw new Error('Invalid configuration');
+      console.error(errorMsg);
+    } else {
+      console.warn(errorMsg);
     }
-    // Return a default safe config or throw if critical
-    // Using a minimal valid object to satisfy the schema or just throw
-    if (process.env.NODE_ENV === 'test') {
-       // For testing, we might want to allow partial configs or mocks
-       return ConfigSchema.parse({}); 
-    }
-    // For now, return what we have even if invalid
-    // We attempt to parse an empty object to get defaults
-    console.warn('⚠️ Config validation failed, using partial/default values');
-    // Attempt to parse an empty object to get defaults
-    const defaults = ConfigSchema.safeParse({});
-    if (defaults.success) {
-        return defaults.data;
-    }
-    // If even defaults fail (shouldn't happen with proper schema), we must return a valid AppConfigType.
-    // We force parsing of empty object which should have defaults for all required fields
-    // or we throw. Since we are here, we might as well throw if we can't recover.
-    return ConfigSchema.parse({});
+    // Fail fast: Strict configuration is required for security and stability.
+    // We throw an error to prevent the application from booting with invalid secrets.
+    throw new Error(errorMsg);
   }
 
   return parsed.data;

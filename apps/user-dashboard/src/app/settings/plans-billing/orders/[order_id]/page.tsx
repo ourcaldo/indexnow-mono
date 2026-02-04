@@ -334,7 +334,7 @@ export default function OrderSuccessPage() {
               Order has saved!
             </h2>
             <p className="text-muted-foreground mb-6 text-sm">
-              {orderData.payment_status === 'paid'
+              {orderData.status === 'completed'
                 ? 'Your payment has been confirmed and ready to use.'
                 : 'Click return home to go to back homepage.'}
             </p>

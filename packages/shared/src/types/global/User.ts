@@ -29,7 +29,7 @@ export interface AppUserProfile {
   is_active: boolean;
   subscription_status: SubscriptionStatus;
   package_name?: string;
-  package?: any; // Joint package data
+  package?: Package; // Joint package data
   created_at: Date;
   updated_at: Date;
 }

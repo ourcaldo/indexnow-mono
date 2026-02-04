@@ -10,12 +10,16 @@ import { SecureServiceRoleHelpers } from '@indexnow/database'
 import { AppConfig } from '@indexnow/shared'
 
 // Define types
-export interface AdminUser {
+export interface ServerAdminUser {
   id: string
   email: string
   role: string
   isAdmin: boolean
   isSuperAdmin: boolean
+}
+
+interface UserProfileRole {
+  role: string
 }
 
 /**
@@ -24,10 +28,9 @@ export interface AdminUser {
 export async function getServerAdminUser(
   request?: NextRequest,
   options: { forceHeaderAuth?: boolean } = {}
-): Promise<AdminUser | null> {
+): Promise<ServerAdminUser | null> {
   try {
     if (!request) {
-      console.log('Server auth: No request provided')
       return null
     }
 
@@ -96,7 +99,7 @@ export async function getServerAdminUser(
       }
     }
 
-    const profiles = await SecureServiceRoleHelpers.secureSelect(
+    const profiles = await SecureServiceRoleHelpers.secureSelect<UserProfileRole>(
       authContext,
       'indb_auth_user_profiles',
       ['role'],
@@ -126,7 +129,7 @@ export async function getServerAdminUser(
 /**
  * Require super admin authentication for API routes
  */
-export async function requireServerSuperAdminAuth(request?: NextRequest): Promise<AdminUser> {
+export async function requireServerSuperAdminAuth(request?: NextRequest): Promise<ServerAdminUser> {
   const serverAdminUser = await getServerAdminUser(request)
   if (!serverAdminUser?.isSuperAdmin) {
     throw new Error('Super admin access required')
@@ -138,7 +141,7 @@ export async function requireServerSuperAdminAuth(request?: NextRequest): Promis
 /**
  * Require admin authentication for API routes
  */
-export async function requireServerAdminAuth(request?: NextRequest): Promise<AdminUser> {
+export async function requireServerAdminAuth(request?: NextRequest): Promise<ServerAdminUser> {
   const serverAdminUser = await getServerAdminUser(request)
   if (!serverAdminUser?.isAdmin) {
     throw new Error('Admin access required')
@@ -153,10 +156,9 @@ export async function requireServerAdminAuth(request?: NextRequest): Promise<Adm
 export async function getServerAuthUser(
   request?: NextRequest, 
   options: { forceHeaderAuth?: boolean } = {}
-): Promise<AdminUser | null> {
+): Promise<ServerAdminUser | null> {
   try {
     if (!request) {
-      console.log('🔐 Server auth: No request provided')
       return null
     }
     
@@ -228,7 +230,7 @@ export async function getServerAuthUser(
       }
     }
 
-    const profiles = await SecureServiceRoleHelpers.secureSelect(
+    const profiles = await SecureServiceRoleHelpers.secureSelect<UserProfileRole>(
       authContext,
       'indb_auth_user_profiles',
       ['role'],

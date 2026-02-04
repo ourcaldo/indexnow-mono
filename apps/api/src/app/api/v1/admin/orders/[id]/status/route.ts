@@ -4,20 +4,7 @@ import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-mi
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ServerActivityLogger } from '@/lib/monitoring'
 import { ErrorType, ErrorSeverity, logger } from '@/lib/monitoring/error-handling'
-import { type Json } from '@indexnow/shared'
-
-// Extended transaction type with runtime joined properties
-interface ExtendedTransaction extends TransactionRow {
-  user?: UserProfile | null;
-  verifier?: { user_id: string; full_name: string | null; role: string | null } | null;
-}
-
-interface UserProfile {
-  user_id: string;
-  full_name: string | null;
-  role?: string | null;
-  [key: string]: Json | undefined;
-}
+import { type Json, type AdminOrderTransaction } from '@indexnow/shared'
 
 // Helper function to calculate expiry date based on billing period
 function calculateExpiryDate(billingPeriod: string): Date {
@@ -186,45 +173,6 @@ export const PATCH = adminApiWrapper(async (
     )
   }
 
-    // Get user profile data using secure wrapper
-    const profileContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_user_profile_for_status_update',
-      reason: 'Admin fetching user profile for transaction status update',
-      source: 'admin/orders/[id]/status',
-      metadata: {
-        orderId,
-        targetUserId: currentTransaction.user_id,
-        endpoint: '/api/v1/admin/orders/[id]/status'
-      }
-    }
-
-    const userProfile = await SecureServiceRoleWrapper.executeSecureOperation(
-      profileContext,
-      {
-        table: 'indb_auth_user_profiles',
-        operationType: 'select',
-        columns: ['*'],
-        whereConditions: { user_id: currentTransaction.user_id }
-      },
-      async () => {
-        const { data, error } = await supabaseAdmin
-          .from('indb_auth_user_profiles')
-          .select('*')
-          .eq('user_id', currentTransaction.user_id)
-          .single()
-
-        if (error) {
-          throw new Error(`Failed to fetch user profile: ${error.message}`)
-        }
-
-        return data
-      }
-    )
-
-    // Attach user data to transaction
-    (currentTransaction as unknown as ExtendedTransaction).user = userProfile
-
   // Validate current status - can't update if already completed or failed
   if (currentTransaction.transaction_status === 'completed' || currentTransaction.transaction_status === 'failed') {
     return await createStandardError(
@@ -282,11 +230,16 @@ export const PATCH = adminApiWrapper(async (
           throw new Error(`Failed to update transaction status: ${error.message}`)
         }
 
-        return data as unknown as TransactionRow
+        return data
       }
     )
 
-    const updatedTransaction = updateResult
+    // Type checking for the result
+    if (!updateResult) {
+       throw new Error('Failed to retrieve updated transaction')
+    }
+
+    const updatedTransaction = updateResult as any // We know it has joined props, will map manually
 
     // Get updated user profile using secure wrapper
     const updatedUserProfileContext = {
@@ -362,9 +315,58 @@ export const PATCH = adminApiWrapper(async (
       )
     }
 
-    // Attach user and verifier data
-    updatedTransaction.user = updatedUserProfile as UserProfile
-    updatedTransaction.verifier = verifierProfile as { user_id: string; full_name: string | null; role: string | null } | null
+    // Map to AdminOrderTransaction
+    const finalTransaction: AdminOrderTransaction = {
+        id: updatedTransaction.id,
+        user_id: updatedTransaction.user_id,
+        package_id: updatedTransaction.package_id || '',
+        gateway_id: updatedTransaction.gateway_id || '',
+        transaction_type: 'payment', // Default for now, could be derived from package or metadata
+        transaction_status: updatedTransaction.transaction_status,
+        amount: updatedTransaction.amount,
+        currency: updatedTransaction.currency,
+        payment_method: updatedTransaction.payment_method,
+        payment_proof_url: updatedTransaction.proof_url || null, // Map proof_url
+        gateway_transaction_id: updatedTransaction.transaction_id || null, // Map transaction_id
+        verified_by: updatedTransaction.verified_by,
+        verified_at: updatedTransaction.verified_at,
+        processed_at: updatedTransaction.processed_at,
+        notes: updatedTransaction.notes,
+        metadata: (updatedTransaction.metadata as Json) || {},
+        created_at: updatedTransaction.created_at,
+        updated_at: updatedTransaction.updated_at,
+        package: updatedTransaction.package ? {
+            id: updatedTransaction.package.id,
+            name: updatedTransaction.package.name,
+            slug: updatedTransaction.package.slug,
+            description: updatedTransaction.package.description,
+            pricing_tiers: updatedTransaction.package.pricing_tiers as Json,
+            currency: updatedTransaction.package.currency || 'USD',
+            billing_period: updatedTransaction.package.billing_period || 'monthly',
+            features: updatedTransaction.package.features as Json
+        } : null,
+        gateway: updatedTransaction.gateway ? {
+            id: updatedTransaction.gateway.id,
+            name: updatedTransaction.gateway.name,
+            slug: updatedTransaction.gateway.slug
+        } : null,
+        user: {
+            user_id: updatedUserProfile.user_id,
+            full_name: updatedUserProfile.full_name || 'Unknown',
+            role: updatedUserProfile.role || 'user',
+            email: 'N/A', // Email not available in profile join
+            created_at: updatedUserProfile.created_at || new Date().toISOString(),
+            package_id: updatedUserProfile.package_id,
+            subscribed_at: updatedUserProfile.subscribed_at,
+            expires_at: updatedUserProfile.expires_at,
+            phone_number: updatedUserProfile.phone_number
+        },
+        verifier: verifierProfile ? {
+            user_id: verifierProfile.user_id,
+            full_name: verifierProfile.full_name || 'Unknown',
+            role: verifierProfile.role || 'admin'
+        } : null
+    }
 
     // If approved, activate user plan
     if (status === 'completed') {

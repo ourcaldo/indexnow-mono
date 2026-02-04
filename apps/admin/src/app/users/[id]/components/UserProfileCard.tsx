@@ -8,20 +8,7 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react'
-
-interface UserProfile {
-  id: string
-  user_id: string
-  full_name: string | null
-  role: string
-  email_notifications: boolean
-  created_at: string
-  updated_at: string
-  phone_number: string | null
-  email?: string
-  email_confirmed_at?: string
-  last_sign_in_at?: string
-}
+import type { UserProfile } from './index'
 
 interface UserProfileCardProps {
   user: UserProfile

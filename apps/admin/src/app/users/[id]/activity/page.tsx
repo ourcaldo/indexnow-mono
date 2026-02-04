@@ -16,7 +16,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import Link from 'next/link'
-import { ADMIN_ENDPOINTS, formatDate } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, formatDate, EnrichedActivityLog } from '@indexnow/shared'
 
 interface ActivityLog {
   id: string
@@ -40,8 +40,9 @@ interface UserInfo {
   name: string
 }
 
+
 export default function UserActivityPage({ params }: { params: Promise<{ id: string }> }) {
-  const [logs, setLogs] = useState<ActivityLog[]>([])
+  const [logs, setLogs] = useState<EnrichedActivityLog[]>([])
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -113,7 +114,7 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
     return colors[eventType as keyof typeof colors] || 'bg-muted/10 text-muted-foreground'
   }
 
-  const getDeviceIcon = (userAgent?: string) => {
+  const getDeviceIcon = (userAgent?: string | null) => {
     if (!userAgent) return <Monitor className="h-4 w-4" />
     
     if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {

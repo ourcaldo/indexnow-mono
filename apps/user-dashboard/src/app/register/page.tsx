@@ -20,6 +20,13 @@ import {
 } from '@indexnow/ui'
 import { AUTH_ENDPOINTS } from '@indexnow/shared'
 
+interface DetectLocationResponse {
+  country?: string;
+  countryCode?: string;
+  city?: string;
+  region?: string;
+}
+
 export default function Register() {
   const router = useRouter()
   const [email, setEmail] = useState("")
@@ -59,7 +66,7 @@ export default function Register() {
           credentials: 'include' // Essential for cross-subdomain authentication
         })
         if (response.ok) {
-          const data = await response.json()
+          const data = (await response.json()) as DetectLocationResponse
           if (data.country) {
             setCountry(data.country) // Use full country name instead of countryCode
           } else {

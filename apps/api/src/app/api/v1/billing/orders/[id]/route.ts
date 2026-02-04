@@ -3,48 +3,10 @@ import { NextRequest } from 'next/server'
 import { logger } from '@/lib/monitoring/error-handling'
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { DbTransactionRow as TransactionRow, DbPackageRow as PackageRow } from '@indexnow/shared'
 
-function getBaseDomain(): string {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_BASE_URL!).hostname
-  } catch (e) {
-    return ''
-  }
-}
-
-interface OrderTransaction {
-  id: string;
-  user_id: string;
-  amount: number | string;
-  currency: string;
-  transaction_status: string;
-  created_at: string;
-  updated_at: string | null;
-  payment_method: string | null;
-  gateway_transaction_id: string | null;
-  billing_period: string | null;
-  metadata: {
-    customer_info?: Record<string, unknown>;
-    payment_details?: Record<string, unknown>;
-    [key: string]: unknown;
-  } | null;
-  gateway_response: {
-    va_numbers?: unknown;
-    payment_code?: string;
-    store?: string;
-    expiry_time?: string;
-    [key: string]: unknown;
-  } | null;
-  package: {
-    id: string;
-    name: string;
-    description: string | null;
-    features: unknown;
-    quota_limits: unknown;
-  } | null;
-  [key: string]: unknown;
+type TransactionWithPackage = TransactionRow & {
+  package: Pick<PackageRow, 'id' | 'name' | 'description' | 'features' | 'quota_limits'> | null
 }
 
 export const GET = authenticatedApiWrapper(async (
@@ -60,39 +22,13 @@ export const GET = authenticatedApiWrapper(async (
   }
   
   logger.info({ data: [id] }, '[ORDER-API] Received order ID:')
-
-  const cookieStore = await cookies()
-  const baseDomain = getBaseDomain()
-  
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: { path?: string; domain?: string; maxAge?: number; httpOnly?: boolean; secure?: boolean; sameSite?: 'strict' | 'lax' | 'none'; } }>) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              const cookieOptions = {
-                ...options,
-                ...(baseDomain && { domain: `.${baseDomain}` })
-              }
-              cookieStore.set(name, value, cookieOptions)
-            })
-          } catch {}
-        },
-      },
-    }
-  )
   
   logger.info({ data: [auth.userId] }, '[ORDER-API] User authenticated:')
 
   logger.info({ data: [id, 'user_id:', auth.userId] }, '[ORDER-API] Searching for order ID:')
   
-  const transaction = await SecureServiceRoleWrapper.executeWithUserSession<OrderTransaction>(
-    supabase,
+  const transaction = await SecureServiceRoleWrapper.executeWithUserSession<TransactionWithPackage>(
+    auth.supabase,
     {
       userId: auth.userId,
       operation: 'get_user_order_details',
@@ -127,21 +63,25 @@ export const GET = authenticatedApiWrapper(async (
         throw new Error('Access denied')
       }
 
-      return transaction as OrderTransaction
+      return transaction as TransactionWithPackage
     }
   )
   
   logger.info({ data: [`order ID: ${transaction.id}`] }, '[ORDER-API] Order found successfully')
 
+  // Safely access properties from gateway_response which has an index signature
+  const gatewayResponse = transaction.gateway_response || {};
+  
   const orderData = {
     order_id: transaction.id,
     transaction_id: transaction.gateway_transaction_id,
-    status: transaction.transaction_status,
-    payment_status: transaction.transaction_status,
+    status: transaction.status, // transaction_status was likely a typo or alias, TransactionRow has 'status'
+    payment_status: transaction.status,
     amount: transaction.amount,
     currency: transaction.currency,
     payment_method: transaction.payment_method,
-    billing_period: transaction.billing_period || 'one-time',
+    // billing_period is not in TransactionRow, it might be in metadata or inferred from package/subscription
+    billing_period: transaction.metadata?.billing_period || 'one-time', 
     created_at: transaction.created_at,
     updated_at: transaction.updated_at,
     
@@ -149,11 +89,11 @@ export const GET = authenticatedApiWrapper(async (
     
     customer_info: transaction.metadata?.customer_info || {},
     
-    payment_details: transaction.metadata?.payment_details || (transaction.gateway_response?.va_numbers ? {
-      va_numbers: transaction.gateway_response?.va_numbers,
-      payment_code: transaction.gateway_response?.payment_code,
-      store: transaction.gateway_response?.store,
-      expires_at: transaction.gateway_response?.expiry_time
+    payment_details: transaction.metadata?.payment_details || (gatewayResponse['va_numbers'] ? {
+      va_numbers: gatewayResponse['va_numbers'],
+      payment_code: gatewayResponse['payment_code'],
+      store: gatewayResponse['store'],
+      expires_at: gatewayResponse['expiry_time']
     } : {})
   }
 

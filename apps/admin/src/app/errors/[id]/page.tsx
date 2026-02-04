@@ -15,48 +15,11 @@ import {
   Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Separator, useToast } from '@indexnow/ui';
-import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS } from '@indexnow/shared';
+import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS, type ErrorDetailResponse } from '@indexnow/shared';
 import { supabaseBrowser } from '@indexnow/auth';
 
-interface ErrorDetail {
-  id: string;
-  error_type: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  message: string;
-  user_message: string;
-  status_code?: number;
-  endpoint?: string;
-  http_method?: string;
-  stack_trace?: string;
-  user_id?: string;
-  created_at: string;
-  resolved_at?: string;
-  resolved_by?: string;
-  acknowledged_at?: string;
-  acknowledged_by?: string;
-}
-
-interface UserInfo {
-  email: string;
-  full_name?: string;
-}
-
-interface RelatedError {
-  id: string;
-  error_type: string;
-  message: string;
-  severity: string;
-  created_at: string;
-}
-
-interface ErrorDetailData {
-  error: ErrorDetail;
-  userInfo?: UserInfo;
-  relatedErrors: RelatedError[];
-}
-
 export default function AdminErrorDetailPage() {
-  const [errorData, setErrorData] = useState<ErrorDetailData | null>(null);
+  const [errorData, setErrorData] = useState<ErrorDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);

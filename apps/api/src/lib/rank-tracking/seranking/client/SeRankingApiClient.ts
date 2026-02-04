@@ -187,7 +187,7 @@ export class SeRankingApiClient {
     // Validate request configuration
     ApiRequestBuilder.validateRequestConfig(config);
     
-    let lastError: any;
+    let lastError: unknown;
     
     for (let attempt = 0; attempt < (this.config.retryAttempts || 3); attempt++) {
       try {
@@ -256,7 +256,7 @@ export class SeRankingApiClient {
   /**
    * Validate and transform API response
    */
-  private validateAndTransformResponse(data: any): SeRankingApiResponse {
+  private validateAndTransformResponse(data: unknown): SeRankingApiResponse {
     if (!Array.isArray(data)) {
       throw new SeRankingApiError(
         'Invalid API response format: expected array',
@@ -265,7 +265,7 @@ export class SeRankingApiClient {
       );
     }
     
-    return data.map(item => ({
+    return data.map((item: any) => ({
       is_data_found: Boolean(item.is_data_found),
       keyword: String(item.keyword || ''),
       volume: item.volume ? Number(item.volume) : null,
@@ -282,12 +282,24 @@ export class SeRankingApiClient {
    * Create SeRanking API error from HTTP response with enhanced rate limit handling
    */
   private async createApiError(response: Response): Promise<SeRankingApiError> {
-    let errorData: any;
+    let errorData: unknown;
     try {
-      errorData = await response.json();
+      const text = await response.text();
+      try {
+        errorData = JSON.parse(text);
+      } catch {
+        errorData = { message: text };
+      }
     } catch {
-      errorData = { message: await response.text() };
+      errorData = { message: response.statusText };
     }
+
+    // Log error details for debugging
+    logger.warn({ 
+      status: response.status, 
+      statusText: response.statusText, 
+      errorData 
+    }, `SeRanking API Error: ${response.status} ${response.statusText}`);
     
     let errorType: SeRankingErrorType;
     let retryable = false;
@@ -319,7 +331,10 @@ export class SeRankingApiClient {
         retryable = response.status >= 500;
     }
     
-    const message = errorData?.message || errorData?.error || `HTTP ${response.status}: ${response.statusText}`;
+    const err = errorData as Record<string, unknown> | null;
+    const message = (typeof err?.message === 'string' ? err.message : null) || 
+                    (typeof err?.error === 'string' ? err.error : null) || 
+                    `HTTP ${response.status}: ${response.statusText}`;
     
     return new SeRankingApiError(message, errorType, {
       statusCode: response.status,
@@ -331,25 +346,36 @@ export class SeRankingApiClient {
   /**
    * Create generic error for non-HTTP errors
    */
-  private createGenericError(error: any): SeRankingApiError {
-    if (error.name === 'AbortError') {
+  private createGenericError(error: unknown): SeRankingApiError {
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return new SeRankingApiError(
+          'Request timeout',
+          SeRankingErrorType.TIMEOUT_ERROR,
+          { retryable: true }
+        );
+      }
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        return new SeRankingApiError(
+          'Network connection failed',
+          SeRankingErrorType.NETWORK_ERROR,
+          { retryable: true }
+        );
+      }
+      
       return new SeRankingApiError(
-        'Request timeout',
-        SeRankingErrorType.TIMEOUT_ERROR,
-        { retryable: true }
+        error.message || 'Unknown error occurred',
+        SeRankingErrorType.UNKNOWN_ERROR,
+        { 
+          retryable: false,
+          response: error 
+        }
       );
     }
-    
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      return new SeRankingApiError(
-        'Network connection failed',
-        SeRankingErrorType.NETWORK_ERROR,
-        { retryable: true }
-      );
-    }
-    
+
     return new SeRankingApiError(
-      error.message || 'Unknown error occurred',
+      String(error) || 'Unknown error occurred',
       SeRankingErrorType.UNKNOWN_ERROR,
       { 
         retryable: false,
@@ -435,13 +461,13 @@ export class SeRankingApiClient {
 export class SeRankingApiError extends Error implements ISeRankingError {
   public type: SeRankingErrorType;
   public statusCode?: number;
-  public response?: any;
+  public response?: unknown;
   public retryable: boolean;
 
   constructor(
     message: string, 
     type: SeRankingErrorType, 
-    options: { statusCode?: number; response?: any; retryable: boolean }
+    options: { statusCode?: number; response?: unknown; retryable: boolean }
   ) {
     super(message);
     this.name = 'SeRankingApiError';

@@ -3,6 +3,10 @@
  * Handles validation of payment requests and data
  */
 
+import crypto from 'crypto'
+import type { CustomerDetails } from './PaymentGateway'
+import type { ProcessPaymentRequest } from './PaymentProcessor'
+
 export interface ValidationResult {
   valid: boolean
   error?: string
@@ -14,7 +18,7 @@ export class PaymentValidator {
   /**
    * Validate payment request
    */
-  validatePaymentRequest(request: any): ValidationResult {
+  validatePaymentRequest(request: ProcessPaymentRequest): ValidationResult {
     const errors: Record<string, string> = {}
 
     // Check required fields
@@ -41,7 +45,7 @@ export class PaymentValidator {
     } else {
       const customerErrors = this.validateCustomerInfo(request.customer_info)
       if (!customerErrors.valid) {
-        Object.assign(errors, customerErrors.details)
+        Object.assign(errors, customerErrors.details || {})
       }
     }
 
@@ -64,7 +68,7 @@ export class PaymentValidator {
   /**
    * Validate customer information
    */
-  validateCustomerInfo(customerInfo: any): ValidationResult {
+  validateCustomerInfo(customerInfo: CustomerDetails): ValidationResult {
     const errors: Record<string, string> = {}
 
     if (!customerInfo.first_name) {
@@ -140,9 +144,8 @@ export class PaymentValidator {
   /**
    * Validate webhook signature
    */
-  validateWebhookSignature(payload: any, signature: string, secret: string): boolean {
+  validateWebhookSignature(payload: unknown, signature: string, secret: string): boolean {
     try {
-      const crypto = require('crypto')
       const expectedSignature = crypto
         .createHmac('sha256', secret)
         .update(JSON.stringify(payload))

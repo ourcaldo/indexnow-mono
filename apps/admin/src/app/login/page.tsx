@@ -6,7 +6,7 @@ import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, C
 import { Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
 import { authService } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
-import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS, type VerifyRoleResponse } from '@indexnow/shared'
 import { AuthErrorHandler } from '@indexnow/auth'
 
 export default function AdminLoginPage() {
@@ -51,18 +51,15 @@ export default function AdminLoginPage() {
 
       // Step 2: Verify admin role using direct API call with Bearer token
       const response = await fetch(ADMIN_ENDPOINTS.VERIFY_ROLE, {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.session.access_token}`
         },
-        body: JSON.stringify({
-          userId: authData.user.id
-        }),
         credentials: 'include'
       })
 
-      const roleData = await response.json()
+      const roleData = await response.json() as VerifyRoleResponse
 
       if (!response.ok || !roleData.success) {
         // Sign out if not admin

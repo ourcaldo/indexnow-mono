@@ -7,8 +7,10 @@ import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import * as nodemailer from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { SiteSettingsRow } from '@indexnow/shared';
 
 import { DeviceInfo, LocationData } from '../utils/ip-device-utils';
+import { logger } from '../monitoring/error-handling';
 
 interface LoginNotificationData {
   userId: string;
@@ -19,6 +21,17 @@ interface LoginNotificationData {
   deviceInfo?: DeviceInfo | null;
   locationData?: LocationData | null;
   loginTime: string;
+}
+
+interface SmtpConfig {
+  enabled: boolean;
+  host?: string;
+  port?: number;
+  user?: string;
+  pass?: string;
+  secure?: boolean;
+  fromName?: string;
+  fromEmail?: string;
 }
 
 export class LoginNotificationService {
@@ -38,20 +51,20 @@ export class LoginNotificationService {
    */
   async sendLoginNotification(data: LoginNotificationData): Promise<boolean> {
     try {
-      console.log('🔐 Preparing to send login notification email to:', data.userEmail);
+      logger.info({ userEmail: data.userEmail }, '🔐 Preparing to send login notification email');
 
       // Get SMTP configuration from site settings
       const smtpConfig = await this.getEmailConfiguration();
       
       if (!smtpConfig.enabled) {
-        console.log('📧 Email notifications disabled, skipping login notification');
+        logger.info('📧 Email notifications disabled, skipping login notification');
         return false;
       }
 
       // Load and process email template
       const emailHtml = await this.prepareEmailTemplate(data);
       if (!emailHtml) {
-        console.error('❌ Failed to prepare email template, using fallback');
+        logger.error('❌ Failed to prepare email template, using fallback');
         const fallbackHtml = this.createFallbackEmailContent(data);
         return this.sendEmailWithContent(smtpConfig, data, fallbackHtml);
       }
@@ -59,7 +72,7 @@ export class LoginNotificationService {
       return await this.sendEmailWithContent(smtpConfig, data, emailHtml);
 
     } catch (error) {
-      console.error('❌ Failed to send login notification email:', error);
+      logger.error({ error }, '❌ Failed to send login notification email');
       return false;
     }
   }
@@ -67,11 +80,11 @@ export class LoginNotificationService {
   /**
    * Send email with prepared content
    */
-  private async sendEmailWithContent(smtpConfig: any, data: LoginNotificationData, emailHtml: string): Promise<boolean> {
+  private async sendEmailWithContent(smtpConfig: SmtpConfig, data: LoginNotificationData, emailHtml: string): Promise<boolean> {
     try {
       const transporter = await this.createTransporter(smtpConfig);
       if (!transporter) {
-        console.error('❌ Failed to create email transporter');
+        logger.error('❌ Failed to create email transporter');
         return false;
       }
 
@@ -83,11 +96,11 @@ export class LoginNotificationService {
       };
 
       await transporter.sendMail(mailOptions);
-      console.log('✅ Login notification email sent successfully to:', data.userEmail);
+      logger.info({ userEmail: data.userEmail }, '✅ Login notification email sent successfully');
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to send email:', error);
+      logger.error({ error }, '❌ Failed to send email');
       return false;
     }
   }
@@ -124,7 +137,7 @@ export class LoginNotificationService {
   /**
    * Get email configuration from site settings
    */
-  private async getEmailConfiguration() {
+  private async getEmailConfiguration(): Promise<SmtpConfig> {
     try {
       const settings = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -149,23 +162,27 @@ export class LoginNotificationService {
             .single();
 
           if (error) return null;
-          return settings;
+          return settings as unknown as SiteSettingsRow; // Cast because select string might not infer exact SiteSettingsRow, but it's a partial
         }
       );
 
+      // Since we selected specific columns, the result is a partial of SiteSettingsRow
+      // However, the wrapper returns what the callback returns.
+      // We need to handle null.
+      
       if (!settings || !settings.smtp_enabled) {
         return this.getFallbackEmailConfiguration();
       }
 
       return {
         enabled: true,
-        host: settings.smtp_host,
+        host: settings.smtp_host || undefined,
         port: settings.smtp_port || 465,
-        user: settings.smtp_user,
-        pass: settings.smtp_pass,
+        user: settings.smtp_user || undefined,
+        pass: settings.smtp_pass || undefined,
         secure: settings.smtp_secure !== false,
         fromName: settings.smtp_from_name || 'IndexNow Studio',
-        fromEmail: settings.smtp_from_email
+        fromEmail: settings.smtp_from_email || undefined
       };
 
     } catch (error) {
@@ -176,7 +193,7 @@ export class LoginNotificationService {
   /**
    * Fallback to environment variables
    */
-  private getFallbackEmailConfiguration() {
+  private getFallbackEmailConfiguration(): SmtpConfig {
     const host = process.env.SMTP_HOST;
     const user = process.env.SMTP_USER;
     
@@ -199,7 +216,7 @@ export class LoginNotificationService {
   /**
    * Create email transporter
    */
-  private async createTransporter(config: any) {
+  private async createTransporter(config: SmtpConfig) {
     try {
       const transporter = nodemailer.createTransport({
         host: config.host,
@@ -226,10 +243,11 @@ export class LoginNotificationService {
    */
   private async prepareEmailTemplate(data: LoginNotificationData): Promise<string | null> {
     try {
-      const templatePath = path.resolve(process.cwd(), '..', '..', 'packages', 'mail', 'src', 'templates', 'login-notification.html');
+      // Use path.join/resolve safely
+      const templatePath = path.resolve(process.cwd(), '../../packages/mail/src/templates/login-notification.html');
       
       if (!fs.existsSync(templatePath)) {
-        console.error('❌ Login notification template not found at:', templatePath);
+        logger.error({ templatePath }, '❌ Login notification template not found');
         return null;
       }
       
@@ -265,6 +283,7 @@ export class LoginNotificationService {
 
       return template;
     } catch (error) {
+      logger.error({ error }, '❌ Error preparing email template');
       return null;
     }
   }

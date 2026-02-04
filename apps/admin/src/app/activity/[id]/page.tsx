@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Separator } from '@indexnow/ui'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, type ActivityDetail } from '@indexnow/shared'
 import { 
   ArrowLeft,
   Activity,
@@ -27,26 +27,6 @@ import {
   ExternalLink
 } from 'lucide-react'
 import Link from 'next/link'
-
-interface ActivityDetail {
-  id: string
-  user_id: string
-  user_name: string
-  user_email: string
-  event_type: string
-  action_description: string
-  target_type?: string
-  target_id?: string
-  ip_address?: string
-  user_agent?: string
-  device_info?: any
-  location_data?: any
-  success: boolean
-  error_message?: string
-  metadata?: any
-  created_at: string
-  related_activities: ActivityDetail[]
-}
 
 export default function ActivityDetailPage() {
   const params = useParams()
@@ -74,8 +54,9 @@ export default function ActivityDetailPage() {
 
       const data = await response.json()
       setActivity(data.data?.activity || null)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -300,7 +281,7 @@ export default function ActivityDetailPage() {
             </Card>
 
             {/* Metadata */}
-            {activity.metadata && Object.keys(activity.metadata).length > 0 && (
+            {activity.metadata && typeof activity.metadata === 'object' && !Array.isArray(activity.metadata) && Object.keys(activity.metadata).length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Additional Information</CardTitle>

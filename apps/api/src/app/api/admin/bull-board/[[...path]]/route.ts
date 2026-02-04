@@ -3,10 +3,24 @@ import { createBullBoard } from '@bull-board/api'
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'
 import { queueManager } from '@/lib/queues/QueueManager'
 import { logger } from '@/lib/monitoring/error-handling'
-import { adminApiWrapper } from '@/lib/core/api-response-middleware'
+import { 
+  adminApiWrapper, 
+  createStandardError, 
+  formatSuccess, 
+  formatError 
+} from '@/lib/core/api-response-middleware'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { z } from 'zod'
 
 const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME
 const BULL_BOARD_PASSWORD = process.env.BULL_BOARD_PASSWORD
+
+// Zod Schema for Actions
+const ActionSchema = z.object({
+  action: z.enum(['retry', 'remove', 'pause', 'resume']),
+  queue: z.string().min(1),
+  jobId: z.string().optional(),
+})
 
 function checkSecurityRequirements(): { valid: boolean; error?: string } {
   if (process.env.ENABLE_BULLMQ !== 'true') {
@@ -99,10 +113,12 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
   const securityCheck = checkSecurityRequirements()
   if (!securityCheck.valid) {
     logger.error({ error: securityCheck.error }, 'Bull Board security check failed')
-    return NextResponse.json(
-      { error: securityCheck.error },
-      { status: 503 }
+    const error = await createStandardError(
+      ErrorType.SYSTEM,
+      securityCheck.error || 'Security check failed',
+      { statusCode: 503, severity: ErrorSeverity.HIGH }
     )
+    return formatError(error)
   }
 
   // Double layer: System Admin Auth (via wrapper) + Optional Basic Auth
@@ -137,9 +153,8 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
       })
     )
 
-    return NextResponse.json({
-      queues: queuesData,
-      timestamp: new Date().toISOString(),
+    return formatSuccess({
+      queues: queuesData
     })
   } catch (error) {
     logger.error(
@@ -147,21 +162,25 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
       'Bull Board API error'
     )
     
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    const structuredError = await createStandardError(
+      ErrorType.SYSTEM,
+      error instanceof Error ? error : 'Internal server error',
+      { statusCode: 500, severity: ErrorSeverity.HIGH }
     )
+    return formatError(structuredError)
   }
-}
+})
 
 export const POST = adminApiWrapper(async (request: NextRequest) => {
   const securityCheck = checkSecurityRequirements()
   if (!securityCheck.valid) {
     logger.error({ error: securityCheck.error }, 'Bull Board security check failed')
-    return NextResponse.json(
-      { error: securityCheck.error },
-      { status: 503 }
+    const error = await createStandardError(
+      ErrorType.SYSTEM,
+      securityCheck.error || 'Security check failed',
+      { statusCode: 503, severity: ErrorSeverity.HIGH }
     )
+    return formatError(error)
   }
 
   // Double layer: System Admin Auth (via wrapper) + Optional Basic Auth
@@ -171,8 +190,22 @@ export const POST = adminApiWrapper(async (request: NextRequest) => {
 
   try {
     const body = await request.json()
-    const { action, queue: queueName, jobId } = body
+    
+    const validation = ActionSchema.safeParse(body)
+    if (!validation.success) {
+      const error = await createStandardError(
+        ErrorType.VALIDATION,
+        'Invalid request body',
+        { 
+          statusCode: 400, 
+          severity: ErrorSeverity.LOW,
+          metadata: { issues: validation.error.issues }
+        }
+      )
+      return formatError(error)
+    }
 
+    const { action, queue: queueName, jobId } = validation.data
     const queue = await queueManager.getQueue(queueName)
 
     switch (action) {
@@ -181,7 +214,7 @@ export const POST = adminApiWrapper(async (request: NextRequest) => {
           const job = await queue.getJob(jobId)
           if (job) {
             await job.retry()
-            return NextResponse.json({ success: true, message: 'Job retried' })
+            return formatSuccess({ message: 'Job retried' })
           }
         }
         break
@@ -191,39 +224,38 @@ export const POST = adminApiWrapper(async (request: NextRequest) => {
           const job = await queue.getJob(jobId)
           if (job) {
             await job.remove()
-            return NextResponse.json({ success: true, message: 'Job removed' })
+            return formatSuccess({ message: 'Job removed' })
           }
         }
         break
       
       case 'pause':
         await queue.pause()
-        return NextResponse.json({ success: true, message: 'Queue paused' })
+        return formatSuccess({ message: 'Queue paused' })
       
       case 'resume':
         await queue.resume()
-        return NextResponse.json({ success: true, message: 'Queue resumed' })
-      
-      default:
-        return NextResponse.json(
-          { error: 'Invalid action' },
-          { status: 400 }
-        )
+        return formatSuccess({ message: 'Queue resumed' })
     }
 
-    return NextResponse.json(
-      { error: 'Job not found' },
-      { status: 404 }
+    const error = await createStandardError(
+      ErrorType.NOT_FOUND,
+      'Job not found or invalid action',
+      { statusCode: 404, severity: ErrorSeverity.LOW }
     )
+    return formatError(error)
+
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       'Bull Board action error'
     )
     
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    const structuredError = await createStandardError(
+      ErrorType.SYSTEM,
+      error instanceof Error ? error : 'Internal server error',
+      { statusCode: 500, severity: ErrorSeverity.HIGH }
     )
+    return formatError(structuredError)
   }
-}
+})

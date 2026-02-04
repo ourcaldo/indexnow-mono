@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireServerSuperAdminAuth } from '@indexnow/auth';
+import { requireServerSuperAdminAuth, type AdminUser } from '@indexnow/auth';
 import { ErrorHandlingService, logger } from '../monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { formatSuccess, formatError, type ApiSuccessResponse, type ApiErrorResponse } from './api-response-formatter';
@@ -19,14 +19,33 @@ export { formatSuccess, formatError } from './api-response-formatter';
 export type { ApiSuccessResponse, ApiErrorResponse } from './api-response-formatter';
 
 /**
+ * Create a standard error response
+ */
+export async function createStandardError(
+  type: ErrorType,
+  error: Error | string,
+  options: {
+    severity?: ErrorSeverity;
+    userId?: string;
+    endpoint?: string;
+    method?: string;
+    statusCode?: number;
+    metadata?: Record<string, any>;
+    userMessageKey?: string;
+  } = {}
+) {
+  return ErrorHandlingService.createError(type, error, options);
+}
+
+/**
  * Admin API wrapper - Requires super admin authentication
  */
 export function adminApiWrapper<T = unknown>(
   handler: (
     request: NextRequest, 
-    adminUser: { id: string; email: string }, 
+    adminUser: AdminUser, 
     context?: { params: Promise<any> }
-  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse>
+  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
   return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
@@ -34,7 +53,14 @@ export function adminApiWrapper<T = unknown>(
 
     try {
       // Verify super admin authentication
-      const adminUser = await requireServerSuperAdminAuth(request);
+      let adminUser: AdminUser | null = null;
+      try {
+        adminUser = await requireServerSuperAdminAuth(request);
+      } catch (error) {
+        // If auth fails, requireServerSuperAdminAuth throws. 
+        // We catch it here to allow the custom unauthorized handling below.
+        adminUser = null;
+      }
       
       if (!adminUser) {
         const { ipAddress, userAgent } = AdminSecurityLogger.extractRequestMetadata(request);
@@ -74,6 +100,10 @@ export function adminApiWrapper<T = unknown>(
 
       const response = await handler(request, adminUser, context);
       
+      if (response instanceof NextResponse) {
+        return response;
+      }
+
       if (response.success) {
         const statusCode = response.statusCode || 200;
         return NextResponse.json(response, { status: statusCode });
@@ -108,7 +138,7 @@ export function authenticatedApiWrapper<T = unknown>(
     request: NextRequest, 
     auth: AuthenticatedRequest, 
     context?: { params: Promise<any> }
-  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse>
+  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
   return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
@@ -130,6 +160,10 @@ export function authenticatedApiWrapper<T = unknown>(
 
       const response = await handler(request, authResult.data, context);
       
+      if (response instanceof NextResponse) {
+        return response;
+      }
+
       if (response.success) {
         const statusCode = response.statusCode || 200;
         return NextResponse.json(response, { status: statusCode });
@@ -160,7 +194,7 @@ export function authenticatedApiWrapper<T = unknown>(
  * Public API wrapper - No authentication required
  */
 export function publicApiWrapper<T = unknown>(
-  handler: (request: NextRequest, context?: { params: Promise<any> }) => Promise<ApiSuccessResponse<T> | ApiErrorResponse>
+  handler: (request: NextRequest, context?: { params: Promise<any> }) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
   return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
@@ -175,6 +209,10 @@ export function publicApiWrapper<T = unknown>(
 
       const response = await handler(request, context);
       
+      if (response instanceof NextResponse) {
+        return response;
+      }
+
       if (response.success) {
         const statusCode = response.statusCode || 200;
         return NextResponse.json(response, { status: statusCode });

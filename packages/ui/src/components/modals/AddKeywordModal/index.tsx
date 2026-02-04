@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { RANK_TRACKING_ENDPOINTS, type Domain, type Country } from '@indexnow/shared'
 import { apiRequest } from '@indexnow/database'
 import { useApiError } from '../../../hooks'
 import { 
@@ -25,6 +25,14 @@ interface AddKeywordModalProps {
   onSuccess?: () => void
 }
 
+interface AddKeywordData {
+  domain_id: string;
+  keywords: string[];
+  device_type: string;
+  country_id: string;
+  tags: string[];
+}
+
 export function AddKeywordModal({ open, onClose, onSuccess }: AddKeywordModalProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -43,7 +51,7 @@ export function AddKeywordModal({ open, onClose, onSuccess }: AddKeywordModalPro
   const { data: domainsData, error: domainsError, isLoading: domainsLoading, refetch: refetchDomains } = useQuery({
     queryKey: [RANK_TRACKING_ENDPOINTS.DOMAINS],
     queryFn: async () => {
-      return await apiRequest<{ data: any[] }>(RANK_TRACKING_ENDPOINTS.DOMAINS)
+      return await apiRequest<{ data: Domain[] }>(RANK_TRACKING_ENDPOINTS.DOMAINS)
     },
     enabled: open
   })
@@ -52,18 +60,10 @@ export function AddKeywordModal({ open, onClose, onSuccess }: AddKeywordModalPro
   const { data: countriesData, error: countriesError, isLoading: countriesLoading, refetch: refetchCountries } = useQuery({
     queryKey: [RANK_TRACKING_ENDPOINTS.COUNTRIES],
     queryFn: async () => {
-      return await apiRequest<{ data: any[] }>(RANK_TRACKING_ENDPOINTS.COUNTRIES)
+      return await apiRequest<{ data: Country[] }>(RANK_TRACKING_ENDPOINTS.COUNTRIES)
     },
     enabled: open
   })
-
-interface AddKeywordData {
-  domain_id: string;
-  keywords: string[];
-  device_type: string;
-  country_id: string;
-  tags: string[];
-}
 
   // Add keywords mutation
   const addKeywordsMutation = useMutation({

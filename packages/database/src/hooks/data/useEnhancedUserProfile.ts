@@ -2,25 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { type Json, AUTH_ENDPOINTS } from '@indexnow/shared'
+import { type Json, AUTH_ENDPOINTS, type DbUserProfile, type DbSubscriptionRow, type DbUserSettings } from '@indexnow/shared'
 import { supabase } from '../../client'
 
-interface UserProfile {
-  id: string
+interface UserProfile extends DbUserProfile {
   email: string
-  full_name?: string
-  role: 'user' | 'admin' | 'super_admin'
   email_notifications: boolean
-  phone_number?: string
-  avatar_url?: string
-  timezone?: string
-  language?: string
-  created_at: string
-  updated_at: string
-  last_sign_in_at?: string
-  email_confirmed_at?: string
   isAdmin: boolean
   isSuperAdmin: boolean
+  // Ensure optional properties from local interface are compatible or handled
+  timezone?: string
+  language?: string
+  last_sign_in_at?: string
+  email_confirmed_at?: string
 }
 
 interface UserSubscription {
@@ -50,14 +44,18 @@ interface UserQuota {
   reset_hours_remaining: number
 }
 
-interface UserSettings {
-  email_notifications: boolean
-  sms_notifications: boolean
-  webhook_notifications: boolean
-  timezone: string
-  language: string
+interface UserSettings extends DbUserSettings {
   dashboard_preferences: Record<string, Json>
   notification_preferences: Record<string, boolean>
+  // Add missing properties from DbUserSettings if needed, or rely on extension
+  // DbUserSettings has timeout_duration, retry_attempts, etc.
+}
+
+interface ProfileCompleteResponse {
+  user: UserProfile
+  subscription: UserSubscription
+  quota: UserQuota
+  settings: UserSettings
 }
 
 interface UseEnhancedUserProfileReturn {
@@ -98,7 +96,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  const profileCache = useRef<{ [key: string]: Json | undefined }>({})
+  const profileCache = useRef<ProfileCompleteResponse | null>(null)
   const lastFetchTime = useRef<number>(0)
   const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
@@ -110,11 +108,11 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
 
       // Check cache
       const now = Date.now()
-      if (now - lastFetchTime.current < CACHE_DURATION && profileCache.current.user) {
-        setUser(profileCache.current.user as unknown as UserProfile)
-        setSubscription(profileCache.current.subscription as unknown as UserSubscription)
-        setQuota(profileCache.current.quota as unknown as UserQuota)
-        setSettings(profileCache.current.settings as unknown as UserSettings)
+      if (now - lastFetchTime.current < CACHE_DURATION && profileCache.current) {
+        setUser(profileCache.current.user)
+        setSubscription(profileCache.current.subscription)
+        setQuota(profileCache.current.quota)
+        setSettings(profileCache.current.settings)
         setLoading(false)
         return
       }
@@ -139,7 +137,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
         throw new Error(`Failed to fetch profile: ${response.status}`)
       }
 
-      const data = await response.json()
+      const data = await response.json() as ProfileCompleteResponse
       
       // Set all profile data
       setUser(data.user)
@@ -187,11 +185,11 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
         return { success: false, error: errorData.error || `Profile update failed: ${response.status}` }
       }
 
-      const data = await response.json()
+      const data = await response.json() as { user: UserProfile }
       setUser(data.user)
       
       // Clear cache to force refresh
-      profileCache.current = {}
+      profileCache.current = null
       
       return { success: true }
     } catch (err) {
@@ -223,7 +221,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
         return { success: false, error: errorData.error || `Settings update failed: ${response.status}` }
       }
 
-      const data = await response.json()
+      const data = await response.json() as { settings: UserSettings }
       setSettings(data.settings)
       
       return { success: true }
@@ -248,7 +246,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json() as { quota: UserQuota }
         setQuota(data.quota)
       }
     } catch (err) {
@@ -311,7 +309,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
         return { success: false, error: errorData.error || `Avatar upload failed: ${response.status}` }
       }
 
-      const data = await response.json()
+      const data = await response.json() as { avatarUrl: string }
       
       // Update user data with new avatar URL
       if (user) {

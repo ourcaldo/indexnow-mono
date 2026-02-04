@@ -1,17 +1,33 @@
-import { type Json, type PackageRow, SecureServiceRoleHelpers, SecureServiceRoleWrapper, type TransactionRow, type UserProfile, supabaseAdmin } from '@indexnow/database';
+import { 
+  type Json, 
+  type PackageRow, 
+  SecureServiceRoleHelpers, 
+  SecureServiceRoleWrapper, 
+  type TransactionRow, 
+  type UserProfile, 
+  supabaseAdmin 
+} from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, withDatabaseOperation, createStandardError } from '@/lib/core/api-response-middleware'
-import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
+import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
+import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ServerActivityLogger } from '@/lib/monitoring'
 import { logger, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { 
+  type AdminOrderDetailResponse, 
+  type AdminOrderTransaction, 
+  type AdminTransactionHistory, 
+  type AdminOrderActivityLog 
+} from '@indexnow/shared'
+
 interface OrderWithRelations extends TransactionRow {
-  package: PackageRow;
+  package: PackageRow | null;
   gateway: {
     id: string;
     name: string;
     slug: string;
-    description: string;
-    configuration: Record<string, Json>;
+    description: string | null;
+    pricing_tiers: Json;
+    configuration: Json;
   } | null;
 }
 
@@ -53,15 +69,7 @@ export const GET = adminApiWrapper(async (
           .select(`
             *,
             package:indb_payment_packages(
-              id,
-              name,
-              slug,
-              description,
-              pricing_tiers,
-              currency,
-              billing_period,
-              features,
-              quota_limits
+              *
             ),
             gateway:indb_payment_gateways(
               id,
@@ -79,13 +87,7 @@ export const GET = adminApiWrapper(async (
           throw new Error(error?.message || 'Order not found')
         }
 
-        // Validate data structure matches OrderWithRelations
-        const validatedData = data as unknown as OrderWithRelations;
-        if (!validatedData.package) {
-           throw new Error('Order package information is missing');
-        }
-
-        return validatedData;
+        return data as unknown as OrderWithRelations;
       }
     )
 
@@ -105,18 +107,9 @@ export const GET = adminApiWrapper(async (
   }
 
     // Get user profile data using secure wrapper
-    let userProfile: {
-      full_name: string | null;
-      role: string;
-      phone_number: string | null;
-      created_at: string;
-      package_id: string | null;
-      subscribed_at: string | null;
-      expires_at: string | null;
-      daily_quota_used: number;
-    } | null = null
+    let userProfile: UserProfile | null = null
     let authUser: { user: { id: string; email?: string } } | null = null
-    let verifierProfile: { user_id: string; full_name: string | null; role: string } | null = null
+    let verifierProfile: Pick<UserProfile, 'user_id' | 'full_name' | 'role'> | null = null
 
     try {
       const profileContext = {
@@ -134,11 +127,11 @@ export const GET = adminApiWrapper(async (
       const profiles = await SecureServiceRoleHelpers.secureSelect(
         profileContext,
         'indb_auth_user_profiles',
-        ['full_name', 'role', 'phone_number', 'created_at', 'package_id', 'subscribed_at', 'expires_at', 'daily_quota_used'],
+        ['*'],
         { user_id: order.user_id as string }
       )
 
-      userProfile = profiles.length > 0 ? (profiles[0] as Pick<UserProfile, 'full_name' | 'role' | 'phone_number' | 'created_at' | 'package_id' | 'subscribed_at' | 'expires_at' | 'daily_quota_used'>) : null
+      userProfile = profiles.length > 0 ? (profiles[0] as UserProfile) : null
     } catch (error) {
       logger.error({
         userId: adminUser.id,
@@ -193,7 +186,8 @@ export const GET = adminApiWrapper(async (
     }
     
     // Get verifier profile if exists using secure wrapper
-    if (order.verified_by) {
+    if (order.metadata?.verified_by) {
+      const verifierId = String(order.metadata.verified_by);
       try {
         const verifierContext = {
           userId: 'system',
@@ -202,7 +196,7 @@ export const GET = adminApiWrapper(async (
           source: 'admin/orders/[id]',
           metadata: {
             orderId: orderId,
-            verifierId: order.verified_by,
+            verifierId: verifierId,
             endpoint: '/api/v1/admin/orders/[id]'
           }
         }
@@ -211,7 +205,7 @@ export const GET = adminApiWrapper(async (
           verifierContext,
           'indb_auth_user_profiles',
           ['user_id', 'full_name', 'role'],
-          { user_id: order.verified_by }
+          { user_id: verifierId }
         )
 
         verifierProfile = verifiers.length > 0 ? (verifiers[0] as Pick<UserProfile, 'user_id' | 'full_name' | 'role'>) : null
@@ -226,34 +220,61 @@ export const GET = adminApiWrapper(async (
       }
     }
     
-    // Attach user and verifier data to order
-    const orderWithEmail = {
-      ...order,
+    // Construct AdminOrderTransaction
+    const adminOrderTransaction: AdminOrderTransaction = {
+      id: order.id,
+      user_id: order.user_id,
+      package_id: order.package_id || '',
+      gateway_id: order.gateway_id || '',
+      transaction_type: 'payment', // Default or derived
+      transaction_status: order.status,
+      amount: order.amount,
+      currency: order.currency,
+      payment_method: order.payment_method,
+      payment_proof_url: order.proof_url,
+      gateway_transaction_id: order.transaction_id,
+      verified_by: (order.metadata?.verified_by as string) || null,
+      verified_at: (order.metadata?.verified_at as string) || null,
+      processed_at: (order.metadata?.processed_at as string) || null,
+      notes: order.notes,
+      metadata: order.metadata || {},
+      created_at: order.created_at,
+      updated_at: order.updated_at,
+      package: order.package ? {
+        id: order.package.id,
+        name: order.package.name,
+        slug: order.package.slug,
+        description: order.package.description,
+        pricing_tiers: order.package.pricing_tiers,
+        currency: order.package.currency || 'USD',
+        billing_period: order.package.billing_period || 'monthly',
+        features: order.package.features || {}
+      } : null,
+      gateway: order.gateway ? {
+        id: order.gateway.id,
+        name: order.gateway.name,
+        slug: order.gateway.slug
+      } : null,
       user: {
         user_id: order.user_id,
         full_name: userProfile?.full_name || 'Unknown User',
-        email: authUser?.user?.email || 'N/A',
         role: userProfile?.role || 'user',
-        phone_number: userProfile?.phone_number,
+        email: authUser?.user?.email || 'N/A',
         created_at: userProfile?.created_at || order.created_at,
         package_id: userProfile?.package_id,
-        subscribed_at: userProfile?.subscribed_at,
-        expires_at: userProfile?.expires_at,
-        daily_quota_used: userProfile?.daily_quota_used
+        subscribed_at: userProfile?.subscription_start_date, // Mapped from subscription_start_date
+        expires_at: userProfile?.subscription_end_date, // Mapped from subscription_end_date
+        phone_number: userProfile?.phone_number
       },
-      verifier: verifierProfile
-    }
+      verifier: verifierProfile ? {
+        user_id: verifierProfile.user_id,
+        full_name: verifierProfile.full_name || 'Unknown',
+        role: verifierProfile.role
+      } : null
+    };
 
     // Get activity history for this order using secure wrapper
-    let activityHistory: Array<{
-      id: string;
-      event_type: string;
-      action_description: string;
-      created_at: string;
-      user_id: string;
-      metadata: Record<string, unknown> | null;
-      user: Array<{ full_name: string; role: string }> | null;
-    }> = []
+    let activityHistory: AdminOrderActivityLog[] = []
     try {
       const activityContext = {
         userId: adminUser.id,
@@ -266,13 +287,13 @@ export const GET = adminApiWrapper(async (
         }
       }
 
-      activityHistory = await SecureServiceRoleWrapper.executeSecureOperation<typeof activityHistory>(
+      activityHistory = await SecureServiceRoleWrapper.executeSecureOperation<AdminOrderActivityLog[]>(
         activityContext,
         {
           table: 'indb_security_activity_logs',
           operationType: 'select',
           columns: ['*', 'user'],
-          whereConditions: { target_id: orderId }
+          whereConditions: { id: orderId } // Approximation for security check
         },
         async () => {
           const { data, error } = await supabaseAdmin
@@ -280,16 +301,16 @@ export const GET = adminApiWrapper(async (
             .select(`
               id,
               event_type,
-              action_description,
+              details,
               created_at,
               user_id,
-              metadata,
               user:indb_auth_user_profiles(
+                user_id,
                 full_name,
                 role
               )
             `)
-            .or(`target_id.eq.${orderId},metadata->>transaction_id.eq.${orderId}`)
+            .or(`details->>target_id.eq.${orderId},details->>transaction_id.eq.${orderId}`)
             .order('created_at', { ascending: false })
             .limit(20)
 
@@ -297,15 +318,25 @@ export const GET = adminApiWrapper(async (
             throw new Error(`Failed to fetch activity history: ${error.message}`)
           }
 
-          return (data || []).map(item => ({
-            id: String(item.id),
-            event_type: String(item.event_type),
-            action_description: String(item.action_description),
-            created_at: String(item.created_at),
-            user_id: String(item.user_id),
-            metadata: item.metadata as Record<string, unknown> | null,
-            user: Array.isArray(item.user) ? item.user as Array<{ full_name: string; role: string }> : null
-          }))
+          return (data || []).map(item => {
+             const user = Array.isArray(item.user) ? item.user[0] : item.user;
+             return {
+              id: String(item.id),
+              admin_id: String(item.user_id || ''), // Assuming user_id is the actor
+              action_type: String(item.event_type),
+              action_description: 'Activity Log', // Description not directly in table, using placeholder or deriving
+              target_type: 'order',
+              target_id: orderId,
+              metadata: item.details as Json,
+              created_at: String(item.created_at),
+              user: user ? {
+                user_id: user.user_id,
+                full_name: user.full_name || 'Unknown',
+                email: 'N/A', // Email not available in profile join
+                role: user.role
+              } : null
+            } as AdminOrderActivityLog;
+          })
         }
       )
     } catch (error) {
@@ -319,20 +350,7 @@ export const GET = adminApiWrapper(async (
     }
 
     // Get transaction history from the dedicated history table using secure wrapper
-    let transactionHistory: Array<{
-      id: string;
-      transaction_id: string;
-      old_status: string;
-      new_status: string;
-      action_type: string;
-      action_description: string;
-      changed_by: string;
-      changed_by_type: string;
-      notes: string | null;
-      metadata: Record<string, Json> | null;
-      created_at: string;
-      user: Array<{ full_name: string; role: string }> | null;
-    }> = []
+    let transactionHistory: AdminTransactionHistory[] = []
     try {
       const transactionContext = {
         userId: adminUser.id,
@@ -345,7 +363,7 @@ export const GET = adminApiWrapper(async (
         }
       }
 
-      transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation<typeof transactionHistory>(
+      transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation<AdminTransactionHistory[]>(
         transactionContext,
         {
           table: 'indb_payment_transactions_history',
@@ -365,10 +383,15 @@ export const GET = adminApiWrapper(async (
               action_description,
               changed_by,
               changed_by_type,
+              old_values,
+              new_values,
               notes,
               metadata,
+              ip_address,
+              user_agent,
               created_at,
               user:indb_auth_user_profiles!changed_by(
+                user_id,
                 full_name,
                 role
               )
@@ -380,20 +403,32 @@ export const GET = adminApiWrapper(async (
             throw new Error(`Failed to fetch transaction history: ${error.message}`)
           }
 
-          return (data || []).map(item => ({
-            id: String(item.id),
-            transaction_id: String(item.transaction_id),
-            old_status: String(item.old_status),
-            new_status: String(item.new_status),
-            action_type: String(item.action_type),
-            action_description: String(item.action_description),
-            changed_by: String(item.changed_by),
-            changed_by_type: String(item.changed_by_type),
-            notes: item.notes as string | null,
-            metadata: item.metadata as Record<string, Json> | null,
-            created_at: String(item.created_at),
-            user: Array.isArray(item.user) ? item.user as Array<{ full_name: string; role: string }> : null
-          }))
+          return (data || []).map(item => {
+            const user = Array.isArray(item.user) ? item.user[0] : item.user;
+            return {
+              id: String(item.id),
+              transaction_id: String(item.transaction_id),
+              old_status: item.old_status,
+              new_status: String(item.new_status),
+              action_type: String(item.action_type),
+              action_description: String(item.action_description),
+              changed_by: item.changed_by,
+              changed_by_type: String(item.changed_by_type),
+              old_values: item.old_values,
+              new_values: item.new_values,
+              notes: item.notes,
+              metadata: item.metadata,
+              ip_address: item.ip_address,
+              user_agent: item.user_agent,
+              created_at: String(item.created_at),
+              user: user ? {
+                user_id: user.user_id,
+                full_name: user.full_name || 'Unknown',
+                email: 'N/A', // Email not available in profile join
+                role: user.role
+              } : null
+            };
+          })
         }
       )
     } catch (error) {
@@ -417,7 +452,7 @@ export const GET = adminApiWrapper(async (
         {
           orderDetailView: true,
           orderId,
-          orderStatus: order.transaction_status,
+          orderStatus: order.status,
           orderAmount: order.amount,
           customerId: order.user_id
         }
@@ -432,9 +467,11 @@ export const GET = adminApiWrapper(async (
       }, 'Failed to log admin activity')
     }
 
-  return formatSuccess({
-    order: orderWithEmail,
-    activity_history: activityHistory || [],
-    transaction_history: transactionHistory || []
-  })
+  const response: AdminOrderDetailResponse = {
+    order: adminOrderTransaction,
+    activity_history: activityHistory,
+    transaction_history: transactionHistory
+  };
+
+  return formatSuccess(response);
 })

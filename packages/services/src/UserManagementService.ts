@@ -3,7 +3,6 @@ import {
   USER_ROLES, 
   DEFAULT_SETTINGS,
   type TrialEligibility,
-  type Database,
   type DbUserProfile,
   type DbUserSettings,
   type InsertUserProfile,
@@ -11,9 +10,6 @@ import {
   type InsertUserSettings,
   type UpdateUserSettings
 } from '@indexnow/shared';
-import { type SupabaseClient } from '@supabase/supabase-js';
-
-const typedSupabase = supabase as unknown as SupabaseClient<Database>;
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
@@ -187,7 +183,7 @@ export class UserManagementService {
    * Get user profile by email
    */
   async getUserProfileByEmail(email: string): Promise<UserProfile | null> {
-    const { data, error } = await (typedSupabase as any)
+    const { data, error } = await supabase
       .from('indb_auth_user_profiles')
       .select('*')
       .eq('email', email.toLowerCase())
@@ -228,7 +224,7 @@ export class UserManagementService {
    * Update user login information
    */
   async updateLastLogin(userId: string, ipAddress?: string): Promise<void> {
-    await (typedSupabase as any)
+    await supabase
       .from('indb_auth_user_profiles')
       .update({
         updated_at: new Date().toISOString(),
@@ -465,7 +461,7 @@ export class UserManagementService {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await (typedSupabase as any)
+    const { error } = await supabase
       .from('indb_auth_user_settings')
       .insert(defaultSettings);
     
@@ -487,7 +483,7 @@ export class UserManagementService {
    * Get keyword usage
    */
   private async getKeywordUsage(userId: string): Promise<number> {
-    const { count, error } = await (typedSupabase as any)
+    const { count, error } = await supabase
       .from('indb_rank_keywords')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);

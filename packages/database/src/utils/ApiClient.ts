@@ -5,12 +5,32 @@
 
 import { ApiEndpoints, type Json } from '@indexnow/shared';
 
-export interface ExtendedApiResponse<T> {
+export interface ApiErrorDetails {
+  message: string;
+  id?: string;
+  severity?: string;
+  code?: string;
+  details?: unknown;
+}
+
+export interface ExtendedApiResponse<T = unknown> {
   success: boolean;
   data: T;
-  error?: any;
+  error?: string | ApiErrorDetails;
   requestId: string;
   timestamp: string;
+}
+
+function isExtendedApiResponse<T>(data: unknown): data is ExtendedApiResponse<T> {
+  if (typeof data !== 'object' || data === null) return false;
+  const response = data as Record<string, unknown>;
+  
+  return (
+    typeof response.success === 'boolean' &&
+    'data' in response &&
+    typeof response.requestId === 'string' &&
+    typeof response.timestamp === 'string'
+  );
 }
 
 interface ApiClientConfig {
@@ -48,7 +68,7 @@ export class ApiClient {
     };
   }
 
-  private async request<T = Json>(
+  private async request<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ExtendedApiResponse<T>> {
@@ -72,7 +92,12 @@ export class ApiClient {
 
       clearTimeout(timeoutId);
 
-      const data = (await response.json()) as ExtendedApiResponse<T>;
+      const data: unknown = await response.json();
+      
+      if (!isExtendedApiResponse<T>(data)) {
+        throw new ApiError('Invalid API response format', undefined, 'HIGH', 500);
+      }
+      
       return data;
     } catch (error) {
       clearTimeout(timeoutId);
@@ -81,6 +106,9 @@ export class ApiClient {
         if (error.name === 'AbortError') {
           throw new ApiError('Request timeout', undefined, 'HIGH', 408);
         }
+        if (error instanceof ApiError) {
+          throw error;
+        }
         throw error;
       }
       
@@ -88,14 +116,14 @@ export class ApiClient {
     }
   }
 
-  async get<T = Json>(endpoint: string, headers?: Record<string, string>): Promise<ExtendedApiResponse<T | undefined>> {
+  async get<T = unknown>(endpoint: string, headers?: Record<string, string>): Promise<ExtendedApiResponse<T | undefined>> {
     return this.request<T>(endpoint, {
       method: 'GET',
       headers,
     });
   }
 
-  async post<T = Json>(
+  async post<T = unknown>(
     endpoint: string,
     data?: Json,
     headers?: Record<string, string>
@@ -107,7 +135,7 @@ export class ApiClient {
     });
   }
 
-  async put<T = Json>(
+  async put<T = unknown>(
     endpoint: string,
     data?: Json,
     headers?: Record<string, string>
@@ -119,14 +147,14 @@ export class ApiClient {
     });
   }
 
-  async delete<T = Json>(endpoint: string, headers?: Record<string, string>): Promise<ExtendedApiResponse<T>> {
+  async delete<T = unknown>(endpoint: string, headers?: Record<string, string>): Promise<ExtendedApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
       headers,
     });
   }
 
-  async patch<T = Json>(
+  async patch<T = unknown>(
     endpoint: string,
     data?: Json,
     headers?: Record<string, string>
@@ -145,7 +173,7 @@ export const apiClient = new ApiClient();
 /**
  * Simplified API request helper that handles session tokens automatically
  */
-export const apiRequest = async <T = Json>(endpoint: string, options?: RequestInit): Promise<T> => {
+export const apiRequest = async <T = unknown>(endpoint: string, options?: RequestInit): Promise<T> => {
   const { supabaseBrowser: supabase } = await import('../client');
   const { data: { session } } = await supabase.auth.getSession();
   const accessToken = session?.access_token;
@@ -165,24 +193,63 @@ export const apiRequest = async <T = Json>(endpoint: string, options?: RequestIn
     credentials: 'include',
   });
 
-  const jsonResponse = await response.json().catch(() => ({ 
-    success: false, 
-    error: { message: 'Invalid JSON response' },
-    requestId: 'unknown',
-    timestamp: new Date().toISOString()
-  })) as ExtendedApiResponse<T>;
+  let jsonResponse: unknown;
+  try {
+    jsonResponse = await response.json();
+  } catch {
+    // Construct a synthetic error response if JSON parsing fails
+    const errorResponse: ExtendedApiResponse<T> = { 
+      success: false, 
+      data: {} as T, 
+      error: { message: 'Invalid JSON response' },
+      requestId: 'unknown',
+      timestamp: new Date().toISOString()
+    };
+    jsonResponse = errorResponse;
+  }
 
-  if (!response.ok || jsonResponse.success === false) {
-    const errorData = jsonResponse.success === false ? jsonResponse.error : { message: `HTTP Error: ${response.status}` };
+  if (!isExtendedApiResponse<T>(jsonResponse)) {
+    // If response is not in expected format but is an error
+    if (!response.ok) {
+       const apiError = new ApiError(
+          `HTTP Error: ${response.status}`,
+          undefined,
+          'HIGH',
+          response.status
+       );
+       throw apiError;
+    }
+    
+    throw new ApiError('Invalid API response format', undefined, 'HIGH', 500);
+  }
+
+  const extendedResponse = jsonResponse;
+
+  if (!response.ok || extendedResponse.success === false) {
+    const errorData = extendedResponse.success === false ? extendedResponse.error : { message: `HTTP Error: ${response.status}` };
+    
+    let message = 'An unexpected error occurred';
+    let id: string | undefined;
+    let severity: string | undefined = 'HIGH';
+    
+    if (typeof errorData === 'string') {
+        message = errorData;
+    } else if (errorData && typeof errorData === 'object') {
+        const err = errorData as ApiErrorDetails;
+        message = err.message || message;
+        id = err.id;
+        severity = err.severity;
+    }
+
     const apiError = new ApiError(
-      typeof errorData === 'string' ? errorData : (errorData.message || 'An unexpected error occurred'),
-      jsonResponse.requestId || (jsonResponse.success === false ? jsonResponse.error?.id : undefined),
-      jsonResponse.success === false ? jsonResponse.error?.severity : 'HIGH',
+      message,
+      extendedResponse.requestId || id,
+      severity,
       response.status
     );
     throw apiError;
   }
 
-  return jsonResponse.data;
+  return extendedResponse.data;
 };
 

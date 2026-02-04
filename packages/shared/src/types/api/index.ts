@@ -9,3 +9,4 @@ export * from './requests/PaymentRequests';
 // Response types
 export * from './responses/UserResponses';
 export * from './responses/PaymentResponses';
+export * from './responses/AdminResponses';

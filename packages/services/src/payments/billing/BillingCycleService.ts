@@ -4,56 +4,31 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
-import type { Database } from '@indexnow/shared'
+import type { 
+  Database, 
+  UpdateUserProfile, 
+  PackagePricingTiers,
+  PackagePricingTier
+} from '@indexnow/shared'
 
-// Type definitions to handle Supabase query results and schema mismatches
-// These interfaces match the actual usage in the code, which differs from the generated Database types
-// (specifically subscribed_at vs subscription_start_date)
-
-type UpdateUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Update']
-
-// Structural solution to bypass broken Supabase type inference for updates
-interface MinimalPostgrestError {
-  message: string
-}
-
-interface PostgrestResult {
-  data: unknown
-  error: MinimalPostgrestError | null
-}
-
-interface BillingProfileQueryBuilder extends PromiseLike<PostgrestResult> {
-  eq(column: string, value: any): BillingProfileQueryBuilder
-  lt(column: string, value: any): BillingProfileQueryBuilder
-  not(column: string, operator: string, value: any): BillingProfileQueryBuilder
-  select(columns: string): BillingProfileQueryBuilder
-}
-
-interface AdminClientOverride {
-  from(table: string): {
-    update(data: UpdateUserProfile): BillingProfileQueryBuilder
-  }
-}
+// Strict types for the joined query result
+type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row']
 
 interface PackageInfo {
   id: string
   name: string
   currency: string
-  billing_period: 'monthly' | 'annual'
-  pricing_tiers: any
+  billing_period: string
+  pricing_tiers: PackagePricingTier[] | PackagePricingTiers | null
 }
 
-interface BillingProfile {
-  user_id: string
-  package_id: string
-  subscribed_at: string
-  expires_at: string | null
+interface BillingProfileWithPackage extends UserProfileRow {
   package: PackageInfo | null
 }
 
 export interface BillingCycle {
   user_id: string
-  package_id: string
+  package_id: string | null
   current_period_start: Date
   current_period_end: Date
   next_billing_date: Date
@@ -68,13 +43,14 @@ export class BillingCycleService {
   /**
    * Calculate next billing date based on current period and billing period
    */
-  calculateNextBillingDate(currentDate: Date, billingPeriod: 'monthly' | 'annual'): Date {
+  calculateNextBillingDate(currentDate: Date, billingPeriod: string): Date {
     const nextDate = new Date(currentDate)
     
-    if (billingPeriod === 'monthly') {
-      nextDate.setMonth(nextDate.getMonth() + 1)
-    } else {
+    // Default to monthly if unknown
+    if (billingPeriod === 'annual' || billingPeriod === 'yearly') {
       nextDate.setFullYear(nextDate.getFullYear() + 1)
+    } else {
+      nextDate.setMonth(nextDate.getMonth() + 1)
     }
     
     return nextDate
@@ -83,14 +59,33 @@ export class BillingCycleService {
   /**
    * Calculate billing amount from pricing tiers
    */
-  calculateBillingAmountFromTiers(pricingTiers: any, billingPeriod: 'monthly' | 'annual'): number {
-    // Use flat USD pricing structure (Paddle handles currency conversion)
-    if (pricingTiers?.[billingPeriod]) {
-      const tierData = pricingTiers[billingPeriod]
-      return tierData.promo_price || tierData.regular_price
+  calculateBillingAmountFromTiers(
+    pricingTiers: PackagePricingTier[] | PackagePricingTiers | null, 
+    billingPeriod: string
+  ): number {
+    if (!pricingTiers) return 0
+    
+    // Handle the case where pricing_tiers is the record structure (PackagePricingTiers)
+    if (!Array.isArray(pricingTiers)) {
+       // Normalized billing period key
+       const periodKey = (billingPeriod === 'annual' || billingPeriod === 'yearly') ? 'yearly' : 'monthly'
+       
+       // Try to access with the exact key or normalized key
+       const tierData = pricingTiers[billingPeriod] || pricingTiers[periodKey]
+       
+       if (tierData) {
+         return tierData.promo_price || tierData.regular_price
+       }
+    } else {
+      // Handle array structure if needed
+      const periodKey = (billingPeriod === 'annual' || billingPeriod === 'yearly') ? 'yearly' : 'monthly'
+      const tier = pricingTiers.find(t => t.billing_period === periodKey)
+      if (tier) {
+        return tier.price
+      }
     }
     
-    return 0 // Default if no pricing found
+    return 0 // Default if no pricing found or incorrect structure
   }
 
   /**
@@ -135,27 +130,36 @@ export class BillingCycleService {
             throw new Error(`Failed to get user billing cycle: ${error.message}`)
           }
 
-          // Cast to BillingProfile to handle potential schema mismatch and complex joins
-          return data as unknown as BillingProfile
+          // Use cast for the joined relation which isn't automatically inferred perfectly
+          return data as unknown as BillingProfileWithPackage
         }
       )
 
-      if (!profile || !profile.package) {
+      if (!profile || !profile.package || !profile.subscription_start_date) {
         return null
       }
 
       const currentDate = new Date()
-      const subscribedAt = new Date(profile.subscribed_at)
-      const expiresAt = profile.expires_at ? new Date(profile.expires_at) : null
+      const subscribedAt = new Date(profile.subscription_start_date)
+      const expiresAt = profile.subscription_end_date ? new Date(profile.subscription_end_date) : null
+      
+      const billingPeriod = profile.package.billing_period || 'monthly'
+
+      // Calculate next billing date
+      // If active, it's the expiration date. If no expiration, calculate from start.
+      const nextBillingDate = expiresAt || this.calculateNextBillingDate(subscribedAt, billingPeriod)
+      
+      // Current period end is the expiration date or next billing date
+      const currentPeriodEnd = expiresAt || nextBillingDate
 
       return {
         user_id: userId,
         package_id: profile.package_id,
         current_period_start: subscribedAt,
-        current_period_end: expiresAt || this.calculateNextBillingDate(subscribedAt, profile.package.billing_period),
-        next_billing_date: this.calculateNextBillingDate(subscribedAt, profile.package.billing_period),
-        billing_period: profile.package.billing_period,
-        amount: this.calculateBillingAmountFromTiers(profile.package.pricing_tiers, profile.package.billing_period),
+        current_period_end: currentPeriodEnd,
+        next_billing_date: nextBillingDate,
+        billing_period: (billingPeriod === 'annual' || billingPeriod === 'yearly') ? 'annual' : 'monthly',
+        amount: this.calculateBillingAmountFromTiers(profile.package.pricing_tiers, billingPeriod),
         currency: profile.package.currency,
         is_active: !expiresAt || expiresAt > currentDate
       }
@@ -172,7 +176,7 @@ export class BillingCycleService {
   async updateBillingCycle(
     userId: string, 
     packageId: string, 
-    billingPeriod: 'monthly' | 'annual'
+    billingPeriod: 'monthly' | 'annual' | 'yearly'
   ): Promise<boolean> {
     try {
       const currentDate = new Date()
@@ -198,25 +202,20 @@ export class BillingCycleService {
           whereConditions: { user_id: userId },
           data: {
             package_id: packageId,
-            subscribed_at: currentDate.toISOString(),
-            expires_at: nextBillingDate.toISOString(),
+            subscription_start_date: currentDate.toISOString(),
+            subscription_end_date: nextBillingDate.toISOString(),
             updated_at: new Date().toISOString()
           }
         },
         async () => {
-          // Cast update payload to UpdateUserProfile via unknown to handle potential schema mismatches
-          // (e.g. subscribed_at vs subscription_start_date)
-          const updatePayload = {
+          const updatePayload: UpdateUserProfile = {
             package_id: packageId,
-            subscribed_at: currentDate.toISOString(),
-            expires_at: nextBillingDate.toISOString(),
+            subscription_start_date: currentDate.toISOString(),
+            subscription_end_date: nextBillingDate.toISOString(),
             updated_at: new Date().toISOString()
-          } as unknown as UpdateUserProfile
+          }
 
-          // Cast to structural type to resolve 'never' inference on update
-          const adminClient = supabaseAdmin as unknown as AdminClientOverride
-
-          const { error } = await adminClient
+          const { error } = await supabaseAdmin
             .from('indb_auth_user_profiles')
             .update(updatePayload)
             .eq('user_id', userId)
@@ -264,8 +263,8 @@ export class BillingCycleService {
           operationType: 'select',
           columns: ['*'],
           whereConditions: { 
-            expires_at_gte: currentDate.toISOString(),
-            expires_at_lte: futureDate.toISOString()
+            subscription_end_date_gte: currentDate.toISOString(),
+            subscription_end_date_lte: futureDate.toISOString()
           }
         },
         async () => {
@@ -281,15 +280,15 @@ export class BillingCycleService {
                 pricing_tiers
               )
             `)
-            .gte('expires_at', currentDate.toISOString())
-            .lte('expires_at', futureDate.toISOString())
+            .gte('subscription_end_date', currentDate.toISOString())
+            .lte('subscription_end_date', futureDate.toISOString())
             .not('package_id', 'is', null)
 
           if (error) {
             throw new Error(`Failed to get upcoming renewals: ${error.message}`)
           }
 
-          return (data as unknown as BillingProfile[]) || []
+          return (data as unknown as BillingProfileWithPackage[]) || []
         }
       )
 
@@ -297,17 +296,22 @@ export class BillingCycleService {
         return []
       }
 
-      return profiles.map(profile => ({
-        user_id: profile.user_id,
-        package_id: profile.package_id,
-        current_period_start: new Date(profile.subscribed_at),
-        current_period_end: new Date(profile.expires_at!), // expires_at is checked in query but type says null
-        next_billing_date: new Date(profile.expires_at!),
-        billing_period: profile.package!.billing_period,
-        amount: this.calculateBillingAmountFromTiers(profile.package!.pricing_tiers, profile.package!.billing_period),
-        currency: profile.package!.currency,
-        is_active: true
-      }))
+      return profiles
+        .filter(p => p.package && p.subscription_start_date && p.subscription_end_date)
+        .map(profile => {
+          const billingPeriod = profile.package!.billing_period || 'monthly'
+          return {
+            user_id: profile.user_id,
+            package_id: profile.package_id,
+            current_period_start: new Date(profile.subscription_start_date!),
+            current_period_end: new Date(profile.subscription_end_date!),
+            next_billing_date: new Date(profile.subscription_end_date!),
+            billing_period: (billingPeriod === 'annual' || billingPeriod === 'yearly') ? 'annual' : 'monthly',
+            amount: this.calculateBillingAmountFromTiers(profile.package!.pricing_tiers, billingPeriod),
+            currency: profile.package!.currency,
+            is_active: true
+          }
+        })
 
     } catch (error) {
       console.error('Error getting upcoming renewals:', error)
@@ -338,7 +342,7 @@ export class BillingCycleService {
           operationType: 'select',
           columns: ['*'],
           whereConditions: { 
-            expires_at_lt: currentDate.toISOString()
+            subscription_end_date_lt: currentDate.toISOString()
           }
         },
         async () => {
@@ -354,14 +358,14 @@ export class BillingCycleService {
                 pricing_tiers
               )
             `)
-            .lt('expires_at', currentDate.toISOString())
+            .lt('subscription_end_date', currentDate.toISOString())
             .not('package_id', 'is', null)
 
           if (error) {
             throw new Error(`Failed to get expired subscriptions: ${error.message}`)
           }
 
-          return (data as unknown as BillingProfile[]) || []
+          return (data as unknown as BillingProfileWithPackage[]) || []
         }
       )
 
@@ -369,17 +373,22 @@ export class BillingCycleService {
         return []
       }
 
-      return profiles.map(profile => ({
-        user_id: profile.user_id,
-        package_id: profile.package_id,
-        current_period_start: new Date(profile.subscribed_at),
-        current_period_end: new Date(profile.expires_at!),
-        next_billing_date: new Date(profile.expires_at!),
-        billing_period: profile.package!.billing_period,
-        amount: this.calculateBillingAmountFromTiers(profile.package!.pricing_tiers, profile.package!.billing_period),
-        currency: profile.package!.currency,
-        is_active: false
-      }))
+      return profiles
+        .filter(p => p.package && p.subscription_start_date && p.subscription_end_date)
+        .map(profile => {
+          const billingPeriod = profile.package!.billing_period || 'monthly'
+          return {
+            user_id: profile.user_id,
+            package_id: profile.package_id,
+            current_period_start: new Date(profile.subscription_start_date!),
+            current_period_end: new Date(profile.subscription_end_date!),
+            next_billing_date: new Date(profile.subscription_end_date!),
+            billing_period: (billingPeriod === 'annual' || billingPeriod === 'yearly') ? 'annual' : 'monthly',
+            amount: this.calculateBillingAmountFromTiers(profile.package!.pricing_tiers, billingPeriod),
+            currency: profile.package!.currency,
+            is_active: false
+          }
+        })
 
     } catch (error) {
       console.error('Error getting expired subscriptions:', error)
@@ -423,7 +432,7 @@ export class BillingCycleService {
             throw new Error(`Failed to get free package: ${error.message}`)
           }
 
-          return data as unknown as { id: string }
+          return data
         }
       )
 
@@ -449,29 +458,25 @@ export class BillingCycleService {
           table: 'indb_auth_user_profiles',
           operationType: 'update',
           whereConditions: { 
-            expires_at_lt: currentDate.toISOString()
+            subscription_end_date_lt: currentDate.toISOString()
           },
           data: {
             package_id: freePackage.id,
-            expires_at: null,
+            subscription_end_date: null,
             updated_at: new Date().toISOString()
           }
         },
         async () => {
-          // Cast update payload to handle potential schema mismatches
-          const updatePayload = {
+          const updatePayload: UpdateUserProfile = {
             package_id: freePackage.id,
-            expires_at: null,
+            subscription_end_date: null,
             updated_at: new Date().toISOString()
-          } as unknown as UpdateUserProfile
+          }
 
-          // Cast to structural type to resolve 'never' inference on update
-          const adminClient = supabaseAdmin as unknown as AdminClientOverride
-
-          const { data, error } = await adminClient
+          const { data, error } = await supabaseAdmin
             .from('indb_auth_user_profiles')
             .update(updatePayload)
-            .lt('expires_at', currentDate.toISOString())
+            .lt('subscription_end_date', currentDate.toISOString())
             .not('package_id', 'eq', freePackage.id)
             .select('user_id')
 
@@ -479,7 +484,7 @@ export class BillingCycleService {
             throw new Error(`Failed to suspend expired subscriptions: ${error.message}`)
           }
 
-          return data as unknown as { user_id: string }[]
+          return data
         }
       )
 

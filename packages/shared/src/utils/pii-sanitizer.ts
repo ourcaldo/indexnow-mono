@@ -3,6 +3,8 @@
  * Scrubs sensitive information from objects and strings
  */
 
+import { Json } from '../types/common/Json';
+
 const SENSITIVE_KEYS = [
   'password',
   'token',
@@ -23,7 +25,7 @@ const SENSITIVE_KEYS = [
 /**
  * Sanitizes an object by recursively replacing sensitive values
  */
-export function sanitizePII(data: any): any {
+export function sanitizePII(data: unknown): unknown {
   if (data === null || data === undefined) {
     return data;
   }
@@ -32,7 +34,7 @@ export function sanitizePII(data: any): any {
     // Try to parse string as JSON if it looks like it
     if ((data.startsWith('{') && data.endsWith('}')) || (data.startsWith('[') && data.endsWith(']'))) {
       try {
-        const parsed = JSON.parse(data);
+        const parsed = JSON.parse(data) as unknown;
         return JSON.stringify(sanitizePII(parsed));
       } catch {
         return data;
@@ -46,8 +48,10 @@ export function sanitizePII(data: any): any {
   }
 
   if (typeof data === 'object') {
-    const sanitized: any = {};
-    for (const [key, value] of Object.entries(data)) {
+    const sanitized: Record<string, unknown> = {};
+    const record = data as Record<string, unknown>;
+
+    for (const [key, value] of Object.entries(record)) {
       const lowerKey = key.toLowerCase();
       if (SENSITIVE_KEYS.some(sensitiveKey => lowerKey.includes(sensitiveKey))) {
         sanitized[key] = '[REDACTED]';

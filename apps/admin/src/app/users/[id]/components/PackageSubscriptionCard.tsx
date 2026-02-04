@@ -7,17 +7,7 @@ import {
   BarChart3,
   DollarSign
 } from 'lucide-react'
-import { type Package, type PricingTiers } from '@indexnow/shared'
-
-interface UserProfile {
-  package?: Package
-  subscribed_at?: string
-  subscription_ends_at?: string
-  daily_quota_limit?: number
-  daily_quota_used?: number
-  daily_quota_reset_date?: string
-  country?: string
-}
+import { UserProfile } from './index'
 
 interface PackageSubscriptionCardProps {
   user: UserProfile
@@ -59,7 +49,7 @@ export function PackageSubscriptionCard({ user }: PackageSubscriptionCardProps) 
                   <span className="text-lg font-bold text-foreground">
                     {(() => {
                       // Handle different possible structures for pricing_tiers
-                      let pricingTiers = user.package.pricing_tiers
+                      let pricingTiers = user.package!.pricing_tiers
                       
                       // If pricing_tiers is a string, try to parse it as JSON
                       if (typeof pricingTiers === 'string') {
@@ -76,9 +66,12 @@ export function PackageSubscriptionCard({ user }: PackageSubscriptionCardProps) 
                       }
                       
                       // Get pricing for current billing period (flat USD structure)
-                      const billingPeriod = user.package.billing_period
+                      const billingPeriod = user.package!.billing_period
                       
-                      const pricingData = pricingTiers[billingPeriod]
+                      // Safe cast to access properties
+                      const pricingObj = pricingTiers as Record<string, any>
+                      const pricingData = pricingObj[billingPeriod]
+                      
                       if (!pricingData) {
                         return 'Free'
                       }
@@ -100,12 +93,18 @@ export function PackageSubscriptionCard({ user }: PackageSubscriptionCardProps) 
               <div>
                 <h5 className="font-medium text-foreground mb-2">Features</h5>
                 <ul className="space-y-1">
-                  {user.package.features.map((feature: string, index: number) => (
-                    <li key={index} className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-success" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
+                  {Array.isArray(user.package.features) ? (
+                    (user.package.features as any[]).map((feature: any, index: number) => (
+                      typeof feature === 'string' ? (
+                        <li key={index} className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <CheckCircle className="h-4 w-4 text-success" />
+                          <span>{feature}</span>
+                        </li>
+                      ) : null
+                    ))
+                  ) : (
+                    <li className="text-sm text-muted-foreground">No features listed</li>
+                  )}
                 </ul>
               </div>
             </div>

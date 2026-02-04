@@ -15,6 +15,26 @@ export interface JobErrorContext {
 
 export class JobErrorHandler {
   /**
+   * Type guard to check if an error is a JobError
+   */
+  static isJobError(error: unknown): error is JobError {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const candidate = error as Record<string, unknown>;
+    const validTypes = Object.values(JobErrorType) as string[];
+
+    return (
+      typeof candidate.type === 'string' &&
+      validTypes.includes(candidate.type) &&
+      typeof candidate.message === 'string' &&
+      typeof candidate.retryable === 'boolean' &&
+      candidate.timestamp instanceof Date
+    );
+  }
+
+  /**
    * Execute a job operation with standardized error handling and logging
    */
   static async withJobErrorHandling<T>(
@@ -39,15 +59,15 @@ export class JobErrorHandler {
       );
 
       // Wrap in a JobError if it isn't already
-      if (!(error as Record<string, unknown>).type) {
+      if (!JobErrorHandler.isJobError(error)) {
         const jobError: JobError = {
           type: JobErrorType.WORKER_ERROR,
           message: errorMessage,
           retryable: this.isRetryableError(error),
           timestamp: new Date(),
+          details: errorStack,
           context: {
-            jobId: context.jobId,
-            details: errorStack
+            jobId: context.jobId
           }
         };
         throw jobError;

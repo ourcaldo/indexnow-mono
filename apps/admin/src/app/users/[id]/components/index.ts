@@ -1,3 +1,5 @@
+import { AdminUserProfile, EnrichedActivityLog } from '@indexnow/shared'
+
 // Exported components for User Detail page
 export { UserProfileCard } from './UserProfileCard'
 export { UserActionsPanel } from './UserActionsPanel'
@@ -8,35 +10,7 @@ export { PackageChangeModal } from './PackageChangeModal'
 
 
 // Type definitions
-export interface UserProfile {
-  id: string
-  user_id: string
-  full_name: string | null
-  role: string
-  email_notifications: boolean
-  created_at: string
-  updated_at: string
-  phone_number: string | null
-  package_id?: string
-  subscribed_at?: string
-  subscription_ends_at?: string
-  daily_quota_used?: number
-  daily_quota_limit?: number
-  daily_quota_reset_date?: string
-  package?: {
-    id: string
-    name: string
-    slug: string
-    description: string
-    price: number
-    currency: string
-    billing_period: string
-    features: string[]
-  }
-  email?: string
-  email_confirmed_at?: string
-  last_sign_in_at?: string
-}
+export type UserProfile = AdminUserProfile
 
 export interface UserActions {
   suspend: boolean
@@ -47,15 +21,7 @@ export interface UserActions {
   extendSubscription: boolean
 }
 
-export interface ActivityLog {
-  id: string
-  event_type: string
-  event_description: string
-  ip_address?: string
-  user_agent?: string
-  metadata?: any
-  created_at: string
-}
+export type ActivityLog = EnrichedActivityLog
 
 export interface SecurityData {
   ipAddresses: Array<{

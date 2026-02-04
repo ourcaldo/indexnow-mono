@@ -79,7 +79,7 @@ export class ApiRequestBuilder {
   /**
    * Build FormData from request object
    */
-  private buildFormData(request: SeRankingKeywordExportRequest): any {
+  private buildFormData(request: SeRankingKeywordExportRequest): string {
     const formData = new URLSearchParams();
     
     // Add keywords as separate form fields (required by SeRanking API)

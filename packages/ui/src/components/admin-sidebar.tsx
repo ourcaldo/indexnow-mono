@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   LayoutDashboard,
   Users,
@@ -22,13 +23,13 @@ import {
   Moon,
   Sun
 } from 'lucide-react'
-import { authService } from '@indexnow/shared'
+import { authService, UserRole } from '@indexnow/shared'
 import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/database'
 
 interface AdminSidebarUser {
   email?: string;
   name?: string;
-  role?: string;
+  role?: UserRole | string;
   user_metadata?: {
     full_name?: string;
     avatar_url?: string;
@@ -150,7 +151,7 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
   const renderMenuItem = (item: NavigationItem) => {
     return (
       <div key={item.label} className="relative group">
-        <a
+        <Link
           href={item.href}
           className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${item.active
             ? isCollapsed
@@ -166,7 +167,7 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
             : 'text-brand-text group-hover:text-brand-accent'
             }`} />
           {!isCollapsed && <span className="truncate">{item.label}</span>}
-        </a>
+        </Link>
         {/* Tooltip for collapsed state */}
         {isCollapsed && (
           <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 bg-brand-primary text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-xl" style={{ zIndex: 99999 }}>

@@ -9,6 +9,18 @@ export type Device = 'desktop' | 'mobile' | 'tablet';
 export type SearchEngine = 'google' | 'bing' | 'yahoo';
 export type CountryCode = string; // ISO 3166-1 alpha-2
 
+export interface Domain {
+  id: string;
+  domain_name: string;
+  display_name?: string | null;
+}
+
+export interface Country {
+  id: string;
+  name: string;
+  iso2_code: string;
+}
+
 // Core interfaces
 export interface RankKeyword {
   id: string;

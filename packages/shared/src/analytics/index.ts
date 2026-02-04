@@ -3,6 +3,7 @@ import { getAnalyticsClient } from './analytics-client';
 import { initializeSentry, captureException, captureMessage, setSentryUser, clearSentryUser } from './sentry-client';
 import { initializePosthog, trackPosthogEvent, identifyPosthogUser, resetPosthogUser } from './posthog-client';
 import { getAnalyticsConfig, getSubdomainContext } from './config';
+import { AnalyticsTraits, TrackEventProperties } from './types';
 
 export function initializeAnalytics() {
   if (typeof window === 'undefined') return;
@@ -29,7 +30,7 @@ export function trackPageView(path?: string) {
   }
 }
 
-export function trackEvent(event: string, properties?: Record<string, Json>) {
+export function trackEvent(event: string, properties?: TrackEventProperties) {
   const analytics = getAnalyticsClient();
   const config = getAnalyticsConfig();
 
@@ -47,7 +48,7 @@ export function trackEvent(event: string, properties?: Record<string, Json>) {
   }
 }
 
-export function identifyUser(userId: string, traits?: Record<string, Json>) {
+export function identifyUser(userId: string, traits?: AnalyticsTraits) {
   const analytics = getAnalyticsClient();
   const config = getAnalyticsConfig();
 

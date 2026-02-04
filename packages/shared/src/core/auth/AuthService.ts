@@ -1,5 +1,5 @@
 import { supabase } from '../../utils/supabase-browser'
-import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
+import { User, Session, AuthChangeEvent, Subscription } from '@supabase/supabase-js'
 import { AUTH_ENDPOINTS } from '../../constants/ApiEndpoints'
 
 export interface AuthUser {
@@ -44,7 +44,7 @@ export class AuthService {
       })
       
       if (response.ok) {
-        const profile = await response.json()
+        const profile = (await response.json()) as { role?: string }
         return profile.role || 'user'
       }
     } catch (error) {
@@ -145,7 +145,7 @@ export class AuthService {
     }
   }
 
-  async signIn(email: string, password: string) {
+  async signIn(email: string, password: string): Promise<{ user: User | null; session: Session | null }> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -177,7 +177,7 @@ export class AuthService {
     return data
   }
 
-  async signUp(email: string, password: string, fullName: string, phoneNumber?: string, country?: string) {
+  async signUp(email: string, password: string, fullName: string, phoneNumber?: string, country?: string): Promise<{ user: User | null; session: Session | null } | null> {
     const response = await fetch(AUTH_ENDPOINTS.REGISTER, {
       method: 'POST',
       headers: {
@@ -194,7 +194,7 @@ export class AuthService {
       }),
     })
 
-    const result = await response.json()
+    const result = (await response.json()) as { data: { user: User | null; session: Session | null } | null; error?: string }
 
     if (!response.ok) {
       throw new Error(result.error || 'Registration failed')
@@ -203,7 +203,7 @@ export class AuthService {
     return result.data
   }
 
-  async signOut() {
+  async signOut(): Promise<void> {
     // Clear user cache
     this.clearUserCache()
     
@@ -225,7 +225,7 @@ export class AuthService {
     }
   }
 
-  async resetPassword(email: string) {
+  async resetPassword(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     })
@@ -235,7 +235,7 @@ export class AuthService {
     }
   }
 
-  async createMagicLink(email: string, redirectTo: string) {
+  async createMagicLink(email: string, redirectTo: string): Promise<void> {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -248,7 +248,7 @@ export class AuthService {
     }
   }
 
-  onAuthStateChange(callback: (user: User | null) => void) {
+  onAuthStateChange(callback: (user: User | null) => void): { data: { subscription: Subscription } } {
     return supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       // Clear cache on any auth state change
       this.clearUserCache()
@@ -261,14 +261,14 @@ export class AuthService {
     })
   }
 
-  onFullAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
+  onFullAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void): { data: { subscription: Subscription } } {
     return supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       this.clearUserCache()
       callback(event, session)
     })
   }
 
-  async getSession() {
+  async getSession(): Promise<Session | null> {
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error) {
@@ -278,7 +278,7 @@ export class AuthService {
     return session
   }
 
-  async updateUser(attributes: { password?: string; data?: any }) {
+  async updateUser(attributes: { password?: string; data?: Record<string, unknown> }): Promise<{ user: User | null }> {
     const { data, error } = await supabase.auth.updateUser(attributes)
     
     if (error) {

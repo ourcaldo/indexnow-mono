@@ -10,9 +10,9 @@ import {
   ServiceResponse,
   SeRankingErrorType
 } from '../types/SeRankingTypes';
+import { Database, Json } from '@indexnow/shared';
 import { IQuotaMonitor, IIntegrationService } from '../types/ServiceTypes';
-import { supabaseAdmin } from '@indexnow/shared';
-import { SecureServiceRoleWrapper } from '@indexnow/services';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { logger } from '@indexnow/shared';
 
 // Enhanced quota configuration
@@ -50,6 +50,8 @@ export interface QuotaMonitorConfig {
   retentionDays: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
+
+type QuotaUsageRow = Database['public']['Tables']['indb_seranking_quota_usage']['Row'];
 
 // Usage tracking data structure
 export interface QuotaUsageEntry {
@@ -738,7 +740,7 @@ export class QuotaMonitor implements IQuotaMonitor {
               country_code: entry.country_code,
               keywords_count: entry.keywords_count,
               cost_per_request: entry.cost_per_request,
-              metadata: entry.metadata
+              metadata: entry.metadata as unknown as Json
             });
 
           if (error) {

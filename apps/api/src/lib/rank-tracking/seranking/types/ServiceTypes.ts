@@ -11,7 +11,8 @@ import {
   QuotaStatus,
   ApiMetrics,
   HealthCheckResult,
-  SeRankingError
+  SeRankingError,
+  QueueStats
 } from './SeRankingTypes';
 
 import {
@@ -194,8 +195,8 @@ export interface IKeywordValidator {
    */
   validateKeywordInput(keyword: string, countryCode: string): {
     isValid: boolean;
-    errors: any[];
-    warnings: any[];
+    errors: string[];
+    warnings: string[];
     sanitized: {keyword: string; countryCode: string};
   };
   
@@ -204,7 +205,7 @@ export interface IKeywordValidator {
    */
   validateKeywordsBatch(keywords: string[]): {
     isValid: boolean;
-    errors: any[];
+    errors: string[];
   };
 }
 
@@ -212,7 +213,7 @@ export interface IApiResponseValidator {
   /**
    * Validate SeRanking API response
    */
-  validateApiResponse(response: any): {
+  validateApiResponse(response: unknown): {
     isValid: boolean;
     data: SeRankingKeywordData[];
     errors: string[];
@@ -222,7 +223,7 @@ export interface IApiResponseValidator {
   /**
    * Sanitize and fix API response data
    */
-  sanitizeResponseData(data: any): SeRankingKeywordData[];
+  sanitizeResponseData(data: unknown): SeRankingKeywordData[];
 }
 
 export interface IQuotaValidator {
@@ -251,22 +252,22 @@ export interface ISeRankingErrorHandler {
   /**
    * Handle API errors with recovery strategies
    */
-  handleError(error: any, context?: any): Promise<ServiceResponse<any>>;
+  handleError<T>(error: unknown, context?: unknown): Promise<ServiceResponse<T>>;
   
   /**
    * Check if error is retryable
    */
-  isRetryableError(error: any): boolean;
+  isRetryableError(error: unknown): boolean;
   
   /**
    * Get retry delay for error
    */
-  getRetryDelay(error: any, attemptNumber: number): number;
+  getRetryDelay(error: unknown, attemptNumber: number): number;
   
   /**
    * Log error with context
    */
-  logError(error: SeRankingError, context?: any): Promise<void>;
+  logError(error: SeRankingError | unknown, context?: unknown): Promise<void>;
 }
 
 // Monitoring Service Interfaces
@@ -306,7 +307,7 @@ export interface IQuotaMonitor {
   /**
    * Set quota alert thresholds
    */
-  setAlertThresholds(thresholds: any): Promise<void>;
+  setAlertThresholds(thresholds: unknown): Promise<void>;
   
   /**
    * Get quota usage history
@@ -352,7 +353,7 @@ export interface IEnrichmentQueue {
   /**
    * Get queue stats
    */
-  getQueueStats(): Promise<any>;
+  getQueueStats(): Promise<QueueStats>;
 
   /**
    * Shutdown the queue
@@ -396,5 +397,5 @@ export interface ISeRankingService {
   // Main service methods
   initialize(): Promise<void>;
   shutdown(): Promise<void>;
-  getStatus(): Promise<any>;
+  getStatus(): Promise<unknown>;
 }

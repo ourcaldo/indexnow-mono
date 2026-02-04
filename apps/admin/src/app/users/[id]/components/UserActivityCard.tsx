@@ -12,17 +12,8 @@ import {
   Shield,
   Server
 } from 'lucide-react'
-import { type Json, formatDate } from '@indexnow/shared'
-
-interface ActivityLog {
-  id: string
-  event_type: string
-  event_description: string
-  ip_address?: string
-  user_agent?: string
-  metadata?: Record<string, Json>
-  created_at: string
-}
+import { formatDate } from '@indexnow/shared'
+import { ActivityLog } from './index'
 
 interface UserActivityCardProps {
   activityLogs: ActivityLog[]
@@ -46,7 +37,7 @@ export function UserActivityCard({ activityLogs, activityLoading }: UserActivity
     return icons[eventType as keyof typeof icons] || Activity
   }
 
-  const getDeviceInfo = (userAgent?: string) => {
+  const getDeviceInfo = (userAgent?: string | null) => {
     if (!userAgent) return { icon: Monitor, text: 'Desktop' }
     
     const ua = userAgent.toLowerCase()
@@ -108,7 +99,7 @@ export function UserActivityCard({ activityLogs, activityLoading }: UserActivity
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {log.event_description}
+                      {log.action_description}
                     </p>
                     <span className="inline-flex px-2 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full">
                       {log.event_type.replace('_', ' ')}

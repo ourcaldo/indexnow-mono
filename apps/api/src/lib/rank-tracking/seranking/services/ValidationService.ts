@@ -8,12 +8,15 @@ import {
   SeRankingKeywordData,
   SeRankingApiResponse,
   SeRankingKeywordExportRequest,
-  SeRankingErrorType,
+  SeRankingErrorType
+} from '@indexnow/shared';
+import {
   KeywordBankEntity,
   KeywordBankInsert,
   KeywordBankUpdate,
   KeywordBankQuery
-} from '@indexnow/shared';
+} from '../types/KeywordBankTypes';
+import { SeRankingApiError } from '../client/SeRankingApiClient';
 
 // Validation result types
 export interface ValidationResult<T = unknown> {
@@ -60,7 +63,7 @@ const KeywordExportRequestSchema = z.object({
 
 const KeywordBankInsertSchema = z.object({
   keyword: z.string().min(1).max(500).transform(s => s.trim().toLowerCase()),
-  country_id: z.string().regex(/^[a-z]{2}$/i).transform(s => s.toLowerCase()),
+  country_code: z.string().regex(/^[a-z]{2}$/i).transform(s => s.toLowerCase()),
   language_code: z.string().regex(/^[a-z]{2}$/i).transform(s => s.toLowerCase()).default('en'),
   is_data_found: z.boolean().default(false),
   volume: z.number().int().min(0).nullable().optional(),
@@ -296,12 +299,12 @@ export class ValidationService {
       const errors: ValidationError[] = [];
 
       // Validate country and language codes
-      if (!VALID_COUNTRIES.has(validatedData.country_id)) {
+      if (!VALID_COUNTRIES.has(validatedData.country_code)) {
         errors.push({
-          field: 'country_id',
-          message: `Unsupported country code: ${validatedData.country_id}`,
+          field: 'country_code',
+          message: `Unsupported country code: ${validatedData.country_code}`,
           code: 'INVALID_COUNTRY_CODE',
-          value: validatedData.country_id
+          value: validatedData.country_code
         });
       }
 
@@ -752,17 +755,17 @@ export class ValidationService {
   static createValidationError(
     errors: ValidationError[],
     warnings: ValidationWarning[] = []
-  ): Error {
-    const error = new Error(
-      `Validation failed: ${errors.map(e => e.message).join(', ')}`
+  ): SeRankingApiError {
+    const message = `Validation failed: ${errors.map(e => e.message).join(', ')}`;
+    
+    return new SeRankingApiError(
+      message,
+      SeRankingErrorType.INVALID_REQUEST_ERROR,
+      {
+        retryable: false,
+        response: { errors, warnings }
+      }
     );
-    
-    // Add custom properties
-    (error as Error & { type: SeRankingErrorType; retryable: boolean; response: { errors: ValidationError[]; warnings: ValidationWarning[] } }).type = SeRankingErrorType.INVALID_REQUEST_ERROR;
-    (error as Error & { type: SeRankingErrorType; retryable: boolean; response: { errors: ValidationError[]; warnings: ValidationWarning[] } }).retryable = false;
-    (error as Error & { type: SeRankingErrorType; retryable: boolean; response: { errors: ValidationError[]; warnings: ValidationWarning[] } }).response = { errors, warnings };
-    
-    return error;
   }
 
   /**

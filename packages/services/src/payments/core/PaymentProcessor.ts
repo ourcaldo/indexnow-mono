@@ -7,7 +7,6 @@ import { PaymentGateway, PaymentRequest, PaymentResponse, CustomerDetails } from
 import { PaymentValidator } from './PaymentValidator'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
 import { Database, DbPackageRow, DbTransactionRow, InsertTransaction, TransactionGatewayResponse, PackagePricingTiers, Json } from '@indexnow/shared'
-import { SupabaseClient } from '@supabase/supabase-js'
 
 export interface ProcessPaymentRequest {
   user_id: string
@@ -27,6 +26,8 @@ export interface ProcessPaymentResponse {
   message?: string
   error?: string
 }
+
+type TransactionStatus = Database['public']['Tables']['indb_payment_transactions']['Row']['status']
 
 export class PaymentProcessor {
   private gateways: Map<string, PaymentGateway> = new Map()
@@ -85,7 +86,7 @@ export class PaymentProcessor {
         order_id: orderId,
         package_id: request.package_id,
         amount: amount,
-        currency: packageData.currency,
+        currency: packageData.currency || 'USD',
         billing_period: request.billing_period,
         payment_method: request.payment_method,
         customer_info: request.customer_info
@@ -114,7 +115,7 @@ export class PaymentProcessor {
       const paymentRequest: PaymentRequest = {
         order_id: orderId,
         amount_usd: amount,
-        currency: packageData.currency,
+        currency: packageData.currency || 'USD',
         customer_details: request.customer_info,
         item_details: {
           name: `${packageData.name} - ${request.billing_period}`,
@@ -171,7 +172,7 @@ export class PaymentProcessor {
         },
         { table: 'indb_payment_packages', operationType: 'select' },
         async () => {
-          const { data: packageData, error } = await (supabaseAdmin as any)
+          const { data, error } = await supabaseAdmin
             .from('indb_payment_packages')
             .select('*')
             .eq('id', packageId)
@@ -182,7 +183,7 @@ export class PaymentProcessor {
             throw error;
           }
 
-          return packageData;
+          return data;
         }
       );
 
@@ -256,8 +257,7 @@ export class PaymentProcessor {
             amount: data.amount,
             currency: data.currency,
             payment_method: data.payment_method,
-            status: 'pending',
-            payment_status: 'pending'
+            status: 'pending'
           }
         },
         async () => {
@@ -268,7 +268,6 @@ export class PaymentProcessor {
             currency: data.currency,
             payment_method: data.payment_method,
             status: 'pending',
-            payment_status: 'pending',
             metadata: {
               order_id: data.order_id,
               billing_period: data.billing_period,
@@ -278,7 +277,7 @@ export class PaymentProcessor {
             updated_at: new Date().toISOString()
           };
 
-          const { data: transaction, error } = await (supabaseAdmin as any)
+          const { data: transaction, error } = await supabaseAdmin
             .from('indb_payment_transactions')
             .insert(insertData)
             .select()
@@ -304,7 +303,7 @@ export class PaymentProcessor {
    */
   private async updateTransactionStatus(
     transactionId: string, 
-    status: string, 
+    status: TransactionStatus, 
     errorMessage?: string
   ): Promise<void> {
     try {
@@ -327,10 +326,10 @@ export class PaymentProcessor {
           data: { status, error_message: errorMessage || null }
         },
         async () => {
-          await (supabaseAdmin as any)
+          await supabaseAdmin
             .from('indb_payment_transactions')
             .update({
-              status: status as any, // casting to any to avoid strict literal check if necessary, or better casting to specific enum if available
+              status: status,
               error_message: errorMessage,
               updated_at: new Date().toISOString()
             })
@@ -358,6 +357,8 @@ export class PaymentProcessor {
         ...result.metadata
       };
 
+      const status = this.mapPaymentStatus(result.status);
+
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
           userId: 'system',
@@ -368,7 +369,7 @@ export class PaymentProcessor {
             transactionId,
             gatewayTransactionId: result.transaction_id,
             paymentStatus: result.status,
-            mappedStatus: this.mapPaymentStatus(result.status),
+            mappedStatus: status,
             hasGatewayResponse: !!result
           }
         },
@@ -378,19 +379,17 @@ export class PaymentProcessor {
           whereConditions: { id: transactionId },
           data: {
             transaction_id: result.transaction_id,
-            status: this.mapPaymentStatus(result.status),
-            payment_status: result.status,
+            status: status,
             gateway_response: gatewayResponse as unknown as Json,
             updated_at: new Date().toISOString()
           }
         },
         async () => {
-          const { error } = await (supabaseAdmin as any)
+          const { error } = await supabaseAdmin
             .from('indb_payment_transactions')
             .update({
               transaction_id: result.transaction_id,
-              status: this.mapPaymentStatus(result.status) as any,
-              payment_status: result.status,
+              status: status,
               gateway_response: gatewayResponse as unknown as Json,
               updated_at: new Date().toISOString()
             })
@@ -411,7 +410,7 @@ export class PaymentProcessor {
   /**
    * Map payment status to internal status
    */
-  private mapPaymentStatus(paymentStatus: string): string {
+  private mapPaymentStatus(paymentStatus: string): TransactionStatus {
     switch (paymentStatus) {
       case 'capture':
       case 'settlement':

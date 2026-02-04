@@ -2,13 +2,13 @@ import nodemailer from 'nodemailer';
 import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
-import { AppConfig } from '@indexnow/shared';
+import { AppConfig, logger } from '@indexnow/shared';
 
 export interface EmailOptions {
   to: string;
   subject: string;
   template: string;
-  context: any;
+  context: Record<string, unknown>;
 }
 
 export class EmailService {
@@ -39,7 +39,8 @@ export class EmailService {
       const compiledTemplate = handlebars.compile(templateSource);
       html = compiledTemplate(context);
     } catch (error) {
-      console.error(`Failed to load email template: ${template}`, error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error({ error: err, template }, `Failed to load email template: ${template}`);
       throw new Error(`Email template not found: ${template}`);
     }
 

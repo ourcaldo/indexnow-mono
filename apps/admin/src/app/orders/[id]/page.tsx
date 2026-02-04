@@ -22,112 +22,31 @@ import {
   ImageIcon
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge, Separator, Textarea, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, useToast } from '@indexnow/ui'
-import { formatCurrency, formatDate, formatRelativeTime, ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { 
+  formatCurrency, 
+  formatDate, 
+  formatRelativeTime, 
+  ADMIN_ENDPOINTS,
+  type AdminOrderDetailResponse,
+  type AdminOrderTransaction,
+  type AdminTransactionHistory,
+  type AdminOrderActivityLog
+} from '@indexnow/shared'
 import { supabaseBrowser, type Json } from '@indexnow/auth'
 
-interface OrderTransaction {
-  id: string
-  user_id: string
-  package_id: string
-  gateway_id: string
-  transaction_type: string
-  transaction_status: 'pending' | 'proof_uploaded' | 'completed' | 'failed'
-  amount: number
-  currency: string
-  payment_method: string
-  payment_proof_url?: string
-  gateway_transaction_id: string
-  verified_by?: string
-  verified_at?: string
-  processed_at?: string
-  notes?: string
-  metadata: {
-    customer_info: {
-      first_name: string
-      last_name: string
-      email: string
-      phone_number: string
-    }
-    billing_period: string
-    billing_address?: Record<string, Json>
-  }
-  created_at: string
-  updated_at: string
-  package: {
-    id: string
-    name: string
-    slug: string
-    description: string
-    price: number
-    currency: string
-    billing_period: string
-    features: (string | { name: string })[]
-    quota_limits: Record<string, number> | Json
-  }
-  user: {
-    user_id: string
-    full_name: string
+interface OrderMetadata {
+  customer_info?: {
+    first_name: string
+    last_name: string
     email: string
-    role: string
-    phone_number?: string
-    created_at: string
-    package_id?: string
-    subscribed_at?: string
-    expires_at?: string
+    phone_number: string
   }
-  gateway: {
-    id: string
-    name: string
-    slug: string
-    description: string
-    configuration: Record<string, Json>
-  }
-  verifier?: {
-    user_id: string
-    full_name: string
-    role: string
-  }
-}
-
-interface ActivityLog {
-  id: string
-  event_type: string
-  action_description: string
-  created_at: string
-  user_id: string
-  metadata: Record<string, Json>
-  user: {
-    full_name: string
-    role: string
-  }
-}
-
-interface TransactionHistory {
-  id: string
-  transaction_id: string
-  old_status: string | null
-  new_status: string
-  action_type: string
-  action_description: string
-  changed_by: string | null
-  changed_by_type: string
-  notes: string | null
-  metadata?: Record<string, Json>
-  created_at: string
-  user?: {
-    full_name: string
-    role: string
-  }
-}
-
-interface OrderDetailData {
-  order: OrderTransaction
-  activity_history: ActivityLog[]
-  transaction_history: TransactionHistory[]
+  billing_period?: string
+  billing_address?: Record<string, unknown>
 }
 
 export default function AdminOrderDetailPage() {
-  const [orderData, setOrderData] = useState<OrderDetailData | null>(null)
+  const [orderData, setOrderData] = useState<AdminOrderDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusModalOpen, setStatusModalOpen] = useState(false)
@@ -327,6 +246,8 @@ export default function AdminOrderDetailPage() {
   if (!orderData) return null
 
   const { order, activity_history, transaction_history } = orderData
+  const metadata = order.metadata as unknown as OrderMetadata
+  const features = (order.package?.features as unknown as (string | { name: string })[]) || []
   const canUpdateStatus = ['proof_uploaded', 'pending'].includes(order.transaction_status)
 
   return (
@@ -427,16 +348,16 @@ export default function AdminOrderDetailPage() {
                   </Button>
                 </div>
               </div>
-              {order.metadata?.customer_info?.phone_number && (
+              {metadata?.customer_info?.phone_number && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Phone</label>
                   <div className="flex items-center space-x-2">
-                    <p className="text-sm text-foreground">{order.metadata.customer_info.phone_number}</p>
+                    <p className="text-sm text-foreground">{metadata.customer_info.phone_number}</p>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="text-muted-foreground hover:text-foreground hover:bg-secondary"
-                      onClick={() => window.open(`tel:${order.metadata.customer_info.phone_number}`, '_blank')}
+                      onClick={() => window.open(`tel:${metadata.customer_info.phone_number}`, '_blank')}
                     >
                       <Phone className="w-3 h-3" />
                     </Button>
@@ -469,36 +390,44 @@ export default function AdminOrderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Package Name</label>
-                  <p className="font-medium text-foreground">{order.package.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Billing Period</label>
-                  <p className="text-sm text-foreground">{order.metadata?.billing_period || order.package.billing_period}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Amount</label>
-                  <p className="text-lg font-bold text-foreground">{formatCurrency(order.amount, order.currency)}</p>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Description</label>
-                <p className="text-sm text-muted-foreground">{order.package.description}</p>
-              </div>
-              
-              {order.package.features && Array.isArray(order.package.features) && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Features</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {order.package.features.map((feature, index) => (
-                      <div key={index} className="flex items-center text-sm">
-                        <CheckCircle className="w-3 h-3 mr-2 text-success flex-shrink-0" />
-                        <span className="text-foreground">{typeof feature === 'string' ? feature : feature.name || 'Feature'}</span>
-                      </div>
-                    ))}
+              {order.package ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Package Name</label>
+                      <p className="font-medium text-foreground">{order.package.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Billing Period</label>
+                      <p className="text-sm text-foreground">{metadata?.billing_period || order.package.billing_period}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Amount</label>
+                      <p className="text-lg font-bold text-foreground">{formatCurrency(order.amount, order.currency)}</p>
+                    </div>
                   </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Description</label>
+                    <p className="text-sm text-muted-foreground">{order.package.description}</p>
+                  </div>
+                  
+                  {features && features.length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">Features</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {features.map((feature, index) => (
+                          <div key={index} className="flex items-center text-sm">
+                            <CheckCircle className="w-3 h-3 mr-2 text-success flex-shrink-0" />
+                            <span className="text-foreground">{typeof feature === 'string' ? feature : feature.name || 'Feature'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">Package details not available</p>
                 </div>
               )}
             </CardContent>
@@ -518,30 +447,36 @@ export default function AdminOrderDetailPage() {
                   // Combine and sort all activity data
                   const allActivity = [
                     // Transaction history from dedicated table
-                    ...(transaction_history || []).map(th => ({
-                      id: th.id,
-                      type: 'transaction',
-                      event_type: th.action_type,
-                      action_description: th.action_description,
-                      created_at: th.created_at,
-                      user: th.user || { full_name: th.changed_by_type === 'admin' ? 'Admin User' : 'System', role: th.changed_by_type },
-                      metadata: { 
-                        old_status: th.old_status, 
-                        new_status: th.new_status,
-                        notes: th.notes,
-                        ...th.metadata 
+                    ...(transaction_history || []).map(th => {
+                      const thMetadata = (th.metadata as Record<string, Json>) || {}
+                      return {
+                        id: th.id,
+                        type: 'transaction',
+                        event_type: th.action_type,
+                        action_description: th.action_description,
+                        created_at: th.created_at,
+                        user: th.user || { full_name: th.changed_by_type === 'admin' ? 'Admin User' : 'System', role: th.changed_by_type },
+                        metadata: { 
+                          old_status: th.old_status, 
+                          new_status: th.new_status,
+                          notes: th.notes,
+                          ...thMetadata
+                        }
                       }
-                    })),
+                    }),
                     // General activity history
-                    ...(activity_history || []).map(ah => ({
-                      id: ah.id,
-                      type: 'activity',
-                      event_type: ah.event_type,
-                      action_description: ah.action_description,
-                      created_at: ah.created_at,
-                      user: ah.user || { full_name: 'System', role: 'system' },
-                      metadata: ah.metadata
-                    }))
+                    ...(activity_history || []).map(ah => {
+                      const ahMetadata = (ah.metadata as Record<string, Json>) || {}
+                      return {
+                        id: ah.id,
+                        type: 'activity',
+                        event_type: ah.action_type, // Using action_type from shared type
+                        action_description: ah.action_description,
+                        created_at: ah.created_at,
+                        user: ah.user || { full_name: 'System', role: 'system' },
+                        metadata: ahMetadata
+                      }
+                    })
                   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
                   return allActivity.length > 0 ? (
@@ -561,13 +496,13 @@ export default function AdminOrderDetailPage() {
                             {/* Enhanced display for transaction history */}
                             {activity.type === 'transaction' && activity.metadata?.old_status && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                Status: {activity.metadata.old_status} → {activity.metadata.new_status}
+                                Status: {activity.metadata.old_status as string} → {activity.metadata.new_status as string}
                               </p>
                             )}
                             
                             {activity.metadata?.notes && (
                               <p className="text-xs text-muted-foreground mt-1 italic">
-                                "{activity.metadata.notes}"
+                                "{activity.metadata.notes as string}"
                               </p>
                             )}
                             
@@ -664,7 +599,7 @@ export default function AdminOrderDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Gateway</label>
-                <p className="font-medium text-foreground">{order.gateway.name}</p>
+                <p className="font-medium text-foreground">{order.gateway?.name || 'Unknown'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Payment Method</label>
@@ -680,10 +615,12 @@ export default function AdminOrderDetailPage() {
                   <p className="font-mono text-sm text-foreground">{order.gateway_transaction_id}</p>
                 </div>
               )}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Package</label>
-                <p className="text-sm text-foreground">{order.package.name} ({order.metadata?.billing_period || order.package.billing_period})</p>
-              </div>
+              {order.package && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Package</label>
+                  <p className="text-sm text-foreground">{order.package.name} ({metadata?.billing_period || order.package.billing_period})</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -717,7 +654,7 @@ export default function AdminOrderDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(order.payment_proof_url, '_blank')}
+                      onClick={() => window.open(order.payment_proof_url!, '_blank')}
                       className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -776,7 +713,9 @@ export default function AdminOrderDetailPage() {
                 <div className="text-sm space-y-1">
                   <p><span className="text-muted-foreground">Order:</span> <span className="text-foreground">#{order.id}</span></p>
                   <p><span className="text-muted-foreground">Customer:</span> <span className="text-foreground">{order.user.email}</span></p>
-                  <p><span className="text-muted-foreground">Package:</span> <span className="text-foreground">{order.package.name} ({order.metadata?.billing_period})</span></p>
+                  {order.package && (
+                    <p><span className="text-muted-foreground">Package:</span> <span className="text-foreground">{order.package.name} ({metadata?.billing_period})</span></p>
+                  )}
                   <p><span className="text-muted-foreground">Amount:</span> <span className="text-foreground">{formatCurrency(order.amount, order.currency)}</span></p>
                 </div>
               </div>

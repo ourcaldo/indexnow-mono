@@ -16,7 +16,8 @@ import {
   KeywordBankEntity,
   KeywordBankInsert,
   CacheStatus,
-  logger
+  logger,
+  Database
 } from '@indexnow/shared';
 
 import {
@@ -43,11 +44,13 @@ export interface KeywordEnrichmentConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
+type KeywordBankRow = Database['public']['Tables']['indb_keyword_bank']['Row'];
+
 // Interface for stale keywords
 interface StaleKeywordEntity {
   id: string;
   keyword: string;
-  country_id: string;
+  country_code: string;
   data_updated_at: string;
 }
 
@@ -131,7 +134,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
       // Validate inputs
       const validation = ValidationService.validateKeywordBankInsert({
         keyword,
-        country_id: countryCode,
+        country_code: countryCode,
         language_code: this.config.defaultLanguageCode,
         is_data_found: false
       });
@@ -321,7 +324,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         {
           table: 'indb_keyword_bank',
           operationType: 'select',
-          columns: ['id', 'keyword', 'country_id', 'data_updated_at'],
+          columns: ['id', 'keyword', 'country_code', 'data_updated_at'],
           whereConditions: {
             data_updated_at_lt: thirtyDaysAgo.toISOString(),
             is_data_found: true
@@ -330,20 +333,25 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
-            .select('id, keyword, country_id, data_updated_at')
+            .select('id, keyword, country_code, data_updated_at')
             .lt('data_updated_at', thirtyDaysAgo.toISOString())
             .eq('is_data_found', true)
-            .limit(limit)
+            .limit(limit);
 
           if (error) {
-            throw new Error(`[FLOW 2] Error finding stale keywords: ${error.message}`)
+            throw new Error(`[FLOW 2] Error finding stale keywords: ${error.message}`);
           }
 
-          return data || []
+          return (data || []).map(row => ({
+            id: row.id,
+            keyword: row.keyword,
+            country_code: row.country_code || '',
+            data_updated_at: row.data_updated_at || ''
+          }));
         }
-      )
+      );
 
-      return data as StaleKeywordEntity[] || []
+      return data as StaleKeywordEntity[];
     } catch (error) {
       this.log('error', `[FLOW 2] Error in findStaleKeywords: ${error}`);
       return [];
@@ -355,10 +363,10 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
    */
   private async refreshStaleKeyword(staleKeyword: StaleKeywordEntity): Promise<ServiceResponse<KeywordBankEntity>> {
     try {
-      this.log('info', `[FLOW 2] Refreshing stale keyword: ${staleKeyword.keyword} (${staleKeyword.country_id})`);
+      this.log('info', `[FLOW 2] Refreshing stale keyword: ${staleKeyword.keyword} (${staleKeyword.country_code})`);
 
       // Fetch fresh data from API
-      const apiResponse = await this.fetchFromApi([staleKeyword.keyword], staleKeyword.country_id);
+      const apiResponse = await this.fetchFromApi([staleKeyword.keyword], staleKeyword.country_code);
       if (!apiResponse.success || !apiResponse.data || apiResponse.data.length === 0) {
         return this.createErrorResponse(
           apiResponse.error?.type || SeRankingErrorType.UNKNOWN_ERROR,
@@ -754,7 +762,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   ): Promise<{ success: boolean; data?: KeywordBankEntity; error?: unknown }> {
     const insertData: KeywordBankInsert = {
       keyword: keyword.trim().toLowerCase(),
-      country_id: countryCode.toLowerCase(),
+      country_code: countryCode.toLowerCase(),
       language_code: languageCode.toLowerCase(),
       is_data_found: apiData.is_data_found,
       volume: apiData.volume,

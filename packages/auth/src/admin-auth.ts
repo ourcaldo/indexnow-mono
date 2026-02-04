@@ -13,6 +13,9 @@ export interface AdminUser {
   isSuperAdmin: boolean
 }
 
+// Define the partial profile type for role verification to ensure we only access what we requested
+type AdminProfileData = Pick<UserProfile, 'role' | 'full_name'>
+
 export class AdminAuthService {
   /**
    * Get current user with admin role information
@@ -21,12 +24,8 @@ export class AdminAuthService {
     try {
       const currentUser = await authService.getCurrentUser()
       if (!currentUser) {
-        console.log('Admin auth: No current user found')
         return null
       }
-
-      console.log('Admin auth: Current user:', { id: currentUser.id, email: currentUser.email })
-
 
       // Try to get user profile with role information using direct API call
       try {
@@ -38,8 +37,7 @@ export class AdminAuthService {
           .limit(1)
 
         if (!error && profiles && profiles.length > 0) {
-          const profile = profiles[0] as UserProfile
-          console.log('Admin auth: Found profile via Supabase client:', profile)
+          const profile = profiles[0]
           const role = profile.role || 'user'
           return {
             id: currentUser.id,
@@ -51,15 +49,13 @@ export class AdminAuthService {
           }
         }
       } catch (apiError) {
-        console.error('Supabase query failed:', apiError)
+        // Silent failure for profile fetch
       }
 
       // No profile found and no fallback - return null for security
-      console.log('Admin auth: No profile found, access denied')
       return null
 
     } catch (error) {
-      console.error('Get admin user error:', error)
       return null
     }
   }
@@ -123,7 +119,7 @@ export class AdminAuthService {
         }
       )
     } catch (error) {
-      console.error('Failed to log admin activity:', error)
+      // Fail silently for logging errors to not block main flow
     }
   }
 }
@@ -136,7 +132,6 @@ export const adminAuthService = new AdminAuthService()
 async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | null> {
   try {
     if (!request) {
-      console.log('Server auth: No request object provided')
       return null
     }
 
@@ -157,7 +152,7 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
           source: 'lib/auth/admin-auth',
           metadata: {
             hasToken: !!token,
-            tokenLength: token?.length ? (token.length as Json) : (0 as Json)
+            tokenLength: token?.length ? token.length : 0
           }
         };
 
@@ -167,7 +162,7 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
             table: 'auth.users',
             operationType: 'select',
             columns: ['id', 'email'],
-            whereConditions: { token: token as Json }
+            whereConditions: { token }
           },
           async () => {
             const { data: userData, error: tokenError } = await supabaseAdmin.auth.getUser(token);
@@ -181,13 +176,9 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
         user = authResult;
         userError = null;
         
-        if (user) {
-          console.log('Server auth: Authenticated via Bearer token:', { id: user.id, email: user.email });
-        }
       } catch (error) {
         user = null;
         userError = error instanceof Error ? error : { message: String(error) };
-        console.error('Token verification failed:', error);
       }
     }
 
@@ -212,22 +203,15 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
       const { data: { user: cookieUser }, error: cookieError } = await supabaseServer.auth.getUser()
       user = cookieUser
       userError = cookieError
-      
-      if (user) {
-        console.log('Server auth: Authenticated via cookies:', { id: user.id, email: user.email })
-      }
     }
     
     if (userError || !user) {
-      console.log('Server auth: No authenticated user found', userError instanceof Error ? userError.message : String(userError))
       return null
     }
 
-    console.log('Server auth: User found:', { id: user.id, email: user.email })
-
 
     // Get user profile with role information using secure wrapper
-    let profile: UserProfile | null = null
+    let profile: AdminProfileData | null = null
     try {
       const profileContext = {
         userId: 'system',
@@ -240,7 +224,8 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
         }
       }
 
-      const profiles = await SecureServiceRoleWrapper.executeSecureOperation(
+      // Explicitly type the expected return and the table being accessed
+      profile = await SecureServiceRoleWrapper.executeSecureOperation<AdminProfileData, 'indb_auth_user_profiles'>(
         profileContext,
         {
           table: 'indb_auth_user_profiles',
@@ -259,19 +244,15 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
             throw new Error(`Failed to get user profile: ${error.message}`)
           }
 
-          return data as UserProfile
+          // Safe cast because we explicitly selected these fields
+          return data as AdminProfileData
         }
       )
-      profile = profiles as UserProfile
-
-      console.log('Server auth: Profile query result via SecureWrapper:', { profile })
     } catch (error) {
-      console.log('Server auth: Failed to get user profile', error instanceof Error ? error.message : String(error))
       return null
     }
 
     if (!profile) {
-      console.log('Server auth: No profile found for user')
       return null
     }
 
@@ -282,13 +263,12 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
       id: user.id,
       email: user.email,
       name: profile.full_name || undefined,
-      role: profile.role,
+      role: profile.role || 'user',
       isAdmin,
       isSuperAdmin
     }
 
   } catch (error: unknown) {
-    console.error('Server auth error:', error)
     return null
   }
 }

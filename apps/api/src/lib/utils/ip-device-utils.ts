@@ -5,15 +5,30 @@
 
 import { NextRequest } from 'next/server';
 
+interface GeoIPData {
+  country: string;
+  region: string;
+  city: string;
+  timezone: string;
+  ll: [number, number];
+}
+
+interface GeoIP {
+  lookup(ip: string): GeoIPData | null;
+}
+
 // Safely load GeoIP with error handling for missing data files
-let geoip: any = null;
+let geoip: GeoIP | null = null;
 try {
-  geoip = require('geoip-lite');
-  if (geoip) {
-    geoip.lookup('8.8.8.8'); // Test lookup
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const geoipLib = require('geoip-lite');
+  if (geoipLib) {
+    geoipLib.lookup('8.8.8.8'); // Test lookup
+    geoip = geoipLib as GeoIP;
   }
-} catch (error: any) {
-  console.warn('GeoIP-lite failed to initialize:', error?.message || 'Unknown error');
+} catch (error: unknown) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  console.warn('GeoIP-lite failed to initialize:', errorMessage);
   geoip = null;
 }
 
@@ -133,8 +148,9 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
               longitude: geoData.ll?.[1],
             };
           }
-        } catch (geoError: any) {
-          console.warn('GeoIP-lite lookup failed:', ipAddress, geoError?.message);
+        } catch (geoError: unknown) {
+          const errorMessage = geoError instanceof Error ? geoError.message : String(geoError);
+          console.warn('GeoIP-lite lookup failed:', ipAddress, errorMessage);
         }
       }
       
@@ -166,8 +182,9 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
               };
             }
           }
-        } catch (ipApiError: any) {
-          console.warn('IP-API lookup failed:', ipAddress, ipApiError?.message);
+        } catch (ipApiError: unknown) {
+          const errorMessage = ipApiError instanceof Error ? ipApiError.message : String(ipApiError);
+          console.warn('IP-API lookup failed:', ipAddress, errorMessage);
         }
       }
     }

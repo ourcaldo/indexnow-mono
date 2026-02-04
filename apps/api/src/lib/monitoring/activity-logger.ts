@@ -4,6 +4,7 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { InsertSecurityActivityLog, Json } from '@indexnow/shared';
 import { logger } from './error-handling';
 import { getRequestInfo, formatDeviceInfo, formatLocationData, DeviceInfo, LocationData } from '../utils/ip-device-utils';
 import { NextRequest } from 'next/server';
@@ -20,7 +21,7 @@ export interface ActivityLogData {
   locationData?: LocationData | null;
   success?: boolean;
   errorMessage?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown> | Json;
   request?: NextRequest;
 }
 
@@ -37,7 +38,7 @@ export interface ActivityLogEntry {
   location_data?: LocationData | null;
   success: boolean;
   error_message?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown> | Json;
   created_at: string;
 }
 
@@ -81,8 +82,13 @@ export class ActivityLogger {
         locationData = locationData || requestInfo.locationData;
       }
 
-      const enhancedMetadata = {
-        ...(data.metadata || {}),
+      // Ensure metadata is an object before spreading
+      const sourceMetadata = (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)) 
+        ? data.metadata as Record<string, unknown> 
+        : {};
+
+      const enhancedMetadata: Json = {
+        ...sourceMetadata,
         deviceFormatted: deviceInfo ? formatDeviceInfo(deviceInfo) : null,
         locationFormatted: locationData ? formatLocationData(locationData) : null,
         timestamp: new Date().toISOString()
@@ -102,22 +108,24 @@ export class ActivityLogger {
         },
         { table: 'indb_security_activity_logs', operationType: 'insert' },
         async () => {
+          const insertData: InsertSecurityActivityLog = {
+            user_id: data.userId,
+            event_type: data.eventType,
+            action_description: data.actionDescription,
+            target_type: data.targetType || null,
+            target_id: data.targetId || null,
+            ip_address: ipAddress || null,
+            user_agent: userAgent || null,
+            device_info: deviceInfo as unknown as Json || null,
+            location_data: locationData as unknown as Json || null,
+            success: data.success !== false,
+            error_message: data.errorMessage || null,
+            metadata: enhancedMetadata,
+          };
+
           const { data: result, error } = await supabaseAdmin
             .from('indb_security_activity_logs')
-            .insert({
-              user_id: data.userId,
-              event_type: data.eventType,
-              action_description: data.actionDescription,
-              target_type: data.targetType || null,
-              target_id: data.targetId || null,
-              ip_address: ipAddress || null,
-              user_agent: userAgent || null,
-              device_info: deviceInfo || null,
-              location_data: locationData || null,
-              success: data.success !== false,
-              error_message: data.errorMessage || null,
-              metadata: enhancedMetadata,
-            })
+            .insert(insertData)
             .select('id')
             .single();
 
@@ -127,8 +135,9 @@ export class ActivityLogger {
       );
 
       return result.id;
-    } catch (error: any) {
-      logger.error({ error: error.message, userId: data.userId, eventType: data.eventType }, 'Failed to log user activity');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage, userId: data.userId, eventType: data.eventType }, 'Failed to log user activity');
       return null;
     }
   }
@@ -151,7 +160,7 @@ export class ActivityLogger {
     });
   }
 
-  static async logAdminAction(userId: string, action: string, targetUserId?: string, actionDescription?: string, request?: NextRequest, metadata?: Record<string, any>) {
+  static async logAdminAction(userId: string, action: string, targetUserId?: string, actionDescription?: string, request?: NextRequest, metadata?: Record<string, unknown>) {
     return this.logActivity({
       userId,
       eventType: ActivityEventTypes.USER_MANAGEMENT,

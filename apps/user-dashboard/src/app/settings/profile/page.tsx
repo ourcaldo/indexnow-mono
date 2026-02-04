@@ -22,13 +22,19 @@ import {
   useToast
 } from '@indexnow/ui'
 import { 
-  User, 
+  User as UserIcon, 
   RefreshCw,
   Eye,
   EyeOff,
   Save,
   KeyRound
 } from 'lucide-react'
+
+interface UserProfile {
+  full_name: string | null
+  phone_number: string | null
+  email_notifications: boolean
+}
 
 export default function ProfileSettingsPage() {
   const { addToast } = useToast()
@@ -43,8 +49,7 @@ export default function ProfileSettingsPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   // Real data states
-  const [userProfile, setUserProfile] = useState<any>(null)
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -79,7 +84,7 @@ export default function ProfileSettingsPage() {
       })
       
       if (profileResponse.ok) {
-        const profileData = await profileResponse.json()
+        const profileData = await profileResponse.json() as { profile: UserProfile }
         setUserProfile(profileData.profile)
         setProfileForm({
           full_name: profileData.profile.full_name || '',
@@ -127,7 +132,7 @@ export default function ProfileSettingsPage() {
         await logDashboardActivity('profile_update', 'Profile information updated')
         loadData() // Refresh data
       } else {
-        const error = await response.json()
+        const error = await response.json() as { error?: string }
         addToast({
           title: 'Failed to update profile',
           description: error.error || 'Something went wrong',
@@ -203,10 +208,11 @@ export default function ProfileSettingsPage() {
         await authService.updateUser({
           password: passwordForm.newPassword
         })
-      } catch (updateError: any) {
+      } catch (updateError: unknown) {
+        const errorMessage = updateError instanceof Error ? updateError.message : 'Failed to update password'
         addToast({
           title: 'Update Error',
-          description: updateError.message || 'Failed to update password',
+          description: errorMessage,
           type: 'error'
         })
         return

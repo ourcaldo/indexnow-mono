@@ -163,13 +163,7 @@ export class ApiErrorHandler {
   }
 
   private static isApplicationError(error: unknown): error is ApplicationError {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'type' in error &&
-      'statusCode' in error &&
-      'message' in error
-    );
+    return error instanceof ApplicationError;
   }
 
   private static getSeverityForType(type: ErrorType): ErrorSeverity {
@@ -199,15 +193,18 @@ export class ApiErrorHandler {
 
   private static logError(error: unknown, requestId: string): void {
     const message = error instanceof Error ? error.message : 'Unrecognized error';
-    const errorMetadata = error instanceof Error 
-      ? { stack: error.stack }
+    
+    // Pass error object directly to logger to avoid circular reference issues with JSON.stringify
+    // The logger handles object serialization safely
+    const errorContext = error instanceof Error 
+      ? error
       : typeof error === 'object' && error !== null
-        ? JSON.parse(JSON.stringify(error))
+        ? error
         : { raw: String(error) };
 
     logger.error({
       requestId,
-      error: errorMetadata,
+      error: errorContext,
     }, message);
   }
 

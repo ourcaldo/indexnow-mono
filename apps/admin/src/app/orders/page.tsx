@@ -19,66 +19,18 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Checkbox } from '@indexnow/ui'
 import { useToast } from '@indexnow/ui'
 import { supabaseBrowser } from '@indexnow/auth'
-import { formatCurrency, formatDate, formatRelativeTime, ADMIN_ENDPOINTS } from '@indexnow/shared'
-
-interface OrderTransaction {
-  id: string
-  user_id: string
-  package_id: string
-  transaction_status: 'pending' | 'proof_uploaded' | 'completed' | 'failed'
-  amount: number
-  currency: string
-  payment_proof_url?: string
-  created_at: string
-  updated_at: string
-  metadata: {
-    customer_info: {
-      first_name: string
-      last_name: string
-      email: string
-    }
-    billing_period: string
-  }
-  package: {
-    name: string
-    slug: string
-    billing_period: string
-  }
-  user: {
-    full_name: string
-    user_id: string
-  }
-  gateway: {
-    name: string
-    slug: string
-  }
-}
-
-interface OrderSummary {
-  total_orders: number
-  pending_orders: number
-  proof_uploaded_orders: number
-  completed_orders: number
-  failed_orders: number
-  total_revenue: number
-  recent_activity: number
-}
-
-interface OrdersData {
-  orders: OrderTransaction[]
-  summary: OrderSummary
-  pagination: {
-    current_page: number
-    total_pages: number
-    total_items: number
-    items_per_page: number
-    has_next: boolean
-    has_prev: boolean
-  }
-}
+import { 
+  formatCurrency, 
+  formatDate, 
+  formatRelativeTime, 
+  ADMIN_ENDPOINTS,
+  type AdminOrdersResponse,
+  type AdminOrderTransaction,
+  type AdminOrderSummary
+} from '@indexnow/shared'
 
 export default function AdminOrdersPage() {
-  const [ordersData, setOrdersData] = useState<OrdersData | null>(null)
+  const [ordersData, setOrdersData] = useState<AdminOrdersResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedOrders, setSelectedOrders] = useState<string[]>([])
@@ -379,13 +331,13 @@ export default function AdminOrdersPage() {
                   <TableCell>
                     <div>
                       <div className="font-medium text-foreground">{order.user.full_name}</div>
-                      <div className="text-sm text-muted-foreground">{order.metadata?.customer_info?.email || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground">{order.user.email || (order.metadata as any)?.customer_info?.email || 'N/A'}</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium text-foreground">{order.package.name}</div>
-                      <div className="text-sm text-muted-foreground">{order.metadata?.billing_period || order.package.billing_period}</div>
+                      <div className="font-medium text-foreground">{order.package?.name || 'Unknown Package'}</div>
+                      <div className="text-sm text-muted-foreground">{(order.metadata as any)?.billing_period || order.package?.billing_period}</div>
                     </div>
                   </TableCell>
                   <TableCell>

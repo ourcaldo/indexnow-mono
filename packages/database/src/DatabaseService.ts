@@ -1,4 +1,4 @@
-import { supabaseBrowser } from './client'
+import { supabaseBrowser, logger } from '@indexnow/shared'
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { 
     type Database,
@@ -7,28 +7,14 @@ import {
     type UpdateUserProfile,
     type DbUserSettings as UserSettings,
     type UpdateUserSettings,
-    type DbDashboardNotification as DashboardNotification
+    type DbDashboardNotification as DashboardNotification,
+    type UpdateDashboardNotification
 } from '@indexnow/shared'
 
-type UpdateDashboardNotification = Partial<DashboardNotification>
-
-// Define a SafeDatabase interface to ensure table types are correctly inferred
-// This fixes the "Type instantiation is excessively deep and possibly infinite" and overload mismatch errors
-type SafeDatabase = {
-  public: {
-    Tables: Pick<Database['public']['Tables'], 
-      'indb_auth_user_profiles' | 
-      'indb_auth_user_settings' | 
-      'indb_notifications_dashboard'
-    >
-    Views: Database['public']['Views']
-    Functions: Database['public']['Functions']
-    Enums: Database['public']['Enums']
-    CompositeTypes: Database['public']['CompositeTypes']
-  }
-}
-
-const supabase = supabaseBrowser as unknown as SupabaseClient<SafeDatabase>
+// Using 'any' for the schema type here because standard SupabaseClient<Database> inference
+// is failing with 'never' types for insert/update operations due to complex Database type definition.
+// We strictly type the inputs and outputs of the service methods to ensure type safety.
+const supabase = supabaseBrowser as unknown as SupabaseClient<any, "public", any>
 
 export class DatabaseService {
   // ============================================================================
@@ -43,30 +29,30 @@ export class DatabaseService {
       .single()
 
     if (error) {
-      console.error('Error fetching user profile:', error)
+      logger.error({ error }, 'Error fetching user profile:')
       return null
     }
 
-    return data
+    return data as UserProfile | null
   }
 
   async createUserProfile(profile: InsertUserProfile): Promise<UserProfile | null> {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('indb_auth_user_profiles')
       .insert(profile)
       .select()
       .single()
 
     if (error) {
-      console.error('Error creating user profile:', error)
+      logger.error({ error }, 'Error creating user profile:')
       return null
     }
 
-    return data
+    return data as UserProfile | null
   }
 
   async updateUserProfile(userId: string, updates: UpdateUserProfile): Promise<UserProfile | null> {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('indb_auth_user_profiles')
       .update(updates)
       .eq('user_id', userId)
@@ -74,11 +60,11 @@ export class DatabaseService {
       .single()
 
     if (error) {
-      console.error('Error updating user profile:', error)
+      logger.error({ error }, 'Error updating user profile:')
       return null
     }
 
-    return data
+    return data as UserProfile | null
   }
 
   async getUserSettings(userId: string): Promise<UserSettings | null> {
@@ -89,15 +75,15 @@ export class DatabaseService {
       .single()
 
     if (error) {
-      console.error('Error fetching user settings:', error)
+      logger.error({ error }, 'Error fetching user settings:')
       return null
     }
 
-    return data
+    return data as UserSettings | null
   }
 
   async updateUserSettings(userId: string, updates: UpdateUserSettings): Promise<UserSettings | null> {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('indb_auth_user_settings')
       .update(updates)
       .eq('user_id', userId)
@@ -105,11 +91,11 @@ export class DatabaseService {
       .single()
 
     if (error) {
-      console.error('Error updating user settings:', error)
+      logger.error({ error }, 'Error updating user settings:')
       return null
     }
 
-    return data
+    return data as UserSettings | null
   }
 
   // ============================================================================
@@ -130,22 +116,22 @@ export class DatabaseService {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching notifications:', error)
+      logger.error({ error }, 'Error fetching notifications:')
       return []
     }
 
-    return data || []
+    return (data as DashboardNotification[]) || []
   }
 
   async markNotificationAsRead(notificationId: string, userId: string): Promise<boolean> {
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('indb_notifications_dashboard')
       .update({ is_read: true } as UpdateDashboardNotification)
       .eq('id', notificationId)
       .eq('user_id', userId)
 
     if (error) {
-      console.error('Error marking notification as read:', error)
+      logger.error({ error }, 'Error marking notification as read:')
       return false
     }
 

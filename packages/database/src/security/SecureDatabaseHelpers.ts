@@ -35,7 +35,11 @@ interface SimpleDbBuilder<TRow, TInsert, TUpdate> {
 }
 
 interface SimpleDbClient {
-  from: (table: string) => SimpleDbBuilder<Record<string, Json>, Record<string, Json>, Record<string, Json>>
+  from: <
+    TRow = Record<string, Json>,
+    TInsert = Record<string, Json>,
+    TUpdate = Record<string, Json>
+  >(table: string) => SimpleDbBuilder<TRow, TInsert, TUpdate>
 }
 
 /**
@@ -49,7 +53,11 @@ interface SimpleUserClient {
     signOut: () => Promise<{ error: AuthError | null }>
     resend: (data: Record<string, Json>) => Promise<{ data: Json; error: AuthError | null }>
   }
-  from: (table: string) => SimpleDbBuilder<Record<string, Json>, Record<string, Json>, Record<string, Json>>
+  from: <
+    TRow = Record<string, Json>,
+    TInsert = Record<string, Json>,
+    TUpdate = Record<string, Json>
+  >(table: string) => SimpleDbBuilder<TRow, TInsert, TUpdate>
 }
 
 export class SecureDatabaseHelpers {
@@ -86,7 +94,7 @@ export class SecureDatabaseHelpers {
     
     try {
       const result = await operation(userSupabaseClient)
-      await SecurityService.logUserOperationSuccess(auditId, sanitizedContext, result as unknown as Json)
+      await SecurityService.logUserOperationSuccess(auditId, sanitizedContext, result)
       return result
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error))
@@ -103,13 +111,13 @@ export class SecureDatabaseHelpers {
     queryOptions: SecureQueryOptions<TTable>,
     operation: () => Promise<T>
   ): Promise<T> {
-    await SecurityService.validateOperationContext(context, queryOptions as unknown as SecureQueryOptions<string>)
-    const sanitizedQueryOptions = SecurityService.sanitizeQueryOptions(queryOptions as unknown as SecureQueryOptions<string>)
+    await SecurityService.validateOperationContext(context, queryOptions as SecureQueryOptions<string>)
+    const sanitizedQueryOptions = SecurityService.sanitizeQueryOptions(queryOptions as SecureQueryOptions<string>)
     const auditId = await SecurityService.logOperationStart(context, sanitizedQueryOptions)
     
     try {
       const result = await operation()
-      await SecurityService.logOperationSuccess(auditId, context, result as unknown as Json)
+      await SecurityService.logOperationSuccess(auditId, context, result)
       return result
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error))
@@ -127,7 +135,7 @@ export class SecureDatabaseHelpers {
     columns: string[],
     whereConditions: Record<string, Json>
   ): Promise<PublicTables[TTableName]['Row'][]> {
-    return this.executeSecureOperation<PublicTables[TTableName]['Row'][]>(
+    return this.executeSecureOperation<PublicTables[TTableName]['Row'][], TTableName>(
       context,
       {
         table,
@@ -137,7 +145,11 @@ export class SecureDatabaseHelpers {
       },
       async () => {
         const client = supabaseAdmin as unknown as SimpleDbClient
-        const builder = client.from(table) as SimpleDbBuilder<PublicTables[TTableName]['Row'], Record<string, Json>, Record<string, Json>>
+        const builder = client.from<
+          PublicTables[TTableName]['Row'],
+          Record<string, Json>,
+          Record<string, Json>
+        >(table)
 
         const { data, error } = await builder
           .select(columns.join(', '))
@@ -157,20 +169,20 @@ export class SecureDatabaseHelpers {
     table: TTableName,
     data: PublicTables[TTableName]['Insert']
   ): Promise<PublicTables[TTableName]['Row']> {
-    return this.executeSecureOperation<PublicTables[TTableName]['Row']>(
+    return this.executeSecureOperation<PublicTables[TTableName]['Row'], TTableName>(
       context,
       {
         table,
         operationType: 'insert',
-        data: data as Json
+        data: data as unknown as Json
       },
       async () => {
         const client = supabaseAdmin as unknown as SimpleDbClient
-        const builder = client.from(table) as SimpleDbBuilder<
+        const builder = client.from<
           PublicTables[TTableName]['Row'],
           PublicTables[TTableName]['Insert'],
           PublicTables[TTableName]['Update']
-        >
+        >(table)
 
         const { data: result, error } = await builder
           .insert(data)
@@ -193,21 +205,21 @@ export class SecureDatabaseHelpers {
     data: PublicTables[TTableName]['Update'],
     whereConditions: Record<string, Json>
   ): Promise<PublicTables[TTableName]['Row'][]> {
-    return this.executeSecureOperation<PublicTables[TTableName]['Row'][]>(
+    return this.executeSecureOperation<PublicTables[TTableName]['Row'][], TTableName>(
       context,
       {
         table,
         operationType: 'update',
-        data: data as Json,
+        data: data as unknown as Json,
         whereConditions
       },
       async () => {
         const client = supabaseAdmin as unknown as SimpleDbClient
-        const builder = client.from(table) as SimpleDbBuilder<
+        const builder = client.from<
           PublicTables[TTableName]['Row'],
           PublicTables[TTableName]['Insert'],
           PublicTables[TTableName]['Update']
-        >
+        >(table)
 
         const { data: result, error } = await builder
           .update(data)
@@ -228,7 +240,7 @@ export class SecureDatabaseHelpers {
     table: TTableName,
     whereConditions: Record<string, Json>
   ): Promise<void> {
-    return this.executeSecureOperation(
+    return this.executeSecureOperation<void, TTableName>(
       context,
       {
         table,
@@ -237,7 +249,7 @@ export class SecureDatabaseHelpers {
       },
       async () => {
         const client = supabaseAdmin as unknown as SimpleDbClient
-        const builder = client.from(table) as SimpleDbBuilder<Record<string, Json>, Record<string, Json>, Record<string, Json>>
+        const builder = client.from(table)
 
         const { error } = await builder
           .delete()

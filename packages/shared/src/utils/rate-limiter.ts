@@ -30,24 +30,50 @@ if (typeof setInterval !== 'undefined') {
   setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
 }
 
-interface RequestLike {
-  headers: { get(name: string): string | null } | Headers;
-  nextUrl?: { pathname: string };
+// Type Definitions
+export type HeaderValue = string | string[] | undefined | null;
+
+export interface HeadersObject {
+  [key: string]: HeaderValue;
+}
+
+export type HeadersLike = 
+  | Headers 
+  | HeadersObject 
+  | { get(name: string): string | null | undefined };
+
+export interface RequestLike {
+  headers: HeadersLike;
+  nextUrl?: { pathname: string } | null;
+}
+
+/**
+ * Safely get a header value from various header structures
+ */
+function getHeaderValue(headers: HeadersLike, name: string): string | null {
+  // Check if it's a Headers object or similar with .get()
+  if ('get' in headers && typeof (headers as any).get === 'function') {
+    return (headers as any).get(name) ?? null;
+  }
+
+  // Treat as plain object (Record)
+  const headersObj = headers as HeadersObject;
+  // Try case-sensitive first, then lower-case
+  const value = headersObj[name] || headersObj[name.toLowerCase()];
+
+  if (Array.isArray(value)) {
+    return value[0] || null;
+  }
+  
+  return value || null;
 }
 
 /**
  * Get client IP from request headers
  */
 function getClientIp(request: RequestLike): string {
-  const getHeader = (name: string): string | null => {
-    if (typeof request.headers.get === 'function') {
-      return request.headers.get(name);
-    }
-    return (request.headers as unknown as Record<string, string | undefined>)[name] || null;
-  };
-
-  const forwardedFor = getHeader('x-forwarded-for');
-  const realIp = getHeader('x-real-ip');
+  const forwardedFor = getHeaderValue(request.headers, 'x-forwarded-for');
+  const realIp = getHeaderValue(request.headers, 'x-real-ip');
 
   return (
     forwardedFor?.split(',')[0]?.trim() ||
@@ -105,7 +131,7 @@ export function recordFailedAttempt(request: RequestLike): boolean {
       ipAddress: ip,
       attemptCount: entry.count,
       maxAttempts: MAX_ATTEMPTS,
-      userAgent: typeof request.headers.get === 'function' ? request.headers.get('user-agent') || 'unspecified' : 'unspecified',
+      userAgent: getHeaderValue(request.headers, 'user-agent') || 'unspecified',
       endpoint: request.nextUrl?.pathname || 'unspecified',
     }, 'Rate limit exceeded - potential brute force attack');
 

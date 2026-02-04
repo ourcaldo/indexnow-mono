@@ -89,6 +89,8 @@ export type {
   TransactionRow as DbTransactionRow,
   ProfileRow as DbProfileRow,
   UserSettingsRow as DbUserSettingsRow,
+  SiteSettingsRow as DbSiteSettingsRow,
+  SiteSettingsRow,
 
   // Insert Types
   InsertUserProfile,

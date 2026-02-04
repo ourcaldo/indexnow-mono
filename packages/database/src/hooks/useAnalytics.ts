@@ -1,18 +1,18 @@
 'use client';
 
 import { useCallback } from 'react';
-import { type Json, trackEvent, identifyUser, resetUser, trackError, AnalyticsTraits } from '@indexnow/shared';
+import { type Json, trackEvent, identifyUser, resetUser, trackError, AnalyticsTraits, TrackEventProperties } from '@indexnow/shared';
 
 /**
  * Custom hook for using analytics in React components
  */
 export function useAnalytics() {
-  const track = useCallback((event: string, properties?: Record<string, Json>) => {
+  const track = useCallback((event: string, properties?: TrackEventProperties) => {
     trackEvent(event, properties);
   }, []);
 
   const identify = useCallback((userId: string, traits?: AnalyticsTraits) => {
-    identifyUser(userId, traits as unknown as Record<string, Json>);
+    identifyUser(userId, traits);
   }, []);
 
   const reset = useCallback(() => {

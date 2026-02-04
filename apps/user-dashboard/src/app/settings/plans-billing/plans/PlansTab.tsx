@@ -14,21 +14,26 @@ import {
   X,
   Clock
 } from 'lucide-react'
-import { authService, formatCurrency } from '@indexnow/shared'
+import { 
+  authService, 
+  formatCurrency, 
+  type ApiResponse,
+  AUTH_ENDPOINTS, 
+  BILLING_ENDPOINTS 
+} from '@indexnow/shared'
 import { LoadingSpinner, useApiError } from '@indexnow/ui'
-import { AUTH_ENDPOINTS, BILLING_ENDPOINTS } from '@indexnow/shared'
-
-interface PackageFeature {
-  name: string
-  included: boolean
-  limit?: string
-}
 
 interface PricingTier {
   period: string
+  period_label?: string
   regular_price: number
   promo_price?: number
   discount_percentage?: number
+}
+
+interface PackageQuotaLimits {
+  rank_tracking_limit?: number
+  concurrent_jobs_limit?: number
 }
 
 interface PaymentPackage {
@@ -40,25 +45,21 @@ interface PaymentPackage {
   currency: string
   billing_period: string
   features: string[]
-  quota_limits: {
-    rank_tracking_limit?: number
-    concurrent_jobs_limit?: number
-  }
+  quota_limits: PackageQuotaLimits
   is_popular: boolean
   is_current: boolean
   free_trial_enabled?: boolean
-  pricing_tiers: Record<string, PricingTier> | Array<{
-    period: string
-    period_label: string
-    regular_price: number
-    promo_price?: number
-  }>
+  pricing_tiers: Array<PricingTier> | Record<string, PricingTier>
 }
 
 interface PackagesData {
   packages: PaymentPackage[]
   current_package_id: string | null
   expires_at: string | null
+}
+
+interface TrialEligibilityData {
+  eligible: boolean
 }
 
 export default function PlansTab() {
@@ -114,7 +115,7 @@ export default function PlansTab() {
         throw new Error('Failed to load packages')
       }
 
-      const result = await response.json()
+      const result = await response.json() as ApiResponse<PackagesData>
       // API now returns: { success: true, data: {...}, timestamp: "..." }
       if (result.success === true && result.data) {
         setPackagesData(result.data)
@@ -132,7 +133,7 @@ export default function PlansTab() {
   const getBillingPeriodPrice = (pkg: PaymentPackage, period: string): { price: number, originalPrice?: number, discount?: number } => {
     // Handle pricing_tiers as array format from database
     if (Array.isArray(pkg.pricing_tiers)) {
-      const tier = pkg.pricing_tiers.find((t: { period: string; [key: string]: unknown }) => t.period === period)
+      const tier = pkg.pricing_tiers.find(t => t.period === period)
       if (tier) {
         return {
           price: tier.promo_price || tier.regular_price,
@@ -142,12 +143,15 @@ export default function PlansTab() {
       }
     }
     // Handle pricing_tiers as object format (fallback)
-    else if (pkg.pricing_tiers?.[period]) {
-      const tier = pkg.pricing_tiers[period] as PricingTier
-      return {
-        price: tier.promo_price || tier.regular_price,
-        originalPrice: tier.promo_price ? tier.regular_price : undefined,
-        discount: tier.discount_percentage
+    else if (pkg.pricing_tiers && typeof pkg.pricing_tiers === 'object') {
+      const tiers = pkg.pricing_tiers as Record<string, PricingTier>
+      const tier = tiers[period]
+      if (tier) {
+        return {
+          price: tier.promo_price || tier.regular_price,
+          originalPrice: tier.promo_price ? tier.regular_price : undefined,
+          discount: tier.discount_percentage
+        }
       }
     }
     return { price: pkg.price }
@@ -167,7 +171,7 @@ export default function PlansTab() {
       })
 
       if (response.ok) {
-        const result = await response.json()
+        const result = await response.json() as ApiResponse<TrialEligibilityData>
         // API now returns: { success: true, data: {...}, timestamp: "..." }
         if (result.success === true && result.data) {
           setTrialEligible(result.data.eligible)

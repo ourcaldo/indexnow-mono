@@ -1,177 +1,138 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { adminApiWrapper, withDatabaseOperation, createStandardError, formatSuccess } from '@/lib/core/api-response-middleware'
-import { ErrorType, ErrorSeverity, logger } from '@/lib/monitoring/error-handling'
+import { NextRequest, NextResponse } from 'next/server';
+import { 
+  adminApiWrapper, 
+  formatSuccess, 
+  formatError,
+  createStandardError,
+  type ActivityDetail,
+  type EnrichedActivityLog
+} from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, logger } from '@indexnow/shared'; // Check imports for logger/errors
+import { 
+  SecureServiceRoleWrapper, 
+  SecureServiceRoleHelpers, 
+  supabaseAdmin,
+  type SecurityActivityLog
+} from '@indexnow/database';
+
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
   context?: { params: Promise<{ id: string }> }
 ) => {
   if (!context) {
-    throw new Error('Missing context parameters')
+    throw new Error('Missing context parameters');
   }
-  const { id } = await context.params
+  const { id } = await context.params;
 
-  const response = await withDatabaseOperation(
-    async () => {
-      // Use secure service role wrapper for admin activity log access
-      const operationContext = {
-        userId: 'system',
-        operation: 'admin_get_activity_log',
-        reason: 'Admin user retrieving specific activity log for review',
-        source: 'admin/activity/[id]',
-        metadata: {
-          requestedLogId: id,
-          endpoint: '/api/v1/admin/activity/[id]'
-        }
-      }
+  // Fetch specific log
+  const operationContext = {
+    userId: adminUser.id,
+    operation: 'admin_get_activity_log',
+    reason: 'Admin retrieving specific activity log',
+    source: 'admin/activity/[id]',
+    metadata: { requestedLogId: id }
+  };
 
-      const logs = await SecureServiceRoleHelpers.secureSelect(
-        operationContext,
-        'indb_security_activity_logs',
-        ['*'],
-        { id: id }
-      )
+  const logs = await SecureServiceRoleHelpers.secureSelect(
+    operationContext,
+    'indb_security_activity_logs',
+    ['*'],
+    { id: id }
+  );
 
-      if (!logs || logs.length === 0) {
-        throw new Error('Activity log not found')
-      }
+  if (!logs || logs.length === 0) {
+    return createStandardError(
+      ErrorType.NOT_FOUND,
+      'Activity log not found',
+      404,
+      ErrorSeverity.LOW
+    );
+  }
 
-      const log = logs[0]
+  const log = logs[0] as SecurityActivityLog;
 
-      // Get user profile and auth data using secure service role wrapper
-      let userProfile = null
-      let userEmail = null
+  // Fetch user profile
+  let userName = 'Unknown User';
+  let userEmail = 'Unknown Email';
 
-      try {
-        // Secure profile fetch
-        const profileContext = {
-          userId: 'system',
-          operation: 'admin_get_user_profile_for_activity_log',
-          reason: 'Admin retrieving user profile details for activity log display',
-          source: 'admin/activity/[id]',
-          metadata: {
-            targetUserId: log.user_id,
-            activityLogId: id
-          }
-        }
-
+  if (log.user_id) {
+    try {
         const profiles = await SecureServiceRoleHelpers.secureSelect(
-          profileContext,
-          'indb_auth_user_profiles',
-          ['full_name', 'user_id'],
-          { user_id: log.user_id }
-        )
-
+            { ...operationContext, operation: 'admin_get_activity_user_profile' },
+            'indb_auth_user_profiles',
+            ['full_name', 'user_id'],
+            { user_id: log.user_id }
+        );
+        
         if (profiles && profiles.length > 0) {
-          userProfile = profiles[0]
-          
-          try {
-            // Secure auth data fetch - using wrapper for auth operations
-            const authContext = {
-              userId: 'system',
-              operation: 'admin_get_auth_user_for_activity_log',
-              reason: 'Admin retrieving user auth details for activity log display',
-              source: 'admin/activity/[id]',
-              metadata: {
-                targetUserId: profiles[0].user_id,
-                activityLogId: id
-              }
-            }
-
-            const authUser = await SecureServiceRoleWrapper.executeSecureOperation(
-              authContext,
-              {
-                table: 'auth.users',
-                operationType: 'select',
-                columns: ['email'],
-                whereConditions: { id: profiles[0].user_id }
-              },
-              async () => {
-                const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profiles[0].user_id)
-                if (authError || !authUser?.user) throw authError
-                return authUser.user
-              }
-            )
-
-            if (authUser?.email) {
-              userEmail = authUser.email
-            }
-          } catch (authFetchError) {
-            logger.error({ error: authFetchError instanceof Error ? authFetchError.message : String(authFetchError) }, `Failed to fetch auth data for user ${log.user_id}:`)
-          }
-        }
-      } catch (fetchError) {
-        logger.error({ error: fetchError instanceof Error ? fetchError.message : String(fetchError) }, `Failed to fetch user data for log ${log.id}:`)
-      }
-
-      // Get related activities from the same user (last 5) using secure service role wrapper
-      let relatedLogs: SecurityActivityLog[] = []
-      try {
-        const relatedLogsContext = {
-          userId: 'system',
-          operation: 'admin_get_related_activity_logs',
-          reason: 'Admin retrieving related activity logs for context display',
-          source: 'admin/activity/[id]',
-          metadata: {
-            targetUserId: log.user_id,
-            excludeLogId: log.id,
-            activityLogId: id
-          }
+            userName = profiles[0].full_name || 'Unknown User';
         }
 
-        relatedLogs = await SecureServiceRoleWrapper.executeSecureOperation(
-          relatedLogsContext,
-          {
-            table: 'indb_security_activity_logs',
-            operationType: 'select',
-            columns: ['*'],
-            whereConditions: { user_id: log.user_id as string }
-          },
-          async () => {
-            if (!log.user_id || !log.id) return []
-            
-            const { data, error } = await supabaseAdmin
-              .from('indb_security_activity_logs')
-              .select('*')
-              .eq('user_id', log.user_id)
-              .neq('id', log.id)
-              .order('created_at', { ascending: false })
-              .limit(5)
-            
-            if (error) throw error
-            return data || []
-          }
-        )
-      } catch (relatedError) {
-        logger.error({ error: relatedError instanceof Error ? relatedError.message : String(relatedError) }, `Failed to fetch related logs for user ${log.user_id}:`)
-        relatedLogs = []
-      }
-
-      const enrichedLog = {
-        ...log,
-        user_name: userProfile?.full_name || 'Unknown User',
-        user_email: userEmail || 'Unknown Email',
-        related_activities: relatedLogs
-      }
-
-      return enrichedLog
-    },
-    { userId: adminUser.id, endpoint: '/api/v1/admin/activity/[id]' }
-  )
-
-  if (!response.success) {
-    // Check if it's a "not found" error
-    if (response.error.message.includes('not found')) {
-      return createStandardError(
-        ErrorType.AUTHORIZATION,
-        'Activity log not found',
-        404,
-        ErrorSeverity.LOW
-      )
+        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(log.user_id);
+        if (userData?.user?.email) {
+            userEmail = userData.user.email;
+        }
+    } catch (err) {
+        // Ignore
     }
-    return response
   }
 
-  return formatSuccess({ activity: response.data })
-})
+  // Fetch related logs (same user)
+  let relatedLogs: SecurityActivityLog[] = [];
+  if (log.user_id) {
+      try {
+        relatedLogs = (await SecureServiceRoleWrapper.executeSecureOperation(
+            { ...operationContext, operation: 'admin_get_related_activity_logs' },
+            {
+                table: 'indb_security_activity_logs',
+                operationType: 'select',
+                columns: ['*'],
+                whereConditions: { user_id: log.user_id }
+            },
+            async () => {
+                const { data, error } = await supabaseAdmin
+                    .from('indb_security_activity_logs')
+                    .select('*')
+                    .eq('user_id', log.user_id!)
+                    .neq('id', log.id)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (error) throw error;
+                return data || [];
+            }
+        )) as SecurityActivityLog[];
+      } catch (err) {
+          // Ignore related logs error
+      }
+  }
+
+  // Helper to map log
+  const mapLog = (l: SecurityActivityLog): EnrichedActivityLog => {
+      const details = (l.details as Record<string, any>) || {};
+      return {
+          id: l.id,
+          user_id: l.user_id,
+          user_name: userName, // Reusing same user info
+          user_email: userEmail,
+          event_type: l.event_type,
+          action_description: (details.actionDescription as string) || (details.description as string) || null,
+          target_type: (details.targetType as string) || (details.target_type as string) || null,
+          target_id: (details.targetId as string) || (details.target_id as string) || null,
+          ip_address: l.ip_address,
+          user_agent: l.user_agent,
+          metadata: l.details,
+          success: details.success ?? true,
+          error_message: (details.errorMessage as string) || (details.error_message as string),
+          created_at: l.created_at
+      };
+  };
+
+  const activityDetail: ActivityDetail = {
+      ...mapLog(log),
+      related_activities: relatedLogs.map(mapLog)
+  };
+
+  return formatSuccess({ activity: activityDetail });
+});

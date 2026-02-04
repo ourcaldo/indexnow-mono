@@ -18,36 +18,16 @@ import {
   FileText,
   Map
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, SiteSettingsRow } from '@indexnow/shared'
 
-interface SiteSettings {
-  id: string
-  site_name: string
-  site_tagline: string | null
-  site_description: string
-  site_logo_url: string | null
-  white_logo: string | null
-  site_icon_url: string | null
-  site_favicon_url: string | null
-  contact_email: string | null
-  support_email: string | null
-  maintenance_mode: boolean
-  registration_enabled: boolean
-  smtp_host: string | null
-  smtp_port: number | null
-  smtp_user: string | null
-  smtp_pass: string | null
-  smtp_from_name: string | null
-  smtp_from_email: string | null
-  smtp_secure: boolean
-  smtp_enabled: boolean
+type UI_SiteSettings = SiteSettingsRow & {
   robots_txt_content?: string
-  created_at: string
-  updated_at: string
+  site_tagline?: string | null
+  white_logo?: string | null
 }
 
 export default function SiteSettings() {
-  const [settings, setSettings] = useState<SiteSettings | null>(null)
+  const [settings, setSettings] = useState<UI_SiteSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -103,7 +83,7 @@ export default function SiteSettings() {
     }
   }
 
-  const updateSettings = (field: keyof SiteSettings, value: any) => {
+  const updateSettings = <K extends keyof UI_SiteSettings>(field: K, value: UI_SiteSettings[K]) => {
     if (!settings) return
     setSettings({
       ...settings,
@@ -251,7 +231,7 @@ export default function SiteSettings() {
               Site Description
             </label>
             <textarea
-              value={settings.site_description}
+              value={settings.site_description || ''}
               onChange={(e) => updateSettings('site_description', e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"

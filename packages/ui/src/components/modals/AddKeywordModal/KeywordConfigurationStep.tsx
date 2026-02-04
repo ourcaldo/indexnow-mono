@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { type Domain, type Country } from '@indexnow/shared'
 import { 
   Globe, 
   Smartphone, 
@@ -22,18 +23,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '../../..'
-
-interface Domain {
-  id: string
-  domain_name: string
-  display_name?: string
-}
-
-interface Country {
-  id: string
-  name: string
-  iso2_code: string
-}
 
 interface KeywordConfigurationStepProps {
   domains: Domain[]

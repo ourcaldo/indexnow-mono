@@ -5,8 +5,8 @@
  */
 
 import * as cron from 'node-cron';
-import { supabaseAdmin } from '@indexnow/database';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { UpdateKeywordKeyword } from '@indexnow/shared';
 import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
 import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
@@ -332,7 +332,7 @@ export class KeywordEnrichmentWorker {
       if (result.success && result.data) {
         // Update the keyword record with bank_id and intelligence data
         // ALWAYS update keyword_bank_id regardless of is_data_found status
-        const updateData: any = {
+        const updateData: UpdateKeywordKeyword = {
           keyword_bank_id: result.data.id,
           search_volume: result.data.volume,
           cpc: result.data.cpc,

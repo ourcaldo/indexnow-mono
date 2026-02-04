@@ -2,17 +2,10 @@
 
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../card'
-
-// Note: formatCurrency should ideally be passed as a prop or imported from a shared utils in UI
-// For now, we'll use a local mock or expect it from shared if available
-const formatCurrency = (amount: number, currency: string = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount)
-}
+import { formatCurrency } from '@indexnow/shared'
 
 interface PricingTier {
+  period?: string; // Required when in array
   period_label?: string;
   regular_price: number;
   promo_price?: number;
@@ -22,7 +15,7 @@ interface PricingTier {
 
 interface PaymentPackage {
   currency?: string;
-  pricing_tiers?: Record<string, PricingTier> | null;
+  pricing_tiers?: Record<string, PricingTier> | PricingTier[] | null;
   [key: string]: unknown;
 }
 
@@ -51,14 +44,22 @@ export function BillingPeriodSelector({
 
   const pricingTiers = selectedPackage.pricing_tiers;
   const periodOrder = ['monthly', 'quarterly', 'biannual', 'annual']
+
+  // Helper to get tier data regardless of structure (Array vs Record)
+  const getTierForPeriod = (period: string): PricingTier | undefined => {
+    if (Array.isArray(pricingTiers)) {
+      return pricingTiers.find(t => t.period === period);
+    }
+    return (pricingTiers as Record<string, PricingTier>)[period];
+  }
+
   const availablePeriods = periodOrder.filter(period => 
-    pricingTiers[period]
+    getTierForPeriod(period) !== undefined
   )
 
   const formatPeriodOptions = (): BillingPeriodOption[] => {
-    if (!pricingTiers) return []
     return availablePeriods.map(period => {
-      const tierData = pricingTiers[period]
+      const tierData = getTierForPeriod(period)!
       return {
         period,
         period_label: tierData.period_label || period.charAt(0).toUpperCase() + period.slice(1),

@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@indexnow/database';
 import { 
   ErrorHandlingService, 
   ErrorType, 
@@ -21,7 +23,7 @@ export interface AuthenticatedRequest {
     email: string;
   };
   userId: string;
-  supabase: unknown;
+  supabase: SupabaseClient<Database>;
 }
 
 /**
@@ -31,7 +33,7 @@ export async function authenticateRequest(
   request: NextRequest,
   endpoint?: string,
   method?: string
-): Promise<{ success: true; data: AuthenticatedRequest } | { success: false; error: unknown }> {
+): Promise<{ success: true; data: AuthenticatedRequest } | { success: false; error: StructuredError }> {
   try {
     // Get auth token from header
     const authHeader = request.headers.get('authorization');
@@ -43,7 +45,7 @@ export async function authenticateRequest(
     const token = authHeader.substring(7);
     
     // Create user-authenticated Supabase client
-    const supabase = createServerClient(
+    const supabase = createServerClient<Database>(
       AppConfig.supabase.url,
       AppConfig.supabase.anonKey,
       {
@@ -105,7 +107,7 @@ export async function authenticateRequest(
       data: { 
         user: { id: user.id, email: user.email! },
         userId: user.id,
-        supabase: supabase
+        supabase: supabase as SupabaseClient<Database>
       } 
     };
   } catch (error) {

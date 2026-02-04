@@ -16,7 +16,8 @@ import {
   SeRankingErrorType,
   KeywordBankEntity,
   KeywordBankQueryResult,
-  CacheStats
+  CacheStats,
+  QueueStats
 } from '@indexnow/shared';
 
 import {
@@ -207,9 +208,9 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   public keywordBank!: IKeywordBankService;
   public integration!: IIntegrationService;
   public validation!: {
-    keyword: any;
-    response: any;
-    quota: any;
+    keyword: typeof ValidationService;
+    response: typeof ValidationService;
+    quota: IIntegrationService;
   };
   public monitoring!: {
     metrics: IApiMetricsCollector;
@@ -683,7 +684,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   async getSystemMetrics(): Promise<ServiceResponse<{
     metrics: ApiMetrics;
     cacheStats: CacheStats;
-    queueStats: any;
+    queueStats: QueueStats;
     quotaStatus: QuotaStatus;
   }>> {
     try {
@@ -875,15 +876,20 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   /**
    * Calculate overall system health score
    */
-  private calculateOverallScore(healthResult: any, quotaStatus: any): number {
+  private calculateOverallScore(
+    healthResult: HealthCheckResult | undefined | { status: 'unknown' },
+    quotaStatus: ServiceResponse<QuotaStatus> | undefined | { success: false }
+  ): number {
     let score = 0;
     
     // Health status (40% weight)
-    if (healthResult?.status === 'healthy') score += 40;
-    else if (healthResult?.status === 'degraded') score += 20;
+    if (healthResult && 'status' in healthResult) {
+      if (healthResult.status === 'healthy') score += 40;
+      else if (healthResult.status === 'degraded') score += 20;
+    }
     
     // Quota status (30% weight)
-    if (quotaStatus?.success && quotaStatus.data) {
+    if (quotaStatus && 'success' in quotaStatus && quotaStatus.success && quotaStatus.data) {
       const usagePercent = quotaStatus.data.usage_percentage;
       if (usagePercent < 0.8) score += 30;
       else if (usagePercent < 0.95) score += 20;
@@ -905,7 +911,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   /**
    * Log messages with appropriate level
    */
-  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: any[]): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
     const logLevel = this.config.logging.level;
     
     // Simple level filtering
@@ -914,7 +920,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[SeRankingService] ${message}`;
       
-      logger[level](metadata, logMessage);
+      logger[level](metadata as Record<string, unknown>, logMessage);
     }
   }
 }
