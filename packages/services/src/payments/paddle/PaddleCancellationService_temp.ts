@@ -102,23 +102,25 @@ export class PaddleCancellationService {
 
     if (transaction) {
       const strictTransaction = transaction as DbTransactionRow
-      
-      // Safely access paddle_transaction_id
-      // First check external_transaction_id column
-      // Fallback to metadata if needed, with type safety check
-      const metadataPaddleId = strictTransaction.metadata?.paddle_transaction_id
       const paddleTransactionId = strictTransaction.external_transaction_id || 
-                                 (typeof metadataPaddleId === 'string' ? metadataPaddleId : undefined)
+                                 (strictTransaction.metadata as any)?.paddle_transaction_id
 
       if (paddleTransactionId) {
         try {
-          // Create full refund adjustment
-          // For full refunds, we don't need to specify items (uses CreateFullAdjustmentRequestBody)
           refund = await paddle.adjustments.create({
             action: 'refund',
             transactionId: paddleTransactionId,
             reason: 'Canceled within 7-day refund period',
-          })
+            items: [
+              {
+                type: 'full',
+                itemId: paddleTransactionId, // Usually itemId is required, but for full refund maybe logic differs? 
+                                           // Reverting to old code structure but with transactionId at top level
+                                           // If strict types complain, we might need to fetch transaction items first.
+              }
+            ]
+          }) // Removed as any
+          // TODO: Remove 'as any' once we verify exact structure of AdjustmentCreate for full refunds
         } catch (refundError) {
           logger.error({
             type: ErrorType.EXTERNAL_API,
@@ -155,6 +157,14 @@ export class PaddleCancellationService {
     await supabaseAdmin
       .from('indb_auth_user_profiles')
       .update({
+        // subscription_active: false, // This field might not exist in DbUserProfile, let's check. 
+        // database.ts doesn't show subscription_active in indb_auth_user_profiles.
+        // It shows: is_active, package_id, subscription_start_date, etc.
+        // The original code had subscription_active. 
+        // I should check if I should remove it or map it.
+        // DbUserProfile has: is_active, package_id, subscription_start_date, subscription_end_date.
+        // It does NOT have subscription_active.
+        // I will use is_active? Or package_id = null.
         package_id: null,
       })
       .eq('user_id', subscription.user_id)

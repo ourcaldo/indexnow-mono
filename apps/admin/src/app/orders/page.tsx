@@ -29,6 +29,22 @@ import {
   type AdminOrderSummary
 } from '@indexnow/shared'
 
+interface OrderMetadata {
+  customer_info?: {
+    email?: string
+    [key: string]: unknown
+  }
+  billing_period?: string
+  [key: string]: unknown
+}
+
+const getSafeMetadata = (metadata: unknown): OrderMetadata => {
+  if (typeof metadata === 'object' && metadata !== null && !Array.isArray(metadata)) {
+    return metadata as OrderMetadata
+  }
+  return {}
+}
+
 export default function AdminOrdersPage() {
   const [ordersData, setOrdersData] = useState<AdminOrdersResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -331,13 +347,13 @@ export default function AdminOrdersPage() {
                   <TableCell>
                     <div>
                       <div className="font-medium text-foreground">{order.user.full_name}</div>
-                      <div className="text-sm text-muted-foreground">{order.user.email || (order.metadata as any)?.customer_info?.email || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground">{order.user.email || getSafeMetadata(order.metadata).customer_info?.email || 'N/A'}</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium text-foreground">{order.package?.name || 'Unknown Package'}</div>
-                      <div className="text-sm text-muted-foreground">{(order.metadata as any)?.billing_period || order.package?.billing_period}</div>
+                      <div className="text-sm text-muted-foreground">{getSafeMetadata(order.metadata).billing_period || order.package?.billing_period}</div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -414,4 +430,3 @@ export default function AdminOrdersPage() {
     </div>
   )
 }
-

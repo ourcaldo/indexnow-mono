@@ -8,9 +8,49 @@ import {
   DollarSign
 } from 'lucide-react'
 import { UserProfile } from './index'
+import { PackagePricingTiers, PricingTierDetails } from '@indexnow/shared'
 
 interface PackageSubscriptionCardProps {
   user: UserProfile
+}
+
+function getSafePricing(pricingTiers: unknown, billingPeriod: string): string {
+  let tiers: PackagePricingTiers | null = null;
+  
+  // Handle string JSON or object
+  if (typeof pricingTiers === 'string') {
+    try {
+      const parsed = JSON.parse(pricingTiers);
+      if (typeof parsed === 'object' && parsed !== null) {
+        tiers = parsed as PackagePricingTiers;
+      }
+    } catch {
+      return 'Free';
+    }
+  } else if (typeof pricingTiers === 'object' && pricingTiers !== null) {
+    tiers = pricingTiers as PackagePricingTiers;
+  }
+
+  if (!tiers) return 'Free';
+
+  const pricingData = tiers[billingPeriod];
+  
+  if (!pricingData) return 'Free';
+
+  const price = pricingData.promo_price || pricingData.regular_price;
+  
+  if (price === undefined || price === null || price === 0) {
+    return 'Free';
+  }
+
+  return `$${price.toLocaleString()}`;
+}
+
+function getSafeFeatures(features: unknown): string[] {
+  if (Array.isArray(features)) {
+    return features.filter((f): f is string => typeof f === 'string');
+  }
+  return [];
 }
 
 export function PackageSubscriptionCard({ user }: PackageSubscriptionCardProps) {
@@ -47,41 +87,7 @@ export function PackageSubscriptionCard({ user }: PackageSubscriptionCardProps) 
                 <p className="text-sm text-muted-foreground mb-2">{user.package.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold text-foreground">
-                    {(() => {
-                      // Handle different possible structures for pricing_tiers
-                      let pricingTiers = user.package!.pricing_tiers
-                      
-                      // If pricing_tiers is a string, try to parse it as JSON
-                      if (typeof pricingTiers === 'string') {
-                        try {
-                          pricingTiers = JSON.parse(pricingTiers)
-                        } catch (e) {
-                          return 'Free'
-                        }
-                      }
-                      
-                      // If it's not an object, fallback to free
-                      if (!pricingTiers || typeof pricingTiers !== 'object') {
-                        return 'Free'
-                      }
-                      
-                      // Get pricing for current billing period (flat USD structure)
-                      const billingPeriod = user.package!.billing_period
-                      
-                      // Safe cast to access properties
-                      const pricingObj = pricingTiers as Record<string, any>
-                      const pricingData = pricingObj[billingPeriod]
-                      
-                      if (!pricingData) {
-                        return 'Free'
-                      }
-                      
-                      const price = pricingData.promo_price || pricingData.regular_price
-                      if (price === undefined || price === null || price === 0) {
-                        return 'Free'
-                      }
-                      return `$${price.toLocaleString()}`
-                    })()}
+                    {getSafePricing(user.package.pricing_tiers, user.package.billing_period)}
                   </span>
                   <span className="text-sm text-muted-foreground">
                     per {user.package.billing_period === 'yearly' ? 'annual' : user.package.billing_period}
@@ -93,14 +99,12 @@ export function PackageSubscriptionCard({ user }: PackageSubscriptionCardProps) 
               <div>
                 <h5 className="font-medium text-foreground mb-2">Features</h5>
                 <ul className="space-y-1">
-                  {Array.isArray(user.package.features) ? (
-                    (user.package.features as any[]).map((feature: any, index: number) => (
-                      typeof feature === 'string' ? (
-                        <li key={index} className="flex items-center space-x-2 text-sm text-muted-foreground">
-                          <CheckCircle className="h-4 w-4 text-success" />
-                          <span>{feature}</span>
-                        </li>
-                      ) : null
+                  {getSafeFeatures(user.package.features).length > 0 ? (
+                    getSafeFeatures(user.package.features).map((feature, index) => (
+                      <li key={index} className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <CheckCircle className="h-4 w-4 text-success" />
+                        <span>{feature}</span>
+                      </li>
                     ))
                   ) : (
                     <li className="text-sm text-muted-foreground">No features listed</li>
