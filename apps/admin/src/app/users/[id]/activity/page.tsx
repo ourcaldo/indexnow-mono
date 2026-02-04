@@ -62,7 +62,7 @@ interface ActivityMetadata {
 }
 
 export default function UserActivityPage({ params }: { params: Promise<{ id: string }> }) {
-  const [logs, setLogs] = useState<any[]>([]) // Using any for now as the log structure is complex, TODO: Define strict ActivityLog type
+  const [logs, setLogs] = useState<EnrichedActivityLog[]>([])
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -111,8 +111,12 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
       setLogs(data.logs || [])
       setUser(data.user || null)
       setPagination(data.pagination || {})
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('An unknown error occurred')
+      }
     } finally {
       setLoading(false)
     }

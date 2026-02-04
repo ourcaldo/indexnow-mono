@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePageViewLogger, useActivityLogger, supabaseBrowser as supabase } from '@indexnow/database'
+import { usePageViewLogger, useActivityLogger } from '@indexnow/database'
 import { useToast } from '@indexnow/ui'
 import { useAuth } from '@indexnow/auth'
-import { AUTH_ENDPOINTS } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, authService } from '@indexnow/shared'
 import { 
   Loader2
 } from 'lucide-react'
@@ -46,7 +46,7 @@ export default function GeneralSettingsPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const token = await authService.getAccessToken()
+      const token = await authService.getToken()
       if (!token) return
 
       const profileResponse = await fetch(AUTH_ENDPOINTS.PROFILE, {
@@ -173,12 +173,9 @@ export default function GeneralSettingsPage() {
         return
       }
       
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: passwordForm.currentPassword
-      })
-
-      if (signInError) {
+      try {
+        await authService.signIn(user.email, passwordForm.currentPassword)
+      } catch (error) {
         addToast({
           title: 'Authentication Error',
           description: 'Current password is incorrect',
@@ -187,11 +184,11 @@ export default function GeneralSettingsPage() {
         return
       }
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
-      })
-
-      if (updateError) {
+      try {
+        await authService.updateUser({
+          password: passwordForm.newPassword
+        })
+      } catch (updateError: any) {
         addToast({
           title: 'Update Error',
           description: updateError.message || 'Failed to update password',
