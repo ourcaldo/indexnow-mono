@@ -405,7 +405,7 @@ export class SeRankingApiClient {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_site_integration')
-            .select('apikey, is_active')
+            .select('api_key, is_active')
             .eq('service_name', 'seranking_keyword_export')
             .eq('is_active', true)
             .single();
@@ -415,9 +415,9 @@ export class SeRankingApiClient {
         }
       );
 
-      if (!data || !data.apikey) return null;
+      if (!data || !data.api_key) return null;
 
-      this.integrationApiKey = data.apikey;
+      this.integrationApiKey = data.api_key;
       this.integrationApiKeyExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
       return this.integrationApiKey;

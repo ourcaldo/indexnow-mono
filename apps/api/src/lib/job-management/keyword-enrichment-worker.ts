@@ -44,7 +44,7 @@ export class KeywordEnrichmentWorker {
       logLevel: 'info'
     }, undefined); // Fix: removed as any casting
 
-    // Get API key directly from database using correct column name 'apikey'
+    // Get API key directly from database using correct column name 'api_key'
     const integrationData = await SecureServiceRoleWrapper.executeSecureOperation(
       {
         userId: 'system',
@@ -59,13 +59,13 @@ export class KeywordEnrichmentWorker {
       {
         table: 'indb_site_integration',
         operationType: 'select',
-        columns: ['apikey'],
+        columns: ['api_key'],
         whereConditions: { service_name: 'seranking_keyword_export', is_active: true }
       },
       async () => {
         const { data: integrationData, error } = await supabaseAdmin
           .from('indb_site_integration')
-          .select('apikey')
+          .select('api_key')
           .eq('service_name', 'seranking_keyword_export')
           .eq('is_active', true)
           .single()
@@ -78,7 +78,7 @@ export class KeywordEnrichmentWorker {
       }
     )
 
-    const apiKey = integrationData?.apikey || '';
+    const apiKey = integrationData?.api_key || '';
 
     if (!apiKey) {
       logger.warn({}, 'Keyword Enrichment Worker: No SeRanking API key found in database');
