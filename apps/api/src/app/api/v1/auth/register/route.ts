@@ -101,36 +101,35 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     const userId = data.user.id;
 
-    // 4. Update user profile with additional details (async/parallel)
-    // We use a small delay to ensure the database trigger has created the initial profile
-    setTimeout(async () => {
-      try {
-        const operationContext = {
-          userId: userId,
-          operation: 'registration_profile_update',
-          reason: 'Complete user profile after successful registration',
-          source: 'auth/register',
-          metadata: { hasPhoneNumber: !!phoneNumber, hasCountry: !!country, hasName: !!name },
-          ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
-        };
-        
-        // Sanitize and format data
-        const updateData = {
-          phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
-          country: country?.toString().substring(0, 100) || null,
-          full_name: name?.toString().substring(0, 255) || null
-        };
-        
-        await SecureServiceRoleHelpers.secureUpdate(
-          operationContext,
-          'indb_auth_user_profiles',
-          updateData,
-          { user_id: userId }
-        );
-      } catch (profileError) {
-        console.error('Failed to update user profile during registration:', profileError);
-      }
-    }, 2000);
+    // 4. Update user profile with additional details
+    // Await the profile update to ensure consistency, removing unreliable setTimeout
+    try {
+      const operationContext = {
+        userId: userId,
+        operation: 'registration_profile_update',
+        reason: 'Complete user profile after successful registration',
+        source: 'auth/register',
+        metadata: { hasPhoneNumber: !!phoneNumber, hasCountry: !!country, hasName: !!name },
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+      };
+      
+      // Sanitize and format data
+      const updateData = {
+        phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
+        country: country?.toString().substring(0, 100) || null,
+        full_name: name?.toString().substring(0, 255) || null
+      };
+      
+      await SecureServiceRoleHelpers.secureUpdate(
+        operationContext,
+        'indb_auth_user_profiles',
+        updateData,
+        { user_id: userId }
+      );
+    } catch (profileError) {
+      console.error('Failed to update user profile during registration:', profileError);
+      // We don't throw here to avoid failing the registration if the user was created
+    }
 
     // 5. Log successful registration activity
     await ActivityLogger.logAuth(

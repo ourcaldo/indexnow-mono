@@ -155,44 +155,52 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
     });
   }
 
-  // Fetch user profiles and auth data
+  // Fetch user profiles and auth data (Bulk Fetch Optimization)
   const enrichedOrders: AdminOrderTransaction[] = [];
   
+  // 1. Collect all IDs
+  const userIds = new Set<string>();
+  const verifierIds = new Set<string>();
+  
+  orders.forEach(order => {
+    if (order.user_id) userIds.add(order.user_id);
+    if (order.verified_by) verifierIds.add(order.verified_by);
+  });
+
+  const allProfileIds = [...new Set([...userIds, ...verifierIds])];
+  const profileMap = new Map<string, any>();
+  const emailMap = new Map<string, string>();
+
+  // 2. Bulk fetch profiles
+  if (allProfileIds.length > 0) {
+    try {
+        const { data: profiles } = await supabaseAdmin
+            .from('indb_auth_user_profiles')
+            .select('user_id, full_name, role, created_at')
+            .in('user_id', allProfileIds);
+        profiles?.forEach(p => profileMap.set(p.user_id, p));
+    } catch (e) {
+        logger.error('Failed to bulk fetch profiles', { error: e });
+    }
+  }
+
+  // 3. Parallel fetch emails
+  if (userIds.size > 0) {
+      await Promise.all([...userIds].map(async (uid) => {
+          try {
+              const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
+              if (data?.user?.email) {
+                  emailMap.set(uid, data.user.email);
+              }
+          } catch (e) { /* ignore */ }
+      }));
+  }
+  
+  // 4. Build enriched orders
   for (const order of orders) {
-    let userProfile = null;
-    let authUser = null;
-    let verifierProfile = null;
-
-    if (order.user_id) {
-        // Get user profile
-        try {
-            const profiles = await SecureServiceRoleHelpers.secureSelect(
-                { ...ordersContext, operation: 'admin_get_order_user_profile' },
-                'indb_auth_user_profiles',
-                ['full_name', 'role', 'created_at'],
-                { user_id: order.user_id }
-            );
-            userProfile = profiles.length > 0 ? profiles[0] : null;
-        } catch (e) { /* ignore */ }
-
-        // Get user email
-        try {
-            const { data } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
-            if (data?.user) authUser = data;
-        } catch (e) { /* ignore */ }
-    }
-
-    if (order.verified_by) {
-        try {
-            const verifiers = await SecureServiceRoleHelpers.secureSelect(
-                { ...ordersContext, operation: 'admin_get_order_verifier' },
-                'indb_auth_user_profiles',
-                ['full_name', 'role', 'user_id'],
-                { user_id: order.verified_by }
-            );
-            verifierProfile = verifiers.length > 0 ? verifiers[0] : null;
-        } catch (e) { /* ignore */ }
-    }
+    const userProfile = order.user_id ? profileMap.get(order.user_id) : null;
+    const verifierProfile = order.verified_by ? profileMap.get(order.verified_by) : null;
+    const userEmail = order.user_id ? emailMap.get(order.user_id) : null;
 
     const enrichedOrder: AdminOrderTransaction = {
         ...order,
@@ -203,7 +211,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
             user_id: order.user_id,
             full_name: userProfile?.full_name || 'Unknown User',
             role: userProfile?.role || 'user',
-            email: authUser?.user?.email || 'N/A',
+            email: userEmail || 'N/A',
             created_at: userProfile?.created_at || order.created_at
         },
         verifier: verifierProfile ? {
@@ -215,7 +223,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
         gateway: order.gateway
     };
 
-    // Client-side filtering for customer name/email (since we can't easily join auth.users in Supabase query)
+    // Client-side filtering for customer name/email
     if (customer) {
         const customerLower = customer.toLowerCase();
         const fullName = enrichedOrder.user.full_name.toLowerCase();

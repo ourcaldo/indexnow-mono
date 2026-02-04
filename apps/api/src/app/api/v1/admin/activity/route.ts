@@ -86,40 +86,46 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
   const count = logsResult.count || 0;
 
   // Enrich logs with user data
-  const enrichedLogs: EnrichedActivityLog[] = [];
+  const userIds = Array.from(new Set(logs.map(l => l.user_id).filter(Boolean))) as string[];
+  const profileMap = new Map<string, any>();
+  const emailMap = new Map<string, string>();
 
-  for (const log of logs) {
+  if (userIds.length > 0) {
+    try {
+      const { data: profiles } = await supabaseAdmin
+        .from('indb_auth_user_profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+      
+      profiles?.forEach(p => profileMap.set(p.user_id, p));
+
+      await Promise.all(userIds.map(async (uid) => {
+        try {
+          const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
+          if (data?.user?.email) {
+            emailMap.set(uid, data.user.email);
+          }
+        } catch (e) { /* ignore */ }
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
+  const enrichedLogs: EnrichedActivityLog[] = logs.map(log => {
     let userName = 'Unknown User';
     let userEmail = 'Unknown Email';
 
     if (log.user_id) {
-        // Fetch user profile
-        try {
-            const profiles = await SecureServiceRoleHelpers.secureSelect(
-                { ...operationContext, operation: 'admin_get_activity_user_profile' },
-                'indb_auth_user_profiles',
-                ['full_name', 'user_id'],
-                { user_id: log.user_id }
-            );
-            
-            if (profiles && profiles.length > 0) {
-                userName = profiles[0].full_name || 'Unknown User';
-            }
-
-            // Fetch user email (from auth.users)
-            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(log.user_id);
-            if (userData?.user?.email) {
-                userEmail = userData.user.email;
-            }
-        } catch (err) {
-            // Ignore error, keep unknown
-        }
+        const p = profileMap.get(log.user_id);
+        if (p?.full_name) userName = p.full_name;
+        
+        const e = emailMap.get(log.user_id);
+        if (e) userEmail = e;
     }
 
     // Safely cast details (which replaces metadata/description)
     const details = (log.details as Record<string, any>) || {};
 
-    enrichedLogs.push({
+    return {
         id: log.id,
         user_id: log.user_id,
         user_name: userName,
@@ -134,8 +140,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
         success: details.success ?? true,
         error_message: (details.errorMessage as string) || (details.error_message as string),
         created_at: log.created_at
-    });
-  }
+    };
+  });
 
   const response: GetActivityLogsResponse = {
     logs: enrichedLogs,
