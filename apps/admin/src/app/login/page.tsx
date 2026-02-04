@@ -42,7 +42,7 @@ export default function AdminLoginPage() {
     setError('')
 
     try {
-      // Step 1: Authenticate using centralized authService
+      // Step 1: Authenticate using authService
       const authData = await authService.signIn(email, password)
 
       if (!authData.user || !authData.session) {

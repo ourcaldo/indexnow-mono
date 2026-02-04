@@ -221,10 +221,7 @@ export default function BillingPage() {
   
   const loadSubscriptionData = async () => {
     try {
-      const user = await authService.getCurrentUser()
-      if (!user) return
-
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) return
 
       const response = await fetch(`${AppConfig.app.baseUrl}/api/v1/payments/paddle/subscription/my-subscription`, {
@@ -251,7 +248,7 @@ export default function BillingPage() {
       const user = await authService.getCurrentUser()
       if (!user) throw new Error('User not authenticated')
 
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) throw new Error('No authentication token')
 
       const response = await fetch(BILLING_ENDPOINTS.OVERVIEW, {
@@ -278,7 +275,7 @@ export default function BillingPage() {
       const user = await authService.getCurrentUser()
       if (!user) throw new Error('User not authenticated')
 
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) throw new Error('No authentication token')
 
       // Fetch packages from public endpoint
@@ -369,7 +366,7 @@ export default function BillingPage() {
       const user = await authService.getCurrentUser()
       if (!user) throw new Error('User not authenticated')
 
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) throw new Error('No authentication token')
 
       const params = new URLSearchParams({

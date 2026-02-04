@@ -46,7 +46,7 @@ export default function GeneralSettingsPage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) return
 
       const profileResponse = await fetch(AUTH_ENDPOINTS.PROFILE, {
@@ -93,7 +93,7 @@ export default function GeneralSettingsPage() {
   const handleSaveProfile = async () => {
     try {
       setSavingProfile(true)
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) return
 
       const response = await fetch(AUTH_ENDPOINTS.PROFILE, {
@@ -227,7 +227,7 @@ export default function GeneralSettingsPage() {
   const handleSaveNotifications = async () => {
     try {
       setSavingNotifications(true)
-      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) return
 
       const response = await fetch(AUTH_ENDPOINTS.SETTINGS, {

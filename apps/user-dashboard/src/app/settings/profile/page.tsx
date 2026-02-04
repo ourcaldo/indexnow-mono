@@ -73,8 +73,7 @@ export default function ProfileSettingsPage() {
     try {
       setLoading(true)
       // Use centralized authService instead of raw supabase
-      const session = await authService.getSession()
-      const token = session?.access_token
+      const token = await authService.getAccessToken()
       if (!token) return
 
       // Load user profile
@@ -109,9 +108,8 @@ export default function ProfileSettingsPage() {
   const handleSaveProfile = async () => {
     try {
       setSavingProfile(true)
-      const session = await authService.getSession()
-      const token = session?.access_token
-      if (!token) return
+      const token = await authService.getAccessToken()
+      if (!token) throw new Error('No access token')
 
       const response = await fetch(AUTH_ENDPOINTS.AUTH.PROFILE, {
         method: 'PUT',

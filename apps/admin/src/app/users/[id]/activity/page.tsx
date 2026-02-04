@@ -41,8 +41,28 @@ interface UserInfo {
 }
 
 
+interface DeviceInfo {
+  browser?: string
+  os?: string
+  device?: string
+  [key: string]: unknown
+}
+
+interface LocationData {
+  city?: string
+  country?: string
+  ip?: string
+  [key: string]: unknown
+}
+
+interface ActivityMetadata {
+  device_info?: DeviceInfo
+  location_data?: LocationData
+  [key: string]: unknown
+}
+
 export default function UserActivityPage({ params }: { params: Promise<{ id: string }> }) {
-  const [logs, setLogs] = useState<EnrichedActivityLog[]>([])
+  const [logs, setLogs] = useState<any[]>([]) // Using any for now as the log structure is complex, TODO: Define strict ActivityLog type
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

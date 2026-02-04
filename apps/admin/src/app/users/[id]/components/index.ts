@@ -21,7 +21,21 @@ export interface UserActions {
   extendSubscription: boolean
 }
 
-export type ActivityLog = EnrichedActivityLog
+export interface DeviceInfo {
+  browser?: string
+  os?: string
+  device?: string
+  [key: string]: unknown
+}
+
+export interface ActivityLog {
+  id: string
+  action: string
+  created_at: string
+  ip_address?: string
+  device_info?: DeviceInfo
+  metadata?: Record<string, unknown>
+}
 
 export interface SecurityData {
   ipAddresses: Array<{
