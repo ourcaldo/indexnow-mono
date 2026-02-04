@@ -1,4 +1,4 @@
-import { db, supabaseBrowser as supabase } from '@indexnow/database';
+import { db, supabaseAdmin } from '@indexnow/database';
 import { 
   USER_ROLES, 
   DEFAULT_SETTINGS,
@@ -493,13 +493,33 @@ export class UserManagementService {
   }
 
   /**
+   * Get user email from auth.users
+   */
+  private async getUserEmail(userId: string): Promise<string> {
+    try {
+      const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (error || !data.user) {
+        // Only warn if not found, don't crash
+        if (error?.message !== 'User not found') {
+          console.warn(`Failed to fetch email for user ${userId}:`, error);
+        }
+        return '';
+      }
+      return data.user.email || '';
+    } catch (err) {
+      console.warn(`Error fetching email for user ${userId}:`, err);
+      return '';
+    }
+  }
+
+  /**
    * Map database profile to model
    */
-  private mapDatabaseProfileToModel(data: DbUserProfile): UserProfile {
+  private mapDatabaseProfileToModel(data: DbUserProfile, email?: string): UserProfile {
     return {
       id: data.id,
       userId: data.user_id,
-      email: data.email_verified ? 'verified@example.com' : '', // Email is not in profile, should be from auth.users
+      email: email || '', // Email should be provided from auth.users
       fullName: data.full_name || '',
       phoneNumber: data.phone_number || undefined,
       country: data.country || undefined,
