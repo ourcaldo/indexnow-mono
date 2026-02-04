@@ -17,28 +17,29 @@ export class PaddleSubscriptionService {
   }
 
   /**
-   * Cancel subscription
-   * @param subscriptionId - Paddle subscription ID
-   * @param effectiveFrom - When to cancel ('immediately' or 'next_billing_period')
+   * Cancel a subscription immediately or at period end
+   * Note: For refund logic, use PaddleCancellationService which wraps this
    */
   static async cancelSubscription(
     subscriptionId: string,
-    effectiveFrom: 'immediately' | 'next_billing_period' = 'next_billing_period'
-  ) {
+    immediately: boolean = false
+  ): Promise<boolean> {
     const paddle = await PaddleService.getInstance()
 
-    const subscription = await paddle.subscriptions.cancel(subscriptionId, {
-      effectiveFrom,
+    await paddle.subscriptions.cancel(subscriptionId, {
+      effectiveFrom: immediately ? 'immediately' : 'next_billing_period',
     })
 
-    // Update local subscription record
+    const status = immediately ? 'canceled' : 'past_due' // Paddle sets to past_due for period end cancellation
+
+    // Update local database
     const { error } = await supabaseAdmin
       .from('indb_payment_subscriptions')
       .update({
-        status: effectiveFrom === 'immediately' ? 'canceled' : 'active',
-        cancel_at_period_end: effectiveFrom === 'next_billing_period',
-        canceled_at: new Date().toISOString(),
+        status: status,
         updated_at: new Date().toISOString(),
+        // If canceling immediately, set end date to now, otherwise keep period end
+        ...(immediately ? { end_date: new Date().toISOString() } : {}),
       })
       .eq('paddle_subscription_id', subscriptionId)
 
@@ -47,7 +48,7 @@ export class PaddleSubscriptionService {
       throw new Error(`Database sync failed after Paddle cancellation: ${error.message}`)
     }
 
-    return subscription
+    return true
   }
 
   /**

@@ -273,39 +273,37 @@ export class UserManagementService {
     return this.mapDatabaseSettingsToModel(updatedSettings);
   }
 
+  private async getPackageConfig(packageId: string | null): Promise<any> {
+    if (!packageId) return null;
+    
+    const { data } = await supabaseAdmin
+      .from('indb_payment_packages')
+      .select('settings')
+      .eq('id', packageId)
+      .single();
+      
+    return data?.settings || null;
+  }
+
   /**
-   * Get user quota usage
+   * Get user quota for specific feature
    */
-  async getUserQuota(userId: string): Promise<UserQuota> {
+  async getUserQuota(userId: string, feature: string): Promise<number> {
     const profile = await this.getUserProfile(userId);
-    if (!profile) {
-      throw new Error('User profile not found');
-    }
+    if (!profile) throw new Error('User profile not found');
 
-    // Get actual usage counts
-    const [urlsCount, keywordsCount] = await Promise.all([
-      this.getDailyUrlUsage(userId),
-      this.getKeywordUsage(userId),
-    ]);
-
-    return {
-      dailyUrls: {
-        used: urlsCount,
-        limit: profile.quotaLimits.dailyUrls,
-        percentage: Math.round((urlsCount / profile.quotaLimits.dailyUrls) * 100),
-        remaining: Math.max(0, profile.quotaLimits.dailyUrls - urlsCount),
-      },
-      keywords: {
-        used: keywordsCount,
-        limit: profile.quotaLimits.keywords,
-        percentage: Math.round((keywordsCount / profile.quotaLimits.keywords) * 100),
-        remaining: Math.max(0, profile.quotaLimits.keywords - keywordsCount),
-      },
-      serviceAccounts: { used: 0, limit: 10, percentage: 0, remaining: 10 },
-      rankChecks: { used: 0, limit: 100, percentage: 0, remaining: 100 },
-      apiCalls: { used: 0, limit: 1000, percentage: 0, remaining: 1000 },
-      storage: { used: 0, limit: 1024 * 1024 * 100, percentage: 0, remaining: 1024 * 1024 * 100 },
+    const packageConfig = await this.getPackageConfig(profile.packageId || null);
+    
+    // Default fallback values if DB config is missing
+    const defaults: Record<string, number> = {
+      'domains': 10,
+      'keywords': 100,
+      'pages': 1000,
+      'storage_mb': 100
     };
+    
+    // Prioritize DB config -> then defaults
+    return packageConfig?.quotas?.[feature] ?? defaults[feature] ?? 0;
   }
 
   /**
@@ -495,27 +493,27 @@ export class UserManagementService {
   /**
    * Get user email from auth.users
    */
-  private async getUserEmail(userId: string): Promise<string> {
+  private async getUserEmail(userId: string): Promise<string | null> {
     try {
       const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+
       if (error || !data.user) {
-        // Only warn if not found, don't crash
-        if (error?.message !== 'User not found') {
-          console.warn(`Failed to fetch email for user ${userId}:`, error);
-        }
-        return '';
+        if (error) console.error('Error fetching user email:', error);
+        // Return null instead of empty string to indicate failure
+        return null;
       }
-      return data.user.email || '';
+
+      return data.user.email || null;
     } catch (err) {
-      console.warn(`Error fetching email for user ${userId}:`, err);
-      return '';
+      console.error('Error fetching user email:', err);
+      return null;
     }
   }
 
   /**
    * Map database profile to model
    */
-  private mapDatabaseProfileToModel(data: DbUserProfile, email?: string): UserProfile {
+  private mapDatabaseProfileToModel(data: DbUserProfile, email?: string, quotas?: Record<string, number>): UserProfile {
     return {
       id: data.id,
       userId: data.user_id,
@@ -540,14 +538,14 @@ export class UserManagementService {
         storage: 0,
       },
       quotaLimits: {
-        dailyUrls: data.daily_quota_limit || 100,
-        keywords: 10,
-        serviceAccounts: 5,
-        rankChecks: 100,
-        apiCalls: 1000,
-        storage: 1024 * 1024 * 100,
-        concurrentJobs: 1,
-        historicalData: 30,
+        dailyUrls: data.daily_quota_limit || quotas?.['pages'] || 100,
+        keywords: quotas?.['keywords'] || 10,
+        serviceAccounts: quotas?.['service_accounts'] || 5,
+        rankChecks: quotas?.['rank_checks'] || 100,
+        apiCalls: quotas?.['api_calls'] || 1000,
+        storage: quotas?.['storage_mb'] ? quotas['storage_mb'] * 1024 * 1024 : 1024 * 1024 * 100,
+        concurrentJobs: quotas?.['concurrent_jobs'] || 1,
+        historicalData: quotas?.['historical_days'] || 30,
       },
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),

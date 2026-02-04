@@ -131,7 +131,7 @@ export class BillingCycleService {
           }
 
           // Use cast for the joined relation which isn't automatically inferred perfectly
-          return data as unknown as BillingProfileWithPackage
+          return data as BillingProfileWithPackage
         }
       )
 
@@ -166,7 +166,7 @@ export class BillingCycleService {
 
     } catch (error) {
       console.error('Error getting billing cycle:', error)
-      return null
+      throw error
     }
   }
 
@@ -232,7 +232,7 @@ export class BillingCycleService {
 
     } catch (error) {
       console.error('Error updating billing cycle:', error)
-      return false
+      throw error // Propagate error
     }
   }
 
@@ -288,7 +288,12 @@ export class BillingCycleService {
             throw new Error(`Failed to get upcoming renewals: ${error.message}`)
           }
 
-          return (data as unknown as BillingProfileWithPackage[]) || []
+          if (!data) return [];
+    
+    return data.map((row: any) => ({
+      ...row,
+      package: row.package
+    })) as BillingProfileWithPackage[];
         }
       )
 
@@ -365,7 +370,7 @@ export class BillingCycleService {
             throw new Error(`Failed to get expired subscriptions: ${error.message}`)
           }
 
-          return (data as unknown as BillingProfileWithPackage[]) || []
+          return (data as BillingProfileWithPackage[]) || []
         }
       )
 
@@ -392,7 +397,7 @@ export class BillingCycleService {
 
     } catch (error) {
       console.error('Error getting expired subscriptions:', error)
-      return []
+      throw error
     }
   }
 
@@ -492,7 +497,7 @@ export class BillingCycleService {
 
     } catch (error) {
       console.error('Error suspending expired subscriptions:', error)
-      return 0
+      throw error
     }
   }
 }
