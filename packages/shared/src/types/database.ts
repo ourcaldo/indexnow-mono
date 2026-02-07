@@ -1,5 +1,38 @@
 import { type PostgrestError } from '@supabase/supabase-js'
-import type { EnrichmentJobConfig, JobResult } from './business/EnrichmentJobTypes'
+
+// Inline types for enrichment jobs (used in indb_enrichment_jobs table)
+export interface EnrichmentJobConfig {
+    batchSize: number
+    maxRetries: number
+    retryDelayMs: number
+    timeoutMs: number
+    priority: number
+    preserveOrder: boolean
+    enableRateLimiting: boolean
+    quotaThreshold: number
+    notifyOnCompletion: boolean
+}
+
+export interface JobResult {
+    jobId: string
+    status: string
+    results: unknown[]
+    summary: {
+        totalKeywords: number
+        successfulEnrichments: number
+        failedEnrichments: number
+        skippedKeywords: number
+        cacheHits: number
+        apiCallsMade: number
+        quotaUsed: number
+        processingTime: number
+        averageTimePerKeyword: number
+    }
+    startedAt: Date
+    completedAt?: Date
+    error?: string
+    metadata?: Record<string, unknown>
+}
 
 export type { PostgrestError }
 
@@ -11,7 +44,7 @@ export type Json =
     | number
     | boolean
     | null
-    | { [key: string]: Json | undefined }
+    | { [key: string]: Json }
     | Json[]
 
 /**
@@ -104,18 +137,18 @@ export interface TransactionMetadata {
     billing_period?: string
     created_at?: string
     payment_type?: string
-    
+
     // Paddle specific
     custom_data?: Json
     items?: Json[]
-    
+
     // Processor specific
     transactionId?: string
     gatewayTransactionId?: string
     paymentStatus?: string
     mappedStatus?: string
     hasGatewayResponse?: boolean
-    
+
     [key: string]: Json | undefined
 }
 
@@ -293,6 +326,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_keyword_bank: {
                 Row: {
@@ -343,6 +377,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_keyword_domains: {
                 Row: {
@@ -378,47 +413,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
-            }
-            indb_keyword_keywords: {
-                Row: {
-                    id: string
-                    user_id: string
-                    domain_id: string
-                    keyword: string
-                    device_type: 'desktop' | 'mobile'
-                    country_id: string
-                    tags: string[]
-                    is_active: boolean
-                    last_check_date: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    user_id: string
-                    domain_id: string
-                    keyword: string
-                    device_type?: 'desktop' | 'mobile'
-                    country_id: string
-                    tags?: string[]
-                    is_active?: boolean
-                    last_check_date?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    domain_id?: string
-                    keyword?: string
-                    device_type?: 'desktop' | 'mobile'
-                    country_id?: string
-                    tags?: string[]
-                    is_active?: boolean
-                    last_check_date?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
+                Relationships: never[]
             }
             indb_keyword_rankings: {
                 Row: {
@@ -429,7 +424,12 @@ export type Database = {
                     search_volume: number | null
                     difficulty_score: number | null
                     check_date: string
+                    device_type: string | null
+                    country_id: string | null
+                    tags: string[] | null
+                    metadata: Json | null
                     created_at: string
+                    updated_at: string
                 }
                 Insert: {
                     id?: string
@@ -439,7 +439,12 @@ export type Database = {
                     search_volume?: number | null
                     difficulty_score?: number | null
                     check_date?: string
+                    device_type?: string | null
+                    country_id?: string | null
+                    tags?: string[] | null
+                    metadata?: Json | null
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
                     id?: string
@@ -449,42 +454,15 @@ export type Database = {
                     search_volume?: number | null
                     difficulty_score?: number | null
                     check_date?: string
-                    created_at?: string
-                }
-            }
-            indb_keyword_usage: {
-                Row: {
-                    id: string
-                    user_id: string
-                    keywords_used: number
-                    keywords_limit: number
-                    period_start: string
-                    period_end: string
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    user_id: string
-                    keywords_used?: number
-                    keywords_limit?: number
-                    period_start?: string
-                    period_end?: string
+                    device_type?: string | null
+                    country_id?: string | null
+                    tags?: string[] | null
+                    metadata?: Json | null
                     created_at?: string
                     updated_at?: string
                 }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    keywords_used?: number
-                    keywords_limit?: number
-                    period_start?: string
-                    period_end?: string
-                    created_at?: string
-                    updated_at?: string
-                }
+                Relationships: never[]
             }
-
 
             indb_rank_keywords: {
                 Row: {
@@ -557,6 +535,7 @@ export type Database = {
                     metadata: Json
                     expires_at: string | null
                     created_at: string
+                    updated_at: string
                 }
                 Insert: {
                     id?: string
@@ -569,6 +548,7 @@ export type Database = {
                     metadata?: Json
                     expires_at?: string | null
                     created_at?: string
+                    updated_at?: string
                 }
                 Update: {
                     id?: string
@@ -581,51 +561,9 @@ export type Database = {
                     metadata?: Json
                     expires_at?: string | null
                     created_at?: string
-                }
-            }
-            indb_analytics_daily_stats: {
-                Row: {
-                    id: string
-                    user_id: string
-                    date: string
-                    total_jobs: number
-                    completed_jobs: number
-                    failed_jobs: number
-                    total_urls_submitted: number
-                    total_urls_indexed: number
-                    total_urls_failed: number
-                    quota_usage: number
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    user_id: string
-                    date: string
-                    total_jobs?: number
-                    completed_jobs?: number
-                    failed_jobs?: number
-                    total_urls_submitted?: number
-                    total_urls_indexed?: number
-                    total_urls_failed?: number
-                    quota_usage?: number
-                    created_at?: string
                     updated_at?: string
                 }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    date?: string
-                    total_jobs?: number
-                    completed_jobs?: number
-                    failed_jobs?: number
-                    total_urls_submitted?: number
-                    total_urls_indexed?: number
-                    total_urls_failed?: number
-                    quota_usage?: number
-                    created_at?: string
-                    updated_at?: string
-                }
+                Relationships: never[]
             }
             indb_site_integration: {
                 Row: {
@@ -682,6 +620,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_admin_activity_logs: {
                 Row: {
@@ -714,7 +653,7 @@ export type Database = {
                     metadata?: Json | null
                     created_at?: string
                 }
-                Relationships: []
+                Relationships: never[]
             }
             indb_admin_user_summary: {
                 Row: {
@@ -750,6 +689,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_security_activity_logs: {
                 Row: {
@@ -782,7 +722,7 @@ export type Database = {
                     user_agent?: string | null
                     created_at?: string
                 }
-                Relationships: []
+                Relationships: never[]
             }
             indb_security_audit_logs: {
                 Row: {
@@ -812,6 +752,7 @@ export type Database = {
                     metadata?: Json
                     created_at?: string
                 }
+                Relationships: never[]
             }
             indb_seranking_usage_logs: {
                 Row: {
@@ -853,6 +794,7 @@ export type Database = {
                     metadata?: Json | null
                     created_at?: string
                 }
+                Relationships: never[]
             }
             indb_payment_gateways: {
                 Row: {
@@ -888,6 +830,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_payment_packages: {
                 Row: {
@@ -956,6 +899,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_payment_transactions: {
                 Row: {
@@ -1152,6 +1096,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_paddle_webhook_events: {
                 Row: {
@@ -1184,6 +1129,7 @@ export type Database = {
                     error_message?: string | null
                     created_at?: string
                 }
+                Relationships: never[]
             }
             indb_site_settings: {
                 Row: {
@@ -1252,6 +1198,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_system_error_logs: {
                 Row: {
@@ -1311,6 +1258,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_enrichment_jobs: {
                 Row: {
@@ -1343,6 +1291,7 @@ export type Database = {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: never[]
             }
             indb_seranking_metrics_raw: {
                 Row: {
@@ -1408,6 +1357,7 @@ export type Database = {
                     metadata?: Json | null
                     created_at?: string
                 }
+                Relationships: never[]
             }
             indb_seranking_metrics_aggregated: {
                 Row: {
@@ -1417,20 +1367,8 @@ export type Database = {
                     total_requests: number
                     successful_requests: number
                     failed_requests: number
-                    timeout_requests: number
-                    rate_limited_requests: number
                     average_response_time: number
-                    median_response_time: number
-                    p95_response_time: number
-                    p99_response_time: number
-                    cache_hits: number
-                    cache_misses: number
                     cache_hit_rate: number
-                    error_breakdown: Json
-                    quota_utilization_avg: number
-                    total_keywords_processed: number
-                    unique_users: number
-                    peak_rps: number
                     created_at: string
                 }
                 Insert: {
@@ -1440,20 +1378,8 @@ export type Database = {
                     total_requests?: number
                     successful_requests?: number
                     failed_requests?: number
-                    timeout_requests?: number
-                    rate_limited_requests?: number
                     average_response_time?: number
-                    median_response_time?: number
-                    p95_response_time?: number
-                    p99_response_time?: number
-                    cache_hits?: number
-                    cache_misses?: number
                     cache_hit_rate?: number
-                    error_breakdown?: Json
-                    quota_utilization_avg?: number
-                    total_keywords_processed?: number
-                    unique_users?: number
-                    peak_rps?: number
                     created_at?: string
                 }
                 Update: {
@@ -1463,66 +1389,11 @@ export type Database = {
                     total_requests?: number
                     successful_requests?: number
                     failed_requests?: number
-                    timeout_requests?: number
-                    rate_limited_requests?: number
                     average_response_time?: number
-                    median_response_time?: number
-                    p95_response_time?: number
-                    p99_response_time?: number
-                    cache_hits?: number
-                    cache_misses?: number
                     cache_hit_rate?: number
-                    error_breakdown?: Json
-                    quota_utilization_avg?: number
-                    total_keywords_processed?: number
-                    unique_users?: number
-                    peak_rps?: number
                     created_at?: string
                 }
-            }
-            indb_seranking_metrics_alerts: {
-                Row: {
-                    id: string
-                    alert_type: 'error_rate' | 'response_time' | 'cache_miss_rate' | 'quota_threshold'
-                    threshold_value: number
-                    period_minutes: number
-                    is_active: boolean
-                    escalation_level: number
-                    notification_channels: string[]
-                    last_triggered: string | null
-                    escalation_count: number
-                    created_by: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    alert_type: 'error_rate' | 'response_time' | 'cache_miss_rate' | 'quota_threshold'
-                    threshold_value: number
-                    period_minutes?: number
-                    is_active?: boolean
-                    escalation_level?: number
-                    notification_channels?: string[]
-                    last_triggered?: string | null
-                    escalation_count?: number
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    alert_type?: 'error_rate' | 'response_time' | 'cache_miss_rate' | 'quota_threshold'
-                    threshold_value?: number
-                    period_minutes?: number
-                    is_active?: boolean
-                    escalation_level?: number
-                    notification_channels?: string[]
-                    last_triggered?: string | null
-                    escalation_count?: number
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
+                Relationships: never[]
             }
             indb_seranking_quota_usage: {
                 Row: {
@@ -1535,10 +1406,6 @@ export type Database = {
                     quota_limit: number
                     usage_percentage: number
                     session_id: string | null
-                    endpoint: string | null
-                    country_code: string | null
-                    keywords_count: number | null
-                    cost_per_request: number | null
                     metadata: Json | null
                     created_at: string
                 }
@@ -1546,17 +1413,12 @@ export type Database = {
                     id?: string
                     timestamp?: string
                     user_id?: string | null
-                    service_account_id?: string | null
                     operation_type?: string
                     quota_consumed: number
                     quota_remaining: number
                     quota_limit: number
                     usage_percentage: number
                     session_id?: string | null
-                    endpoint?: string | null
-                    country_code?: string | null
-                    keywords_count?: number | null
-                    cost_per_request?: number | null
                     metadata?: Json | null
                     created_at?: string
                 }
@@ -1564,155 +1426,16 @@ export type Database = {
                     id?: string
                     timestamp?: string
                     user_id?: string | null
-                    service_account_id?: string | null
                     operation_type?: string
                     quota_consumed?: number
                     quota_remaining?: number
                     quota_limit?: number
                     usage_percentage?: number
                     session_id?: string | null
-                    endpoint?: string | null
-                    country_code?: string | null
-                    keywords_count?: number | null
-                    cost_per_request?: number | null
                     metadata?: Json | null
                     created_at?: string
                 }
-            }
-            indb_seranking_usage_patterns: {
-                Row: {
-                    id: string
-                    pattern_id: string
-                    pattern_type: 'hourly' | 'daily' | 'weekly' | 'seasonal' | 'burst'
-                    confidence: number
-                    description: string
-                    detected_at: string
-                    pattern_data: Json
-                    predictions: Json
-                    recommendations: Json
-                    is_active: boolean
-                    last_updated: string
-                    created_at: string
-                }
-                Insert: {
-                    id?: string
-                    pattern_id: string
-                    pattern_type: 'hourly' | 'daily' | 'weekly' | 'seasonal' | 'burst'
-                    confidence: number
-                    description: string
-                    detected_at?: string
-                    pattern_data: Json
-                    predictions: Json
-                    recommendations: Json
-                    is_active?: boolean
-                    last_updated?: string
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    pattern_id?: string
-                    pattern_type?: 'hourly' | 'daily' | 'weekly' | 'seasonal' | 'burst'
-                    confidence?: number
-                    description?: string
-                    detected_at?: string
-                    pattern_data?: Json
-                    predictions?: Json
-                    recommendations?: Json
-                    is_active?: boolean
-                    last_updated?: string
-                    created_at?: string
-                }
-            }
-            indb_seranking_quota_predictions: {
-                Row: {
-                    id: string
-                    prediction_id: string
-                    generated_at: string
-                    prediction_horizon_hours: number
-                    current_usage: number
-                    current_limit: number
-                    predicted_usage: number
-                    exhaustion_eta: string | null
-                    confidence: number
-                    risk_level: 'low' | 'medium' | 'high' | 'critical'
-                    contributing_factors: string[]
-                    recommended_actions: Json
-                    accuracy_score: number | null
-                    actual_usage: number | null
-                    created_at: string
-                }
-                Insert: {
-                    id?: string
-                    prediction_id: string
-                    generated_at?: string
-                    prediction_horizon_hours: number
-                    current_usage: number
-                    current_limit: number
-                    predicted_usage: number
-                    exhaustion_eta?: string | null
-                    confidence: number
-                    risk_level: 'low' | 'medium' | 'high' | 'critical'
-                    contributing_factors?: string[]
-                    recommended_actions: Json
-                    accuracy_score?: number | null
-                    actual_usage?: number | null
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    prediction_id?: string
-                    generated_at?: string
-                    prediction_horizon_hours?: number
-                    current_usage?: number
-                    current_limit?: number
-                    predicted_usage?: number
-                    exhaustion_eta?: string | null
-                    confidence?: number
-                    risk_level?: 'low' | 'medium' | 'high' | 'critical'
-                    contributing_factors?: string[]
-                    recommended_actions?: Json
-                    accuracy_score?: number | null
-                    actual_usage?: number | null
-                    created_at?: string
-                }
-            }
-            indb_seranking_quota_alerts: {
-                Row: {
-                    id: string
-                    alert_type: string
-                    threshold_percentage: number
-                    is_active: boolean
-                    notification_channels: string[]
-                    escalation_rules: Json
-                    last_triggered: string | null
-                    trigger_count: number
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    alert_type: string
-                    threshold_percentage: number
-                    is_active?: boolean
-                    notification_channels?: string[]
-                    escalation_rules?: Json
-                    last_triggered?: string | null
-                    trigger_count?: number
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    alert_type?: string
-                    threshold_percentage?: number
-                    is_active?: boolean
-                    notification_channels?: string[]
-                    escalation_rules?: Json
-                    last_triggered?: string | null
-                    trigger_count?: number
-                    created_at?: string
-                    updated_at?: string
-                }
+                Relationships: never[]
             }
             indb_seranking_health_checks: {
                 Row: {
@@ -1757,430 +1480,7 @@ export type Database = {
                     recommendations?: Json
                     created_at?: string
                 }
-            }
-            indb_seranking_incidents: {
-                Row: {
-                    id: string
-                    incident_id: string
-                    severity: 'low' | 'medium' | 'high' | 'critical'
-                    component: string
-                    title: string
-                    description: string
-                    status: 'open' | 'investigating' | 'resolved' | 'closed'
-                    started_at: string
-                    detected_at: string
-                    acknowledged_at: string | null
-                    resolved_at: string | null
-                    closed_at: string | null
-                    recovery_actions: string[] | null
-                    impact_description: string | null
-                    root_cause_analysis: string | null
-                    prevention_measures: string | null
-                    assigned_to: string | null
-                    created_by: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    incident_id: string
-                    severity: 'low' | 'medium' | 'high' | 'critical'
-                    component: string
-                    title: string
-                    description: string
-                    status?: 'open' | 'investigating' | 'resolved' | 'closed'
-                    started_at?: string
-                    detected_at?: string
-                    acknowledged_at?: string | null
-                    resolved_at?: string | null
-                    closed_at?: string | null
-                    recovery_actions?: string[] | null
-                    impact_description?: string | null
-                    root_cause_analysis?: string | null
-                    prevention_measures?: string | null
-                    assigned_to?: string | null
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    incident_id?: string
-                    severity?: 'low' | 'medium' | 'high' | 'critical'
-                    component?: string
-                    title?: string
-                    description?: string
-                    status?: 'open' | 'investigating' | 'resolved' | 'closed'
-                    started_at?: string
-                    detected_at?: string
-                    acknowledged_at?: string | null
-                    resolved_at?: string | null
-                    closed_at?: string | null
-                    recovery_actions?: string[] | null
-                    impact_description?: string | null
-                    root_cause_analysis?: string | null
-                    prevention_measures?: string | null
-                    assigned_to?: string | null
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
-            indb_seranking_recovery_actions: {
-                Row: {
-                    id: string
-                    action_id: string
-                    incident_id: string | null
-                    service_name: string
-                    action_type: string
-                    action_description: string
-                    execution_status: 'pending' | 'executing' | 'completed' | 'failed' | 'skipped'
-                    execution_time_ms: number | null
-                    success: boolean | null
-                    error_message: string | null
-                    impact_description: string | null
-                    follow_up_required: boolean
-                    follow_up_actions: string[] | null
-                    executed_at: string | null
-                    executed_by: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    action_id: string
-                    incident_id?: string | null
-                    service_name: string
-                    action_type: string
-                    action_description: string
-                    execution_status?: 'pending' | 'executing' | 'completed' | 'failed' | 'skipped'
-                    execution_time_ms?: number | null
-                    success?: boolean | null
-                    error_message?: string | null
-                    impact_description?: string | null
-                    follow_up_required?: boolean
-                    follow_up_actions?: string[] | null
-                    executed_at?: string | null
-                    executed_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    action_id?: string
-                    incident_id?: string | null
-                    service_name?: string
-                    action_type?: string
-                    action_description?: string
-                    execution_status?: 'pending' | 'executing' | 'completed' | 'failed' | 'skipped'
-                    execution_time_ms?: number | null
-                    success?: boolean | null
-                    error_message?: string | null
-                    impact_description?: string | null
-                    follow_up_required?: boolean
-                    follow_up_actions?: string[] | null
-                    executed_at?: string | null
-                    executed_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
-            indb_seranking_performance_analysis: {
-                Row: {
-                    id: string
-                    analysis_timestamp: string
-                    component: string
-                    bottleneck_type: 'cpu' | 'memory' | 'network' | 'database' | 'api_limit' | 'cache' | 'queue'
-                    severity_score: number
-                    impact_description: string
-                    root_cause_analysis: string | null
-                    optimization_suggestions: string[]
-                    estimated_improvement: string | null
-                    implementation_effort: 'low' | 'medium' | 'high' | null
-                    status: 'identified' | 'planned' | 'in_progress' | 'completed' | 'dismissed'
-                    resolved_at: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    analysis_timestamp?: string
-                    component: string
-                    bottleneck_type: 'cpu' | 'memory' | 'network' | 'database' | 'api_limit' | 'cache' | 'queue'
-                    severity_score: number
-                    impact_description: string
-                    root_cause_analysis?: string | null
-                    optimization_suggestions?: string[]
-                    estimated_improvement?: string | null
-                    implementation_effort?: 'low' | 'medium' | 'high' | null
-                    status?: 'identified' | 'planned' | 'in_progress' | 'completed' | 'dismissed'
-                    resolved_at?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    analysis_timestamp?: string
-                    component?: string
-                    bottleneck_type?: 'cpu' | 'memory' | 'network' | 'database' | 'api_limit' | 'cache' | 'queue'
-                    severity_score?: number
-                    impact_description?: string
-                    root_cause_analysis?: string | null
-                    optimization_suggestions?: string[]
-                    estimated_improvement?: string | null
-                    implementation_effort?: 'low' | 'medium' | 'high' | null
-                    status?: 'identified' | 'planned' | 'in_progress' | 'completed' | 'dismissed'
-                    resolved_at?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
-            indb_seranking_monitoring_config: {
-                Row: {
-                    id: string
-                    service_name: string
-                    config_key: string
-                    config_value: Json
-                    config_type: 'threshold' | 'interval' | 'notification' | 'feature_flag'
-                    description: string | null
-                    is_active: boolean
-                    created_by: string | null
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    service_name: string
-                    config_key: string
-                    config_value: Json
-                    config_type: 'threshold' | 'interval' | 'notification' | 'feature_flag'
-                    description?: string | null
-                    is_active?: boolean
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    service_name?: string
-                    config_key?: string
-                    config_value?: Json
-                    config_type?: 'threshold' | 'interval' | 'notification' | 'feature_flag'
-                    description?: string | null
-                    is_active?: boolean
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
-            indb_seranking_notifications: {
-                Row: {
-                    id: string
-                    notification_id: string
-                    type: 'alert' | 'incident' | 'recovery' | 'prediction' | 'maintenance'
-                    severity: 'info' | 'warning' | 'error' | 'critical'
-                    service_name: string | null
-                    title: string
-                    message: string
-                    channels_sent: string[]
-                    recipients: string[]
-                    delivery_status: 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced'
-                    metadata: Json | null
-                    related_incident_id: string | null
-                    sent_at: string | null
-                    delivered_at: string | null
-                    created_at: string
-                }
-                Insert: {
-                    id?: string
-                    notification_id: string
-                    type: 'alert' | 'incident' | 'recovery' | 'prediction' | 'maintenance'
-                    severity: 'info' | 'warning' | 'error' | 'critical'
-                    service_name?: string | null
-                    title: string
-                    message: string
-                    channels_sent?: string[]
-                    recipients?: string[]
-                    delivery_status?: 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced'
-                    metadata?: Json | null
-                    related_incident_id?: string | null
-                    sent_at?: string | null
-                    delivered_at?: string | null
-                    created_at?: string
-                }
-                Update: {
-                    id?: string
-                    notification_id?: string
-                    type?: 'alert' | 'incident' | 'recovery' | 'prediction' | 'maintenance'
-                    severity?: 'info' | 'warning' | 'error' | 'critical'
-                    service_name?: string | null
-                    title?: string
-                    message?: string
-                    channels_sent?: string[]
-                    recipients?: string[]
-                    delivery_status?: 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced'
-                    metadata?: Json | null
-                    related_incident_id?: string | null
-                    sent_at?: string | null
-                    delivered_at?: string | null
-                    created_at?: string
-                }
-            }
-            indb_keyword_rank_history: {
-                Row: {
-                    id: string
-                    keyword_id: string
-                    position: number | null
-                    url: string | null
-                    search_volume: number | null
-                    difficulty_score: number | null
-                    checked_at: string
-                    created_at: string
-                    updated_at: string
-                    device_type: string | null
-                    country_id: string | null
-                    tags: string[] | null
-                    metadata: Json | null
-                }
-                Insert: {
-                    id?: string
-                    keyword_id: string
-                    position?: number | null
-                    url?: string | null
-                    search_volume?: number | null
-                    difficulty_score?: number | null
-                    checked_at: string
-                    created_at?: string
-                    updated_at?: string
-                    device_type?: string | null
-                    country_id?: string | null
-                    tags?: string[] | null
-                    metadata?: Json | null
-                }
-                Update: {
-                    id?: string
-                    keyword_id?: string
-                    position?: number | null
-                    url?: string | null
-                    search_volume?: number | null
-                    difficulty_score?: number | null
-                    checked_at?: string
-                    created_at?: string
-                    updated_at?: string
-                    device_type?: string | null
-                    country_id?: string | null
-                    tags?: string[] | null
-                    metadata?: Json | null
-                }
-            }
-            indb_payment_invoices: {
-                Row: {
-                    id: string
-                    user_id: string
-                    subscription_id: string | null
-                    transaction_id: string | null
-                    invoice_number: string
-                    invoice_status: string
-                    subtotal: number
-                    tax_amount: number
-                    discount_amount: number
-                    total_amount: number
-                    currency: string
-                    due_date: string | null
-                    paid_at: string | null
-                    invoice_data: Json
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    user_id: string
-                    subscription_id?: string | null
-                    transaction_id?: string | null
-                    invoice_number: string
-                    invoice_status?: string
-                    subtotal: number
-                    tax_amount?: number
-                    discount_amount?: number
-                    total_amount: number
-                    currency?: string
-                    due_date?: string | null
-                    paid_at?: string | null
-                    invoice_data: Json
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    subscription_id?: string | null
-                    transaction_id?: string | null
-                    invoice_number?: string
-                    invoice_status?: string
-                    subtotal?: number
-                    tax_amount?: number
-                    discount_amount?: number
-                    total_amount?: number
-                    currency?: string
-                    due_date?: string | null
-                    paid_at?: string | null
-                    invoice_data?: Json
-                    created_at?: string
-                    updated_at?: string
-                }
-            }
-            indb_payment_midtrans: {
-                Row: {
-                    id: string
-                    transaction_id: string
-                    user_id: string
-                    midtrans_subscription_id: string | null
-                    saved_token_id: string
-                    masked_card: string | null
-                    card_type: string | null
-                    bank: string | null
-                    token_expired_at: string | null
-                    subscription_status: string | null
-                    next_billing_date: string | null
-                    metadata: Json | null
-                    created_at: string
-                    updated_at: string
-                    trial_metadata: Json | null
-                }
-                Insert: {
-                    id?: string
-                    transaction_id: string
-                    user_id: string
-                    midtrans_subscription_id?: string | null
-                    saved_token_id: string
-                    masked_card?: string | null
-                    card_type?: string | null
-                    bank?: string | null
-                    token_expired_at?: string | null
-                    subscription_status?: string | null
-                    next_billing_date?: string | null
-                    metadata?: Json | null
-                    created_at?: string
-                    updated_at?: string
-                    trial_metadata?: Json | null
-                }
-                Update: {
-                    id?: string
-                    transaction_id?: string
-                    user_id?: string
-                    midtrans_subscription_id?: string | null
-                    saved_token_id?: string
-                    masked_card?: string | null
-                    card_type?: string | null
-                    bank?: string | null
-                    token_expired_at?: string | null
-                    subscription_status?: string | null
-                    next_billing_date?: string | null
-                    metadata?: Json | null
-                    created_at?: string
-                    updated_at?: string
-                    trial_metadata?: Json | null
-                }
+                Relationships: never[]
             }
             indb_payment_transactions_history: {
                 Row: {
@@ -2234,6 +1534,7 @@ export type Database = {
                     user_agent?: string | null
                     created_at?: string
                 }
+                Relationships: never[]
             }
             "auth.users": {
                 Row: {
@@ -2251,6 +1552,7 @@ export type Database = {
                     email?: string | null
                     created_at?: string | null
                 }
+                Relationships: never[]
             }
         }
         Views: {
@@ -2296,12 +1598,10 @@ export type UserProfile = Database['public']['Tables']['indb_auth_user_profiles'
 export type UserSettings = Database['public']['Tables']['indb_auth_user_settings']['Row']
 
 export type DashboardNotification = Database['public']['Tables']['indb_notifications_dashboard']['Row']
-export type DailyStats = Database['public']['Tables']['indb_analytics_daily_stats']['Row']
 export type KeywordCountry = Database['public']['Tables']['indb_keyword_countries']['Row']
 export type KeywordDomain = Database['public']['Tables']['indb_keyword_domains']['Row']
-export type KeywordKeyword = Database['public']['Tables']['indb_keyword_keywords']['Row']
+export type KeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Row'] // DEPRECATED: use RankKeywordRow
 export type KeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Row']
-export type KeywordUsage = Database['public']['Tables']['indb_keyword_usage']['Row']
 export type RankKeywordRow = Database['public']['Tables']['indb_rank_keywords']['Row']
 export type SiteIntegration = Database['public']['Tables']['indb_site_integration']['Row']
 export type SeRankingIntegration = Database['public']['Tables']['indb_site_integration']['Row']
@@ -2325,9 +1625,8 @@ export type InsertUserSettings = Database['public']['Tables']['indb_auth_user_se
 export type InsertDashboardNotification = Database['public']['Tables']['indb_notifications_dashboard']['Insert']
 export type InsertKeywordCountry = Database['public']['Tables']['indb_keyword_countries']['Insert']
 export type InsertKeywordDomain = Database['public']['Tables']['indb_keyword_domains']['Insert']
-export type InsertKeywordKeyword = Database['public']['Tables']['indb_keyword_keywords']['Insert']
+export type InsertKeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Insert'] // DEPRECATED: use InsertRankKeyword
 export type InsertKeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Insert']
-export type InsertKeywordUsage = Database['public']['Tables']['indb_keyword_usage']['Insert']
 export type InsertSiteIntegration = Database['public']['Tables']['indb_site_integration']['Insert']
 export type InsertSeRankingIntegration = Database['public']['Tables']['indb_site_integration']['Insert']
 export type InsertSeRankingUsageLog = Database['public']['Tables']['indb_seranking_usage_logs']['Insert']
@@ -2343,9 +1642,8 @@ export type UpdateUserProfile = Database['public']['Tables']['indb_auth_user_pro
 export type UpdateUserSettings = Database['public']['Tables']['indb_auth_user_settings']['Update']
 
 export type UpdateKeywordDomain = Database['public']['Tables']['indb_keyword_domains']['Update']
-export type UpdateKeywordKeyword = Database['public']['Tables']['indb_keyword_keywords']['Update']
+export type UpdateKeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Update'] // DEPRECATED: use UpdateRankKeyword
 export type UpdateKeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Update']
-export type UpdateKeywordUsage = Database['public']['Tables']['indb_keyword_usage']['Update']
 export type UpdateSiteIntegration = Database['public']['Tables']['indb_site_integration']['Update']
 export type UpdateSeRankingIntegration = Database['public']['Tables']['indb_site_integration']['Update']
 export type UpdateSeRankingUsageLog = Database['public']['Tables']['indb_seranking_usage_logs']['Update']

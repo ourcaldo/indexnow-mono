@@ -43,13 +43,13 @@ export class PaymentServiceFactory {
         {
           table: 'indb_payment_gateways',
           operationType: 'select',
-          columns: ['*'],
+          columns: ['id', 'name', 'slug', 'is_active', 'is_default', 'api_credentials', 'configuration', 'created_at', 'updated_at'],
           whereConditions: { is_active: true }
         },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_payment_gateways')
-            .select('*')
+            .select('id, name, slug, is_active, is_default, api_credentials, configuration, created_at, updated_at')
             .eq('is_active', true)
 
           if (error) {
@@ -76,12 +76,12 @@ export class PaymentServiceFactory {
   private static async registerGateway(processor: PaymentProcessor, config: PaymentGatewayRow): Promise<void> {
     try {
       const gatewaySlug = config.slug.toLowerCase()
-      
+
       switch (gatewaySlug) {
         case 'paddle':
           await this.initializePaddleGateway()
           break
-          
+
         default:
           console.warn(`Unknown payment gateway: ${config.slug}`)
       }
@@ -97,14 +97,14 @@ export class PaymentServiceFactory {
     try {
       // Verify Paddle is configured
       const isConfigured = await PaddleService.isConfigured()
-      
+
       if (!isConfigured) {
         throw new Error('Paddle gateway is not properly configured')
       }
 
       // Initialize Paddle SDK instance
       await PaddleService.getInstance()
-      
+
       console.log('✅ Paddle payment gateway initialized successfully')
     } catch (error) {
       console.error('❌ Failed to initialize Paddle gateway:', error)

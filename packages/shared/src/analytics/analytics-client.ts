@@ -1,4 +1,3 @@
-import { type Json } from '../types/common/Json';
 import Analytics from 'analytics';
 import googleAnalytics from '@analytics/google-analytics';
 import googleTagManager from '@analytics/google-tag-manager';
@@ -7,8 +6,8 @@ import { getAnalyticsConfig } from './config';
 
 export function createAnalyticsClient() {
   const config = getAnalyticsConfig();
-  const plugins: Array<Record<string, Json | Function | undefined>> = []; 
-  
+  const plugins = [];
+
   if (config.ga4.enabled && config.ga4.measurementId) {
     plugins.push(
       googleAnalytics({

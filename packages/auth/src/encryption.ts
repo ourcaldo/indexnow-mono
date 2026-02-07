@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { AppConfig } from '@indexnow/shared';
 
 /**
  * Simple encryption utility for securing sensitive data
@@ -7,11 +8,11 @@ import crypto from 'crypto';
 export class EncryptionService {
   private static readonly ALGORITHM = 'aes-256-cbc';
   private static readonly IV_LENGTH = 16;
-  
+
   private static getEncryptionKey(): Buffer {
-    const key = process.env.ENCRYPTION_KEY;
+    const key = AppConfig.security.encryptionKey;
     if (!key) {
-      throw new Error('ENCRYPTION_KEY environment variable is required');
+      throw new Error('ENCRYPTION_KEY must be configured in AppConfig.security.encryptionKey');
     }
     if (key.length !== 32) {
       throw new Error('ENCRYPTION_KEY must be exactly 32 characters long');
@@ -28,14 +29,15 @@ export class EncryptionService {
       const key = this.getEncryptionKey();
       const iv = crypto.randomBytes(this.IV_LENGTH);
       const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
-      
+
       let encrypted = cipher.update(text, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
+
       return iv.toString('hex') + ':' + encrypted;
     } catch (error) {
-      console.error('Encryption error:', error);
-      throw new Error('Failed to encrypt data');
+      // Re-throw with context but don't log - caller handles error
+      const errorMessage = error instanceof Error ? error.message : 'Unknown encryption error';
+      throw new Error(`Failed to encrypt data: ${errorMessage}`);
     }
   }
 
@@ -47,18 +49,18 @@ export class EncryptionService {
     try {
       const key = this.getEncryptionKey();
       const parts = encryptedText.split(':');
-      
+
       if (parts.length !== 2) {
         throw new Error('Invalid encrypted data format - expected IV:EncryptedData');
       }
-      
+
       const iv = Buffer.from(parts[0], 'hex');
       const encryptedData = parts[1];
-      
+
       const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
       let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
-      
+
       return decrypted;
     } catch (error) {
       throw new Error('Failed to decrypt data');

@@ -9,7 +9,7 @@ import { Database, Json } from '@indexnow/shared';
 export interface KeywordBankEntity {
   id: string;
   keyword: string;
-  country_code: string; // Renamed from country_id to match schema
+  country_id: string; // UUID FK to indb_keyword_countries
   language_code: string;
   is_data_found: boolean;
   volume: number | null;
@@ -26,7 +26,7 @@ export interface KeywordBankEntity {
 // Insert/Update Types
 export interface KeywordBankInsert {
   keyword: string;
-  country_code: string;
+  country_id: string;
   language_code?: string;
   is_data_found: boolean;
   volume?: number | null;
@@ -49,14 +49,14 @@ export interface KeywordBankUpdate {
   updated_at?: string;
 }
 
-// Enhanced Keyword Entity (from indb_keyword_keywords with intelligence)
+// Enhanced Keyword Entity (from indb_rank_keywords with intelligence)
 export interface EnhancedKeywordEntity {
   id: string;
   user_id: string;
   domain_id: string;
   keyword: string;
   device_type: string;
-  country_code: string;
+  country_id: string;
   tags: string[];
   is_active: boolean;
   created_at: string;
@@ -76,7 +76,7 @@ export interface EnhancedKeywordEntity {
 // Search and Query Types
 export interface KeywordBankQuery {
   keyword?: string;
-  country_code?: string;
+  country_id?: string;
   language_code?: string;
   is_data_found?: boolean;
   min_volume?: number;
@@ -120,7 +120,7 @@ export interface BulkKeywordBankOperationResult {
   failed: number;
   errors?: Array<{
     keyword: string;
-    country_code: string;
+    country_id: string;
     error: string;
   }>;
 }
@@ -128,7 +128,7 @@ export interface BulkKeywordBankOperationResult {
 // Cache Management Types
 export interface KeywordCacheEntry {
   keyword: string;
-  country_code: string;
+  country_id: string;
   data: KeywordBankEntity;
   cached_at: string;
   expires_at: string;
@@ -194,7 +194,7 @@ export interface KeywordBankAnalytics {
   top_volume_keywords: Array<{
     keyword: string;
     volume: number;
-    country_code: string;
+    country_id: string;
   }>;
   intent_distribution: Record<string, number>;
   country_distribution: Record<string, number>;

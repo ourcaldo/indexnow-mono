@@ -42,12 +42,12 @@ export async function createStandardError(
  */
 export function adminApiWrapper<T = unknown>(
   handler: (
-    request: NextRequest, 
-    adminUser: AdminUser, 
-    context?: { params: Promise<any> }
+    request: NextRequest,
+    adminUser: AdminUser,
+    context?: { params: Promise<Record<string, string>> }
   ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
-  return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
     const method = request.method;
 
@@ -61,10 +61,10 @@ export function adminApiWrapper<T = unknown>(
         // We catch it here to allow the custom unauthorized handling below.
         adminUser = null;
       }
-      
+
       if (!adminUser) {
         const { ipAddress, userAgent } = AdminSecurityLogger.extractRequestMetadata(request);
-        
+
         await AdminSecurityLogger.logUnauthorizedAccess({
           eventType: 'unauthorized_access',
           endpoint,
@@ -75,7 +75,7 @@ export function adminApiWrapper<T = unknown>(
           requiredRole: 'super_admin',
           severity: 'high'
         });
-        
+
         const error = await ErrorHandlingService.createError(
           ErrorType.AUTHORIZATION,
           'Super admin access required',
@@ -87,7 +87,7 @@ export function adminApiWrapper<T = unknown>(
             userMessageKey: 'default'
           }
         );
-        
+
         return NextResponse.json(formatError(error), { status: 403 });
       }
 
@@ -99,7 +99,7 @@ export function adminApiWrapper<T = unknown>(
       }, `Admin API access: ${method} ${endpoint}`);
 
       const response = await handler(request, adminUser, context);
-      
+
       if (response instanceof NextResponse) {
         return response;
       }
@@ -124,7 +124,7 @@ export function adminApiWrapper<T = unknown>(
           userMessageKey: 'default'
         }
       );
-      
+
       return NextResponse.json(formatError(structuredError), { status: 500 });
     }
   };
@@ -135,18 +135,18 @@ export function adminApiWrapper<T = unknown>(
  */
 export function authenticatedApiWrapper<T = unknown>(
   handler: (
-    request: NextRequest, 
-    auth: AuthenticatedRequest, 
-    context?: { params: Promise<any> }
+    request: NextRequest,
+    auth: AuthenticatedRequest,
+    context?: { params: Promise<Record<string, string>> }
   ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
-  return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
     const method = request.method;
 
     try {
       const authResult = await authenticateRequest(request, endpoint, method);
-      
+
       if (!authResult.success) {
         return NextResponse.json(formatError(authResult.error as StructuredError), { status: (authResult.error as StructuredError).statusCode || 401 });
       }
@@ -159,7 +159,7 @@ export function authenticatedApiWrapper<T = unknown>(
       }, `Authenticated API access: ${method} ${endpoint}`);
 
       const response = await handler(request, authResult.data, context);
-      
+
       if (response instanceof NextResponse) {
         return response;
       }
@@ -184,7 +184,7 @@ export function authenticatedApiWrapper<T = unknown>(
           userMessageKey: 'default'
         }
       );
-      
+
       return NextResponse.json(formatError(structuredError), { status: 500 });
     }
   };
@@ -194,9 +194,9 @@ export function authenticatedApiWrapper<T = unknown>(
  * Public API wrapper - No authentication required
  */
 export function publicApiWrapper<T = unknown>(
-  handler: (request: NextRequest, context?: { params: Promise<any> }) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
+  handler: (request: NextRequest, context?: { params: Promise<Record<string, string>> }) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
-  return async (request: NextRequest, context?: { params: Promise<any> }): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
     const method = request.method;
 
@@ -208,7 +208,7 @@ export function publicApiWrapper<T = unknown>(
       }, `Public API access: ${method} ${endpoint}`);
 
       const response = await handler(request, context);
-      
+
       if (response instanceof NextResponse) {
         return response;
       }
@@ -233,7 +233,7 @@ export function publicApiWrapper<T = unknown>(
           userMessageKey: 'default'
         }
       );
-      
+
       return NextResponse.json(formatError(structuredError), { status: 500 });
     }
   };

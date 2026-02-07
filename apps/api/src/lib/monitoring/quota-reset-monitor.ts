@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@indexnow/database'
 import { SecureServiceRoleWrapper } from '@indexnow/database'
+import { logger } from './error-handling'
 import cron from 'node-cron'
 
 /**
@@ -21,7 +22,7 @@ export class QuotaResetMonitor {
 
   start() {
     if (this.isStarted) {
-      console.log('📊 Quota reset monitor already running')
+      logger.info('📊 Quota reset monitor already running')
       return
     }
 
@@ -36,8 +37,8 @@ export class QuotaResetMonitor {
     // Also run a more frequent check every 15 minutes during reset hours
     cron.schedule('*/15 * * * *', async () => {
       const now = new Date()
-      const pacificHour = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"})).getHours()
-      
+      const pacificHour = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })).getHours()
+
       // Check more frequently around midnight Pacific (23:30 to 00:30)
       if (pacificHour === 23 || pacificHour === 0) {
         await this.checkAndResumeJobs()
@@ -45,7 +46,7 @@ export class QuotaResetMonitor {
     })
 
     this.isStarted = true
-    console.log('🕐 Quota reset monitor started - checking for quota resets and resuming paused jobs')
+    logger.info('🕐 Quota reset monitor started - checking for quota resets and resuming paused jobs')
   }
 
   async checkAndReactivateAccounts(): Promise<void> {
@@ -54,7 +55,7 @@ export class QuotaResetMonitor {
 
   private async checkAndResumeJobs() {
     try {
-      console.log('🔄 Checking for quota resets and paused jobs to resume...')
+      logger.info('🔄 Checking for quota resets and paused jobs to resume...')
 
       // 1. Check and reactivate service accounts that may have quota reset
       await this.reactivateServiceAccounts()
@@ -66,7 +67,7 @@ export class QuotaResetMonitor {
       await this.cleanupOldNotifications()
 
     } catch (error) {
-      console.error('Error in quota reset monitor:', error)
+      logger.error({ error }, 'Error in quota reset monitor')
     }
   }
 
@@ -91,7 +92,7 @@ export class QuotaResetMonitor {
             .eq('is_active', false)
 
           if (error) {
-            console.error('Error fetching inactive service accounts:', error)
+            logger.error({ error }, 'Error fetching inactive service accounts')
             throw error
           }
 
@@ -99,13 +100,13 @@ export class QuotaResetMonitor {
             return
           }
 
-          console.log(`🔄 Found ${inactiveAccounts.length} inactive service accounts to potentially reactivate`)
+          logger.info({ count: inactiveAccounts.length }, '🔄 Found inactive service accounts to potentially reactivate')
 
           // For each service account, check if we should reactivate it
           for (const account of inactiveAccounts) {
             // Check if there's quota usage from today (indicating quota reset)
             const today = new Date().toISOString().split('T')[0]
-            
+
             const { data: todayUsage } = await supabaseAdmin
               .from('indb_google_quota_usage')
               .select('requests_made')
@@ -115,7 +116,7 @@ export class QuotaResetMonitor {
 
             // If no usage today OR usage is very low, assume quota has reset
             const todayRequests = todayUsage?.requests_made || 0
-            
+
             if (todayRequests < 10) { // Quota likely reset if less than 10 requests used today
               await supabaseAdmin
                 .from('indb_google_service_accounts')
@@ -125,14 +126,14 @@ export class QuotaResetMonitor {
                 })
                 .eq('id', account.id)
 
-              console.log(`✅ Reactivated service account: ${account.name} (${account.email})`)
+              logger.info({ name: account.name, email: account.email }, '✅ Reactivated service account')
             }
           }
         }
       )
 
     } catch (error) {
-      console.error('Error reactivating service accounts:', error)
+      logger.error({ error }, 'Error reactivating service accounts')
     }
   }
 
@@ -158,7 +159,7 @@ export class QuotaResetMonitor {
             .ilike('error_message', '%quota exhausted%')
 
           if (error) {
-            console.error('Error fetching paused jobs:', error)
+            logger.error({ error }, 'Error fetching paused jobs')
             throw error
           }
 
@@ -166,7 +167,7 @@ export class QuotaResetMonitor {
             return
           }
 
-          console.log(`🔄 Found ${pausedJobs.length} paused jobs to potentially resume`)
+          logger.info({ count: pausedJobs.length }, '🔄 Found paused jobs to potentially resume')
 
           for (const job of pausedJobs) {
             // Check if user has active service accounts
@@ -187,14 +188,14 @@ export class QuotaResetMonitor {
                 })
                 .eq('id', job.id)
 
-              console.log(`▶️ Resumed job: ${job.name} (${job.id}) - service accounts reactivated`)
+              logger.info({ name: job.name, id: job.id }, '▶️ Resumed job - service accounts reactivated')
             }
           }
         }
       )
 
     } catch (error) {
-      console.error('Error resuming paused jobs:', error)
+      logger.error({ error }, 'Error resuming paused jobs')
     }
   }
 
@@ -222,17 +223,17 @@ export class QuotaResetMonitor {
             .eq('type', 'service_account_quota_exhausted')
             .lt('created_at', yesterday)
 
-          console.log('🧹 Cleaned up old quota exhausted notifications')
+          logger.info('🧹 Cleaned up old quota exhausted notifications')
         }
       )
 
     } catch (error) {
-      console.error('Error cleaning up notifications:', error)
+      logger.error({ error }, 'Error cleaning up notifications')
     }
   }
 
   stop() {
     this.isStarted = false
-    console.log('📊 Quota reset monitor stopped')
+    logger.info('📊 Quota reset monitor stopped')
   }
 }

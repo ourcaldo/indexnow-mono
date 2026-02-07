@@ -4,6 +4,7 @@
 
 import { UserRole } from '../../constants/AppConstants';
 import { type Json } from '../common/Json';
+import { type Package } from '../business/PaymentTypes';
 
 // Core user types - defining them here as the authoritative source
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'banned';

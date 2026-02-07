@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { 
+import {
   CreditCard,
   Plus,
   Edit3,
@@ -11,11 +11,11 @@ import {
   Save,
   X
 } from 'lucide-react'
-import { 
-  ADMIN_ENDPOINTS, 
-  PaymentGatewayRow, 
-  PaymentGatewayConfiguration, 
-  PaymentGatewayCredentials 
+import {
+  ADMIN_ENDPOINTS,
+  PaymentGatewayRow,
+  PaymentGatewayConfiguration,
+  PaymentGatewayCredentials
 } from '@indexnow/shared'
 import { ConfirmationDialog } from '@indexnow/ui'
 
@@ -42,7 +42,7 @@ export default function PaymentGateways() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   })
 
   useEffect(() => {
@@ -73,12 +73,12 @@ export default function PaymentGateways() {
 
   const handleSave = async (gateway: Partial<UI_PaymentGateway>) => {
     try {
-      const url = gateway.id 
+      const url = gateway.id
         ? ADMIN_ENDPOINTS.PAYMENT_GATEWAY_BY_ID(gateway.id)
         : ADMIN_ENDPOINTS.PAYMENT_GATEWAYS
-      
+
       const method = gateway.id ? 'PATCH' : 'POST'
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -168,7 +168,7 @@ export default function PaymentGateways() {
     }
 
     const updateConfigurationField = <K extends keyof PaymentGatewayConfiguration>(
-      field: K, 
+      field: K,
       value: PaymentGatewayConfiguration[K]
     ) => {
       setFormData(prev => ({
@@ -181,7 +181,7 @@ export default function PaymentGateways() {
     }
 
     const updateCredentialsField = <K extends keyof PaymentGatewayCredentials>(
-      field: K, 
+      field: K,
       value: PaymentGatewayCredentials[K]
     ) => {
       setFormData(prev => ({
@@ -246,7 +246,7 @@ export default function PaymentGateways() {
                 <label className="block text-sm font-medium text-foreground mb-2">Vendor ID</label>
                 <input
                   type="text"
-                  value={formData.configuration?.vendor_id || ''}
+                  value={String(formData.configuration?.vendor_id || '')}
                   onChange={(e) => updateConfigurationField('vendor_id', e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   placeholder="12345"
@@ -302,7 +302,7 @@ export default function PaymentGateways() {
                 <label className="block text-sm font-medium text-foreground mb-2">Webhook URL</label>
                 <input
                   type="url"
-                  value={formData.configuration?.webhook_url || ''}
+                  value={String(formData.configuration?.webhook_url || '')}
                   onChange={(e) => updateConfigurationField('webhook_url', e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   placeholder="https://yourdomain.com/api/paddle/webhook"
@@ -384,11 +384,10 @@ export default function PaymentGateways() {
 
       {/* Message */}
       {message && (
-        <div className={`flex items-center space-x-2 p-4 rounded-lg border ${
-          message.type === 'success' 
-            ? 'bg-success/10 text-success border-success/20' 
+        <div className={`flex items-center space-x-2 p-4 rounded-lg border ${message.type === 'success'
+            ? 'bg-success/10 text-success border-success/20'
             : 'bg-destructive/10 text-destructive border-destructive/20'
-        }`}>
+          }`}>
           {message.type === 'success' ? (
             <CheckCircle className="h-5 w-5" />
           ) : (
@@ -432,11 +431,10 @@ export default function PaymentGateways() {
                             Default
                           </span>
                         )}
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
-                          gateway.is_active 
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full border ${gateway.is_active
                             ? 'bg-success/10 text-success border-success/20'
                             : 'bg-muted/10 text-muted-foreground border-muted/20'
-                        }`}>
+                          }`}>
                           {gateway.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
@@ -484,13 +482,13 @@ export default function PaymentGateways() {
           </button>
         </div>
       )}
-      
+
       <ConfirmationDialog
         isOpen={confirmConfig.isOpen}
         title={confirmConfig.title}
         message={confirmConfig.message}
         onConfirm={confirmConfig.onConfirm}
-        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
         confirmText={confirmConfig.confirmText}
         variant={confirmConfig.variant}
       />

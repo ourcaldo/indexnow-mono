@@ -81,7 +81,7 @@ export class EnrichmentQueue extends EventEmitter {
       jobsFailed: 0,
       totalProcessingTime: 0
     };
-    
+
     this.initialize();
   }
 
@@ -94,11 +94,11 @@ export class EnrichmentQueue extends EventEmitter {
       this.startCleanupTimer();
       this.startHeartbeatTimer();
       this.isRunning = true;
-      
+
       if (this.config.enableEvents) {
         this.emit('queue:initialized');
       }
-      
+
       logger.info({}, 'EnrichmentQueue initialized successfully');
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to initialize EnrichmentQueue');
@@ -212,7 +212,7 @@ export class EnrichmentQueue extends EventEmitter {
       }
 
       this.metrics.jobsEnqueued++;
-      
+
       // Emit event
       if (this.config.enableEvents) {
         this.emitJobEvent(JobEventType.JOB_CREATED, jobId, userId);
@@ -245,7 +245,7 @@ export class EnrichmentQueue extends EventEmitter {
     batchRequest: BatchEnqueueRequest
   ): Promise<CreateJobResponse[]> {
     const results: CreateJobResponse[] = [];
-    
+
     try {
       // Process jobs in transaction-like manner
       for (const jobRequest of batchRequest.jobs) {
@@ -253,18 +253,18 @@ export class EnrichmentQueue extends EventEmitter {
           ...batchRequest.globalConfig,
           ...jobRequest.config
         };
-        
+
         const result = await this.enqueueJob(userId, {
           ...jobRequest,
           config: mergedConfig
         });
-        
+
         results.push(result);
       }
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in batch enqueue');
     }
-    
+
     return results;
   }
 
@@ -291,7 +291,7 @@ export class EnrichmentQueue extends EventEmitter {
         async () => {
           const { data: jobs, error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .select('*')
+            .select('id, user_id, status, config, results, error_message, created_at, updated_at')
             .eq('status', EnrichmentJobStatus.QUEUED)
             .is('locked_at', null)
             .or('next_retry_at.is.null,next_retry_at.lte.' + new Date().toISOString())
@@ -312,7 +312,7 @@ export class EnrichmentQueue extends EventEmitter {
       }
 
       const jobRecord = jobs[0];
-      
+
       // Lock the job
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -352,7 +352,7 @@ export class EnrichmentQueue extends EventEmitter {
 
       // Convert to EnrichmentJob type
       const job = this.recordToJob(jobRecord as unknown as EnrichmentJobRecord);
-      
+
       // Emit event
       if (this.config.enableEvents) {
         this.emitJobEvent(JobEventType.JOB_STARTED, job.id, job.userId, { workerId });
@@ -459,8 +459,8 @@ export class EnrichmentQueue extends EventEmitter {
 
       // Emit completion event
       if (this.config.enableEvents) {
-        const eventType = status === EnrichmentJobStatus.COMPLETED 
-          ? JobEventType.JOB_COMPLETED 
+        const eventType = status === EnrichmentJobStatus.COMPLETED
+          ? JobEventType.JOB_COMPLETED
           : JobEventType.JOB_FAILED;
         this.emitJobEvent(eventType, jobId, undefined, { result });
       }
@@ -517,10 +517,10 @@ export class EnrichmentQueue extends EventEmitter {
 
         // Emit retry event
         if (this.config.enableEvents) {
-          this.emitJobEvent(JobEventType.JOB_RETRYING, jobId, undefined, { 
-            retryCount, 
+          this.emitJobEvent(JobEventType.JOB_RETRYING, jobId, undefined, {
+            retryCount,
             nextRetryAt,
-            error 
+            error
           });
         }
       } else {
@@ -592,7 +592,7 @@ export class EnrichmentQueue extends EventEmitter {
       }
 
       const success = (count || 0) > 0;
-      
+
       if (success && this.config.enableEvents) {
         this.emitJobEvent(JobEventType.JOB_CANCELLED, jobId, userId);
       }
@@ -618,7 +618,7 @@ export class EnrichmentQueue extends EventEmitter {
     try {
       let query = supabaseAdmin
         .from('indb_enrichment_jobs')
-        .select('*')
+        .select('id, user_id, status, config, results, error_message, created_at, updated_at')
         .eq('id', jobId);
 
       if (userId) {
@@ -836,21 +836,21 @@ export class EnrichmentQueue extends EventEmitter {
    */
   private generateJobName(type: EnrichmentJobType, data: EnrichmentJobData): string {
     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-    
+
     switch (type) {
       case EnrichmentJobType.SINGLE_KEYWORD: {
         const singleData = data as { keyword: string; countryCode: string };
         return `Single: ${singleData.keyword} (${singleData.countryCode}) - ${timestamp}`;
       }
-      
+
       case EnrichmentJobType.BULK_ENRICHMENT: {
         const bulkData = data as { keywords: string[] };
         return `Bulk: ${bulkData.keywords.length} keywords - ${timestamp}`;
       }
-      
+
       case EnrichmentJobType.CACHE_REFRESH:
         return `Cache Refresh - ${timestamp}`;
-      
+
       default:
         return `Enrichment Job - ${timestamp}`;
     }
@@ -881,8 +881,8 @@ export class EnrichmentQueue extends EventEmitter {
    * Calculate estimated completion time
    */
   private calculateEstimatedCompletion(totalKeywords: number, queuePosition: number): Date {
-    const averageProcessingTime = this.metrics.jobsProcessed > 0 
-      ? this.metrics.totalProcessingTime / this.metrics.jobsProcessed 
+    const averageProcessingTime = this.metrics.jobsProcessed > 0
+      ? this.metrics.totalProcessingTime / this.metrics.jobsProcessed
       : 60000; // Default 1 minute per keyword
 
     const estimatedWaitTime = queuePosition * averageProcessingTime;
@@ -977,19 +977,19 @@ export class EnrichmentQueue extends EventEmitter {
    */
   async shutdown(): Promise<void> {
     this.isRunning = false;
-    
+
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = undefined;
     }
-    
+
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = undefined;
     }
 
     this.removeAllListeners();
-    
+
     logger.info({}, 'EnrichmentQueue shutdown completed');
   }
 }

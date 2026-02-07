@@ -31,7 +31,7 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
       async () => {
         const { data, error } = await supabaseAdmin
           .from('indb_payment_transactions')
-          .select('*')
+          .select('id, user_email, customer_name, order_id, package_name, billing_period, gross_amount')
           .eq('transaction_status', 'pending')
           .lt('created_at', twentyFourHoursAgo.toISOString())
 
@@ -106,11 +106,11 @@ export async function initializeAutoCancelWorker(): Promise<void> {
   })
 
   const queue = await queueManager.getQueue(queueName)
-  
+
   const existingJobs = await queue.getRepeatableJobs()
   const jobId = 'auto-cancel-expired-transactions'
   const existingJob = existingJobs.find(j => j.name === jobId)
-  
+
   if (existingJob) {
     logger.info({ queue: queueName, jobId }, 'Repeatable job already exists, skipping creation')
     return

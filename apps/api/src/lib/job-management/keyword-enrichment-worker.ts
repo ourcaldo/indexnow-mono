@@ -1,12 +1,11 @@
 /**
  * Simple Keyword Enrichment Background Worker
  * Checks user keywords and enriches them using SeRanking API
- * Uses existing indb_keyword_keywords and indb_keyword_bank tables
+ * Uses indb_rank_keywords and indb_keyword_bank tables
  */
 
 import * as cron from 'node-cron';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { UpdateKeywordKeyword } from '@indexnow/shared';
 import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
 import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
@@ -18,7 +17,7 @@ interface KeywordToEnrich {
   id: string;
   user_id: string;
   keyword: string;
-  country_id: string;
+  country: string;  // ISO2 code stored directly (e.g., "id", "us")
   keyword_bank_id: string | null;
   intelligence_updated_at: string | null;
 }
@@ -212,7 +211,7 @@ export class KeywordEnrichmentWorker {
 
   /**
    * Find keywords that need enrichment
-   * Simple logic: get keywords from indb_keyword_keywords where keyword_bank_id IS NULL
+   * Simple logic: get keywords from indb_rank_keywords where keyword_bank_id IS NULL
    */
   private async findKeywordsNeedingEnrichment(limit: number = 50): Promise<KeywordToEnrich[]> {
     try {
@@ -230,15 +229,15 @@ export class KeywordEnrichmentWorker {
           }
         },
         {
-          table: 'indb_keyword_keywords',
+          table: 'indb_rank_keywords',
           operationType: 'select',
-          columns: ['id', 'user_id', 'keyword', 'country_id', 'keyword_bank_id', 'intelligence_updated_at'],
+          columns: ['id', 'user_id', 'keyword', 'country', 'keyword_bank_id', 'intelligence_updated_at'],
           whereConditions: { is_active: true, keyword_bank_id: null }
         },
         async () => {
           const { data, error } = await supabaseAdmin
-            .from('indb_keyword_keywords')
-            .select('id, user_id, keyword, country_id, keyword_bank_id, intelligence_updated_at')
+            .from('indb_rank_keywords')
+            .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at')
             .eq('is_active', true)
             .is('keyword_bank_id', null)  // Simple: get keywords that don't have bank reference
             .limit(limit)
@@ -267,53 +266,20 @@ export class KeywordEnrichmentWorker {
     try {
       logger.debug({ keyword: keyword.keyword }, 'Keyword Enrichment: Enriching keyword');
 
-      // Get ISO2 code from country_id - lookup from countries table to get the actual ISO2 code
-      logger.debug({ countryId: keyword.country_id, keyword: keyword.keyword }, 'Keyword Enrichment: Looking up country');
+      // Get country code directly - indb_rank_keywords.country stores ISO2 codes directly
+      const countryCode = keyword.country;
 
-      const countryData = await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: 'system',
-          operation: 'get_country_iso_code_for_keyword_enrichment',
-          reason: 'Retrieving country ISO code for keyword enrichment API call',
-          source: 'job-management/keyword-enrichment-worker',
-          metadata: {
-            keyword_id: keyword.id,
-            keyword_text: keyword.keyword,
-            country_id: keyword.country_id,
-            operation_type: 'country_lookup'
-          }
-        },
-        {
-          table: 'indb_keyword_countries',
-          operationType: 'select',
-          columns: ['iso2_code', 'name'],
-          whereConditions: { id: keyword.country_id }
-        },
-        async () => {
-          const { data: countryData, error: countryError } = await supabaseAdmin
-            .from('indb_keyword_countries')
-            .select('iso2_code, name')
-            .eq('id', keyword.country_id)
-            .single()
-
-          if (countryError) {
-            throw new Error(`Failed to get country data: ${countryError.message}`)
-          }
-
-          return countryData
-        }
-      )
-
-      if (!countryData) {
-        logger.error({ keyword: keyword.keyword, countryId: keyword.country_id }, 'Keyword Enrichment: Could not find country');
+      if (!countryCode) {
+        logger.error({ keyword: keyword.keyword }, 'Keyword Enrichment: No country code set for keyword');
         return;
       }
 
-      logger.debug({ country: countryData.name, iso2: countryData.iso2_code, keyword: keyword.keyword }, 'Keyword Enrichment: Found country');
+      logger.debug({ country: countryCode, keyword: keyword.keyword }, 'Keyword Enrichment: Using country code');
 
       // Use lowercase ISO2 code for KeywordBankService (it expects direct ISO2 codes like "id", "us")
-      const countryCodeForBank = countryData.iso2_code.toLowerCase();
+      const countryCodeForBank = countryCode.toLowerCase();
       logger.debug({ countryCodeForBank }, 'Keyword Enrichment: Using country code');
+
 
       const result = await this.enrichmentService.enrichKeyword(
         keyword.keyword,
@@ -330,16 +296,11 @@ export class KeywordEnrichmentWorker {
       }, 'Keyword Enrichment: Enrichment result');
 
       if (result.success && result.data) {
-        // Update the keyword record with bank_id and intelligence data
-        // ALWAYS update keyword_bank_id regardless of is_data_found status
-        const updateData: UpdateKeywordKeyword = {
+        // Update the keyword record with bank_id reference only
+        // SEO data (search_volume, cpc, etc.) is stored in keyword_bank and accessed via JOIN
+        // We only need to link this keyword to the cache entry
+        const updateData = {
           keyword_bank_id: result.data.id,
-          search_volume: result.data.volume,
-          cpc: result.data.cpc,
-          competition: result.data.competition,
-          difficulty: result.data.difficulty,
-          keyword_intent: result.data.keyword_intent,
-          history_trend: result.data.history_trend,
           intelligence_updated_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -350,7 +311,7 @@ export class KeywordEnrichmentWorker {
           {
             userId: 'system',
             operation: 'update_keyword_enrichment_data',
-            reason: 'Updating keyword with enrichment data from SeRanking API',
+            reason: 'Linking keyword to enrichment data in keyword_bank',
             source: 'job-management/keyword-enrichment-worker',
             metadata: {
               keyword_id: keyword.id,
@@ -362,14 +323,14 @@ export class KeywordEnrichmentWorker {
             }
           },
           {
-            table: 'indb_keyword_keywords',
+            table: 'indb_rank_keywords',
             operationType: 'update',
             whereConditions: { id: keyword.id },
             data: updateData
           },
           async () => {
             const { error: updateError } = await supabaseAdmin
-              .from('indb_keyword_keywords')
+              .from('indb_rank_keywords')
               .update(updateData)
               .eq('id', keyword.id)
 
@@ -380,6 +341,7 @@ export class KeywordEnrichmentWorker {
             return { success: true }
           }
         )
+
 
         {
           if (result.data.is_data_found) {

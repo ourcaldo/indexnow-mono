@@ -91,7 +91,7 @@ export class IntegrationService implements IIntegrationService {
     };
 
     this.apiClient = apiClient;
-    
+
     this.metrics = {
       total_requests: 0,
       successful_requests: 0,
@@ -133,7 +133,7 @@ export class IntegrationService implements IIntegrationService {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_site_integration')
-            .select('*')
+            .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
             .eq('service_name', 'seranking_keyword_export')
             .single();
 
@@ -262,7 +262,7 @@ export class IntegrationService implements IIntegrationService {
       );
 
       this.log('info', 'Integration settings updated successfully');
-      
+
       return {
         success: true,
         data: true,
@@ -395,7 +395,7 @@ export class IntegrationService implements IIntegrationService {
                 date: today,
                 metadata
               })
-            
+
             if (logError) {
               throw new Error(`Failed to log usage details: ${logError.message}`)
             }
@@ -491,7 +491,7 @@ export class IntegrationService implements IIntegrationService {
       )
 
       this.log('info', 'Quota usage reset for SeRanking integration');
-      
+
       return {
         success: true,
         data: true,
@@ -518,7 +518,7 @@ export class IntegrationService implements IIntegrationService {
    */
   async testIntegration(): Promise<ServiceResponse<HealthCheckResult>> {
     const startTime = Date.now();
-    
+
     try {
       const settingsResult = await this.getIntegrationSettings();
       if (!settingsResult.success || !settingsResult.data?.is_active) {
@@ -527,7 +527,7 @@ export class IntegrationService implements IIntegrationService {
           last_check: new Date(),
           error_message: 'Integration is not active or not configured'
         };
-        
+
         await this.updateHealthStatus(result);
         return {
           success: true,
@@ -541,7 +541,7 @@ export class IntegrationService implements IIntegrationService {
 
       // Test API connection if client is available
       let result: HealthCheckResult;
-      
+
       if (this.apiClient) {
         try {
           result = await this.apiClient.testConnection();
@@ -565,9 +565,9 @@ export class IntegrationService implements IIntegrationService {
 
       // Update health status in database
       await this.updateHealthStatus(result);
-      
+
       this.lastHealthCheck = result;
-      
+
       return {
         success: true,
         data: result,
@@ -584,9 +584,9 @@ export class IntegrationService implements IIntegrationService {
         error_message: `Health check failed: ${error}`,
         response_time: Date.now() - startTime
       };
-      
+
       await this.updateHealthStatus(result);
-      
+
       return {
         success: false,
         error: {
@@ -656,7 +656,7 @@ export class IntegrationService implements IIntegrationService {
 
       // If no API client available, just check format
       const isValidFormat = /^[A-Za-z0-9_-]{20,}$/.test(apiKey);
-      
+
       return {
         success: true,
         data: {
@@ -687,8 +687,8 @@ export class IntegrationService implements IIntegrationService {
       }
 
       const settings = settingsResult.data!;
-      const usagePercentage = settings.api_quota_limit > 0 
-        ? (settings.api_quota_used / settings.api_quota_limit) 
+      const usagePercentage = settings.api_quota_limit > 0
+        ? (settings.api_quota_used / settings.api_quota_limit)
         : 0;
 
       const quotaStatus: QuotaStatus = {
@@ -738,7 +738,7 @@ export class IntegrationService implements IIntegrationService {
 
       const quota = quotaResult.data!;
       const allowed = quota.quota_remaining >= requestCount;
-      
+
       return {
         success: true,
         data: {
@@ -768,7 +768,7 @@ export class IntegrationService implements IIntegrationService {
   ): Promise<ServiceResponse<UsageReport>> {
     try {
       const { startDate, endDate } = this.getReportPeriod(period);
-      
+
       // Get usage logs for the period
       let logs: UsageLogRow[] = [];
       try {
@@ -793,12 +793,12 @@ export class IntegrationService implements IIntegrationService {
           async () => {
             const { data: usageLogs, error } = await supabaseAdmin
               .from('indb_seranking_usage_logs')
-              .select('*')
+              .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
               .eq('integration_id', 'seranking_keyword_export')
               .gte('timestamp', startDate.toISOString())
               .lte('timestamp', endDate.toISOString())
               .order('timestamp', { ascending: true });
-            
+
             if (error) {
               throw new Error(`Usage logs table not accessible: ${error.message}`);
             }
@@ -806,12 +806,12 @@ export class IntegrationService implements IIntegrationService {
             return usageLogs || [];
           }
         );
-        
+
         logs = result;
       } catch (error) {
         this.log('warn', 'Usage logs table retrieval failed:', error);
       }
-      
+
       // Calculate aggregated metrics
       const totalRequests = logs.reduce((sum, log) => sum + log.request_count, 0);
       const successfulRequests = logs.reduce((sum, log) => sum + log.successful_requests, 0);
@@ -929,7 +929,7 @@ export class IntegrationService implements IIntegrationService {
   async enableQuotaAlerts(thresholds: number[]): Promise<ServiceResponse<boolean>> {
     try {
       this.log('info', `Quota alert thresholds set: ${thresholds.join(', ')}`);
-      
+
       return {
         success: true,
         data: true,
@@ -957,8 +957,8 @@ export class IntegrationService implements IIntegrationService {
   async getIntegrationHealth(): Promise<ServiceResponse<HealthCheckResult>> {
     try {
       // Return cached health check if recent (less than health check interval)
-      if (this.lastHealthCheck && 
-          (Date.now() - this.lastHealthCheck.last_check.getTime()) < (this.config.healthCheckInterval * 60 * 1000)) {
+      if (this.lastHealthCheck &&
+        (Date.now() - this.lastHealthCheck.last_check.getTime()) < (this.config.healthCheckInterval * 60 * 1000)) {
         return {
           success: true,
           data: this.lastHealthCheck,
@@ -995,7 +995,7 @@ export class IntegrationService implements IIntegrationService {
 
       const quota = quotaResult.data!;
       const alertKey = 'seranking_quota_alert';
-      
+
       // Check critical threshold
       if (quota.usage_percentage >= this.config.quotaCriticalThreshold) {
         if (!this.activeAlerts.has(`${alertKey}_critical`)) {
@@ -1003,7 +1003,7 @@ export class IntegrationService implements IIntegrationService {
           this.activeAlerts.set(`${alertKey}_critical`, new Date());
         }
       }
-      
+
       // Check warning threshold
       else if (quota.usage_percentage >= this.config.quotaWarningThreshold) {
         if (!this.activeAlerts.has(`${alertKey}_warning`)) {
@@ -1011,7 +1011,7 @@ export class IntegrationService implements IIntegrationService {
           this.activeAlerts.set(`${alertKey}_warning`, new Date());
         }
       }
-      
+
       // Clear alerts if usage drops below warning threshold
       else {
         this.activeAlerts.delete(`${alertKey}_warning`);
@@ -1045,7 +1045,7 @@ export class IntegrationService implements IIntegrationService {
   private getReportPeriod(period: 'daily' | 'weekly' | 'monthly'): { startDate: Date; endDate: Date } {
     const endDate = new Date();
     const startDate = new Date();
-    
+
     switch (period) {
       case 'daily':
         startDate.setHours(0, 0, 0, 0);
@@ -1057,7 +1057,7 @@ export class IntegrationService implements IIntegrationService {
         startDate.setMonth(startDate.getMonth() - 1);
         break;
     }
-    
+
     return { startDate, endDate };
   }
 
@@ -1089,7 +1089,7 @@ export class IntegrationService implements IIntegrationService {
     try {
       const { data: integrations, error } = await supabaseAdmin
         .from('indb_site_integration')
-        .select('*')
+        .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
         .eq('service_name', 'seranking_keyword_export');
 
       if (error || !integrations) {
@@ -1113,11 +1113,11 @@ export class IntegrationService implements IIntegrationService {
     const levels = { debug: 0, info: 1, warn: 2, error: 3 };
     const configLevel = levels[this.config.logLevel];
     const messageLevel = levels[level];
-    
+
     if (messageLevel >= configLevel) {
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[IntegrationService] ${message}`;
-      
+
       logger[level](metadata as Record<string, unknown>, logMessage);
     }
   }

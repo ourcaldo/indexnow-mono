@@ -1,5 +1,5 @@
 import { supabaseAdmin, supabase, SecureServiceRoleWrapper, SecureServiceRoleHelpers, type UserProfile, type Database } from '@indexnow/database'
-import { authService, type Json } from '@indexnow/shared'
+import { authService, type Json, AppConfig } from '@indexnow/shared'
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { type SupabaseClient } from '@supabase/supabase-js'
@@ -142,7 +142,7 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-      
+
       // Verify JWT token using secure service role wrapper
       try {
         const authContext = {
@@ -175,7 +175,7 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
 
         user = authResult;
         userError = null;
-        
+
       } catch (error) {
         user = null;
         userError = error instanceof Error ? error : { message: String(error) };
@@ -186,8 +186,8 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
     if (!user) {
       // Create Supabase client using request cookies
       const supabaseServer = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        AppConfig.supabase.url,
+        AppConfig.supabase.anonKey,
         {
           cookies: {
             getAll() {
@@ -204,7 +204,7 @@ async function getServerAdminUser(request?: NextRequest): Promise<AdminUser | nu
       user = cookieUser
       userError = cookieError
     }
-    
+
     if (userError || !user) {
       return null
     }
@@ -281,7 +281,7 @@ export async function requireAdminAuth(request?: NextRequest): Promise<AdminUser
   if (!serverAdminUser?.isAdmin) {
     throw new Error('Admin access required')
   }
-  
+
   return serverAdminUser
 }
 
@@ -293,6 +293,6 @@ export async function requireSuperAdminAuth(request?: NextRequest): Promise<Admi
   if (!serverAdminUser?.isSuperAdmin) {
     throw new Error('Super admin access required')
   }
-  
+
   return serverAdminUser
 }

@@ -1,24 +1,27 @@
 import { type Json } from '../types/common/Json';
 
+// Base type for track event properties - allows any JSON value or undefined
 export interface TrackEventProperties {
   [key: string]: Json | undefined;
 }
 
+// User traits with known common fields
 export interface UserTraits {
-  email?: string;
-  username?: string;
-  name?: string;
-  plan?: string;
+  email?: string | null;
+  username?: string | null;
+  name?: string | null;
+  plan?: string | null;
   [key: string]: Json | undefined;
 }
 
 export type AnalyticsTraits = UserTraits;
 
+// Page properties with known common fields
 export interface PageProperties {
-  url?: string;
-  path?: string;
-  title?: string;
-  referrer?: string;
+  url?: string | null;
+  path?: string | null;
+  title?: string | null;
+  referrer?: string | null;
   [key: string]: Json | undefined;
 }
 

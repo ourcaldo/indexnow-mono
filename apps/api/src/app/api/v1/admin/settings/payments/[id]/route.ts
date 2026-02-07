@@ -1,7 +1,9 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware'
-import { formatSuccess } from '@/lib/core/api-response-formatter'
+import { adminApiWrapper, formatSuccess, formatError } from '../../../../../../../../lib/core/api-response-middleware';
+import { ErrorHandlingService } from '../../../../../../../../lib/monitoring/error-handling';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+
 export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => {
   // Extract ID from URL path
   const id = request.url.split('/').filter(Boolean).pop() || ''
@@ -73,41 +75,41 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => 
     updated_at: new Date().toISOString()
   }
 
-  const result = await withDatabaseOperation(
-    async () => {
-      return await SecureServiceRoleWrapper.executeSecureOperation(
-        updateGatewayContext,
-        {
-          table: 'indb_payment_gateways',
-          operationType: 'update',
-          columns: Object.keys(updateData),
-          whereConditions: { id },
-          data: updateData
-        },
-        async () => {
-          const { data, error } = await supabaseAdmin
-            .from('indb_payment_gateways')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single()
+  try {
+    const result = await SecureServiceRoleWrapper.executeSecureOperation(
+      updateGatewayContext,
+      {
+        table: 'indb_payment_gateways',
+        operationType: 'update',
+        columns: Object.keys(updateData),
+        whereConditions: { id },
+        data: updateData
+      },
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from('indb_payment_gateways')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single()
 
-          if (error) {
-            throw new Error('Failed to update payment gateway')
-          }
-
-          return data
+        if (error) {
+          throw new Error('Failed to update payment gateway')
         }
-      )
-    },
-    { userId: adminUser.id, endpoint: '/api/v1/admin/settings/payments/[id]' }
-  )
 
-  if (!result.success) {
-    return result
+        return data
+      }
+    )
+
+    return formatSuccess({ gateway: result })
+  } catch (error) {
+    const structuredError = await ErrorHandlingService.createError(
+      ErrorType.DATABASE,
+      error instanceof Error ? error.message : 'Failed to update payment gateway',
+      { severity: ErrorSeverity.MEDIUM, statusCode: 500 }
+    )
+    return formatError(structuredError)
   }
-
-  return formatSuccess({ gateway: result.data }, undefined, 200)
 })
 
 export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser) => {
@@ -126,35 +128,35 @@ export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser) =>
     }
   }
 
-  const result = await withDatabaseOperation(
-    async () => {
-      return await SecureServiceRoleWrapper.executeSecureOperation(
-        deleteContext,
-        {
-          table: 'indb_payment_gateways',
-          operationType: 'delete',
-          whereConditions: { id }
-        },
-        async () => {
-          const { error } = await supabaseAdmin
-            .from('indb_payment_gateways')
-            .delete()
-            .eq('id', id)
+  try {
+    await SecureServiceRoleWrapper.executeSecureOperation(
+      deleteContext,
+      {
+        table: 'indb_payment_gateways',
+        operationType: 'delete',
+        whereConditions: { id }
+      },
+      async () => {
+        const { error } = await supabaseAdmin
+          .from('indb_payment_gateways')
+          .delete()
+          .eq('id', id)
 
-          if (error) {
-            throw new Error('Failed to delete payment gateway')
-          }
-
-          return { success: true }
+        if (error) {
+          throw new Error('Failed to delete payment gateway')
         }
-      )
-    },
-    { userId: adminUser.id, endpoint: '/api/v1/admin/settings/payments/[id]' }
-  )
 
-  if (!result.success) {
-    return result
+        return { success: true }
+      }
+    )
+
+    return formatSuccess({ success: true })
+  } catch (error) {
+    const structuredError = await ErrorHandlingService.createError(
+      ErrorType.DATABASE,
+      error instanceof Error ? error.message : 'Failed to delete payment gateway',
+      { severity: ErrorSeverity.MEDIUM, statusCode: 500 }
+    )
+    return formatError(structuredError)
   }
-
-  return formatSuccess({ success: true }, undefined, 200)
 })

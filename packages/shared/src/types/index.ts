@@ -10,11 +10,8 @@ export * from './components';
 export * from './services';
 export * from './monitoring/ErrorTrackingTypes';
 export * from './queues/QueueTypes';
-// export * from './business/SeRankingTypes'; // Conflicts with api
-export * from './business/KeywordBankTypes';
-export * from './business/EnrichmentJobTypes';
-export * from './business/ServiceTypes';
-// export * from './business/RankTrackingTypes'; // Conflicts with common types
+// SeRanking types are in apps/api/src/lib/rank-tracking/seranking/types/
+// KeywordBankTypes, EnrichmentJobTypes, ServiceTypes moved to API package
 
 // Export unique types from RankTrackingTypes to avoid conflicts (e.g. Location)
 export type {
@@ -50,7 +47,11 @@ export type {
 export type {
   PostgrestError,
   Json as DbJson,
-  
+
+  // Inline types for enrichment jobs
+  EnrichmentJobConfig,
+  JobResult,
+
   // Database JSON types
   PackageFeatures,
   PackageQuotaLimits,
@@ -71,12 +72,10 @@ export type {
   UserProfile as DbUserProfile,
   UserSettings as DbUserSettings,
   DashboardNotification as DbDashboardNotification,
-  DailyStats as DbDailyStats,
   KeywordCountry as DbKeywordCountry,
   KeywordDomain as DbKeywordDomain,
   KeywordKeyword as DbKeywordKeyword,
   KeywordRanking as DbKeywordRanking,
-  KeywordUsage as DbKeywordUsage,
   RankKeywordRow as DbRankKeywordRow,
   SiteIntegration as DbSiteIntegration,
   SeRankingIntegration as DbSeRankingIntegration,
@@ -91,6 +90,7 @@ export type {
   UserSettingsRow as DbUserSettingsRow,
   SiteSettingsRow as DbSiteSettingsRow,
   SiteSettingsRow,
+  PaymentGatewayRow,
 
   // Insert Types
   InsertUserProfile,
@@ -100,7 +100,6 @@ export type {
   InsertKeywordDomain,
   InsertKeywordKeyword,
   InsertKeywordRanking,
-  InsertKeywordUsage,
   InsertSiteIntegration,
   InsertSeRankingIntegration,
   InsertSeRankingUsageLog,
@@ -116,7 +115,6 @@ export type {
   UpdateKeywordDomain,
   UpdateKeywordKeyword,
   UpdateKeywordRanking,
-  UpdateKeywordUsage,
   UpdateSiteIntegration,
   UpdateSeRankingIntegration,
   UpdateSeRankingUsageLog,
@@ -143,11 +141,11 @@ export {
   type KeysOfType
 } from './common/CommonTypes';
 export * from './common/ErrorTypes';
-export { 
-  type ApiStatus, 
-  type ApiMetadata, 
-  type BaseResponse, 
-  type ErrorResponse, 
-  type SuccessResponse 
+export {
+  type ApiStatus,
+  type ApiMetadata,
+  type BaseResponse,
+  type ErrorResponse,
+  type SuccessResponse
 } from './common/ResponseTypes';
 export * from './common/Json';

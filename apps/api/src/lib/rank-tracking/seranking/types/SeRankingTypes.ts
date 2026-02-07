@@ -3,13 +3,6 @@
  * Type definitions for SeRanking keyword export API integration
  */
 
-  ServiceResponse
-} from '@indexnow/shared'; // Re-exporting from shared if they exist there? 
-// No, this file DEFINES them. It shouldn't import from shared if it defines them.
-// Wait, the file content shows it DEFINES them.
-
-import { Json } from '@indexnow/shared';
-
 // SeRanking API Request Types
 export interface SeRankingKeywordExportRequest {
   keywords: string[];
@@ -27,7 +20,7 @@ export interface SeRankingKeywordData {
   cpc: number | null;
   competition: number | null;
   difficulty: number | null;
-  history_trend: Json | null;
+  history_trend: Record<string, number> | null;
 }
 
 export type SeRankingApiResponse = SeRankingKeywordData[];

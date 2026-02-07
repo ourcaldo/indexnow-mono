@@ -4,7 +4,22 @@
  */
 
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
-import { supabaseAdmin } from '@indexnow/database'
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+
+// Explicit type for gateway config to avoid never type inference
+interface PaddleGatewayConfig {
+  id: string
+  slug: string
+  is_active: boolean
+  api_credentials: {
+    api_key?: string
+    [key: string]: unknown
+  }
+  configuration: {
+    environment?: string
+    [key: string]: unknown
+  }
+}
 
 export class PaddleService {
   private static instance: Paddle | null = null
@@ -36,7 +51,7 @@ export class PaddleService {
     // Initialize Paddle SDK
     const envString = gateway.configuration?.environment || 'sandbox'
     const environment: Environment = envString === 'production' ? Environment.production : Environment.sandbox
-    
+
     this.instance = new Paddle(apiKey, {
       environment,
     })
@@ -47,19 +62,30 @@ export class PaddleService {
   /**
    * Get Paddle gateway configuration from database
    */
-  static async getGatewayConfig() {
-    const { data, error } = await supabaseAdmin
-      .from('indb_payment_gateways')
-      .select('*')
-      .eq('slug', 'paddle')
-      .eq('is_active', true)
-      .single()
+  static async getGatewayConfig(): Promise<PaddleGatewayConfig | null> {
+    return SecureServiceRoleWrapper.executeSecureOperation<PaddleGatewayConfig | null>(
+      {
+        operation: 'get_paddle_gateway_config',
+        reason: 'Loading Paddle payment gateway configuration',
+        source: 'PaddleService',
+        metadata: { gatewaySlug: 'paddle' }
+      },
+      { table: 'indb_payment_gateways', operationType: 'select' },
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from('indb_payment_gateways')
+          .select('id, slug, is_active, api_credentials, configuration')
+          .eq('slug', 'paddle')
+          .eq('is_active', true)
+          .single()
 
-    if (error) {
-      throw new Error(`Failed to load Paddle gateway configuration: ${error.message}`)
-    }
+        if (error) {
+          throw new Error(`Failed to load Paddle gateway configuration: ${error.message}`)
+        }
 
-    return data
+        return data as PaddleGatewayConfig
+      }
+    )
   }
 
   /**
@@ -84,3 +110,4 @@ export class PaddleService {
     }
   }
 }
+

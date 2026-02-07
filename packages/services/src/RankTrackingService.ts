@@ -1,5 +1,6 @@
 import { supabaseBrowser as supabase } from '@indexnow/database';
 import { type RankTrackingDomain } from '@indexnow/shared';
+import { QuotaService } from './monitoring/QuotaService';
 
 export class RankTrackingService {
   /**
@@ -28,15 +29,92 @@ export class RankTrackingService {
   }
 
   /**
+   * Create a new keyword for tracking
+   * Enforces Quota Consumption
+   */
+  async createKeyword(userId: string, keywordData: {
+    keyword: string;
+    domain: string;
+    country: string;
+    device?: 'desktop' | 'mobile';
+    targetUrl?: string;
+    tags?: string[];
+  }): Promise<any> {
+    // 1. Check & Consume Quota
+    const quotaConsumed = await QuotaService.consumeQuota(userId, 1);
+    if (!quotaConsumed) {
+      throw new Error('Insufficient quota to track new keyword');
+    }
+
+    const data = {
+      user_id: userId,
+      keyword: keywordData.keyword.trim(),
+      domain: keywordData.domain,
+      country: keywordData.country,
+      device: keywordData.device || 'desktop',
+      tags: keywordData.tags || [],
+      created_at: new Date().toISOString(),
+      last_checked: new Date().toISOString(),
+    };
+
+    const { data: keyword, error } = await supabase
+        .from('indb_rank_keywords')
+        .insert(data)
+        .select()
+        .single();
+    
+    if (error) {
+      console.error('Failed to create keyword:', error);
+      throw new Error(`Failed to create keyword: ${error.message}`);
+    }
+
+    return keyword;
+  }
+
+  /**
+   * Delete keywords
+   */
+  async deleteKeywords(keywordIds: string[], userId: string): Promise<number> {
+    const { error, count } = await supabase
+      .from('indb_rank_keywords')
+      .delete({ count: 'exact' })
+      .eq('user_id', userId)
+      .in('id', keywordIds);
+
+    if (error) {
+      throw new Error(`Failed to delete keywords: ${error.message}`);
+    }
+
+    return count || 0;
+  }
+
+  /**
+   * Get user keywords with filtering
+   */
+  async getUserKeywords(userId: string, options: any = {}): Promise<{ keywords: any[]; total: number }> {
+     let query = supabase
+      .from('indb_rank_keywords')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
+     
+     if (options.domain) query = query.eq('domain', options.domain);
+     if (options.limit) query = query.limit(options.limit);
+     
+     const { data, count, error } = await query;
+     
+     if (error) {
+       throw new Error(`Failed to fetch keywords: ${error.message}`);
+     }
+     
+     return { keywords: data || [], total: count || 0 };
+  }
+
+  /**
    * Update keyword position
    * OPTIMIZED: Uses atomic SQL update to prevent race conditions
    */
   private async updateKeywordPosition(keywordId: string, newPosition: number): Promise<void> {
     // Perform atomic update using RPC if available, or direct update with minimal RTT
-    // Since Supabase doesn't support "update indb_rank_keywords set previous_position = position, position = X"
-    // in a single standard PostgREST call easily without a stored procedure for the atomic swap,
-    // we will create a dedicated RPC for this to ensure atomicity.
-
     const { error } = await supabase.rpc('update_keyword_position_atomic', {
       target_keyword_id: keywordId,
       new_rank_position: newPosition
@@ -77,7 +155,6 @@ export class RankTrackingService {
     if (!tags || tags.length === 0) return 0;
     
     // Use Postgres array concatenation operator via RPC for atomicity
-    // tags = array_distinct(tags || new_tags)
     const { data: updatedCount, error } = await supabase.rpc('add_tags_to_keywords_atomic', {
         target_keyword_ids: keywordIds,
         target_user_id: userId,

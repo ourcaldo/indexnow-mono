@@ -1,6 +1,6 @@
 import { db, supabaseAdmin } from '@indexnow/database';
-import { 
-  USER_ROLES, 
+import {
+  USER_ROLES,
   DEFAULT_SETTINGS,
   type TrialEligibility,
   type DbUserProfile,
@@ -185,7 +185,7 @@ export class UserManagementService {
   async getUserProfileByEmail(email: string): Promise<UserProfile | null> {
     const { data, error } = await supabase
       .from('indb_auth_user_profiles')
-      .select('*')
+      .select('id, user_id, full_name, phone_number, country, role, is_active, is_suspended, is_trial_active, trial_ends_at, subscription_end_date, package_id, daily_quota_used, daily_quota_limit, created_at, updated_at')
       .eq('email', email.toLowerCase())
       .single();
 
@@ -202,7 +202,7 @@ export class UserManagementService {
    */
   async updateUserProfile(userId: string, updates: UpdateProfileRequest): Promise<UserProfile> {
     const updateData: UpdateUserProfile = {};
-    
+
     if (updates.fullName) updateData.full_name = updates.fullName;
     if (updates.phoneNumber !== undefined) updateData.phone_number = updates.phoneNumber;
     if (updates.country !== undefined) updateData.country = updates.country;
@@ -230,7 +230,7 @@ export class UserManagementService {
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
-    
+
     // Note: indb_auth_user_profiles doesn't have last_login_at in the schema I saw
     // but we can add it or log it elsewhere. Functional parity with original:
     // Original had last_login_at and last_login_ip.
@@ -253,7 +253,7 @@ export class UserManagementService {
     settings: Partial<UserSettings>
   ): Promise<UserSettings> {
     const updateData: UpdateUserSettings = {};
-    
+
     if (settings.timeoutDuration !== undefined) updateData.timeout_duration = settings.timeoutDuration;
     if (settings.retryAttempts !== undefined) updateData.retry_attempts = settings.retryAttempts;
     if (settings.emailJobCompletion !== undefined) updateData.email_job_completion = settings.emailJobCompletion;
@@ -275,13 +275,13 @@ export class UserManagementService {
 
   private async getPackageConfig(packageId: string | null): Promise<any> {
     if (!packageId) return null;
-    
+
     const { data } = await supabaseAdmin
       .from('indb_payment_packages')
       .select('settings')
       .eq('id', packageId)
       .single();
-      
+
     return data?.settings || null;
   }
 
@@ -293,7 +293,7 @@ export class UserManagementService {
     if (!profile) throw new Error('User profile not found');
 
     const packageConfig = await this.getPackageConfig(profile.packageId || null);
-    
+
     // Default fallback values if DB config is missing
     const defaults: Record<string, number> = {
       'domains': 10,
@@ -301,7 +301,7 @@ export class UserManagementService {
       'pages': 1000,
       'storage_mb': 100
     };
-    
+
     // Prioritize DB config -> then defaults
     return packageConfig?.quotas?.[feature] ?? defaults[feature] ?? 0;
   }
@@ -462,7 +462,7 @@ export class UserManagementService {
     const { error } = await supabase
       .from('indb_auth_user_settings')
       .insert(defaultSettings);
-    
+
     if (error) {
       console.error('Failed to create default user settings:', error);
     }

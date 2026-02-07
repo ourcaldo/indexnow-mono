@@ -21,7 +21,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
     // 1. Get keyword details
     const { data: keyword, error: keywordError } = await supabaseAdmin
       .from('indb_rank_keywords')
-      .select('*')
+      .select('id, keyword, domain, country, device, position')
       .eq('id', keywordId)
       .single()
 
@@ -48,18 +48,16 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
       })
       .eq('id', keywordId)
 
-    // Insert history
+    // Insert ranking history
     await supabaseAdmin
-      .from('indb_keyword_rank_history')
+      .from('indb_keyword_rankings')
       .insert({
         keyword_id: keywordId,
         position: result.position,
-        checked_at: new Date().toISOString(),
-        metadata: {
-           searchResults: result.searchResults,
-           url: result.url,
-           title: result.title
-        }
+        url: result.url,
+        check_date: new Date().toISOString().split('T')[0], // DATE type (YYYY-MM-DD)
+        device_type: keyword.device,
+        metadata: result // Store complete API response
       })
 
     logger.info({ jobId: job.id, keywordId, rank: result.position }, 'Rank check completed successfully')
@@ -89,3 +87,6 @@ export function initializeRankCheckWorker(): void {
     'Rank check worker initialized'
   )
 }
+
+
+

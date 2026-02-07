@@ -51,7 +51,7 @@ export class KeywordBankService implements IKeywordBankService {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
-            .select('*')
+            .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
             .eq('keyword', keyword.trim().toLowerCase())
             .eq('country_id', countryCode.toLowerCase())
             .eq('language_code', languageCode.toLowerCase())
@@ -105,7 +105,7 @@ export class KeywordBankService implements IKeywordBankService {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
-            .select('*')
+            .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
             .in('keyword', normalizedKeywords)
             .eq('country_id', countryCode.toLowerCase())
             .eq('language_code', languageCode.toLowerCase());
@@ -137,15 +137,15 @@ export class KeywordBankService implements IKeywordBankService {
     try {
       const normalizedKeywords = keywords.map(k => k.trim().toLowerCase());
       const existingData = await this.getKeywordDataBatch(normalizedKeywords, countryCode, languageCode);
-      
+
       const existingKeywords = new Set(existingData.map(d => d.keyword));
       const missingKeywords = normalizedKeywords.filter(k => !existingKeywords.has(k));
-      
+
       // Filter fresh data (updated within last 7 days)
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const freshData = existingData.filter(d => new Date(d.data_updated_at) > sevenDaysAgo);
       const staleData = existingData.filter(d => new Date(d.data_updated_at) <= sevenDaysAgo);
-      
+
       return {
         total_keywords: keywords.length,
         cached_keywords: existingKeywords.size,
@@ -319,7 +319,7 @@ export class KeywordBankService implements IKeywordBankService {
               onConflict: 'keyword,country_id,language_code'
             })
             .select();
-          
+
           return { data, error };
         }
       );
@@ -370,7 +370,7 @@ export class KeywordBankService implements IKeywordBankService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in storeKeywordDataBatch');
-      
+
       // Create error results for all keywords
       const results = keywordDataPairs.map(pair => ({
         success: false as const,
@@ -409,14 +409,14 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: updates.difficulty,
         history_trend: updates.history_trend,
         keyword_intent: updates.keyword_intent,
-        data_updated_at: updates.data_updated_at instanceof Date 
+        data_updated_at: updates.data_updated_at instanceof Date
           ? updates.data_updated_at.toISOString()
           : updates.data_updated_at,
         updated_at: new Date().toISOString()
       };
 
-      if (updates.volume !== undefined || updates.cpc !== undefined || 
-          updates.competition !== undefined || updates.difficulty !== undefined) {
+      if (updates.volume !== undefined || updates.cpc !== undefined ||
+        updates.competition !== undefined || updates.difficulty !== undefined) {
         updateData.data_updated_at = new Date().toISOString();
       }
 
@@ -670,7 +670,7 @@ export class KeywordBankService implements IKeywordBankService {
   async cleanupStaleData(olderThanDays: number = 30): Promise<KeywordBankBatchResult> {
     try {
       const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
-      
+
       // First, get the records to be deleted for reporting
       const { data: staleRecords, error: selectError } = await supabaseAdmin
         .from('indb_keyword_bank')
@@ -690,7 +690,7 @@ export class KeywordBankService implements IKeywordBankService {
       }
 
       const recordCount = staleRecords?.length || 0;
-      
+
       if (recordCount === 0) {
         return {
           total_operations: 0,
@@ -886,7 +886,7 @@ export class KeywordBankService implements IKeywordBankService {
       }
 
       const entities = (result || []).map(row => this.mapRowToEntity(row));
-      
+
       return {
         success: true,
         data: entities,
@@ -898,7 +898,7 @@ export class KeywordBankService implements IKeywordBankService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in bulkUpsertKeywordData');
-      
+
       const errors = data.map(item => ({
         keyword: item.keyword,
         country_code: item.country_id,
@@ -929,10 +929,10 @@ export class KeywordBankService implements IKeywordBankService {
   async getStaleKeywords(olderThanDays: number, limit?: number): Promise<KeywordBankEntity[]> {
     try {
       const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
-      
+
       let query = supabaseAdmin
         .from('indb_keyword_bank')
-        .select('*')
+        .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
         .lt('data_updated_at', cutoffDate.toISOString())
         .order('data_updated_at', { ascending: true });
 
@@ -1030,25 +1030,25 @@ export class KeywordBankService implements IKeywordBankService {
    */
   private extractKeywordIntent(apiData: SeRankingKeywordData): string | null {
     if (!apiData.is_data_found || !apiData.keyword) return null;
-    
+
     const keyword = apiData.keyword.toLowerCase();
-    
+
     if (/\b(buy|purchase|order|shop|store|price|cost|cheap|deal|discount|sale)\b/.test(keyword)) {
       return 'commercial';
     }
-    
+
     if (/\b(how|what|why|when|where|guide|tutorial|learn|tips|help|advice)\b/.test(keyword)) {
       return 'informational';
     }
-    
+
     if (/\b(login|sign in|account|website|official|homepage)\b/.test(keyword)) {
       return 'navigational';
     }
-    
+
     if (/\b(download|subscribe|register|signup|trial|demo|quote|contact)\b/.test(keyword)) {
       return 'transactional';
     }
-    
+
     const wordCount = keyword.split(/\s+/).length;
     return wordCount >= 3 ? 'informational' : 'commercial';
   }

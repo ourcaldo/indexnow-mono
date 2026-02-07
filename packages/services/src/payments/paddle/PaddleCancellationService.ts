@@ -30,7 +30,7 @@ export class PaddleCancellationService {
   async checkRefundEligibility(subscriptionId: string): Promise<{ eligible: boolean; reason?: string }> {
     const { data: subscription, error } = await this.supabase
       .from('indb_payment_subscriptions')
-      .select('*')
+      .select('id, user_id, status, package_id, start_date, end_date, paddle_subscription_id')
       .eq('paddle_subscription_id', subscriptionId)
       .single();
 
@@ -49,9 +49,9 @@ export class PaddleCancellationService {
       return { eligible: true };
     }
 
-    return { 
-      eligible: false, 
-      reason: `Subscription is ${diffDays} days old (limit: ${PaddleCancellationService.REFUND_WINDOW_DAYS} days)` 
+    return {
+      eligible: false,
+      reason: `Subscription is ${diffDays} days old (limit: ${PaddleCancellationService.REFUND_WINDOW_DAYS} days)`
     };
   }
 

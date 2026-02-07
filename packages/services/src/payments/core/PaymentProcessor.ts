@@ -174,7 +174,7 @@ export class PaymentProcessor {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_payment_packages')
-            .select('*')
+            .select('id, name, slug, description, price, currency, billing_period, daily_quota, monthly_quota, features, quota_limits, pricing_tiers, free_trial_enabled, is_active, is_popular, sort_order, paddle_price_id, stripe_price_id, created_at, updated_at')
             .eq('id', packageId)
             .eq('is_active', true)
             .single();
@@ -204,7 +204,7 @@ export class PaymentProcessor {
       const tierData = pricingTiers[billingPeriod]
       return tierData?.promo_price || tierData?.regular_price || 0
     }
-    
+
     // If no pricing_tiers found, throw error
     throw new Error(`No pricing found for ${billingPeriod} billing period`)
   }
@@ -248,8 +248,8 @@ export class PaymentProcessor {
             billingPeriod: data.billing_period
           }
         },
-        { 
-          table: 'indb_payment_transactions', 
+        {
+          table: 'indb_payment_transactions',
           operationType: 'insert',
           data: {
             user_id: data.user_id,
@@ -302,8 +302,8 @@ export class PaymentProcessor {
    * Update transaction status
    */
   private async updateTransactionStatus(
-    transactionId: string, 
-    status: TransactionStatus, 
+    transactionId: string,
+    status: TransactionStatus,
     errorMessage?: string
   ): Promise<void> {
     try {
@@ -320,8 +320,8 @@ export class PaymentProcessor {
             errorMessage: errorMessage || null
           }
         },
-        { 
-          table: 'indb_payment_transactions', 
+        {
+          table: 'indb_payment_transactions',
           operationType: 'update',
           data: { status, error_message: errorMessage || null }
         },
@@ -347,7 +347,7 @@ export class PaymentProcessor {
    * Update transaction with payment result
    */
   private async updateTransactionWithResult(
-    transactionId: string, 
+    transactionId: string,
     result: PaymentResponse
   ): Promise<void> {
     try {
@@ -373,8 +373,8 @@ export class PaymentProcessor {
             hasGatewayResponse: !!result
           }
         },
-        { 
-          table: 'indb_payment_transactions', 
+        {
+          table: 'indb_payment_transactions',
           operationType: 'update',
           whereConditions: { id: transactionId },
           data: {
@@ -434,7 +434,7 @@ export class PaymentProcessor {
     if (paymentMethod.includes('paddle')) {
       return 'paddle'
     }
-    
+
     // Add more gateway mappings as needed
     return 'paddle' // Default fallback
   }

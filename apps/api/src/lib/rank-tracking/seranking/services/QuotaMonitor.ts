@@ -204,16 +204,16 @@ export class QuotaMonitor implements IQuotaMonitor {
   private async initializeMonitoring(): Promise<void> {
     try {
       this.log('info', 'Initializing QuotaMonitor service');
-      
+
       // Load historical patterns
       await this.loadHistoricalPatterns();
-      
+
       // Start real-time monitoring
       this.startContinuousMonitoring();
-      
+
       // Initialize alert configurations
       await this.loadAlertConfigurations();
-      
+
       this.log('info', 'QuotaMonitor service initialized successfully');
     } catch (error) {
       this.log('error', `Failed to initialize QuotaMonitor: ${error}`);
@@ -311,19 +311,19 @@ export class QuotaMonitor implements IQuotaMonitor {
       }
 
       const current = basicStatus.data;
-      
+
       // Calculate velocity metrics
       const velocity = await this.calculateUsageVelocity();
-      
+
       // Calculate efficiency metrics
       const efficiencyMetrics = await this.calculateEfficiencyMetrics();
-      
+
       // Get historical comparison
       const historicalComparison = await this.getHistoricalComparison();
-      
+
       // Get active patterns
       const activePatterns = Array.from(this.detectedPatterns.values());
-      
+
       // Get current prediction
       const currentPrediction = await this.getCurrentPrediction();
 
@@ -362,13 +362,13 @@ export class QuotaMonitor implements IQuotaMonitor {
   async analyzeUsagePatterns(daysPeriod: number = 30): Promise<ServiceResponse<UsagePattern[]>> {
     try {
       this.log('info', `Analyzing usage patterns for ${daysPeriod} days`);
-      
+
       const endDate = new Date();
       const startDate = new Date(endDate.getTime() - daysPeriod * 24 * 60 * 60 * 1000);
-      
+
       // Get historical usage data
       const usageHistory = await this.getUsageHistory(startDate, endDate);
-      
+
       if (usageHistory.length < this.config.usagePatterns.patternDetectionDays) {
         return {
           success: true,
@@ -382,33 +382,33 @@ export class QuotaMonitor implements IQuotaMonitor {
       }
 
       const patterns: UsagePattern[] = [];
-      
+
       // Detect hourly patterns
       const hourlyPattern = await this.detectHourlyPattern(usageHistory);
       if (hourlyPattern) patterns.push(hourlyPattern);
-      
+
       // Detect daily patterns
       const dailyPattern = await this.detectDailyPattern(usageHistory);
       if (dailyPattern) patterns.push(dailyPattern);
-      
+
       // Detect weekly patterns
       const weeklyPattern = await this.detectWeeklyPattern(usageHistory);
       if (weeklyPattern) patterns.push(weeklyPattern);
-      
+
       // Detect burst patterns
       const burstPatterns = await this.detectBurstPatterns(usageHistory);
       patterns.push(...burstPatterns);
-      
+
       // Update pattern cache
       for (const pattern of patterns) {
         this.detectedPatterns.set(pattern.pattern_id, pattern);
       }
-      
+
       // Persist patterns to database
       await this.persistDetectedPatterns(patterns);
-      
+
       this.log('info', `Detected ${patterns.length} usage patterns`);
-      
+
       return {
         success: true,
         data: patterns,
@@ -451,17 +451,17 @@ export class QuotaMonitor implements IQuotaMonitor {
       }
 
       const current = currentStatus.data;
-      
+
       // Get recent usage velocity
       const velocity = await this.calculateUsageVelocity();
-      
+
       // Apply pattern-based corrections
       const patternCorrections = await this.applyPatternCorrections(velocity.requests_per_hour);
-      
+
       // Calculate predicted usage
       const predictedUsageRate = velocity.requests_per_hour * (1 + patternCorrections);
       const predictedUsage = current.current_usage + (predictedUsageRate * horizonHours);
-      
+
       // Calculate exhaustion ETA
       let exhaustionEta: Date | undefined;
       if (predictedUsageRate > 0) {
@@ -471,11 +471,11 @@ export class QuotaMonitor implements IQuotaMonitor {
           exhaustionEta = new Date(Date.now() + hoursToExhaustion * 60 * 60 * 1000);
         }
       }
-      
+
       // Calculate confidence and risk level
       const confidence = this.calculatePredictionConfidence(velocity, patternCorrections);
       const riskLevel = this.assessRiskLevel(predictedUsage / current.quota_limit, exhaustionEta);
-      
+
       const prediction: QuotaPrediction = {
         prediction_id: `pred_${Date.now()}`,
         generated_at: new Date(),
@@ -489,13 +489,13 @@ export class QuotaMonitor implements IQuotaMonitor {
         contributing_factors: this.identifyContributingFactors(velocity, patternCorrections),
         recommended_actions: await this.generateRecommendedActions(riskLevel, exhaustionEta, predictedUsage)
       };
-      
+
       // Cache prediction
       this.predictionCache.set('current', prediction);
-      
+
       // Persist to database
       await this.persistPrediction(prediction);
-      
+
       return {
         success: true,
         data: prediction,
@@ -525,15 +525,15 @@ export class QuotaMonitor implements IQuotaMonitor {
       if (!status.success || !status.data) return;
 
       const currentPercentage = status.data.usage_percentage;
-      
+
       // Check threshold-based alerts
       await this.checkThresholdAlerts(currentPercentage);
-      
+
       // Check predictive alerts
       if (this.config.predictionWindow.enabled) {
         await this.checkPredictiveAlerts();
       }
-      
+
       // Check pattern-based alerts
       if (this.config.usagePatterns.enableAnalysis) {
         await this.checkPatternBasedAlerts();
@@ -566,7 +566,7 @@ export class QuotaMonitor implements IQuotaMonitor {
 
       // Persist configuration
       await this.saveConfiguration();
-      
+
       this.log('info', `Updated alert thresholds: ${validThresholds.join(', ')}`);
     } catch (error) {
       this.log('error', `Failed to set alert thresholds: ${error}`);
@@ -588,7 +588,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     try {
       const end = endDate || new Date();
       const start = startDate || new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
-      
+
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
           operation: 'get_quota_usage_history',
@@ -608,7 +608,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_seranking_quota_usage')
-            .select('*')
+            .select('id, timestamp, quota_consumed, cost_per_request')
             .gte('timestamp', start.toISOString())
             .lte('timestamp', end.toISOString())
             .order('timestamp', { ascending: true });
@@ -639,13 +639,13 @@ export class QuotaMonitor implements IQuotaMonitor {
           min_timestamp: new Date(entry.timestamp),
           max_timestamp: new Date(entry.timestamp)
         };
-        
+
         current.usage += entry.quota_consumed;
         current.requests += 1;
         current.total_cost += entry.cost_per_request || 0;
         current.min_timestamp = new Date(Math.min(current.min_timestamp.getTime(), new Date(entry.timestamp).getTime()));
         current.max_timestamp = new Date(Math.max(current.max_timestamp.getTime(), new Date(entry.timestamp).getTime()));
-        
+
         dailyAggregates.set(date, current);
       });
 
@@ -682,7 +682,7 @@ export class QuotaMonitor implements IQuotaMonitor {
 
     const settings = integrationSettings.data;
     const usagePercentage = settings.api_quota_used / settings.api_quota_limit;
-    
+
     const quotaStatus: QuotaStatus = {
       current_usage: settings.api_quota_used,
       quota_limit: settings.api_quota_limit,
@@ -771,7 +771,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     // Calculate trend direction
     const firstHalf = recentUsage.slice(0, Math.floor(totalRequests / 2));
     const secondHalf = recentUsage.slice(Math.floor(totalRequests / 2));
-    
+
     let trendDirection: 'up' | 'stable' | 'down' = 'stable';
     if (secondHalf.length > firstHalf.length * 1.1) {
       trendDirection = 'up';
@@ -791,14 +791,14 @@ export class QuotaMonitor implements IQuotaMonitor {
 
   private getRecentUsageFromBuffer(startTime: Date, endTime: Date): QuotaUsageEntry[] {
     const usage: QuotaUsageEntry[] = [];
-    
+
     for (const [key, entries] of this.usageBuffer.entries()) {
       const keyTime = new Date(key);
       if (keyTime >= startTime && keyTime <= endTime) {
         usage.push(...entries.filter(e => e.timestamp >= startTime && e.timestamp <= endTime));
       }
     }
-    
+
     return usage.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
@@ -852,7 +852,7 @@ export class QuotaMonitor implements IQuotaMonitor {
 
   private async checkImmediateAlerts(usagePercentage: number): Promise<void> {
     const thresholds = this.config.alertThresholds;
-    
+
     if (usagePercentage >= thresholds.emergency) {
       await this.triggerAlert('emergency', usagePercentage);
     } else if (usagePercentage >= thresholds.critical) {
@@ -864,7 +864,7 @@ export class QuotaMonitor implements IQuotaMonitor {
 
   private async triggerAlert(level: string, value: number): Promise<void> {
     this.log('warn', `Quota alert triggered: ${level} at ${(value * 100).toFixed(1)}%`);
-    
+
     // Here you would integrate with your alerting system
     // Implementation depends on your notification channels
   }
@@ -874,7 +874,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     const baseConfidence = 0.7;
     const velocityStability = Math.min(1, Math.abs(velocity.acceleration) / 10);
     const correctionImpact = Math.min(1, Math.abs(corrections));
-    
+
     return Math.max(0.1, baseConfidence - velocityStability * 0.2 - correctionImpact * 0.1);
   }
 
@@ -890,7 +890,7 @@ export class QuotaMonitor implements IQuotaMonitor {
 
   private identifyContributingFactors(velocity: { trend_direction: string; acceleration: number }, corrections: number): string[] {
     const factors: string[] = [];
-    
+
     if (velocity.trend_direction === 'up') {
       factors.push('Increasing usage trend detected');
     }
@@ -900,7 +900,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     if (corrections > 0.2) {
       factors.push('Seasonal pattern correction applied');
     }
-    
+
     return factors;
   }
 
@@ -910,7 +910,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     _predictedUsage?: number
   ): Promise<QuotaPrediction['recommended_actions']> {
     const actions: QuotaPrediction['recommended_actions'] = [];
-    
+
     if (riskLevel === 'critical') {
       actions.push({
         action: 'Implement immediate rate limiting',
@@ -918,7 +918,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         estimated_impact: 'Reduce usage by 30-50%',
         implementation_effort: 'low'
       });
-      
+
       actions.push({
         action: 'Request emergency quota increase',
         priority: 'high',
@@ -926,7 +926,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         implementation_effort: 'medium'
       });
     }
-    
+
     if (riskLevel === 'high') {
       actions.push({
         action: 'Optimize cache hit ratio',
@@ -935,7 +935,7 @@ export class QuotaMonitor implements IQuotaMonitor {
         implementation_effort: 'medium'
       });
     }
-    
+
     return actions;
   }
 
@@ -967,7 +967,7 @@ export class QuotaMonitor implements IQuotaMonitor {
 
   private async updateQuotaPredictions(): Promise<void> {
     if (Math.random() > 0.1) return; // Only update 10% of the time to avoid overhead
-    
+
     try {
       await this.generateQuotaPredictions(this.config.predictionWindow.lookAheadHours);
     } catch (error) {
@@ -980,7 +980,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     this.monitoringTimer = setInterval(async () => {
       try {
         await this.checkQuotaAlerts();
-        
+
         // Periodic pattern analysis
         if (!this.lastAnalysis || (Date.now() - this.lastAnalysis.getTime()) > 60 * 60 * 1000) {
           await this.analyzeUsagePatterns();
@@ -1029,7 +1029,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     if (this.shouldLog(level)) {
       const metadata = args.length > 0 ? { details: args } : {};
       const logMessage = `[QuotaMonitor] ${message}`;
-      
+
       switch (level) {
         case 'debug':
           logger.debug(metadata, logMessage);
@@ -1063,7 +1063,7 @@ export class QuotaMonitor implements IQuotaMonitor {
     if (this.monitoringTimer) {
       clearInterval(this.monitoringTimer);
     }
-    
+
     this.log('info', 'QuotaMonitor service shut down successfully');
   }
 }

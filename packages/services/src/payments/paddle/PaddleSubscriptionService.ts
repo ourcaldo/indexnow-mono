@@ -1,10 +1,36 @@
 /**
  * Paddle Subscription Service
  * Handles subscription lifecycle management
+ * 
+ * ARCHITECTURE NOTE:
+ * This service ONLY interacts with the Paddle API.
+ * It DOES NOT update the local database.
+ * Local database synchronization is handled exclusively by Webhooks
+ * to ensure a Single Source of Truth and prevent Split Brain state.
  */
 
 import { PaddleService } from './PaddleService'
-import { supabaseAdmin } from '@indexnow/database'
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+
+// Explicit type for subscription to avoid never type inference
+interface SubscriptionRecord {
+  id: string
+  user_id: string
+  package_id: string | null
+  status: string
+  start_date: string | null
+  end_date: string | null
+  canceled_at: string | null
+  cancel_at_period_end: boolean
+  paused_at: string | null
+  current_period_end: string | null
+  paddle_subscription_id: string | null
+  paddle_price_id: string | null
+  stripe_subscription_id: string | null
+  cancel_reason: string | null
+  created_at: string
+  updated_at: string
+}
 
 export class PaddleSubscriptionService {
   /**
@@ -18,7 +44,7 @@ export class PaddleSubscriptionService {
 
   /**
    * Cancel a subscription immediately or at period end
-   * Note: For refund logic, use PaddleCancellationService which wraps this
+   * Note: Database update will be handled by 'subscription.canceled' webhook
    */
   static async cancelSubscription(
     subscriptionId: string,
@@ -30,29 +56,12 @@ export class PaddleSubscriptionService {
       effectiveFrom: immediately ? 'immediately' : 'next_billing_period',
     })
 
-    const status = immediately ? 'canceled' : 'past_due' // Paddle sets to past_due for period end cancellation
-
-    // Update local database
-    const { error } = await supabaseAdmin
-      .from('indb_payment_subscriptions')
-      .update({
-        status: status,
-        updated_at: new Date().toISOString(),
-        // If canceling immediately, set end date to now, otherwise keep period end
-        ...(immediately ? { end_date: new Date().toISOString() } : {}),
-      })
-      .eq('paddle_subscription_id', subscriptionId)
-
-    if (error) {
-      console.error('Failed to sync subscription cancellation to database:', error)
-      throw new Error(`Database sync failed after Paddle cancellation: ${error.message}`)
-    }
-
     return true
   }
 
   /**
    * Pause subscription
+   * Note: Database update will be handled by 'subscription.paused' webhook
    */
   static async pauseSubscription(
     subscriptionId: string,
@@ -65,26 +74,12 @@ export class PaddleSubscriptionService {
       options || {}
     )
 
-    // Update local subscription record
-    const { error } = await supabaseAdmin
-      .from('indb_payment_subscriptions')
-      .update({
-        status: 'paused',
-        paused_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('paddle_subscription_id', subscriptionId)
-
-    if (error) {
-      console.error('Failed to sync subscription pause to database:', error)
-      throw new Error(`Database sync failed after Paddle pause: ${error.message}`)
-    }
-
     return subscription
   }
 
   /**
    * Resume paused subscription
+   * Note: Database update will be handled by 'subscription.resumed' webhook
    */
   static async resumeSubscription(
     subscriptionId: string,
@@ -97,26 +92,12 @@ export class PaddleSubscriptionService {
       { effectiveFrom }
     )
 
-    // Update local subscription record
-    const { error } = await supabaseAdmin
-      .from('indb_payment_subscriptions')
-      .update({
-        status: 'active',
-        paused_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('paddle_subscription_id', subscriptionId)
-
-    if (error) {
-      console.error('Failed to sync subscription resume to database:', error)
-      throw new Error(`Database sync failed after Paddle resume: ${error.message}`)
-    }
-
     return subscription
   }
 
   /**
    * Update subscription (e.g., change plan)
+   * Note: Database update will be handled by 'subscription.updated' webhook
    */
   static async updateSubscription(
     subscriptionId: string,
@@ -133,38 +114,42 @@ export class PaddleSubscriptionService {
       ],
     })
 
-    // Update local subscription record
-    const { error } = await supabaseAdmin
-      .from('indb_payment_subscriptions')
-      .update({
-        paddle_price_id: newPriceId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('paddle_subscription_id', subscriptionId)
-
-    if (error) {
-      console.error('Failed to sync subscription update to database:', error)
-      throw new Error(`Database sync failed after Paddle update: ${error.message}`)
-    }
-
     return subscription
   }
 
   /**
    * Get subscription from database by user ID
+   * READ-ONLY Operation
    */
-  static async getSubscriptionByUserId(userId: string) {
-    const { data, error } = await supabaseAdmin
-      .from('indb_payment_subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .single()
+  static async getSubscriptionByUserId(userId: string): Promise<SubscriptionRecord | null> {
+    return SecureServiceRoleWrapper.executeSecureOperation<SubscriptionRecord | null>(
+      {
+        userId,
+        operation: 'get_subscription_by_user_id',
+        reason: 'Fetching active subscription for user',
+        source: 'PaddleSubscriptionService',
+        metadata: { userId }
+      },
+      { table: 'indb_payment_subscriptions', operationType: 'select' },
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from('indb_payment_subscriptions')
+          .select('id, user_id, package_id, status, start_date, end_date, canceled_at, cancel_at_period_end, paused_at, current_period_end, paddle_subscription_id, paddle_price_id, stripe_subscription_id, cancel_reason, created_at, updated_at')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .single()
 
-    if (error) {
-      throw new Error(`Failed to get subscription for user: ${error.message}`)
-    }
+        if (error) {
+          // PGRST116 means no rows - not an error condition
+          if (error.code === 'PGRST116') {
+            return null
+          }
+          throw new Error(`Failed to get subscription for user: ${error.message}`)
+        }
 
-    return data
+        return data as SubscriptionRecord
+      }
+    )
   }
 }
+
