@@ -7,11 +7,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
-import { ErrorHandlingService, logger } from '../../../../../../lib/monitoring/error-handling';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 
 export const dynamic = 'force-dynamic';
+
+// Derived types from Database schema
+type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row'];
 
 interface GatewayCredentials {
     client_token?: string;
@@ -25,22 +28,39 @@ interface GatewayConfiguration {
 
 export async function GET(request: NextRequest) {
     try {
-        // Load Paddle gateway configuration from database
-        const { data: gateway, error } = await supabaseAdmin
-            .from('indb_payment_gateways')
-            .select('*')
-            .eq('slug', 'paddle')
-            .eq('is_active', true)
-            .single();
+        // Load Paddle gateway configuration using SecureServiceRoleWrapper
+        // This is a public operation to get client-safe config
+        const gateway = await SecureServiceRoleWrapper.executeSecureOperation<PaymentGatewayRow | null>(
+            {
+                userId: 'system',
+                operation: 'get_paddle_gateway_config',
+                source: 'paddle/config',
+                reason: 'Frontend requesting Paddle client configuration',
+                metadata: { endpoint: '/api/v1/payments/paddle/config' },
+                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                userAgent: request.headers.get('user-agent') ?? undefined
+            },
+            { table: 'indb_payment_gateways', operationType: 'select' },
+            async () => {
+                const { data, error } = await supabaseAdmin
+                    .from('indb_payment_gateways')
+                    .select('*')
+                    .eq('slug', 'paddle')
+                    .eq('is_active', true)
+                    .single();
 
-        if (error || !gateway) {
+                if (error && error.code !== 'PGRST116') throw error;
+                return data;
+            }
+        );
+
+        if (!gateway) {
             await ErrorHandlingService.createError(
                 ErrorType.DATABASE,
                 'Paddle gateway not found or not active',
                 {
                     severity: ErrorSeverity.MEDIUM,
-                    statusCode: 404,
-                    metadata: { error: error?.message }
+                    statusCode: 404
                 }
             );
 

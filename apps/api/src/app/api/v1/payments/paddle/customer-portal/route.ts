@@ -1,38 +1,46 @@
 /**
  * Paddle Customer Portal API
  * Provides customer portal URL for authenticated users to manage their subscription
- * 
- * Note: PaddleCustomerService needs to be restored separately.
- * This provides a simplified stub that returns a placeholder URL.
  */
 
 import { NextRequest } from 'next/server';
-import { supabaseAdmin } from '@indexnow/database';
-import { authenticatedApiWrapper, formatSuccess, formatError } from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+
+// Derived types from Database schema
+type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
+type SubscriptionPortalInfo = Pick<PaymentSubscriptionRow, 'paddle_subscription_id'>;
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-    const { data: subscription, error } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .select('paddle_subscription_id')
-        .eq('user_id', auth.userId)
-        .eq('status', 'active')
-        .maybeSingle();
+    // Get user's active subscription using SecureServiceRoleWrapper
+    const subscription = await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionPortalInfo | null>(
+        auth.supabase,
+        {
+            userId: auth.userId,
+            operation: 'get_subscription_for_customer_portal',
+            source: 'paddle/customer-portal',
+            reason: 'User requesting Paddle customer portal URL',
+            metadata: { endpoint: '/api/v1/payments/paddle/customer-portal' },
+            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            userAgent: request.headers.get('user-agent') ?? undefined
+        },
+        { table: 'indb_payment_subscriptions', operationType: 'select' },
+        async (db) => {
+            const { data, error } = await db
+                .from('indb_payment_subscriptions')
+                .select('paddle_subscription_id')
+                .eq('user_id', auth.userId)
+                .eq('status', 'active')
+                .maybeSingle();
 
-    if (error) {
-        const structuredError = await ErrorHandlingService.createError(
-            ErrorType.DATABASE,
-            `Failed to fetch subscription: ${error.message}`,
-            {
-                severity: ErrorSeverity.MEDIUM,
-                userId: auth.userId,
-                endpoint: '/api/v1/payments/paddle/customer-portal',
-                statusCode: 500
+            if (error) {
+                throw new Error(`Failed to fetch subscription: ${error.message}`);
             }
-        );
-        return formatError(structuredError);
-    }
+            return data;
+        }
+    );
 
     if (!subscription || !subscription.paddle_subscription_id) {
         const structuredError = await ErrorHandlingService.createError(
@@ -53,8 +61,6 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     // const portalUrl = await PaddleCustomerService.getCustomerPortalUrl(customerId);
 
     // For now, construct a placeholder portal URL using subscription ID
-    // Paddle's actual customer portal requires customer ID, not subscription ID
-    // This is a placeholder until PaddleCustomerService is restored
     const portalUrl = `https://checkout.paddle.com/subscription/manage?subscription=${subscription.paddle_subscription_id}`;
 
     return formatSuccess({

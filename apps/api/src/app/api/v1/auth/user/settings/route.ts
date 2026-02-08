@@ -1,151 +1,136 @@
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { z } from 'zod';
+import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity, updateUserSettingsSchema } from '@indexnow/shared';
-import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+
+// Valid schedule types matching the database enum
+const scheduleEnumSchema = z.enum(['one-time', 'hourly', 'daily', 'weekly', 'monthly']);
+
+// User-facing settings schema (excludes legacy Google Indexing fields)
+const updateUserSettingsSchema = z.object({
+    email_job_completion: z.boolean().optional(),
+    email_job_failure: z.boolean().optional(),
+    email_quota_alerts: z.boolean().optional(),
+    default_schedule: scheduleEnumSchema.optional(),
+    email_daily_report: z.boolean().optional()
+});
 
 /**
  * GET /api/v1/auth/user/settings
- * Get current user settings
+ * Get current user settings (creates defaults if not exists)
  */
-export const GET = publicApiWrapper(async (request: NextRequest) => {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll(); },
-                setAll() { } // Read-only for getting session
-            },
-        }
-    );
-
+export const GET = authenticatedApiWrapper(async (request, auth) => {
     try {
         const settings = await SecureServiceRoleWrapper.executeWithUserSession(
-            supabase,
+            auth.supabase,
             {
-                userId: 'user-settings-get',
+                userId: auth.userId,
                 operation: 'get_user_settings',
                 source: 'auth/user/settings',
-                reason: 'User fetching their own settings',
+                reason: 'User retrieving their own settings for display',
                 metadata: { endpoint: '/api/v1/auth/user/settings', method: 'GET' },
                 ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
-                userAgent: request.headers.get('user-agent') || undefined
+                userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_settings', operationType: 'select' },
-            async (userSupabase) => {
-                const { data: { user }, error: userError } = await userSupabase.auth.getUser();
-                if (userError || !user) throw new Error('User not found');
-
-                // Helper to get settings or create default if missing
-                let { data, error } = await userSupabase
+            async (db) => {
+                const { data: settings, error: settingsError } = await db
                     .from('indb_auth_user_settings')
                     .select('*')
-                    .eq('user_id', user.id)
+                    .eq('user_id', auth.userId)
                     .single();
 
-                if (error && error.code === 'PGRST116') {
-                    // Not found, return defaults or empty object (frontend handles defaults)
-                    return {};
-                } else if (error) {
-                    throw new Error(error.message);
-                }
+                if (settingsError) {
+                    if (settingsError.code === 'PGRST116') {
+                        // No settings found - create defaults (legacy fields use DB defaults)
+                        const { data: newSettings, error: createError } = await db
+                            .from('indb_auth_user_settings')
+                            .insert({
+                                user_id: auth.userId,
+                                email_job_completion: true,
+                                email_job_failure: true,
+                                email_quota_alerts: true,
+                                default_schedule: 'one-time',
+                                email_daily_report: true,
+                            })
+                            .select()
+                            .single();
 
-                return data;
+                        if (createError) throw new Error('Failed to create default settings');
+                        return newSettings;
+                    }
+                    throw new Error('Failed to fetch settings');
+                }
+                return settings;
             }
         );
 
-        return formatSuccess(settings);
+        return formatSuccess({ settings });
     } catch (error) {
-        const err = await ErrorHandlingService.createError(
-            ErrorType.AUTHENTICATION,
+        const structuredError = await ErrorHandlingService.createError(
+            ErrorType.DATABASE,
             error instanceof Error ? error : new Error(String(error)),
-            { severity: ErrorSeverity.MEDIUM, statusCode: 401 }
+            { severity: ErrorSeverity.HIGH, userId: auth.userId, endpoint: '/api/v1/auth/user/settings', method: 'GET', statusCode: 500 }
         );
-        return formatError(err);
+        return formatError(structuredError);
     }
 });
 
 /**
- * PATCH /api/v1/auth/user/settings
+ * PUT /api/v1/auth/user/settings
  * Update user settings
  */
-export const PATCH = publicApiWrapper(async (request: NextRequest) => {
+export const PUT = authenticatedApiWrapper(async (request, auth) => {
     try {
         const body = await request.json();
+        const validation = updateUserSettingsSchema.safeParse(body);
 
-        // Validate request body
-        const validationResult = updateUserSettingsSchema.safeParse(body);
-        if (!validationResult.success) {
-            const error = await ErrorHandlingService.createError(
+        if (!validation.success) {
+            const validationError = await ErrorHandlingService.createError(
                 ErrorType.VALIDATION,
-                'Invalid settings data',
-                {
-                    severity: ErrorSeverity.LOW,
-                    statusCode: 400,
-                    metadata: { issues: validationResult.error.errors }
-                }
+                'Invalid input',
+                { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400, metadata: { details: validation.error.errors } }
             );
-            return formatError(error);
+            return formatError(validationError);
         }
 
-        const cookieStore = await cookies();
-        const supabase = createServerClient(
-            AppConfig.supabase.url,
-            AppConfig.supabase.anonKey,
+        const settings = await SecureServiceRoleWrapper.executeWithUserSession(
+            auth.supabase,
             {
-                cookies: {
-                    getAll() { return cookieStore.getAll(); },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            cookieStore.set(name, value, options);
-                        });
-                    }
-                },
-            }
-        );
-
-        const updatedSettings = await SecureServiceRoleWrapper.executeWithUserSession(
-            supabase,
-            {
-                userId: 'user-settings-update',
+                userId: auth.userId,
                 operation: 'update_user_settings',
                 source: 'auth/user/settings',
-                reason: 'User updating their settings',
-                metadata: { endpoint: '/api/v1/auth/user/settings', method: 'PATCH' },
+                reason: 'User updating their own settings',
+                metadata: { endpoint: '/api/v1/auth/user/settings', method: 'PUT', updatedFields: Object.keys(validation.data) },
                 ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
-                userAgent: request.headers.get('user-agent') || undefined
+                userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_settings', operationType: 'update' },
-            async (userSupabase) => {
-                const { data: { user }, error: userError } = await userSupabase.auth.getUser();
-                if (userError || !user) throw new Error('User not found');
-
-                // Upsert settings
-                const { data, error } = await userSupabase
+            async (db) => {
+                const { data: settings, error: updateError } = await db
                     .from('indb_auth_user_settings')
-                    .upsert({
-                        user_id: user.id,
-                        ...validationResult.data
+                    .update({
+                        ...validation.data,
+                        updated_at: new Date().toISOString()
                     })
+                    .eq('user_id', auth.userId)
                     .select()
                     .single();
 
-                if (error) throw new Error(error.message);
-                return data;
+                if (updateError) throw new Error('Failed to update settings');
+                return settings;
             }
         );
 
-        return formatSuccess(updatedSettings);
+        return formatSuccess({ settings, message: 'Settings updated successfully' });
     } catch (error) {
-        const err = await ErrorHandlingService.createError(
-            ErrorType.SYSTEM,
+        const structuredError = await ErrorHandlingService.createError(
+            ErrorType.DATABASE,
             error instanceof Error ? error : new Error(String(error)),
-            { severity: ErrorSeverity.MEDIUM, statusCode: 500 }
+            { severity: ErrorSeverity.HIGH, userId: auth.userId, endpoint: '/api/v1/auth/user/settings', method: 'PUT', statusCode: 500 }
         );
-        return formatError(err);
+        return formatError(structuredError);
     }
 });

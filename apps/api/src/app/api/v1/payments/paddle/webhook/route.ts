@@ -10,9 +10,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, Json } from '@indexnow/shared';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import {
     processSubscriptionCreated,
     processSubscriptionUpdated,
@@ -28,6 +28,10 @@ import {
 
 const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 
+// Derived types from Database schema
+type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row'];
+type WebhookEventRow = Database['public']['Tables']['indb_paddle_webhook_events']['Row'];
+
 interface GatewayCredentials {
     webhook_secret?: string;
 }
@@ -38,14 +42,30 @@ interface SignatureVerificationResult {
 }
 
 async function getWebhookSecretFromDatabase(): Promise<string> {
-    const { data: gateway, error } = await supabaseAdmin
-        .from('indb_payment_gateways')
-        .select('api_credentials')
-        .eq('slug', 'paddle')
-        .eq('is_active', true)
-        .single();
+    // Use SecureServiceRoleWrapper for audit trail
+    const gateway = await SecureServiceRoleWrapper.executeSecureOperation<Pick<PaymentGatewayRow, 'api_credentials'> | null>(
+        {
+            userId: 'system',
+            operation: 'get_paddle_webhook_secret',
+            source: 'paddle/webhook',
+            reason: 'System fetching Paddle webhook secret for signature verification',
+            metadata: { endpoint: '/api/v1/payments/paddle/webhook' }
+        },
+        { table: 'indb_payment_gateways', operationType: 'select' },
+        async () => {
+            const { data, error } = await supabaseAdmin
+                .from('indb_payment_gateways')
+                .select('api_credentials')
+                .eq('slug', 'paddle')
+                .eq('is_active', true)
+                .single();
 
-    if (error || !gateway) {
+            if (error && error.code !== 'PGRST116') throw error;
+            return data;
+        }
+    );
+
+    if (!gateway) {
         throw new Error('Paddle gateway not found or not active');
     }
 
@@ -115,37 +135,77 @@ export const POST = async (request: NextRequest) => {
             );
         }
 
-        const { data: existingEvent } = await supabaseAdmin
-            .from('indb_paddle_webhook_events')
-            .select('id, processed')
-            .eq('event_id', event_id)
-            .single();
+        // Check for duplicate event using SecureServiceRoleWrapper
+        const existingEvent = await SecureServiceRoleWrapper.executeSecureOperation<Pick<WebhookEventRow, 'id' | 'processed'> | null>(
+            {
+                userId: 'system',
+                operation: 'check_duplicate_webhook_event',
+                source: 'paddle/webhook',
+                reason: 'Checking for duplicate Paddle webhook event',
+                metadata: { event_id, event_type }
+            },
+            { table: 'indb_paddle_webhook_events', operationType: 'select' },
+            async () => {
+                const { data, error } = await supabaseAdmin
+                    .from('indb_paddle_webhook_events')
+                    .select('id, processed')
+                    .eq('event_id', event_id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') throw error;
+                return data;
+            }
+        );
 
         if (existingEvent) {
             if (existingEvent.processed) {
                 return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
             }
         } else {
-            const { error: insertError } = await supabaseAdmin
-                .from('indb_paddle_webhook_events')
-                .insert({
-                    event_id,
-                    event_type,
-                    payload: eventData as unknown as Json,
-                    processed: false,
-                });
+            // Insert new webhook event using SecureServiceRoleWrapper
+            await SecureServiceRoleWrapper.executeSecureOperation<void>(
+                {
+                    userId: 'system',
+                    operation: 'log_webhook_event',
+                    source: 'paddle/webhook',
+                    reason: 'Logging new Paddle webhook event for processing',
+                    metadata: { event_id, event_type }
+                },
+                { table: 'indb_paddle_webhook_events', operationType: 'insert' },
+                async () => {
+                    const { error } = await supabaseAdmin
+                        .from('indb_paddle_webhook_events')
+                        .insert({
+                            event_id,
+                            event_type,
+                            payload: eventData as unknown as Json,
+                            processed: false,
+                        });
 
-            if (insertError) {
-                throw new Error(`Failed to log webhook event: ${insertError.message}`);
-            }
+                    if (error) throw new Error(`Failed to log webhook event: ${error.message}`);
+                }
+            );
         }
 
         await routeWebhookEvent(event_type, data, event_id);
 
-        await supabaseAdmin
-            .from('indb_paddle_webhook_events')
-            .update({ processed: true, processed_at: new Date().toISOString() })
-            .eq('event_id', event_id);
+        // Mark event as processed using SecureServiceRoleWrapper
+        await SecureServiceRoleWrapper.executeSecureOperation<void>(
+            {
+                userId: 'system',
+                operation: 'mark_webhook_event_processed',
+                source: 'paddle/webhook',
+                reason: 'Marking Paddle webhook event as successfully processed',
+                metadata: { event_id, event_type }
+            },
+            { table: 'indb_paddle_webhook_events', operationType: 'update' },
+            async () => {
+                await supabaseAdmin
+                    .from('indb_paddle_webhook_events')
+                    .update({ processed: true, processed_at: new Date().toISOString() })
+                    .eq('event_id', event_id);
+            }
+        );
 
         return NextResponse.json({ received: true }, { status: 200 });
     } catch (error) {
@@ -266,13 +326,26 @@ async function routeWebhookEvent(eventType: string, data: unknown, eventId: stri
             // Unknown event type, ignore
         }
     } catch (error) {
-        await supabaseAdmin
-            .from('indb_paddle_webhook_events')
-            .update({
-                error_message: error instanceof Error ? error.message : 'Unknown error',
-                retry_count: 0,
-            })
-            .eq('event_id', eventId);
+        // Log error to webhook event using SecureServiceRoleWrapper
+        await SecureServiceRoleWrapper.executeSecureOperation<void>(
+            {
+                userId: 'system',
+                operation: 'log_webhook_processing_error',
+                source: 'paddle/webhook',
+                reason: 'Recording error that occurred during webhook event processing',
+                metadata: { eventId, eventType, error: error instanceof Error ? error.message : 'Unknown error' }
+            },
+            { table: 'indb_paddle_webhook_events', operationType: 'update' },
+            async () => {
+                await supabaseAdmin
+                    .from('indb_paddle_webhook_events')
+                    .update({
+                        error_message: error instanceof Error ? error.message : 'Unknown error',
+                        retry_count: 0,
+                    })
+                    .eq('event_id', eventId);
+            }
+        );
 
         throw error;
     }

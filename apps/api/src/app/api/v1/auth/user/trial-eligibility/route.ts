@@ -1,70 +1,119 @@
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
-import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+
+// Derived types from Database schema
+type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
+type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
+
+// Pick only the columns we need for eligibility check
+type UserEligibilityProfile = Pick<UserProfileRow, 'package_id' | 'subscription_start_date' | 'subscription_end_date'>;
+
+// Type for trial package list (only what we select)
+type TrialPackageInfo = Pick<PaymentPackageRow, 'id' | 'name' | 'slug' | 'description' | 'is_active'>;
+
+// Response types for trial eligibility
+interface TrialEligibilityIneligible {
+    eligible: false;
+    reason: string;
+    trial_used_at: string | null;
+    message: string;
+}
+
+interface TrialEligibilityEligible {
+    eligible: true;
+    available_packages: TrialPackageInfo[];
+    message: string;
+}
+
+type TrialEligibilityResponse = TrialEligibilityIneligible | TrialEligibilityEligible;
 
 /**
  * GET /api/v1/auth/user/trial-eligibility
  * Check if user is eligible for a free trial
  */
-export const GET = publicApiWrapper(async (request: NextRequest) => {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll(); },
-                setAll() { } // Read-only for getting session
-            },
-        }
-    );
-
+export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (request, auth) => {
     try {
-        const eligibility = await SecureServiceRoleWrapper.executeWithUserSession(
-            supabase,
+        // Query available columns from user profile
+        const profileResult = await SecureServiceRoleWrapper.executeWithUserSession<UserEligibilityProfile>(
+            auth.supabase,
             {
-                userId: 'user-trial-eligibility',
-                operation: 'check_trial_eligibility',
+                userId: auth.userId,
+                operation: 'get_user_trial_eligibility_profile',
                 source: 'auth/user/trial-eligibility',
-                reason: 'Checking if user is eligible for trial',
+                reason: 'User checking trial eligibility status and usage history',
                 metadata: { endpoint: '/api/v1/auth/user/trial-eligibility', method: 'GET' },
                 ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
-                userAgent: request.headers.get('user-agent') || undefined
+                userAgent: request.headers.get('user-agent') ?? undefined
             },
-            { table: 'indb_payment_subscriptions', operationType: 'select' },
-            async (userSupabase) => {
-                const { data: { user }, error: userError } = await userSupabase.auth.getUser();
-                if (userError || !user) throw new Error('User not found');
-
-                // Check if user has ANY subscription history (trial or paid)
-                // If they have any record, they are likely not eligible for a "new user" trial unless specified otherwise.
-                const { count, error } = await userSupabase
-                    .from('indb_payment_subscriptions')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
-
-                if (error) throw new Error(error.message);
-
-                const isEligible = count === 0;
-
-                return {
-                    isEligible,
-                    reason: isEligible ? 'New user' : 'Existing subscription history'
-                };
+            { table: 'indb_auth_user_profiles', operationType: 'select' },
+            async (db) => {
+                const { data, error } = await db
+                    .from('indb_auth_user_profiles')
+                    .select('package_id, subscription_start_date, subscription_end_date')
+                    .eq('user_id', auth.userId)
+                    .single();
+                if (error) throw new Error('Unable to verify account eligibility');
+                return data;
             }
         );
 
-        return formatSuccess(eligibility);
+        // Infer trial usage from subscription history
+        const hasUsedTrial = profileResult.subscription_start_date !== null;
+        const trialUsedAt = profileResult.subscription_start_date;
+
+        if (hasUsedTrial) {
+            return formatSuccess<TrialEligibilityResponse>({
+                eligible: false,
+                reason: 'already_used',
+                trial_used_at: trialUsedAt,
+                message: trialUsedAt
+                    ? `Free trial already used on ${new Date(trialUsedAt).toLocaleDateString()}`
+                    : 'Free trial already used'
+            });
+        }
+
+        // Fetch available trial packages
+        let packages: TrialPackageInfo[] = [];
+        try {
+            packages = await SecureServiceRoleWrapper.executeWithUserSession<TrialPackageInfo[]>(
+                auth.supabase,
+                {
+                    userId: auth.userId,
+                    operation: 'get_available_trial_packages',
+                    source: 'auth/user/trial-eligibility',
+                    reason: 'User fetching available trial packages for eligibility check',
+                    metadata: { eligible: true },
+                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    userAgent: request.headers.get('user-agent') ?? undefined
+                },
+                { table: 'indb_payment_packages', operationType: 'select' },
+                async (db) => {
+                    const { data, error } = await db
+                        .from('indb_payment_packages')
+                        .select('id, name, slug, description, is_active')
+                        .eq('is_active', true);
+                    if (error) throw error;
+                    return data ?? [];
+                }
+            );
+        } catch {
+            packages = [];
+        }
+
+        return formatSuccess<TrialEligibilityResponse>({
+            eligible: true,
+            available_packages: packages,
+            message: 'You are eligible for a 3-day free trial'
+        });
     } catch (error) {
-        const err = await ErrorHandlingService.createError(
-            ErrorType.AUTHENTICATION,
+        const structuredError = await ErrorHandlingService.createError(
+            ErrorType.DATABASE,
             error instanceof Error ? error : new Error(String(error)),
-            { severity: ErrorSeverity.MEDIUM, statusCode: 401 }
+            { severity: ErrorSeverity.MEDIUM, userId: auth.userId, endpoint: '/api/v1/auth/user/trial-eligibility', method: 'GET', statusCode: 500 }
         );
-        return formatError(err);
+        return formatError(structuredError);
     }
 });

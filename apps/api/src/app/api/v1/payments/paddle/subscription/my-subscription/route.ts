@@ -4,8 +4,22 @@
  */
 
 import { NextRequest } from 'next/server';
-import { supabaseAdmin } from '@indexnow/database';
-import { authenticatedApiWrapper, formatSuccess } from '../../../../../../../lib/core/api-response-middleware';
+import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { type Database } from '@indexnow/shared';
+import { authenticatedApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+
+// Derived types from Database schema
+type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
+type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
+
+// Selected subscription fields
+type SubscriptionSelect = Pick<PaymentSubscriptionRow,
+    'id' | 'paddle_subscription_id' | 'status' | 'package_id' | 'start_date' |
+    'current_period_end' | 'cancel_at_period_end' | 'canceled_at' | 'paused_at' | 'created_at'
+>;
+
+// Selected user profile fields
+type UserProfileSelect = Pick<UserProfileRow, 'package_id' | 'subscription_start_date' | 'subscription_end_date'>;
 
 interface SubscriptionData {
     id: string;
@@ -22,17 +36,31 @@ interface SubscriptionData {
 }
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-    // First, check for Paddle subscription
-    const { data: paddleSubscription, error: paddleError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .select('*')
-        .eq('user_id', auth.userId)
-        .in('status', ['active', 'past_due', 'paused'])
-        .maybeSingle();
+    // First, check for Paddle subscription using SecureServiceRoleWrapper
+    const paddleSubscription = await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionSelect | null>(
+        auth.supabase,
+        {
+            userId: auth.userId,
+            operation: 'get_paddle_subscription',
+            source: 'paddle/subscription/my-subscription',
+            reason: 'User fetching their active Paddle subscription',
+            metadata: { endpoint: '/api/v1/payments/paddle/subscription/my-subscription' },
+            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            userAgent: request.headers.get('user-agent') ?? undefined
+        },
+        { table: 'indb_payment_subscriptions', operationType: 'select' },
+        async (db) => {
+            const { data, error } = await db
+                .from('indb_payment_subscriptions')
+                .select('id, paddle_subscription_id, status, package_id, start_date, current_period_end, cancel_at_period_end, canceled_at, paused_at, created_at')
+                .eq('user_id', auth.userId)
+                .in('status', ['active', 'past_due', 'paused'])
+                .maybeSingle();
 
-    if (paddleError) {
-        throw new Error(`Failed to fetch Paddle subscription: ${paddleError.message}`);
-    }
+            if (error) throw new Error(`Failed to fetch Paddle subscription: ${error.message}`);
+            return data;
+        }
+    );
 
     if (paddleSubscription) {
         const subscriptionData: SubscriptionData = {
@@ -56,15 +84,31 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     }
 
     // If no Paddle subscription, check for legacy subscription from user profile
-    const { data: userProfile, error: profileError } = await supabaseAdmin
-        .from('indb_auth_user_profiles')
-        .select('package_id, subscription_start_date, subscription_end_date')
-        .eq('user_id', auth.userId)
-        .single();
+    const userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserProfileSelect | null>(
+        auth.supabase,
+        {
+            userId: auth.userId,
+            operation: 'get_user_legacy_subscription',
+            source: 'paddle/subscription/my-subscription',
+            reason: 'User fetching their legacy subscription from profile',
+            metadata: { endpoint: '/api/v1/payments/paddle/subscription/my-subscription' },
+            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            userAgent: request.headers.get('user-agent') ?? undefined
+        },
+        { table: 'indb_auth_user_profiles', operationType: 'select' },
+        async (db) => {
+            const { data, error } = await db
+                .from('indb_auth_user_profiles')
+                .select('package_id, subscription_start_date, subscription_end_date')
+                .eq('user_id', auth.userId)
+                .single();
 
-    if (profileError) {
-        throw new Error(`Failed to fetch user profile: ${profileError.message}`);
-    }
+            if (error && error.code !== 'PGRST116') {
+                throw new Error(`Failed to fetch user profile: ${error.message}`);
+            }
+            return data;
+        }
+    );
 
     // Check if user has an active legacy subscription
     if (userProfile?.package_id && userProfile?.subscription_end_date) {

@@ -1,21 +1,22 @@
 /**
  * Paddle Refund Window Info API
  * Returns refund eligibility information for a subscription
- * 
- * Note: PaddleCancellationService needs restoration. This route implements
- * simplified refund window calculation.
  */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+
+// Derived types from Database schema  
+type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
+type SubscriptionRefundInfo = Pick<PaymentSubscriptionRow, 'user_id' | 'created_at' | 'paddle_subscription_id'>;
 
 const refundWindowRequestSchema = z.object({
     subscriptionId: z.string().min(1, 'Subscription ID is required'),
@@ -36,14 +37,32 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     }
 
     try {
-        // Get subscription info
-        const { data: subscription, error: fetchError } = await supabaseAdmin
-            .from('indb_payment_subscriptions')
-            .select('user_id, created_at, paddle_subscription_id')
-            .eq('paddle_subscription_id', validationResult.data.subscriptionId)
-            .single();
+        // Get subscription info using SecureServiceRoleWrapper
+        const subscription = await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionRefundInfo | null>(
+            auth.supabase,
+            {
+                userId: auth.userId,
+                operation: 'get_subscription_refund_window_info',
+                source: 'paddle/subscription/refund-window-info',
+                reason: 'User checking refund eligibility for subscription',
+                metadata: { subscriptionId: validationResult.data.subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/refund-window-info' },
+                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                userAgent: request.headers.get('user-agent') ?? undefined
+            },
+            { table: 'indb_payment_subscriptions', operationType: 'select' },
+            async (db) => {
+                const { data, error } = await db
+                    .from('indb_payment_subscriptions')
+                    .select('user_id, created_at, paddle_subscription_id')
+                    .eq('paddle_subscription_id', validationResult.data.subscriptionId)
+                    .single();
 
-        if (fetchError || !subscription) {
+                if (error && error.code !== 'PGRST116') throw error;
+                return data;
+            }
+        );
+
+        if (!subscription) {
             throw new Error('Subscription not found');
         }
 

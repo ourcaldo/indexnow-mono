@@ -1,12 +1,12 @@
 import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Json, type TransactionMetadata } from '@indexnow/shared';
 import {
     formatSuccess,
     formatError,
     type ApiSuccessResponse,
     type ApiErrorResponse
-} from '../../../../../../../lib/core/api-response-middleware';
-import { logger, ErrorHandlingService } from '../../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { logger, ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 export interface PaymentData {
     package_id: string;
@@ -30,6 +30,8 @@ export interface CustomerInfo {
     zip_code?: string;
     country: string;
     description?: string;
+    // Allow Json compatibility
+    [key: string]: Json | undefined;
 }
 
 export interface PaymentResult {
@@ -78,30 +80,31 @@ export abstract class BasePaymentHandler {
     async createPendingTransaction(gatewayId: string, additionalData: Record<string, unknown> = {}): Promise<string> {
         const amount = this.calculateAmount();
 
+        // Note: Using correct schema columns. 'status' is the correct column (not transaction_status)
+        // transaction_type and billing_period don't exist - put in metadata instead
         const { data: transaction, error: dbError } = await supabaseAdmin
             .from('indb_payment_transactions')
             .insert({
                 user_id: this.paymentData.user.id,
                 package_id: this.paymentData.package_id,
                 gateway_id: gatewayId,
-                transaction_type: 'payment',
-                transaction_status: 'pending',
+                status: 'pending',  // Using correct enum column name
                 amount: amount.finalAmount,
                 currency: amount.currency,
                 payment_method: this.getPaymentMethodSlug(),
-                billing_period: this.paymentData.billing_period,
                 metadata: {
+                    transaction_type: 'payment',  // Moved to metadata (column doesn't exist on table)
+                    billing_period: this.paymentData.billing_period,  // Moved to metadata
                     original_amount: amount.originalAmount,
                     original_currency: amount.originalCurrency,
-                    customer_info: this.paymentData.customer_info,
+                    customer_info: { ...this.paymentData.customer_info } as Json,  // Cast to Json for compatibility
                     user_id: this.paymentData.user.id,
                     user_email: this.paymentData.user.email,
                     package_id: this.paymentData.package_id,
-                    billing_period: this.paymentData.billing_period,
                     created_at: new Date().toISOString(),
                     payment_type: this.paymentData.is_trial ? 'trial_payment' : 'regular_payment',
                     ...additionalData
-                }
+                } satisfies TransactionMetadata
             })
             .select('id')
             .single();

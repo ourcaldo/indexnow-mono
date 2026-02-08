@@ -1,0 +1,751 @@
+﻿apps/api/src/app/api/admin/bull-board/[[...path]]/route.ts(133,13): error TS2339: Property 'queues' does not exist on type '{ setQueues: (newBullQueues: readonly BaseAdapter[]) => void; replaceQueues: (newBullQueues: readonly BaseAdapter[]) => void; addQueue: (queue: BaseAdapter) => void; removeQueue: (queueOrName: string | BaseAdapter) => void; }'.
+apps/api/src/app/api/revalidate/route.ts(1,20): error TS2304: Cannot find name 'POST'.
+apps/api/src/app/api/v1/admin/activity/[id]/route.ts(3,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'adminApiWrapper'.
+apps/api/src/app/api/v1/admin/activity/[id]/route.ts(6,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'createStandardError'.
+apps/api/src/app/api/v1/admin/activity/[id]/route.ts(15,8): error TS2305: Module '"@indexnow/database"' has no exported member 'SecurityActivityLog'.
+apps/api/src/app/api/v1/admin/activity/[id]/route.ts(20,3): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/activity/route.ts(3,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'adminApiWrapper'.
+apps/api/src/app/api/v1/admin/activity/route.ts(14,8): error TS2305: Module '"@indexnow/database"' has no exported member 'SecurityActivityLog'.
+apps/api/src/app/api/v1/admin/activity/route.ts(17,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/activity/route.ts(23,57): error TS2554: Expected 1-2 arguments, but got 3.
+apps/api/src/app/api/v1/admin/activity/route.ts(51,5): error TS2345: Argument of type '{ userId: any; operation: string; reason: string; source: string; metadata: { days: number; limit: number; page: number; userId: string | undefined; searchTerm: string | undefined; eventType: "all" | ... 5 more ... | "system_action"; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Types of property 'metadata' are incompatible.
+    Type '{ days: number; limit: number; page: number; userId: string | undefined; searchTerm: string | undefined; eventType: "all" | "login" | "logout" | "admin_action" | "order_management" | "user_management" | "system_action"; }' is not assignable to type 'Record<string, Json>'.
+      Property 'userId' is incompatible with index signature.
+        Type 'string | undefined' is not assignable to type 'Json'.
+          Type 'undefined' is not assignable to type 'Json'.
+apps/api/src/app/api/v1/admin/activity/route.ts(148,5): error TS2739: Type '{ page: number; limit: number; total: number; totalPages: number; }' is missing the following properties from type 'PaginationMeta': hasNext, hasPrev, offset
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(3,48): error TS2307: Cannot find module '../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(4,24): error TS2307: Cannot find module '../../../../../../lib/monitoring/error-handling' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(14,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(60,24): error TS2352: Conversion of type '{ id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; email_verified: boolean; avatar_url: string | null; ... 15 more ...; updated_at: string; }' to type 'UserProfile' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'email_notifications' is missing in type '{ id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; email_verified: boolean; avatar_url: string | null; ... 15 more ...; updated_at: string; }' but required in type 'UserProfile'.
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(81,66): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(127,25): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { id?: string | undefined; user_id: string; full_name?: string | null | undefined; phone_number?: string | null | undefined; country?: string | null | undefined; role?: "user" | "admin" | "super_admin" | undefined; ... 17 more ...; updated_at?: string | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ user_id: any; full_name: any; role: string; email_notifications: boolean; updated_at: string; }' is not assignable to parameter of type '{ id?: string | undefined; user_id: string; full_name?: string | null | undefined; phone_number?: string | null | undefined; country?: string | null | undefined; role?: "user" | "admin" | "super_admin" | undefined; ... 17 more ...; updated_at?: string | undefined; }'.
+      Types of property 'role' are incompatible.
+        Type 'string' is not assignable to type '"user" | "admin" | "super_admin" | undefined'.
+  Overload 2 of 2, '(values: { id?: string | undefined; user_id: string; full_name?: string | null | undefined; phone_number?: string | null | undefined; country?: string | null | undefined; role?: "user" | "admin" | "super_admin" | undefined; ... 17 more ...; updated_at?: string | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ user_id: any; full_name: any; role: string; email_notifications: boolean; updated_at: string; }' is not assignable to parameter of type '{ id?: string | undefined; user_id: string; full_name?: string | null | undefined; phone_number?: string | null | undefined; country?: string | null | undefined; role?: "user" | "admin" | "super_admin" | undefined; ... 17 more ...; updated_at?: string | undefined; }[]'.
+      Type '{ user_id: any; full_name: any; role: string; email_notifications: boolean; updated_at: string; }' is missing the following properties from type '{ id?: string | undefined; user_id: string; full_name?: string | null | undefined; phone_number?: string | null | undefined; country?: string | null | undefined; role?: "user" | "admin" | "super_admin" | undefined; ... 17 more ...; updated_at?: string | undefined; }[]': length, pop, push, concat, and 35 more.
+apps/api/src/app/api/v1/admin/debug-auth/route.ts(137,20): error TS2352: Conversion of type '{ id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; email_verified: boolean; avatar_url: string | null; ... 15 more ...; updated_at: string; }' to type 'UserProfile' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'email_notifications' is missing in type '{ id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; email_verified: boolean; avatar_url: string | null; ... 15 more ...; updated_at: string; }' but required in type 'UserProfile'.
+apps/api/src/app/api/v1/admin/errors/[id]/route.ts(13,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiSuccessResponse<{ error: { id: string; user_id: string | null; error_type: string; ... 13 more ...; updated_at: string; }; userInfo: SelectQueryError<...> | null; relatedErrors: Pick<...>[]; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/errors/[id]/route.ts(88,38): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiSuccessResponse<{ error: { id: string; user_id: string | null; error_type: string; ... 13 more ...; updated_at: string; }; action: any; updatedAt: string; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/errors/critical/route.ts(9,48): error TS2307: Cannot find module '../../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/errors/critical/route.ts(34,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/errors/route.ts(3,48): error TS2307: Cannot find module '../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/errors/route.ts(36,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/errors/route.ts(84,17): error TS2322: Type '{ severity: string | undefined; errorType: string | undefined; userId: string | undefined; status: string | undefined; hasSearch: boolean; }' is not assignable to type 'Json'.
+  Type '{ severity: string | undefined; errorType: string | undefined; userId: string | undefined; status: string | undefined; hasSearch: boolean; }' is not assignable to type 'null'.
+apps/api/src/app/api/v1/admin/errors/stats/route.ts(9,48): error TS2307: Cannot find module '../../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/errors/stats/route.ts(50,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(3,8): error TS2305: Module '"@indexnow/database"' has no exported member 'PackageRow'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(6,8): error TS2305: Module '"@indexnow/database"' has no exported member 'TransactionRow'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(13,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(14,18): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(14,29): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(34,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<AdminOrderDetailResponse>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(105,7): error TS2554: Expected 2-3 arguments, but got 4.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(122,31): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(131,26): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(154,31): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(165,40): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(168,84): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(189,15): error TS2339: Property 'metadata' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(190,39): error TS2339: Property 'metadata' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(225,17): error TS2339: Property 'id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(226,22): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(227,25): error TS2551: Property 'package_id' does not exist on type 'OrderWithRelations'. Did you mean 'package'?
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(228,25): error TS2551: Property 'gateway_id' does not exist on type 'OrderWithRelations'. Did you mean 'gateway'?
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(230,33): error TS2339: Property 'status' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(231,21): error TS2339: Property 'amount' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(232,23): error TS2339: Property 'currency' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(233,29): error TS2339: Property 'payment_method' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(234,32): error TS2339: Property 'proof_url' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(235,37): error TS2339: Property 'transaction_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(236,27): error TS2339: Property 'metadata' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(237,27): error TS2339: Property 'metadata' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(238,28): error TS2339: Property 'metadata' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(239,20): error TS2339: Property 'notes' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(240,23): error TS2339: Property 'metadata' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(241,25): error TS2339: Property 'created_at' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(242,25): error TS2339: Property 'updated_at' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(259,24): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(263,54): error TS2339: Property 'created_at' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(450,43): error TS2339: Property 'id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(455,30): error TS2339: Property 'status' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(456,30): error TS2339: Property 'amount' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/route.ts(457,29): error TS2339: Property 'user_id' does not exist on type 'OrderWithRelations'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(1,67): error TS2305: Module '"@indexnow/database"' has no exported member 'TransactionRow'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(1,88): error TS2305: Module '"@indexnow/database"' has no exported member 'UpdateTransaction'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(50,5): error TS2353: Object literal may only specify known properties, and 'subscribed_at' does not exist in type '{ id?: string | undefined; user_id?: string | undefined; full_name?: string | null | undefined; phone_number?: string | null | undefined; country?: string | null | undefined; role?: "user" | "admin" | "super_admin" | undefined; ... 17 more ...; updated_at?: string | undefined; }'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(101,38): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ message: string; transaction: AdminOrderTransaction; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(122,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(171,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(182,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(360,47): error TS2339: Property 'subscribed_at' does not exist on type '{ id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; email_verified: boolean; avatar_url: string | null; ... 15 more ...; updated_at: string; }'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(361,44): error TS2339: Property 'expires_at' does not exist on type '{ id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; email_verified: boolean; avatar_url: string | null; ... 15 more ...; updated_at: string; }'.
+apps/api/src/app/api/v1/admin/orders/[id]/status/route.ts(423,11): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/orders/route.ts(3,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'adminApiWrapper'.
+apps/api/src/app/api/v1/admin/orders/route.ts(6,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'createStandardError'.
+apps/api/src/app/api/v1/admin/orders/route.ts(19,8): error TS2305: Module '"@indexnow/database"' has no exported member 'TransactionRow'.
+apps/api/src/app/api/v1/admin/orders/route.ts(22,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/orders/route.ts(38,26): error TS2339: Property 'logAdminAction' does not exist on type 'typeof ActivityLogger'.
+apps/api/src/app/api/v1/admin/orders/route.ts(50,56): error TS2345: Argument of type '{ error: unknown; }' is not assignable to parameter of type 'string'.
+apps/api/src/app/api/v1/admin/orders/route.ts(68,5): error TS2345: Argument of type '{ userId: any; operation: string; reason: string; source: string; metadata: { filters: { status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }; pagination: { .....' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Types of property 'metadata' are incompatible.
+    Type '{ filters: { status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }; pagination: { ...; }; }' is not assignable to type 'Record<string, Json>'.
+      Property 'filters' is incompatible with index signature.
+        Type '{ status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }' is not assignable to type 'Json'.
+          Type '{ status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }' is not assignable to type '{ [key: string]: Json; }'.
+            Property 'status' is incompatible with index signature.
+              Type 'string | undefined' is not assignable to type 'Json'.
+                Type 'undefined' is not assignable to type 'Json'.
+apps/api/src/app/api/v1/admin/orders/route.ts(100,36): error TS2345: Argument of type 'string' is not assignable to parameter of type 'NonNullable<"pending" | "failed" | "proof_uploaded" | "completed" | "cancelled" | "refunded">'.
+apps/api/src/app/api/v1/admin/orders/route.ts(183,55): error TS2345: Argument of type '{ error: unknown; }' is not assignable to parameter of type 'string'.
+apps/api/src/app/api/v1/admin/orders/route.ts(247,7): error TS2345: Argument of type '{ operation: string; userId: any; reason: string; source: string; metadata: { filters: { status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }; pagination: { .....' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Types of property 'metadata' are incompatible.
+    Type '{ filters: { status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }; pagination: { ...; }; }' is not assignable to type 'Record<string, Json>'.
+      Property 'filters' is incompatible with index signature.
+        Type '{ status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }' is not assignable to type 'Json'.
+          Type '{ status: string | undefined; customer: string | undefined; packageId: string | undefined; dateFrom: string | undefined; dateTo: string | undefined; amountMin: string | undefined; amountMax: string | undefined; }' is not assignable to type '{ [key: string]: Json; }'.
+            Property 'status' is incompatible with index signature.
+              Type 'string | undefined' is not assignable to type 'Json'.
+                Type 'undefined' is not assignable to type 'Json'.
+apps/api/src/app/api/v1/admin/packages/route.ts(8,8): error TS2307: Cannot find module '../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/packages/route.ts(9,38): error TS2307: Cannot find module '../../../../../../lib/monitoring/error-handling' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/packages/route.ts(24,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(17,8): error TS2307: Cannot find module '../../../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(18,24): error TS2307: Cannot find module '../../../../../../../../lib/monitoring/error-handling' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(31,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_seranking_keywords"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_seranking_keywords"' is not assignable to parameter of type 'never'.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(37,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_seranking_keyword_results"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_seranking_keyword_results"' is not assignable to parameter of type 'never'.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(58,66): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(74,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_system_activity_logs"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_system_activity_logs"' is not assignable to parameter of type 'never'.
+apps/api/src/app/api/v1/admin/rank-tracker/trigger-manual-check/route.ts(90,65): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/settings/packages/[id]/route.ts(3,27): error TS2305: Module '"@/lib/core/api-response-middleware"' has no exported member 'withDatabaseOperation'.
+apps/api/src/app/api/v1/admin/settings/payments/[id]/route.ts(3,61): error TS2307: Cannot find module '../../../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/settings/payments/[id]/route.ts(4,38): error TS2307: Cannot find module '../../../../../../../../lib/monitoring/error-handling' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/settings/payments/[id]/route.ts(7,67): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/settings/payments/[id]/route.ts(115,68): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/settings/site/test-email/route.ts(13,8): error TS2307: Cannot find module '../../../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/settings/site/test-email/route.ts(14,24): error TS2307: Cannot find module '../../../../../../../../lib/monitoring/error-handling' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/settings/site/test-email/route.ts(15,52): error TS2307: Cannot find module '../../../../../../../../lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/settings/site/test-email/route.ts(27,66): error TS7006: Parameter 'adminUser' implicitly has an 'any' type.
+apps/api/src/app/api/v1/admin/users/[id]/activity/route.ts(1,62): error TS2305: Module '"@indexnow/database"' has no exported member 'SecurityActivityLog'.
+apps/api/src/app/api/v1/admin/users/[id]/activity/route.ts(5,18): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/activity/route.ts(5,29): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/activity/route.ts(22,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context: { params: Promise<Record<string, string>>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<...>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Type 'Promise<StructuredError | ApiSuccessResponse<{ logs: SecurityActivityLog[]; user: { id: string; name: string; email: string; }; pagination: { page: number; limit: number; total: number; totalPages: number; }; }>>' is not assignable to type 'Promise<ApiErrorResponse | NextResponse<unknown> | ApiSuccessResponse<{ logs: SecurityActivityLog[]; user: { id: string; name: string; email: string; }; pagination: { page: number; limit: number; total: number; totalPages: number; }; }>>'.
+    Type 'StructuredError | ApiSuccessResponse<{ logs: SecurityActivityLog[]; user: { id: string; name: string; email: string; }; pagination: { page: number; limit: number; total: number; totalPages: number; }; }>' is not assignable to type 'ApiErrorResponse | NextResponse<unknown> | ApiSuccessResponse<{ logs: SecurityActivityLog[]; user: { id: string; name: string; email: string; }; pagination: { page: number; limit: number; total: number; totalPages: number; }; }>'.
+      Type 'StructuredError' is not assignable to type 'ApiErrorResponse | NextResponse<unknown> | ApiSuccessResponse<{ logs: SecurityActivityLog[]; user: { id: string; name: string; email: string; }; pagination: { page: number; limit: number; total: number; totalPages: number; }; }>'.
+        Type 'StructuredError' is missing the following properties from type 'ApiSuccessResponse<{ logs: SecurityActivityLog[]; user: { id: string; name: string; email: string; }; pagination: { page: number; limit: number; total: number; totalPages: number; }; }>': success, data
+apps/api/src/app/api/v1/admin/users/[id]/activity/route.ts(158,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/api-stats/route.ts(6,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiSuccessResponse<{ totalRequests: number; totalQuotaUsed: number; successCount: number; errorCount: number; recentLogs: SelectQueryError<...>[]; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/api-stats/route.ts(31,64): error TS2339: Property 'quota_used' does not exist on type 'SelectQueryError<"column 'operation' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/api-stats/route.ts(32,48): error TS2339: Property 'status' does not exist on type 'SelectQueryError<"column 'operation' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/api-stats/route.ts(33,46): error TS2339: Property 'status' does not exist on type 'SelectQueryError<"column 'operation' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(8,37): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ message: string; package: { ...; }; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(25,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(68,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(118,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/change-package/route.ts(179,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(8,37): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ message: string; new_expiry: string; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(57,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(62,37): error TS2339: Property 'expires_at' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(62,71): error TS2339: Property 'expires_at' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(75,37): error TS2339: Property 'full_name' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(77,37): error TS2339: Property 'expires_at' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(113,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(122,46): error TS2339: Property 'full_name' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(127,35): error TS2339: Property 'expires_at' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/extend-subscription/route.ts(129,33): error TS2339: Property 'full_name' does not exist on type 'SelectQueryError<"column 'expires_at' does not exist on 'indb_auth_user_profiles'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/quota-usage/route.ts(7,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiErrorResponse | ApiSuccessResponse<UserQuota>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/quota-usage/route.ts(28,7): error TS2353: Object literal may only specify known properties, and 'details' does not exist in type 'StructuredError'.
+apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts(8,37): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ newPassword: string; message: string; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts(41,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts(106,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/reset-quota/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/users/[id]/reset-quota/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/reset-quota/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/reset-quota/route.ts(8,37): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ message: string; previous_quota_used: number; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/reset-quota/route.ts(76,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(8,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ user: { email: string | null; ... 26 more ...; package: { ...; } | null; }; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(78,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(152,38): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<StructuredError | ApiSuccessResponse<{ user: { id: string; ... 22 more ...; updated_at: string; }; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/route.ts(269,7): error TS2554: Expected 2-3 arguments, but got 5.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(5,38): error TS2307: Cannot find module '@/lib/monitoring' or its corresponding type declarations.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(6,10): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(6,21): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(8,36): error TS2345: Argument of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiSuccessResponse<{ security: { ipAddresses: string[]; devices: any[]; locations: string[]; loginAttempts: { ...; }; activity: { ...; }; securityScore: number; riskLevel: string; }; }>>' is not assignable to parameter of type '(request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<ApiErrorResponse | NextResponse<...> | ApiSuccessResponse<...>>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(63,13): error TS2339: Property 'ip_address' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(64,27): error TS2339: Property 'ip_address' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(67,13): error TS2339: Property 'device_info' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(68,32): error TS2339: Property 'device_info' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(68,56): error TS2339: Property 'device_info' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(68,83): error TS2339: Property 'device_info' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(71,18): error TS2339: Property 'device_info' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(72,26): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(73,25): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(78,33): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(83,13): error TS2339: Property 'location_data' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(85,13): error TS2339: Property 'location_data' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(86,13): error TS2339: Property 'location_data' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(87,13): error TS2339: Property 'location_data' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(95,13): error TS2339: Property 'event_type' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(97,22): error TS2339: Property 'success' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(98,24): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(99,25): error TS2339: Property 'ip_address' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(100,26): error TS2339: Property 'device_info' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(104,43): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/admin/users/[id]/security/route.ts(105,21): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'device_info' does not exist on 'indb_security_activity_logs'.">'.
+apps/api/src/app/api/v1/auth/callback/route.ts(62,28): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/callback/route.ts(63,49): error TS7031: Binding element 'name' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/callback/route.ts(63,55): error TS7031: Binding element 'value' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/callback/route.ts(63,62): error TS7031: Binding element 'options' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/login/route.ts(11,3): error TS2459: Module '"../../../../../lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/auth/login/route.ts(12,3): error TS2459: Module '"../../../../../lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/auth/logout/route.ts(19,23): error TS2339: Property 'dashboardUrl' does not exist on type '{ name: string; version: string; environment: "development" | "staging" | "production"; baseUrl: string; port: number; allowedOrigins: string[]; }'.
+apps/api/src/app/api/v1/auth/logout/route.ts(20,23): error TS2339: Property 'backendUrl' does not exist on type '{ name: string; version: string; environment: "development" | "staging" | "production"; baseUrl: string; port: number; allowedOrigins: string[]; }'.
+apps/api/src/app/api/v1/auth/logout/route.ts(21,23): error TS2551: Property 'apiBaseUrl' does not exist on type '{ name: string; version: string; environment: "development" | "staging" | "production"; baseUrl: string; port: number; allowedOrigins: string[]; }'. Did you mean 'baseUrl'?
+apps/api/src/app/api/v1/auth/logout/route.ts(61,28): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/logout/route.ts(62,49): error TS7031: Binding element 'name' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/logout/route.ts(62,55): error TS7031: Binding element 'value' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/logout/route.ts(62,62): error TS7031: Binding element 'options' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/register/route.ts(77,78): error TS2344: Type '{ id: string; phone_number: string | null; country: string | null; full_name: string | null; }' does not satisfy the constraint '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+apps/api/src/app/api/v1/auth/register/route.ts(121,8): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+apps/api/src/app/api/v1/auth/session/route.ts(57,20): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(58,39): error TS7031: Binding element 'name' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(58,45): error TS7031: Binding element 'value' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(58,52): error TS7031: Binding element 'options' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(123,18): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(124,37): error TS7031: Binding element 'name' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(124,43): error TS7031: Binding element 'value' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(124,50): error TS7031: Binding element 'options' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(152,7): error TS2345: Argument of type '() => Promise<{ data: { session: Session | null; }; error: { message: string; } | null; }>' is not assignable to parameter of type '() => Promise<SetSessionResult>'.
+  Type 'Promise<{ data: { session: Session | null; }; error: { message: string; } | null; }>' is not assignable to type 'Promise<SetSessionResult>'.
+    Type '{ data: { session: Session | null; }; error: { message: string; } | null; }' is not assignable to type 'SetSessionResult'.
+      The types of 'data.session' are incompatible between these types.
+        Type 'Session | null' is not assignable to type '{ user: { id: string; email: string | undefined; user_metadata?: { full_name?: string | undefined; } | undefined; }; } | null'.
+          Type 'Session' is not assignable to type '{ user: { id: string; email: string | undefined; user_metadata?: { full_name?: string | undefined; } | undefined; }; }'.
+            Types of property 'user' are incompatible.
+              Type 'User' is not assignable to type '{ id: string; email: string | undefined; user_metadata?: { full_name?: string | undefined; } | undefined; }'.
+                Property 'email' is optional in type 'User' but required in type '{ id: string; email: string | undefined; user_metadata?: { full_name?: string | undefined; } | undefined; }'.
+apps/api/src/app/api/v1/auth/session/route.ts(235,21): error TS2339: Property 'dashboardUrl' does not exist on type '{ name: string; version: string; environment: "development" | "staging" | "production"; baseUrl: string; port: number; allowedOrigins: string[]; }'.
+apps/api/src/app/api/v1/auth/session/route.ts(236,21): error TS2339: Property 'backendUrl' does not exist on type '{ name: string; version: string; environment: "development" | "staging" | "production"; baseUrl: string; port: number; allowedOrigins: string[]; }'.
+apps/api/src/app/api/v1/auth/session/route.ts(237,21): error TS2551: Property 'apiBaseUrl' does not exist on type '{ name: string; version: string; environment: "development" | "staging" | "production"; baseUrl: string; port: number; allowedOrigins: string[]; }'. Did you mean 'baseUrl'?
+apps/api/src/app/api/v1/auth/session/route.ts(267,16): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(268,35): error TS7031: Binding element 'name' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(268,41): error TS7031: Binding element 'value' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/session/route.ts(268,48): error TS7031: Binding element 'options' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/verify/route.ts(81,24): error TS7006: Parameter 'cookiesToSet' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/verify/route.ts(82,45): error TS7031: Binding element 'name' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/verify/route.ts(82,51): error TS7031: Binding element 'value' implicitly has an 'any' type.
+apps/api/src/app/api/v1/auth/verify/route.ts(82,58): error TS7031: Binding element 'options' implicitly has an 'any' type.
+apps/api/src/app/api/v1/billing/channels/shared/base-handler.ts(8,8): error TS2307: Cannot find module '../../../../../../../lib/core/api-response-middleware' or its corresponding type declarations.
+apps/api/src/app/api/v1/billing/channels/shared/base-handler.ts(9,46): error TS2307: Cannot find module '../../../../../../../lib/monitoring/error-handling' or its corresponding type declarations.
+apps/api/src/app/api/v1/billing/channels/shared/base-handler.ts(83,14): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { id?: string | undefined; user_id: string; package_id?: string | null | undefined; gateway_id?: string | null | undefined; amount: number; currency?: string | undefined; status?: "pending" | ... 5 more ... | undefined; ... 9 more ...; updated_at?: string | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Type 'CustomerInfo' is not assignable to type 'Json | undefined'.
+      Type 'CustomerInfo' is not assignable to type '{ [key: string]: Json; }'.
+        Index signature for type 'string' is missing in type 'CustomerInfo'.
+  Overload 2 of 2, '(values: { id?: string | undefined; user_id: string; package_id?: string | null | undefined; gateway_id?: string | null | undefined; amount: number; currency?: string | undefined; status?: "pending" | ... 5 more ... | undefined; ... 9 more ...; updated_at?: string | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type '{ id?: string | undefined; user_id: string; package_id?: string | null | undefined; gateway_id?: string | null | undefined; amount: number; currency?: string | undefined; status?: "pending" | ... 5 more ... | undefined; ... 9 more ...; updated_at?: string | undefined; }[]'.
+apps/api/src/app/api/v1/billing/orders/[id]/route.ts(12,44): error TS2345: Argument of type '(request: NextRequest, auth: AuthenticatedRequest, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiSuccessResponse<{ success: boolean; data: { ...; }; }>>' is not assignable to parameter of type '(request: NextRequest, auth: AuthenticatedRequest, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<...>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/billing/orders/[id]/route.ts(77,33): error TS2339: Property 'gateway_transaction_id' does not exist on type 'TransactionWithPackage'.
+apps/api/src/app/api/v1/billing/packages/[id]/route.ts(1,10): error TS2305: Module '"@indexnow/database"' has no exported member 'PackageRow'.
+apps/api/src/app/api/v1/billing/packages/[id]/route.ts(7,32): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/billing/packages/[id]/route.ts(7,43): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/billing/transactions/[id]/route.ts(4,32): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/billing/transactions/[id]/route.ts(4,43): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/app/api/v1/billing/transactions/[id]/route.ts(5,36): error TS2305: Module '"@indexnow/database"' has no exported member 'TransactionRow'.
+apps/api/src/app/api/v1/integrations/seranking/health/metrics/route.ts(1,20): error TS2304: Cannot find name 'withSystemAuth'.
+apps/api/src/app/api/v1/integrations/seranking/health/metrics/route.ts(1,35): error TS2304: Cannot find name 'handleMetricsRequest'.
+apps/api/src/app/api/v1/integrations/seranking/keyword-data/bulk/route.ts(1,21): error TS2304: Cannot find name 'withSystemAuth'.
+apps/api/src/app/api/v1/integrations/seranking/keyword-data/bulk/route.ts(1,36): error TS2304: Cannot find name 'handleBulkEnrichmentRequest'.
+apps/api/src/app/api/v1/integrations/seranking/keyword-data/route.ts(1,20): error TS2304: Cannot find name 'withSystemAuth'.
+apps/api/src/app/api/v1/integrations/seranking/keyword-data/route.ts(1,35): error TS2304: Cannot find name 'handleKeywordDataRequest'.
+apps/api/src/app/api/v1/integrations/seranking/quota/history/route.ts(1,20): error TS2304: Cannot find name 'withSystemAuth'.
+apps/api/src/app/api/v1/integrations/seranking/quota/history/route.ts(1,35): error TS2304: Cannot find name 'handleQuotaHistoryRequest'.
+apps/api/src/app/api/v1/notifications/dismiss/[id]/route.ts(7,32): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/app/api/v1/notifications/dismiss/[id]/route.ts(7,43): error TS2459: Module '"@/lib/monitoring/error-handling"' declares 'StructuredError' locally, but it is not exported.
+apps/api/src/app/api/v1/notifications/dismiss/[id]/route.ts(9,45): error TS2345: Argument of type '(request: NextRequest, auth: AuthenticatedRequest, context?: { params: Promise<{ id: string; }>; } | undefined) => Promise<ApiErrorResponse | ApiSuccessResponse<...>>' is not assignable to parameter of type '(request: NextRequest, auth: AuthenticatedRequest, context?: { params: Promise<Record<string, string>>; } | undefined) => Promise<...>'.
+  Types of parameters 'context' and 'context' are incompatible.
+    Type '{ params: Promise<Record<string, string>>; } | undefined' is not assignable to type '{ params: Promise<{ id: string; }>; } | undefined'.
+      Type '{ params: Promise<Record<string, string>>; }' is not assignable to type '{ params: Promise<{ id: string; }>; }'.
+        Types of property 'params' are incompatible.
+          Type 'Promise<Record<string, string>>' is not assignable to type 'Promise<{ id: string; }>'.
+            Property 'id' is missing in type 'Record<string, string>' but required in type '{ id: string; }'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(25,44): error TS2339: Property 'getUserKeywords' does not exist on type 'RankTrackingService'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(25,65): error TS2339: Property 'data' does not exist on type 'AuthenticatedRequest'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(39,24): error TS2345: Argument of type '{ id: string; type: ErrorType.VALIDATION; message: string; severity: ErrorSeverity.LOW; timestamp: Date; statusCode: number; }' is not assignable to parameter of type 'StructuredError'.
+  Property 'userMessage' is missing in type '{ id: string; type: ErrorType.VALIDATION; message: string; severity: ErrorSeverity.LOW; timestamp: Date; statusCode: number; }' but required in type 'StructuredError'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(49,44): error TS2339: Property 'createKeyword' does not exist on type 'RankTrackingService'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(49,63): error TS2339: Property 'data' does not exist on type 'AuthenticatedRequest'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(71,24): error TS2345: Argument of type '{ id: string; type: ErrorType.VALIDATION; message: string; severity: ErrorSeverity.LOW; timestamp: Date; statusCode: number; }' is not assignable to parameter of type 'StructuredError'.
+  Property 'userMessage' is missing in type '{ id: string; type: ErrorType.VALIDATION; message: string; severity: ErrorSeverity.LOW; timestamp: Date; statusCode: number; }' but required in type 'StructuredError'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(81,43): error TS2339: Property 'deleteKeywords' does not exist on type 'RankTrackingService'.
+apps/api/src/app/api/v1/rank-tracking/keywords/route.ts(81,75): error TS2339: Property 'data' does not exist on type 'AuthenticatedRequest'.
+apps/api/src/lib/auth/index.ts(1,34): error TS2307: Cannot find module './auth-error-handler' or its corresponding type declarations.
+apps/api/src/lib/core/api-middleware.ts(7,3): error TS2459: Module '"../monitoring/error-handling"' declares 'ErrorType' locally, but it is not exported.
+apps/api/src/lib/core/api-middleware.ts(8,3): error TS2459: Module '"../monitoring/error-handling"' declares 'ErrorSeverity' locally, but it is not exported.
+apps/api/src/lib/core/api-middleware.ts(110,19): error TS2352: Conversion of type 'SupabaseClient<Database, "public", { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.user...' to type 'SupabaseClient<Database, "public", "public", { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; ...' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; role: "user" | "admin" | "super_admin"; ... 17 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth...' is not comparable to type '"public"'.
+apps/api/src/lib/core/api-middleware.ts(143,33): error TS18048: 'result.error' is possibly 'undefined'.
+apps/api/src/lib/core/api-middleware.ts(156,41): error TS18048: 'result.error' is possibly 'undefined'.
+apps/api/src/lib/core/api-middleware.ts(162,29): error TS2322: Type 'T | undefined' is not assignable to type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'T | undefined'.
+apps/api/src/lib/core/api-response-middleware.ts(10,44): error TS2305: Module '"@indexnow/auth"' has no exported member 'AdminUser'.
+apps/api/src/lib/core/api-response-middleware.ts(151,66): error TS2304: Cannot find name 'StructuredError'.
+apps/api/src/lib/core/api-response-middleware.ts(151,115): error TS2304: Cannot find name 'StructuredError'.
+apps/api/src/lib/core/config/PaymentConfig.ts(1,41): error TS2304: Cannot find name 'PaymentConfig'.
+apps/api/src/lib/core/constants/ApiEndpoints.ts(1,10): error TS2304: Cannot find name 'ApiEndpoints'.
+apps/api/src/lib/core/constants/ApiEndpoints.ts(1,24): error TS2304: Cannot find name 'AUTH_ENDPOINTS'.
+apps/api/src/lib/core/constants/ApiEndpoints.ts(1,40): error TS2304: Cannot find name 'ADMIN_ENDPOINTS'.
+apps/api/src/lib/email/contact-email-service.ts(1,40): error TS2304: Cannot find name 'ContactEmailService'.
+apps/api/src/lib/index.ts(1,43): error TS2307: Cannot find module './services/external/EmailService' or its corresponding type declarations.
+apps/api/src/lib/job-management/index.ts(1,31): error TS2307: Cannot find module './worker-startup' or its corresponding type declarations.
+apps/api/src/lib/job-management/keyword-enrichment-worker.ts(98,7): error TS2345: Argument of type 'SeRankingApiClient' is not assignable to parameter of type 'ISeRankingApiClient'.
+  Property 'getQuotaStatus' is missing in type 'SeRankingApiClient' but required in type 'ISeRankingApiClient'.
+apps/api/src/lib/job-management/keyword-enrichment-worker.ts(254,7): error TS2322: Type 'SelectQueryError<"column 'keyword_bank_id' does not exist on 'indb_rank_keywords'.">[]' is not assignable to type 'KeywordToEnrich[]'.
+  Type '{ error: true; } & String' is missing the following properties from type 'KeywordToEnrich': id, user_id, keyword, country, and 2 more.
+apps/api/src/lib/job-management/keyword-enrichment-worker.ts(334,23): error TS2559: Type '{ keyword_bank_id: any; intelligence_updated_at: string; updated_at: string; }' has no properties in common with type '{ id?: string | undefined; user_id?: string | undefined; keyword?: string | undefined; domain?: string | null | undefined; device?: string | null | undefined; country?: string | null | undefined; ... 7 more ...; is_active?: boolean | undefined; }'.
+apps/api/src/lib/monitoring/activity-logger.ts(114,13): error TS2353: Object literal may only specify known properties, and 'action_description' does not exist in type '{ id?: string | undefined; user_id?: string | null | undefined; event_type: string; details?: Json | undefined; severity?: string | undefined; ip_address?: string | null | undefined; user_agent?: string | ... 1 more ... | undefined; created_at?: string | undefined; }'.
+apps/api/src/lib/monitoring/error-handling.ts(124,7): error TS2322: Type 'Json | Record<string, unknown> | undefined' is not assignable to type 'Record<string, Json> | undefined'.
+  Type 'null' is not assignable to type 'Record<string, Json> | undefined'.
+apps/api/src/lib/monitoring/error-handling.ts(202,9): error TS2345: Argument of type '{ userId: string; operation: string; reason: string; source: string; metadata: { errorId: string; errorType: ErrorType; severity: ErrorSeverity; endpoint: string | undefined; statusCode: number; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Types of property 'metadata' are incompatible.
+    Type '{ errorId: string; errorType: ErrorType; severity: ErrorSeverity; endpoint: string | undefined; statusCode: number; }' is not assignable to type 'Record<string, Json>'.
+      Property 'endpoint' is incompatible with index signature.
+        Type 'string | undefined' is not assignable to type 'Json'.
+          Type 'undefined' is not assignable to type 'Json'.
+apps/api/src/lib/monitoring/queue-events.ts(1,38): error TS2304: Cannot find name 'QueueMetricsCollector'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(90,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_google_service_accounts"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_google_service_accounts"' is not assignable to parameter of type 'never'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(111,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_google_quota_usage"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_google_quota_usage"' is not assignable to parameter of type 'never'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(113,49): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'."> | SelectQueryError<"column 'name' does not exist on 'indb_auth_user_profiles'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'id' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(118,47): error TS2339: Property 'requests_made' does not exist on type 'SelectQueryError<"column 'requests_made' does not exist on 'indb_payment_packages'."> | SelectQueryError<"column 'requests_made' does not exist on 'indb_auth_user_profiles'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'requests_made' does not exist on type 'SelectQueryError<"column 'requests_made' does not exist on 'indb_payment_packages'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(122,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_google_service_accounts"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_google_service_accounts"' is not assignable to parameter of type 'never'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(127,35): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'."> | SelectQueryError<"column 'name' does not exist on 'indb_auth_user_profiles'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'id' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(129,43): error TS2339: Property 'name' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'."> | SelectQueryError<"column 'name' does not exist on 'indb_auth_user_profiles'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'name' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(129,64): error TS2339: Property 'email' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'."> | SelectQueryError<"column 'name' does not exist on 'indb_auth_user_profiles'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'email' does not exist on type 'SelectQueryError<"column 'name' does not exist on 'indb_payment_packages'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(156,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_indexing_jobs"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_indexing_jobs"' is not assignable to parameter of type 'never'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(175,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_google_service_accounts"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_google_service_accounts"' is not assignable to parameter of type 'never'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(177,34): error TS2339: Property 'user_id' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'."> | SelectQueryError<"column 'user_id' does not exist on 'indb_payment_packages'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'user_id' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(183,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"indb_indexing_jobs"' is not assignable to parameter of type '"indb_payment_packages" | "indb_auth_user_profiles" | "indb_payment_gateways" | "indb_auth_user_settings" | "indb_notifications_dashboard" | "indb_keyword_countries" | ... 22 more ... | "auth.users"'.
+  Overload 2 of 2, '(relation: never): PostgrestQueryBuilder<{ PostgrestVersion: "12"; }, { Tables: { indb_auth_user_profiles: { Row: { id: string; user_id: string; full_name: string | null; phone_number: string | null; country: string | null; ... 18 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relationships: [...]; }; ... 27 more ...; "auth.users": { ...; }; }; Views: {}; Functions: { ...; }; Enums: {}; CompositeTypes: {}; }, never, never, never>', gave the following error.
+    Argument of type '"indb_indexing_jobs"' is not assignable to parameter of type 'never'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(189,31): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'."> | SelectQueryError<"column 'user_id' does not exist on 'indb_payment_packages'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'id' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(191,39): error TS2339: Property 'name' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'."> | SelectQueryError<"column 'user_id' does not exist on 'indb_payment_packages'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'name' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(191,53): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'."> | SelectQueryError<"column 'user_id' does not exist on 'indb_payment_packages'."> | ... 26 more ... | SelectQueryError<...>'.
+  Property 'id' does not exist on type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'.">'.
+apps/api/src/lib/monitoring/quota-reset-monitor.ts(223,25): error TS2345: Argument of type '"service_account_quota_exhausted"' is not assignable to parameter of type 'NonNullable<"info" | "error" | "success" | "warning">'.
+apps/api/src/lib/payment-services/auto-cancel-job.ts(1,34): error TS2304: Cannot find name 'AutoCancelJob'.
+apps/api/src/lib/payment-services/index.ts(1,10): error TS2724: '"./auto-cancel-job"' has no exported member named 'AutoCancelJob'. Did you mean 'autoCancelJob'?
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(55,13): error TS2353: Object literal may only specify known properties, and 'transaction_status' does not exist in type '{ id?: string | undefined; user_id?: string | undefined; package_id?: string | null | undefined; gateway_id?: string | null | undefined; amount?: number | undefined; currency?: string | undefined; ... 10 more ...; updated_at?: string | undefined; }'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(58,33): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(61,27): error TS2339: Property 'user_email' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(65,39): error TS2339: Property 'customer_name' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(66,34): error TS2339: Property 'order_id' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(67,38): error TS2339: Property 'package_name' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(68,40): error TS2339: Property 'billing_period' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(69,33): error TS2339: Property 'gross_amount' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/auto-cancel.worker.ts(80,40): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'user_email' does not exist on 'indb_payment_transactions'.">'.
+apps/api/src/lib/queues/workers/keyword-enrichment.worker.ts(16,35): error TS2339: Property 'start' does not exist on type 'Promise<KeywordEnrichmentWorker>'.
+apps/api/src/lib/queues/workers/keyword-enrichment.worker.ts(26,35): error TS2339: Property 'runManually' does not exist on type 'Promise<KeywordEnrichmentWorker>'.
+apps/api/src/lib/queues/workers/rank-check.worker.ts(35,7): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/lib/queues/workers/rank-check.worker.ts(54,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { id?: string | undefined; keyword_id: string; position?: number | null | undefined; url?: string | null | undefined; search_volume?: number | null | undefined; difficulty_score?: number | ... 1 more ... | undefined; ... 6 more ...; updated_at?: string | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Type 'RankResult' is not assignable to type 'Json | undefined'.
+      Type 'RankResult' is not assignable to type '{ [key: string]: Json; }'.
+        Index signature for type 'string' is missing in type 'RankResult'.
+  Overload 2 of 2, '(values: { id?: string | undefined; keyword_id: string; position?: number | null | undefined; url?: string | null | undefined; search_volume?: number | null | undefined; difficulty_score?: number | ... 1 more ... | undefined; ... 6 more ...; updated_at?: string | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'keyword_id' does not exist in type '{ id?: string | undefined; keyword_id: string; position?: number | null | undefined; url?: string | null | undefined; search_volume?: number | null | undefined; difficulty_score?: number | null | undefined; ... 6 more ...; updated_at?: string | undefined; }[]'.
+apps/api/src/lib/queues/workers/rank-check.worker.ts(65,29): error TS2322: Type 'number | null' is not assignable to type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+apps/api/src/lib/rank-tracking/api-key-manager.ts(10,62): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/api-key-manager.ts(12,12): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/api-key-manager.ts(28,38): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/api-key-manager.ts(30,12): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/api-key-manager.ts(49,36): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/api-key-manager.ts(51,10): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/index.ts(1,35): error TS2307: Cannot find module './daily-rank-check-job' or its corresponding type declarations.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(20,87): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(22,12): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(42,38): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(44,12): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(56,38): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(58,12): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(79,38): error TS2339: Property 'run' does not exist on type 'typeof SecureServiceRoleWrapper'.
+apps/api/src/lib/rank-tracking/rank-tracker-service.ts(81,12): error TS2339: Property 'from' does not exist on type 'DatabaseService'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(167,9): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(174,9): error TS2345: Argument of type '{ operation: string; reason: string; source: string; metadata: { job_id: string; job_type: EnrichmentJobType; user_id: string; total_keywords: number; priority: JobPriority; operation_type: string; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Property 'userId' is missing in type '{ operation: string; reason: string; source: string; metadata: { job_id: string; job_type: EnrichmentJobType; user_id: string; total_keywords: number; priority: JobPriority; operation_type: string; }; }' but required in type 'ServiceRoleOperationContext'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(194,14): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { id?: string | undefined; user_id: string; status?: "pending" | "failed" | "completed" | "processing" | undefined; config: EnrichmentJobConfig; results?: JobResult | null | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at?: string | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type 'EnrichmentJobInsert[]' is not assignable to parameter of type '{ id?: string | undefined; user_id: string; status?: "pending" | "failed" | "completed" | "processing" | undefined; config: EnrichmentJobConfig; results?: JobResult | null | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at?: string | undefined; }'.
+      Type 'EnrichmentJobInsert[]' is missing the following properties from type '{ id?: string | undefined; user_id: string; status?: "pending" | "failed" | "completed" | "processing" | undefined; config: EnrichmentJobConfig; results?: JobResult | null | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at?: string | undefined; }': user_id, config
+  Overload 2 of 2, '(values: { id?: string | undefined; user_id: string; status?: "pending" | "failed" | "completed" | "processing" | undefined; config: EnrichmentJobConfig; results?: JobResult | null | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at?: string | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Type 'EnrichmentJobInsert' is not assignable to type '{ id?: string | undefined; user_id: string; status?: "pending" | "failed" | "completed" | "processing" | undefined; config: EnrichmentJobConfig; results?: JobResult | null | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at?: string | undefined; }'.
+      Types of property 'status' are incompatible.
+        Type 'string | null' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+          Type 'null' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(278,9): error TS2345: Argument of type '{ operation: string; reason: string; source: string; metadata: { worker_id: string; operation_type: string; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Property 'userId' is missing in type '{ operation: string; reason: string; source: string; metadata: { worker_id: string; operation_type: string; }; }' but required in type 'ServiceRoleOperationContext'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(295,27): error TS2345: Argument of type 'EnrichmentJobStatus.QUEUED' is not assignable to parameter of type 'NonNullable<"pending" | "failed" | "completed" | "processing">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(318,9): error TS2345: Argument of type '{ operation: string; reason: string; source: string; metadata: { job_id: string; worker_id: string; operation_type: string; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Property 'userId' is missing in type '{ operation: string; reason: string; source: string; metadata: { job_id: string; worker_id: string; operation_type: string; }; }' but required in type 'ServiceRoleOperationContext'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(339,37): error TS2339: Property 'started_at' does not exist on type '{ id: string; user_id: string; status: "pending" | "failed" | "completed" | "processing"; config: EnrichmentJobConfig; results: JobResult | null; error_message: string | null; created_at: string; updated_at: string; }'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(390,16): error TS2339: Property 'progress_data' does not exist on type 'SelectQueryError<"column 'progress_data' does not exist on 'indb_enrichment_jobs'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(449,17): error TS2345: Argument of type 'EnrichmentJobUpdate' is not assignable to parameter of type '{ id?: string | undefined; user_id?: string | undefined; status?: "pending" | "failed" | "completed" | "processing" | undefined; config?: EnrichmentJobConfig | undefined; results?: JobResult | ... 1 more ... | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at...'.
+  Types of property 'status' are incompatible.
+    Type 'string | null | undefined' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+      Type 'null' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(496,30): error TS2339: Property 'retry_count' does not exist on type 'SelectQueryError<"column 'retry_count' does not exist on 'indb_enrichment_jobs'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(497,26): error TS2339: Property 'config' does not exist on type 'SelectQueryError<"column 'retry_count' does not exist on 'indb_enrichment_jobs'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(548,17): error TS2345: Argument of type 'EnrichmentJobUpdate' is not assignable to parameter of type '{ id?: string | undefined; user_id?: string | undefined; status?: "pending" | "failed" | "completed" | "processing" | undefined; config?: EnrichmentJobConfig | undefined; results?: JobResult | ... 1 more ... | undefined; error_message?: string | ... 1 more ... | undefined; created_at?: string | undefined; updated_at...'.
+  Types of property 'status' are incompatible.
+    Type 'string | null | undefined' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+      Type 'null' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(571,11): error TS2322: Type 'EnrichmentJobStatus.CANCELLED' is not assignable to type '"pending" | "failed" | "completed" | "processing" | undefined'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(578,24): error TS2322: Type 'EnrichmentJobStatus.QUEUED' is not assignable to type '"pending" | "failed" | "completed" | "processing"'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(731,55): error TS2322: Type 'EnrichmentJobStatus.CANCELLED' is not assignable to type '"pending" | "failed" | "completed" | "processing"'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(763,22): error TS2322: Type 'EnrichmentJobStatus.QUEUED' is not assignable to type '"pending" | "failed" | "completed" | "processing"'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(763,82): error TS2322: Type 'EnrichmentJobStatus.RETRYING' is not assignable to type '"pending" | "failed" | "completed" | "processing"'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(847,26): error TS2352: Conversion of type 'EnrichmentJobData' to type '{ keywords: string[]; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'keywords' is missing in type 'CacheRefreshJobData' but required in type '{ keywords: string[]; }'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(874,21): error TS2345: Argument of type 'EnrichmentJobStatus.QUEUED' is not assignable to parameter of type 'NonNullable<"pending" | "failed" | "completed" | "processing">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(875,30): error TS2339: Property 'priority' does not exist on type 'SelectQueryError<"column 'priority' does not exist on 'indb_enrichment_jobs'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(875,62): error TS2339: Property 'priority' does not exist on type 'SelectQueryError<"column 'priority' does not exist on 'indb_enrichment_jobs'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(875,92): error TS2339: Property 'created_at' does not exist on type 'SelectQueryError<"column 'priority' does not exist on 'indb_enrichment_jobs'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/EnrichmentQueue.ts(907,49): error TS2304: Cannot find name 'JobResult'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(7,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingErrorType'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(8,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingError'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(9,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'QuotaStatus'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(469,9): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(477,9): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(484,7): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(497,7): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(497,38): error TS2339: Property 'message' does not exist on type 'never'.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(505,9): error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts(506,37): error TS2339: Property 'stack' does not exist on type 'never'.
+apps/api/src/lib/rank-tracking/seranking/services/HealthChecker.ts(404,9): error TS2345: Argument of type '{ operation: string; reason: string; source: string; metadata: { check_type: string; operation_type: string; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Property 'userId' is missing in type '{ operation: string; reason: string; source: string; metadata: { check_type: string; operation_type: string; }; }' but required in type 'ServiceRoleOperationContext'.
+apps/api/src/lib/rank-tracking/seranking/services/HealthChecker.ts(929,9): error TS2345: Argument of type '{ operation: string; reason: string; source: string; metadata: { healthCheck: "degraded" | "healthy" | "unhealthy"; recoveryAttempt: true; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Property 'userId' is missing in type '{ operation: string; reason: string; source: string; metadata: { healthCheck: "degraded" | "healthy" | "unhealthy"; recoveryAttempt: true; }; }' but required in type 'ServiceRoleOperationContext'.
+apps/api/src/lib/rank-tracking/seranking/services/HealthChecker.ts(974,45): error TS2345: Argument of type '{ id: string; severity: string; component: string; description: string; started_at: Date; recovery_actions: string[]; }' is not assignable to parameter of type 'HealthIncident'.
+  Types of property 'severity' are incompatible.
+    Type 'string' is not assignable to type '"low" | "high" | "medium" | "critical"'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(7,3): error TS2724: '"@indexnow/shared"' has no exported member named 'ServiceResponse'. Did you mean 'UserResponse'?
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(8,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'IntegrationSettings'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(9,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'QuotaStatus'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(10,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'QuotaAlert'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(12,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingErrorType'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(14,3): error TS2724: '"@indexnow/shared"' has no exported member named 'ApiMetrics'. Did you mean 'CPUMetrics'?
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(251,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { id?: string | undefined; user_id: string; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id?: string | undefined; user_id?: string | undefined; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }' is not assignable to parameter of type '{ id?: string | undefined; user_id: string; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }'.
+      Types of property 'user_id' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+  Overload 2 of 2, '(values: { id?: string | undefined; user_id: string; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Argument of type '{ id?: string | undefined; user_id?: string | undefined; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }' is not assignable to parameter of type '{ id?: string | undefined; user_id: string; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }[]'.
+      Type '{ id?: string | undefined; user_id?: string | undefined; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }' is missing the following properties from type '{ id?: string | undefined; user_id: string; service_name: string; api_key?: string | undefined; api_url?: string | undefined; api_quota_limit?: number | undefined; api_quota_used?: number | undefined; ... 8 more ...; updated_at?: string | undefined; }[]': length, pop, push, concat, and 35 more.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(372,13): error TS2322: Type '{ integration_id: string; operation_type: string; request_count: number; successful_requests: number; failed_requests: number; response_time_ms: number | undefined; timestamp: string; date: string; metadata: Record<...> | undefined; }' is not assignable to type 'Json | undefined'.
+  Types of property 'metadata' are incompatible.
+    Type 'Record<string, unknown> | undefined' is not assignable to type 'Json | undefined'.
+      Type 'Record<string, unknown>' is not assignable to type 'Json | undefined'.
+        Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(387,16): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: { id?: string | undefined; integration_id: string; operation_type: string; request_count?: number | undefined; successful_requests?: number | undefined; failed_requests?: number | undefined; ... 4 more ...; created_at?: string | undefined; }, options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Type 'Record<string, unknown> | undefined' is not assignable to type 'Json | undefined'.
+      Type 'Record<string, unknown>' is not assignable to type 'Json | undefined'.
+        Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+  Overload 2 of 2, '(values: { id?: string | undefined; integration_id: string; operation_type: string; request_count?: number | undefined; successful_requests?: number | undefined; failed_requests?: number | undefined; ... 4 more ...; created_at?: string | undefined; }[], options?: { ...; } | undefined): PostgrestFilterBuilder<...>', gave the following error.
+    Object literal may only specify known properties, and 'integration_id' does not exist in type '{ id?: string | undefined; integration_id: string; operation_type: string; request_count?: number | undefined; successful_requests?: number | undefined; failed_requests?: number | undefined; ... 4 more ...; created_at?: string | undefined; }[]'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(527,11): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(547,11): error TS2739: Type 'HealthCheckResult' is missing the following properties from type 'HealthCheckResult': responseTime, details
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(548,18): error TS2551: Property 'response_time' does not exist on type 'HealthCheckResult'. Did you mean 'responseTime'?
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(552,13): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(560,11): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(577,33): error TS2551: Property 'response_time' does not exist on type 'HealthCheckResult'. Did you mean 'responseTime'?
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(583,9): error TS2353: Object literal may only specify known properties, and 'last_check' does not exist in type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(810,9): error TS2322: Type 'SelectQueryError<"column 'user_id' does not exist on 'indb_seranking_usage_logs'.">[]' is not assignable to type '{ id: string; integration_id: string; operation_type: string; request_count: number; successful_requests: number; failed_requests: number; response_time_ms: number | null; timestamp: string; date: string; metadata: Json; created_at: string; }[]'.
+  Type '{ error: true; } & String' is missing the following properties from type '{ id: string; integration_id: string; operation_type: string; request_count: number; successful_requests: number; failed_requests: number; response_time_ms: number | null; timestamp: string; date: string; metadata: Json; created_at: string; }': id, integration_id, operation_type, request_count, and 7 more.
+apps/api/src/lib/rank-tracking/seranking/services/IntegrationService.ts(961,44): error TS2339: Property 'last_check' does not exist on type 'HealthCheckResult'.
+apps/api/src/lib/rank-tracking/seranking/services/JobProcessor.ts(666,21): error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(9,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankEntity'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(10,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankInsert'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(11,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankUpdate'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(12,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankQuery'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(13,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankQueryResult'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(14,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankOperationResult'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(15,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankBatchResult'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(16,3): error TS2724: '"@indexnow/shared"' has no exported member named 'CacheStatus'. Did you mean 'CacheStats'?
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(18,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'BulkKeywordBankOperationResult'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(629,9): error TS2353: Object literal may only specify known properties, and 'total_entries' does not exist in type 'CacheStats'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(648,9): error TS2353: Object literal may only specify known properties, and 'total_entries' does not exist in type 'CacheStats'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(969,36): error TS2339: Property 'total_keywords' does not exist on type 'CacheStats'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(970,31): error TS2339: Property 'keywords_with_data' does not exist on type 'CacheStats'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordBankService.ts(971,34): error TS2339: Property 'keywords_without_data' does not exist on type 'CacheStats'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(9,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingKeywordData'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(10,3): error TS2724: '"@indexnow/shared"' has no exported member named 'SeRankingApiResponse'. Did you mean 'UserApiResponse'?
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(11,3): error TS2724: '"@indexnow/shared"' has no exported member named 'ServiceResponse'. Did you mean 'UserResponse'?
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(12,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(13,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'QuotaStatus'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(14,3): error TS2724: '"@indexnow/shared"' has no exported member named 'ApiMetrics'. Did you mean 'CPUMetrics'?
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(15,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingErrorType'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(16,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankEntity'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(17,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankInsert'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(18,3): error TS2724: '"@indexnow/shared"' has no exported member named 'CacheStatus'. Did you mean 'CacheStats'?
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(346,21): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'country_code' does not exist on 'indb_keyword_bank'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(347,26): error TS2339: Property 'keyword' does not exist on type 'SelectQueryError<"column 'country_code' does not exist on 'indb_keyword_bank'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(348,31): error TS2339: Property 'country_code' does not exist on type 'SelectQueryError<"column 'country_code' does not exist on 'indb_keyword_bank'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(349,34): error TS2339: Property 'data_updated_at' does not exist on type 'SelectQueryError<"column 'country_code' does not exist on 'indb_keyword_bank'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(807,33): error TS2345: Argument of type 'unknown[]' is not assignable to parameter of type '{ keyword: string; country_code: string; language_code?: string | undefined; }[]'.
+  Type 'unknown' is not assignable to type '{ keyword: string; country_code: string; language_code?: string | undefined; }'.
+apps/api/src/lib/rank-tracking/seranking/services/KeywordEnrichmentService.ts(922,21): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'string | LogContext'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(379,13): error TS2353: Object literal may only specify known properties, and 'message' does not exist in type '{ source: "api" | "cache"; timestamp: Date; quota_remaining?: number | undefined; response_time?: number | undefined; }'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(418,11): error TS2353: Object literal may only specify known properties, and 'analysis_period_days' does not exist in type '{ source: "api" | "cache"; timestamp: Date; quota_remaining?: number | undefined; response_time?: number | undefined; }'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(580,9): error TS2416: Property 'getUsageHistory' in type 'QuotaMonitor' is not assignable to the same property in base type 'IQuotaMonitor'.
+  Type '(startDate?: Date | undefined, endDate?: Date | undefined, days?: number) => Promise<{ date: string; usage: number; percentage: number; velocity: number; efficiency_score: number; pattern_match?: string | undefined; }[]>' is not assignable to type '(days?: number | undefined) => Promise<{ date: string; usage: number; percentage: number; }[]>'.
+    Types of parameters 'startDate' and 'days' are incompatible.
+      Type 'number | undefined' is not assignable to type 'Date | undefined'.
+        Type 'number' is not assignable to type 'Date'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(593,9): error TS2345: Argument of type '{ operation: string; reason: string; source: string; metadata: { start_date: string; end_date: string; days_period: number; operation_type: string; }; }' is not assignable to parameter of type 'ServiceRoleOperationContext'.
+  Property 'userId' is missing in type '{ operation: string; reason: string; source: string; metadata: { start_date: string; end_date: string; days_period: number; operation_type: string; }; }' but required in type 'ServiceRoleOperationContext'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(634,28): error TS2339: Property 'timestamp' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(639,41): error TS2339: Property 'timestamp' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(640,41): error TS2339: Property 'timestamp' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(643,32): error TS2339: Property 'quota_consumed' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(645,37): error TS2339: Property 'cost_per_request' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(646,99): error TS2339: Property 'timestamp' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(647,99): error TS2339: Property 'timestamp' does not exist on type 'SelectQueryError<"column 'cost_per_request' does not exist on 'indb_seranking_quota_usage'.">'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(714,13): error TS2322: Type 'string | undefined' is not assignable to type 'Json'.
+  Type 'undefined' is not assignable to type 'Json'.
+apps/api/src/lib/rank-tracking/seranking/services/QuotaMonitor.ts(715,13): error TS2322: Type 'string | undefined' is not assignable to type 'Json'.
+  Type 'undefined' is not assignable to type 'Json'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(9,3): error TS2724: '"@indexnow/shared"' has no exported member named 'ServiceResponse'. Did you mean 'UserResponse'?
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(10,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingKeywordData'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(11,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'QuotaStatus'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(12,3): error TS2724: '"@indexnow/shared"' has no exported member named 'ApiMetrics'. Did you mean 'CPUMetrics'?
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(14,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(15,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingError'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(16,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingErrorType'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(17,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankEntity'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(18,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'KeywordBankQueryResult'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(20,3): error TS2724: '"@indexnow/shared"' has no exported member named 'QueueStats'. Did you mean 'QueryStats'?
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(39,37): error TS2307: Cannot find module './ApiMetricsCollector' or its corresponding type declarations.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(210,10): error TS2416: Property 'validation' in type 'SeRankingService' is not assignable to the same property in base type 'ISeRankingService'.
+  Type '{ keyword: typeof ValidationService; response: typeof ValidationService; quota: IIntegrationService; }' is not assignable to type '{ keyword: IKeywordValidator; response: IApiResponseValidator; quota: IIntegrationService; }'.
+    Types of property 'keyword' are incompatible.
+      Property 'validateKeywordInput' is missing in type 'typeof ValidationService' but required in type 'IKeywordValidator'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(220,10): error TS2416: Property 'queue' in type 'SeRankingService' is not assignable to the same property in base type 'ISeRankingService'.
+  Type '{ enrichment: EnrichmentQueue; processor: JobProcessor; }' is not assignable to type '{ enrichment: IEnrichmentQueue; processor: IJobProcessor; }'.
+    Types of property 'enrichment' are incompatible.
+      Type 'EnrichmentQueue' is missing the following properties from type 'IEnrichmentQueue': enqueue, getQueueStatus
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(298,5): error TS2741: Property 'getQuotaStatus' is missing in type 'SeRankingApiClient' but required in type 'ISeRankingApiClient'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(356,30): error TS2345: Argument of type 'IKeywordEnrichmentService' is not assignable to parameter of type 'KeywordEnrichmentService'.
+  Type 'IKeywordEnrichmentService' is missing the following properties from type 'KeywordEnrichmentService': config, keywordBankService, apiClient, errorHandler, and 20 more.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(371,5): error TS2322: Type 'QuotaMonitor' is not assignable to type 'IQuotaMonitor'.
+  Types of property 'getUsageHistory' are incompatible.
+    Type '(startDate?: Date | undefined, endDate?: Date | undefined, days?: number) => Promise<{ date: string; usage: number; percentage: number; velocity: number; efficiency_score: number; pattern_match?: string | undefined; }[]>' is not assignable to type '(days?: number | undefined) => Promise<{ date: string; usage: number; percentage: number; }[]>'.
+      Types of parameters 'startDate' and 'days' are incompatible.
+        Type 'number | undefined' is not assignable to type 'Date | undefined'.
+          Type 'number' is not assignable to type 'Date'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(372,7): error TS2353: Object literal may only specify known properties, and 'alertThresholds' does not exist in type 'IIntegrationService'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(425,24): error TS2554: Expected 0-2 arguments, but got 4.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(575,20): error TS2339: Property 'job_id' does not exist on type 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(576,9): error TS2322: Type '"failed" | "completed" | "cancelled" | "processing" | "queued"' is not assignable to type '"failed" | "completed" | "processing" | "queued"'.
+  Type '"cancelled"' is not assignable to type '"failed" | "completed" | "processing" | "queued"'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(577,28): error TS2339: Property 'total_keywords' does not exist on type 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(578,32): error TS2339: Property 'processed_keywords' does not exist on type 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(579,33): error TS2339: Property 'successful_keywords' does not exist on type 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(580,29): error TS2339: Property 'failed_keywords' does not exist on type 'BulkProcessingJob'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(610,55): error TS2551: Property 'getQueueStatus' does not exist on type 'EnrichmentQueue'. Did you mean 'getQueueStats'?
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(615,50): error TS2345: Argument of type 'HealthCheckResult | { status: "unknown"; }' is not assignable to parameter of type 'HealthCheckResult | { status: "unknown"; } | undefined'.
+  Type 'HealthCheckResult' is not assignable to type 'HealthCheckResult | { status: "unknown"; } | undefined'.
+    Type 'HealthCheckResult' is missing the following properties from type 'HealthCheckResult': responseTime, details
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(624,57): error TS2339: Property 'data' does not exist on type 'ServiceResponse<QuotaStatus> | { success: boolean; }'.
+  Property 'data' does not exist on type '{ success: boolean; }'.
+apps/api/src/lib/rank-tracking/seranking/services/SeRankingService.ts(695,33): error TS2339: Property 'getCacheStats' does not exist on type 'IKeywordBankService'.
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(8,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingKeywordData'.
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(9,3): error TS2724: '"@indexnow/shared"' has no exported member named 'SeRankingApiResponse'. Did you mean 'UserApiResponse'?
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(10,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingKeywordExportRequest'.
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(11,3): error TS2305: Module '"@indexnow/shared"' has no exported member 'SeRankingErrorType'.
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(349,9): error TS2741: Property 'country_id' is missing in type '{ keyword: string; language_code: string; is_data_found: boolean; country_code: string; volume?: number | null | undefined; cpc?: number | null | undefined; competition?: number | null | undefined; difficulty?: number | ... 1 more ... | undefined; history_trend?: Record<...> | ... 1 more ... | undefined; keyword_int...' but required in type 'KeywordBankInsert'.
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(398,9): error TS2322: Type '{ updated_at?: string | Date | undefined; is_data_found?: boolean | undefined; volume?: number | null | undefined; cpc?: number | null | undefined; competition?: number | null | undefined; difficulty?: number | ... 1 more ... | undefined; history_trend?: Record<...> | ... 1 more ... | undefined; keyword_intent?: str...' is not assignable to type 'KeywordBankUpdate'.
+  Types of property 'data_updated_at' are incompatible.
+    Type 'string | Date | undefined' is not assignable to type 'string | undefined'.
+      Type 'Date' is not assignable to type 'string'.
+apps/api/src/lib/rank-tracking/seranking/services/ValidationService.ts(505,9): error TS2322: Type '{ limit: number; offset: number; order_by: "keyword" | "volume" | "cpc" | "competition" | "difficulty" | "data_updated_at"; order_direction: "asc" | "desc"; keyword?: string | undefined; ... 8 more ...; updated_since?: string | ... 1 more ... | undefined; }' is not assignable to type 'KeywordBankQuery'.
+  Types of property 'updated_since' are incompatible.
+    Type 'string | Date | undefined' is not assignable to type 'string | undefined'.
+      Type 'Date' is not assignable to type 'string'.
+apps/api/src/lib/rank-tracking/seranking/types/ServiceTypes.ts(15,3): error TS2305: Module '"./SeRankingTypes"' has no exported member 'QueueStats'.
+apps/api/src/lib/services/index.ts(2,43): error TS2307: Cannot find module './external/EmailService' or its corresponding type declarations.
+apps/api/src/lib/services/index.ts(8,38): error TS2554: Expected 1 arguments, but got 0.
+apps/api/src/lib/services/resilient/index.ts(1,41): error TS2307: Cannot find module './ResilientSerpApiService' or its corresponding type declarations.
+apps/api/src/lib/services/security/encryption/key-manager.ts(1,27): error TS2304: Cannot find name 'EncryptionKeyManager'.
+apps/api/src/lib/services/security/encryption/response-encryptor.ts(1,34): error TS2304: Cannot find name 'ResponseEncryptor'.
+apps/api/src/lib/services/validation/index.ts(1,58): error TS2307: Cannot find module './middleware/validation-middleware' or its corresponding type declarations.
+apps/api/src/lib/services/validation/sanitizers/html-sanitizer.ts(1,30): error TS2304: Cannot find name 'HtmlSanitizer'.
+apps/api/src/lib/services/validation/sanitizers/input-sanitizer.ts(1,31): error TS2304: Cannot find name 'InputSanitizer'.
+apps/api/src/lib/services/validation/sanitizers/url-sanitizer.ts(1,29): error TS2304: Cannot find name 'UrlSanitizer'.
+apps/api/src/lib/services/validation/validators/file-validator.ts(1,30): error TS2304: Cannot find name 'FileValidator'.
+apps/api/src/lib/services/validation/validators/rate-limiter.ts(1,28): error TS2304: Cannot find name 'RateLimiter'.
+apps/api/src/middleware.ts(15,40): error TS2322: Type 'import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@15.5.11_@babel+core@7._2ae3cebb9c069c0190f09e2c816fbded/node_modules/next/dist/server/web/spec-extension/request").NextRequest' is not assignable to type 'import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@16.1.4_@babel+core@7.2_ec7c61081972bfbb47aa0ad1209b1978/node_modules/next/dist/server/web/spec-extension/request").NextRequest'.
+  Types of property 'nextUrl' are incompatible.
+    Property '[Internal]' is missing in type 'import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@15.5.11_@babel+core@7._2ae3cebb9c069c0190f09e2c816fbded/node_modules/next/dist/server/web/next-url").NextURL' but required in type 'import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@16.1.4_@babel+core@7.2_ec7c61081972bfbb47aa0ad1209b1978/node_modules/next/dist/server/web/next-url").NextURL'.
+apps/api/src/middleware.ts(23,28): error TS2345: Argument of type '() => Promise<import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@15.5.11_@babel+core@7._2ae3cebb9c069c0190f09e2c816fbded/node_modules/next/dist/server/web/spec-extension/response").NextResponse<unknown>>' is not assignable to parameter of type '() => Promise<import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@16.1.4_@babel+core@7.2_ec7c61081972bfbb47aa0ad1209b1978/node_modules/next/dist/server/web/spec-extension/response").NextResponse<unknown>>'.
+  Type 'Promise<import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@15.5.11_@babel+core@7._2ae3cebb9c069c0190f09e2c816fbded/node_modules/next/dist/server/web/spec-extension/response").NextResponse<unknown>>' is not assignable to type 'Promise<import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@16.1.4_@babel+core@7.2_ec7c61081972bfbb47aa0ad1209b1978/node_modules/next/dist/server/web/spec-extension/response").NextResponse<unknown>>'.
+    Property '[INTERNALS]' is missing in type 'import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@15.5.11_@babel+core@7._2ae3cebb9c069c0190f09e2c816fbded/node_modules/next/dist/server/web/spec-extension/response").NextResponse<unknown>' but required in type 'import("C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/next@16.1.4_@babel+core@7.2_ec7c61081972bfbb47aa0ad1209b1978/node_modules/next/dist/server/web/spec-extension/response").NextResponse<unknown>'.
+packages/shared/src/analytics/analytics-client.ts(2,29): error TS7016: Could not find a declaration file for module '@analytics/google-analytics'. 'C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/@analytics+google-analytics@1.1.0/node_modules/@analytics/google-analytics/lib/analytics-plugin-ga.cjs.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/analytics__google-analytics` if it exists or add a new declaration (.d.ts) file containing `declare module '@analytics/google-analytics';`
+packages/shared/src/analytics/analytics-client.ts(3,30): error TS7016: Could not find a declaration file for module '@analytics/google-tag-manager'. 'C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/@analytics+google-tag-manager@0.6.0/node_modules/@analytics/google-tag-manager/lib/analytics-plugin-google-tag-manager.cjs.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/analytics__google-tag-manager` if it exists or add a new declaration (.d.ts) file containing `declare module '@analytics/google-tag-manager';`
+packages/shared/src/analytics/analytics-client.ts(4,24): error TS7016: Could not find a declaration file for module '@analytics/customerio'. 'C:/Users/Administrator/Desktop/indexnow-main/indexnow-dev/node_modules/.pnpm/@analytics+customerio@0.2.2/node_modules/@analytics/customerio/lib/analytics-plugin-customerio.cjs.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/analytics__customerio` if it exists or add a new declaration (.d.ts) file containing `declare module '@analytics/customerio';`

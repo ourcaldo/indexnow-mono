@@ -1,50 +1,56 @@
 import { NextRequest } from 'next/server';
-import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
-import {
-    authenticatedApiWrapper,
-    formatSuccess,
-    formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
+import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
 
-interface PaymentGateway {
-    id: string;
-    slug: string;
-    name: string;
-    is_active: boolean;
-    is_default: boolean;
-}
+// Derived types from Database schema
+type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row'];
+
+// Public gateway info (without credentials)
+type PublicGatewayInfo = Pick<PaymentGatewayRow, 'id' | 'name' | 'slug' | 'is_active' | 'is_default'>;
 
 /**
  * GET /api/v1/billing/payment-gateways
- * SECURITY FIX: This endpoint now requires authentication
- * Previously had NO authentication check - critical security vulnerability fixed
+ * Get active payment gateways available for payments
+ * SECURITY: Requires authentication, does not expose credentials
  */
-export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-    // Fetch active payment gateways
-    const { data: gateways, error } = await supabaseAdmin
-        .from('indb_payment_gateways')
-        .select('*')
-        .eq('is_active', true)
-        .order('is_default', { ascending: false });
+export const GET = authenticatedApiWrapper(async (request, auth) => {
+    try {
+        const gateways = await SecureServiceRoleWrapper.executeWithUserSession<PublicGatewayInfo[]>(
+            auth.supabase,
+            {
+                userId: auth.userId,
+                operation: 'get_active_payment_gateways',
+                source: 'billing/payment-gateways',
+                reason: 'User fetching available payment gateways',
+                metadata: { endpoint: '/api/v1/billing/payment-gateways' },
+                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                userAgent: request.headers.get('user-agent') ?? undefined
+            },
+            { table: 'indb_payment_gateways', operationType: 'select' },
+            async (db) => {
+                // Only select public fields, never expose credentials
+                const { data, error } = await db
+                    .from('indb_payment_gateways')
+                    .select('id, name, slug, is_active, is_default')
+                    .eq('is_active', true)
+                    .order('is_default', { ascending: false });
 
-    if (error) {
+                if (error) throw error;
+                return data ?? [];
+            }
+        );
+
+        return formatSuccess({
+            gateways
+        });
+    } catch (error) {
         const structuredError = await ErrorHandlingService.createError(
             ErrorType.DATABASE,
-            error,
-            {
-                severity: ErrorSeverity.HIGH,
-                userId: auth.userId,
-                endpoint: '/api/v1/billing/payment-gateways',
-                method: 'GET',
-                statusCode: 500
-            }
+            error instanceof Error ? error : new Error(String(error)),
+            { severity: ErrorSeverity.HIGH, userId: auth.userId, endpoint: '/api/v1/billing/payment-gateways', method: 'GET', statusCode: 500 }
         );
         return formatError(structuredError);
     }
-
-    return formatSuccess({
-        gateways: (gateways || []) as PaymentGateway[]
-    });
 });

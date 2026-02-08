@@ -1,10 +1,10 @@
 import { supabaseAdmin } from '../server'
 import { type SupabaseClient, type PostgrestError, type User, type AuthError } from '@supabase/supabase-js'
 import { type Database, type Json } from '@indexnow/shared'
-import { 
-  SecurityService, 
-  SecurityViolationError, 
-  type ServiceRoleOperationContext, 
+import {
+  SecurityService,
+  SecurityViolationError,
+  type ServiceRoleOperationContext,
   type UserOperationContext,
   type SecureQueryOptions
 } from './SecurityService'
@@ -12,21 +12,48 @@ import {
 type PublicTables = Database['public']['Tables']
 
 /**
- * STRUCTURAL DATABASE BUILDER: To bypass the recursive depth limits of the full Supabase SDK during DTS generation,
- * we define a structural interface that matches only the subset of the builder we actually use for generic operations.
+ * STRUCTURAL DATABASE BUILDER: Extended interface for user-facing route handlers.
+ * Includes full Supabase query builder chain methods to support real-world usage patterns.
  */
+interface SimpleSelectBuilder<TRow> {
+  match: (conditions: Record<string, Json>) => Promise<{ data: TRow[] | null; error: PostgrestError | null }>
+  eq: (column: string, value: Json) => SimpleSelectBuilder<TRow> & {
+    single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
+    order: (column: string, options?: { ascending?: boolean }) => SimpleSelectBuilder<TRow>
+    limit: (count: number) => SimpleSelectBuilder<TRow>
+  }
+  in: (column: string, values: Json[]) => SimpleSelectBuilder<TRow>
+  order: (column: string, options?: { ascending?: boolean }) => SimpleSelectBuilder<TRow>
+  limit: (count: number) => SimpleSelectBuilder<TRow>
+  single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
+  gte: (column: string, value: Json) => SimpleSelectBuilder<TRow>
+}
+
+interface SimpleUpdateBuilder<TRow> {
+  match: (conditions: Record<string, Json>) => {
+    select: () => Promise<{ data: TRow[] | null; error: PostgrestError | null }>
+  }
+  eq: (column: string, value: Json) => {
+    select: () => {
+      single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
+    }
+  }
+}
+
 interface SimpleDbBuilder<TRow, TInsert, TUpdate> {
-  select: (columns?: string) => {
-    match: (conditions: Record<string, Json>) => Promise<{ data: TRow[] | null; error: PostgrestError | null }>
+  select: (columns?: string, options?: { count?: 'exact'; head?: boolean }) => SimpleSelectBuilder<TRow> & {
+    count: number | null
+    error: PostgrestError | null
   }
   insert: (values: TInsert) => {
     select: () => {
       single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
     }
   }
-  update: (values: TUpdate) => {
-    match: (conditions: Record<string, Json>) => {
-      select: () => Promise<{ data: TRow[] | null; error: PostgrestError | null }>
+  update: (values: TUpdate) => SimpleUpdateBuilder<TRow>
+  upsert: (values: TInsert) => {
+    select: () => {
+      single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
     }
   }
   delete: () => {
@@ -43,8 +70,8 @@ interface SimpleDbClient {
 }
 
 /**
- * STRUCTURAL USER CLIENT: A simplified interface for user-provided Supabase clients.
- * This prevents recursion exhaustion by avoiding the full Database generic tree.
+ * STRUCTURAL USER CLIENT: Extended interface for user-provided Supabase clients.
+ * Includes full auth methods needed for password changes and user operations.
  */
 interface SimpleUserClient {
   auth: {
@@ -52,6 +79,8 @@ interface SimpleUserClient {
     getSession: () => Promise<{ data: { session: Json | null }; error: AuthError | null }>
     signOut: () => Promise<{ error: AuthError | null }>
     resend: (data: Record<string, Json>) => Promise<{ data: Json; error: AuthError | null }>
+    signInWithPassword: (credentials: { email: string; password: string }) => Promise<{ data: { user: User | null; session: Json | null }; error: AuthError | null }>
+    updateUser: (attributes: { password?: string; email?: string; data?: Record<string, Json> }) => Promise<{ data: { user: User | null }; error: AuthError | null }>
   }
   from: <
     TRow = Record<string, Json>,
@@ -63,12 +92,13 @@ interface SimpleUserClient {
 export class SecureDatabaseHelpers {
   /**
    * Executes a database operation securely with user session validation and auditing.
+   * Accepts any Supabase client that implements the required auth methods.
    */
   static async executeWithUserSession<T>(
-    userSupabaseClient: SimpleUserClient,
+    userSupabaseClient: SupabaseClient<Database>,
     operationContext: UserOperationContext,
     queryOptions: SecureQueryOptions,
-    operation: (db: SimpleUserClient) => Promise<T>
+    operation: (db: SupabaseClient<Database>) => Promise<T>
   ): Promise<T> {
     const { data, error: authError } = await userSupabaseClient.auth.getUser()
     const user = data?.user
@@ -89,9 +119,9 @@ export class SecureDatabaseHelpers {
 
     const sanitizedContext = SecurityService.sanitizeUserContext(operationContext)
     const sanitizedQueryOptions = SecurityService.sanitizeQueryOptions(queryOptions)
-    
+
     const auditId = await SecurityService.logUserOperationStart(sanitizedContext, sanitizedQueryOptions)
-    
+
     try {
       const result = await operation(userSupabaseClient)
       await SecurityService.logUserOperationSuccess(auditId, sanitizedContext, result)
@@ -114,7 +144,7 @@ export class SecureDatabaseHelpers {
     await SecurityService.validateOperationContext(context, queryOptions as SecureQueryOptions<string>)
     const sanitizedQueryOptions = SecurityService.sanitizeQueryOptions(queryOptions as SecureQueryOptions<string>)
     const auditId = await SecurityService.logOperationStart(context, sanitizedQueryOptions)
-    
+
     try {
       const result = await operation()
       await SecurityService.logOperationSuccess(auditId, context, result)
@@ -154,7 +184,7 @@ export class SecureDatabaseHelpers {
         const { data, error } = await builder
           .select(columns.join(', '))
           .match(whereConditions)
-        
+
         if (error) throw error
         return (data || [])
       }
@@ -188,7 +218,7 @@ export class SecureDatabaseHelpers {
           .insert(data)
           .select()
           .single()
-        
+
         if (error) throw error
         if (!result) throw new Error('No data returned from insert')
         return result
@@ -225,7 +255,7 @@ export class SecureDatabaseHelpers {
           .update(data)
           .match(whereConditions)
           .select()
-        
+
         if (error) throw error
         return (result || [])
       }
@@ -254,7 +284,7 @@ export class SecureDatabaseHelpers {
         const { error } = await builder
           .delete()
           .match(whereConditions)
-        
+
         if (error) throw error
       }
     )
