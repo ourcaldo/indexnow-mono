@@ -12,12 +12,14 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
-interface QuotaLimits {
-    keywords_limit: number;
-    [key: string]: number | undefined;
+interface PackageQuota {
+    quota_limits: {
+        keywords_limit: number;
+        [key: string]: number | undefined;
+    } | null;
 }
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
@@ -50,7 +52,9 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
                 return {
                     count: countResult.count || 0,
-                    quota: (profileResult.data?.package as any)?.quota_limits as QuotaLimits | undefined
+                    quota: profileResult.data?.package
+                        ? (profileResult.data.package as unknown as PackageQuota)?.quota_limits ?? null
+                        : null
                 };
             }
         );

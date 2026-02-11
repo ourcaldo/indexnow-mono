@@ -13,20 +13,14 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 const addTagSchema = z.object({
     keywordIds: z.array(z.string().uuid()).min(1, 'At least one keyword ID is required'),
     tag: z.string().min(1, 'Tag is required').max(50, 'Tag must be 50 characters or less')
 });
 
-interface KeywordWithTags {
-    id: string;
-    keyword: string;
-    tags: string[] | null;
-    domain: string | null;
-}
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
     try {
@@ -69,8 +63,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                     throw new Error('Some keywords not found or access denied');
                 }
 
-                const typedKeywords = verifiedKeywords as unknown as KeywordWithTags[];
-                const keywordsNeedingUpdate = typedKeywords.filter(
+                const keywordsNeedingUpdate = verifiedKeywords.filter(
                     kw => !(kw.tags || []).includes(cleanTag)
                 );
 

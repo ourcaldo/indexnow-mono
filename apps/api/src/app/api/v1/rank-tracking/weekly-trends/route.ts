@@ -12,8 +12,8 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 interface WeeklyTrendsData {
     id: string;
@@ -70,14 +70,13 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
                 // 3. Calculate trends
                 const result: WeeklyTrendsData[] = [];
-                const historyMap = new Map<string, any[]>();
+                const historyMap = new Map<string, typeof history>();
 
                 if (history) {
-                    history.forEach((h: any) => {
-                        if (!historyMap.has(h.keyword_id)) {
-                            historyMap.set(h.keyword_id, []);
-                        }
-                        historyMap.get(h.keyword_id)?.push(h);
+                    history.forEach(h => {
+                        const entries = historyMap.get(h.keyword_id) || [];
+                        entries.push(h);
+                        historyMap.set(h.keyword_id, entries);
                     });
                 }
 
@@ -97,7 +96,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     // So we want the first entry that is <= targetDateStr?
                     // Actually, let's just grab the entry that represents "start of week".
 
-                    const weekAgoEntry = kwHistory.find((h: any) => h.check_date <= targetDateStr) || kwHistory[kwHistory.length - 1];
+                    const weekAgoEntry = kwHistory.find(h => h.check_date <= targetDateStr) || kwHistory[kwHistory.length - 1];
                     const previousPos = weekAgoEntry?.position || 0;
                     const currentPos = kw.position || 0;
 
@@ -118,7 +117,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     // 7-day sparkline
                     const sparkline = kwHistory
                         .slice(0, 7)
-                        .map((h: any) => ({ date: h.check_date, position: h.position || 0 }))
+                        .map(h => ({ date: h.check_date, position: h.position || 0 }))
                         .reverse(); // Oldest to newest for graph
 
                     result.push({

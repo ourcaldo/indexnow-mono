@@ -12,13 +12,13 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 interface RankHistoryEntry {
     check_date: string;
     position: number;
-    url?: string;
+    url?: string | null;
 }
 
 interface TransformedKeywordData {
@@ -93,8 +93,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
                 for (const kw of keywords) {
                     const kwHistory = (history || [])
-                        .filter((h: any) => h.keyword_id === kw.id)
-                        .map((h: any) => ({
+                        .filter(h => h.keyword_id === kw.id)
+                        .map(h => ({
                             check_date: h.check_date,
                             position: h.position || 0,
                             url: h.url

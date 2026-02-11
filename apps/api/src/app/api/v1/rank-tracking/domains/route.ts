@@ -14,8 +14,8 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 const createDomainSchema = z.object({
     domain_name: z.string().min(1, 'Domain name is required'),
@@ -64,7 +64,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
                 const counts: DomainCounts = {};
                 if (keywords) {
-                    keywords.forEach((kw: any) => {
+                    keywords.forEach(kw => {
                         if (kw.domain) {
                             counts[kw.domain] = (counts[kw.domain] || 0) + 1;
                         }

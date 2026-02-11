@@ -9,28 +9,20 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type DbRankKeywordRow } from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
-import { RankTracker } from '../../../../../../lib/rank-tracking/rank-tracker';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { RankTracker } from '@/lib/rank-tracking/rank-tracker';
 
 const checkRankSchema = z.object({
     keyword_id: z.string().uuid('Invalid keyword ID')
 });
 
-interface RankKeyword {
-    id: string;
-    keyword: string;
-    device: string | null;
-    user_id: string;
-    domain: string | null; // stored as string in new schema
-    country: string | null; // stored as ISO2 string
-    is_active: boolean;
-}
+type RankKeywordSelect = Pick<DbRankKeywordRow, 'id' | 'keyword' | 'device' | 'user_id' | 'domain' | 'country' | 'is_active'>;
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
     try {
@@ -69,7 +61,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                     .single();
 
                 if (error) throw new Error('Keyword not found or access denied');
-                return data as unknown as RankKeyword;
+                return data as RankKeywordSelect;
             }
         );
 
@@ -135,11 +127,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             return formatError(domainError);
         }
 
+        const deviceType = keywordData.device === 'mobile' ? 'mobile' : 'desktop';
         const rankResult = await RankTracker.checkRank(
             keywordData.keyword,
             domainName,
             keywordData.country || 'us',
-            (keywordData.device as 'desktop' | 'mobile') || 'desktop'
+            deviceType
         );
 
         // Save result to database (Two steps: Update current, Insert history)
@@ -267,6 +260,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
         return formatSuccess({
             configured: true,
+            message: 'Rank Tracker API is configured and active',
             quotaInfo: {
                 limit: integration.api_quota_limit,
                 used: integration.api_quota_used,
