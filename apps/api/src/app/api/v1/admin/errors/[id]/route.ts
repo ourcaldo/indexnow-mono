@@ -11,9 +11,9 @@ type SystemErrorLogUpdate = Database['public']['Tables']['indb_system_error_logs
  * Retrieve detailed error information by ID
  */
 export const GET = adminApiWrapper(async (
-  request: NextRequest, 
+  request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -86,9 +86,9 @@ export const GET = adminApiWrapper(async (
  * Mark error as resolved or acknowledged
  */
 export const PATCH = adminApiWrapper(async (
-  request: NextRequest, 
+  request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -118,7 +118,7 @@ export const PATCH = adminApiWrapper(async (
     },
     async () => {
       const updateData: SystemErrorLogUpdate = {};
-      
+
       if (action === 'resolve') {
         updateData.resolved_at = new Date().toISOString();
         updateData.resolved_by = adminUser.id;

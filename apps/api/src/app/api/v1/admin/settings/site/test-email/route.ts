@@ -4,15 +4,16 @@
  */
 
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import * as nodemailer from 'nodemailer';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
     createStandardError
-} from '../../../../../../../../lib/core/api-response-middleware';
-import { logger } from '../../../../../../../../lib/monitoring/error-handling';
-import { ActivityLogger, ActivityEventTypes } from '../../../../../../../../lib/monitoring';
+} from '@/lib/core/api-response-middleware';
+import { logger } from '@/lib/monitoring/error-handling';
+import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 
 interface SmtpTestRequest {
     smtp_host: string;
@@ -24,7 +25,7 @@ interface SmtpTestRequest {
     smtp_secure?: boolean;
 }
 
-export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const POST = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     const body = await request.json() as SmtpTestRequest;
     const {
         smtp_host,
@@ -41,8 +42,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
         return await createStandardError(
             ErrorType.VALIDATION,
             'All SMTP fields are required for testing',
-            400,
-            ErrorSeverity.LOW
+            { statusCode: 400, severity: ErrorSeverity.LOW }
         );
     }
 
@@ -68,8 +68,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
         return await createStandardError(
             ErrorType.EXTERNAL_API,
             `SMTP connection failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`,
-            400,
-            ErrorSeverity.MEDIUM
+            { statusCode: 400, severity: ErrorSeverity.MEDIUM }
         );
     }
 
@@ -135,19 +134,19 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
         return await createStandardError(
             ErrorType.EXTERNAL_API,
             `Failed to send test email: ${sendError instanceof Error ? sendError.message : 'Unknown error'}`,
-            400,
-            ErrorSeverity.MEDIUM
+            { statusCode: 400, severity: ErrorSeverity.MEDIUM }
         );
     }
 
     // Log email test activity
     if (adminUser?.id) {
         try {
-            await ActivityLogger.logAdminSettingsActivity(
+            await ActivityLogger.logAdminAction(
                 adminUser.id,
-                ActivityEventTypes.SETTINGS_VIEW,
+                'test_smtp',
+                undefined,
                 'Tested SMTP email configuration',
-                request,
+                undefined,
                 {
                     section: 'site_settings',
                     action: 'test_smtp',

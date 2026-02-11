@@ -1,39 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  adminApiWrapper, 
-  formatSuccess, 
-  formatError, 
+import { adminApiWrapper } from '@/lib/core/api-response-middleware';
+import {
+  formatSuccess,
+  formatError,
   apiRequestSchemas,
   type EnrichedActivityLog,
   type GetActivityLogsResponse
 } from '@indexnow/shared';
-import { 
-  SecureServiceRoleWrapper, 
-  SecureServiceRoleHelpers, 
+import {
+  SecureServiceRoleWrapper,
+  SecureServiceRoleHelpers,
   supabaseAdmin,
   type SecurityActivityLog
 } from '@indexnow/database';
 
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Validate query params
   const searchParams = Object.fromEntries(request.nextUrl.searchParams);
   const validationResult = apiRequestSchemas.adminActivityQuery.safeParse(searchParams);
-  
+
   if (!validationResult.success) {
     return formatError('Invalid query parameters', 400, validationResult.error.format());
   }
 
-  const { 
-    days = 7, 
-    limit = 100, 
-    page = 1, 
-    user: userId, 
-    search: searchTerm, 
-    event_type: eventType 
+  const {
+    days = 7,
+    limit = 100,
+    page = 1,
+    user: userId,
+    search: searchTerm,
+    event_type: eventType
   } = validationResult.data;
 
   const offset = (page - 1) * limit;
-  
+
   const dateFilter = new Date();
   dateFilter.setDate(dateFilter.getDate() - days);
 
@@ -96,7 +96,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
         .from('indb_auth_user_profiles')
         .select('user_id, full_name')
         .in('user_id', userIds);
-      
+
       profiles?.forEach(p => profileMap.set(p.user_id, p));
 
       await Promise.all(userIds.map(async (uid) => {
@@ -115,31 +115,31 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
     let userEmail = 'Unknown Email';
 
     if (log.user_id) {
-        const p = profileMap.get(log.user_id);
-        if (p?.full_name) userName = p.full_name;
-        
-        const e = emailMap.get(log.user_id);
-        if (e) userEmail = e;
+      const p = profileMap.get(log.user_id);
+      if (p?.full_name) userName = p.full_name;
+
+      const e = emailMap.get(log.user_id);
+      if (e) userEmail = e;
     }
 
     // Safely cast details (which replaces metadata/description)
     const details = (log.details as Record<string, any>) || {};
 
     return {
-        id: log.id,
-        user_id: log.user_id,
-        user_name: userName,
-        user_email: userEmail,
-        event_type: log.event_type,
-        action_description: (details.actionDescription as string) || (details.description as string) || null,
-        target_type: (details.targetType as string) || (details.target_type as string) || null,
-        target_id: (details.targetId as string) || (details.target_id as string) || null,
-        ip_address: log.ip_address,
-        user_agent: log.user_agent,
-        metadata: log.details, // Use details as metadata
-        success: details.success ?? true,
-        error_message: (details.errorMessage as string) || (details.error_message as string),
-        created_at: log.created_at
+      id: log.id,
+      user_id: log.user_id,
+      user_name: userName,
+      user_email: userEmail,
+      event_type: log.event_type,
+      action_description: (details.actionDescription as string) || (details.description as string) || null,
+      target_type: (details.targetType as string) || (details.target_type as string) || null,
+      target_id: (details.targetId as string) || (details.target_id as string) || null,
+      ip_address: log.ip_address,
+      user_agent: log.user_agent,
+      metadata: log.details, // Use details as metadata
+      success: details.success ?? true,
+      error_message: (details.errorMessage as string) || (details.error_message as string),
+      created_at: log.created_at
     };
   });
 

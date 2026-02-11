@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { adminApiWrapper, formatSuccess } from '../../../../../../lib/core/api-response-middleware';
-import { logger } from '../../../../../../lib/monitoring/error-handling';
+import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { logger } from '@/lib/monitoring/error-handling';
 
 interface UserProfile {
     user_id: string;
@@ -11,7 +12,7 @@ interface UserProfile {
     updated_at: string;
 }
 
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     if (!adminUser) {
         return formatSuccess({
             error: 'Not authenticated',
@@ -78,7 +79,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
     });
 });
 
-export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const POST = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     // Only allow in development
     if (process.env.NODE_ENV !== 'development') {
         return formatSuccess({

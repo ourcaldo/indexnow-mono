@@ -1,10 +1,11 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, formatSuccess, formatError } from '../../../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../../../lib/monitoring/error-handling';
+import { type AdminUser } from '@indexnow/auth'
+import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Extract ID from URL path - it's the second-to-last segment (before 'default')
   const pathParts = request.url.split('/').filter(Boolean)
   const id = pathParts[pathParts.length - 2]

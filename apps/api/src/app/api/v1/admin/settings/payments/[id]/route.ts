@@ -1,10 +1,11 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, formatSuccess, formatError } from '../../../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../../../lib/monitoring/error-handling';
+import { type AdminUser } from '@indexnow/auth'
+import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Extract ID from URL path
   const id = request.url.split('/').filter(Boolean).pop() || ''
   const body = await request.json()
@@ -112,7 +113,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => 
   }
 })
 
-export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Extract ID from URL path
   const id = request.url.split('/').filter(Boolean).pop() || ''
 

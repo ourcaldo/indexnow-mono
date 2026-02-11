@@ -1,14 +1,14 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
+import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ServerActivityLogger } from '@/lib/monitoring'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -69,31 +69,29 @@ export const POST = adminApiWrapper(async (
   )
 
   if (!result) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.AUTHORIZATION,
       'User not found',
-      404,
-      ErrorSeverity.MEDIUM,
-      { userId }
-    )
+      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
+    ))
   }
 
   const currentUser = result
 
-  await ServerActivityLogger.logAdminAction(
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'quota_reset',
     userId,
     `Reset daily quota for ${currentUser.full_name || 'User'} (was ${currentUser.daily_quota_used || 0})`,
     request,
-    { 
+    {
       quotaReset: true,
       previousQuotaUsed: currentUser.daily_quota_used || 0,
-      userFullName: currentUser.full_name 
+      userFullName: currentUser.full_name
     }
   )
 
-  return formatSuccess({ 
+  return formatSuccess({
     message: `Daily quota successfully reset to 0`,
     previous_quota_used: currentUser.daily_quota_used || 0
   }, undefined, 201)

@@ -1,14 +1,15 @@
 import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
+import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ServerActivityLogger } from '@/lib/monitoring'
-import { ErrorType, ErrorSeverity, logger } from '@/lib/monitoring/error-handling'
+import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { logger } from '@/lib/monitoring/error-handling'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -71,13 +72,11 @@ export const GET = adminApiWrapper(async (
       targetUserId: userId
     }, 'Admin user lookup - Profile not found for user')
 
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.AUTHORIZATION,
       'User not found',
-      404,
-      ErrorSeverity.MEDIUM,
-      { userId }
-    )
+      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
+    ))
   }
 
   const profile = profileWithPackage
@@ -132,7 +131,7 @@ export const GET = adminApiWrapper(async (
 
   }
 
-  await ServerActivityLogger.logAdminAction(
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'user_profile_view',
     userId,
@@ -152,7 +151,7 @@ export const GET = adminApiWrapper(async (
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -197,7 +196,7 @@ export const PATCH = adminApiWrapper(async (
       }
     )
 
-    await ServerActivityLogger.logAdminAction(
+    await ActivityLogger.logAdminAction(
       adminUser.id,
       isSuspending ? 'suspend' : 'unsuspend',
       userId,
@@ -262,18 +261,16 @@ export const PATCH = adminApiWrapper(async (
       targetUserId: userId
     }, 'Profile update failed - no rows returned')
 
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.DATABASE,
       'Failed to update user profile',
-      500,
-      ErrorSeverity.HIGH,
-      { userId }
-    )
+      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { userId } }
+    ))
   }
 
   const updatedProfile = updatedProfiles[0]
 
-  await ServerActivityLogger.logAdminAction(
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'profile_update',
     userId,

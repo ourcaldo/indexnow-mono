@@ -2,7 +2,7 @@ import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Extract ID from URL path
   const id = request.url.split('/').filter(Boolean).pop() || ''
   const body = await request.json()
@@ -77,7 +77,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser) => 
   return formatSuccess({ package: result.data }, undefined, 200)
 })
 
-export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Extract ID from URL path
   const id = request.url.split('/').filter(Boolean).pop() || ''
 

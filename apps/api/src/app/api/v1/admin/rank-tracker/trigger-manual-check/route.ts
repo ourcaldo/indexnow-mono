@@ -7,6 +7,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin } from '@indexnow/database';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
@@ -14,8 +15,8 @@ import {
     formatSuccess,
     formatError,
     createStandardError
-} from '../../../../../../../../lib/core/api-response-middleware';
-import { logger } from '../../../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { logger } from '@/lib/monitoring/error-handling';
 
 interface RankCheckStats {
     totalKeywords: number;
@@ -55,7 +56,7 @@ async function getRankCheckStats(): Promise<RankCheckStats> {
     }
 }
 
-export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const POST = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     logger.info({ message: '🚀 Manual rank check trigger requested' }, 'Info');
 
     // Get current stats before starting
@@ -87,7 +88,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
     });
 });
 
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     // Get current stats
     const stats = await getRankCheckStats();
 

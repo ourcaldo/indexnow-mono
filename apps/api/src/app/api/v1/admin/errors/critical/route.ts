@@ -5,8 +5,9 @@
  */
 
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { adminApiWrapper, formatSuccess } from '../../../../../../../lib/core/api-response-middleware';
+import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface CriticalError {
     id: string;
@@ -31,7 +32,7 @@ interface CriticalErrorResult {
  * Query Parameters:
  * - limit: Maximum number of critical errors to return (default: 50, max: 200)
  */
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     const { searchParams } = new URL(request.url);
     const endpoint = new URL(request.url).pathname;
     const parsedLimit = parseInt(searchParams.get('limit') || '50');

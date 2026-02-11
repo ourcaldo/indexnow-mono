@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 interface Package {
     id: string;
@@ -21,7 +22,7 @@ interface Package {
  * GET /api/v1/admin/packages
  * Get all active packages - requires admin authentication
  */
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     try {
         const packagesContext = {
             userId: adminUser.id,

@@ -2,13 +2,13 @@ import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ServerActivityLogger } from '@/lib/monitoring'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -37,8 +37,8 @@ export const GET = adminApiWrapper(async (
       whereConditions: { user_id: userId }
     },
     async () => {
-      const { data, error } = await supabaseAdmin
-        .from('indb_security_activity_logs')
+      const { data, error } = await (supabaseAdmin
+        .from('indb_security_activity_logs') as any)
         .select('ip_address, device_info, location_data, event_type, created_at, success')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -86,7 +86,7 @@ export const GET = adminApiWrapper(async (
         log.location_data.region,
         log.location_data.country
       ].filter(Boolean).join(', ')
-      
+
       if (locationString) {
         locations.add(locationString)
       }
@@ -117,15 +117,15 @@ export const GET = adminApiWrapper(async (
 
   const riskLevel = securityScore >= 80 ? 'low' : securityScore >= 60 ? 'medium' : 'high'
 
-  await ServerActivityLogger.logAdminAction(
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'security_analysis',
     userId,
     `Analyzed security profile for user ${userId} - Risk Level: ${riskLevel}`,
     request,
-    { 
-      securityAnalysis: true, 
-      riskLevel, 
+    {
+      securityAnalysis: true,
+      riskLevel,
       securityScore: Math.round(securityScore * 100) / 100,
       uniqueIPs: Array.from(ipAddresses).length,
       uniqueDevices: devices.size,

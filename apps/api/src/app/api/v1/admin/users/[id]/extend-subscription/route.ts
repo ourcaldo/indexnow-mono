@@ -1,14 +1,14 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
+import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ServerActivityLogger } from '@/lib/monitoring'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -39,8 +39,8 @@ export const POST = adminApiWrapper(async (
       whereConditions: { user_id: userId }
     },
     async () => {
-      const { data, error } = await supabaseAdmin
-        .from('indb_auth_user_profiles')
+      const { data, error } = await (supabaseAdmin
+        .from('indb_auth_user_profiles') as any)
         .select('full_name, expires_at, package:indb_payment_packages(name, slug)')
         .eq('user_id', userId)
         .single()
@@ -50,13 +50,11 @@ export const POST = adminApiWrapper(async (
 
   const { data: currentUser, error: userError } = currentUserResult
   if (userError || !currentUser) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.AUTHORIZATION,
       'User not found',
-      404,
-      ErrorSeverity.MEDIUM,
-      { userId }
-    )
+      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
+    ))
   }
 
   const currentExpiry = currentUser.expires_at ? new Date(currentUser.expires_at) : new Date()
@@ -106,31 +104,29 @@ export const POST = adminApiWrapper(async (
 
   const { error: updateError } = updateResult
   if (updateError) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.DATABASE,
       'Failed to extend subscription',
-      500,
-      ErrorSeverity.HIGH,
-      { userId, days }
-    )
+      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { userId, days } }
+    ))
   }
 
-  await ServerActivityLogger.logAdminAction(
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'subscription_extend',
     userId,
     `Extended subscription for ${currentUser.full_name || 'User'} by ${days} days`,
     request,
-    { 
+    {
       subscriptionExtend: true,
       extensionDays: days,
       previousExpiry: currentUser.expires_at,
       newExpiry: newExpiry.toISOString(),
-      userFullName: currentUser.full_name 
+      userFullName: currentUser.full_name
     }
   )
 
-  return formatSuccess({ 
+  return formatSuccess({
     message: `Subscription successfully extended by ${days} days`,
     new_expiry: newExpiry.toISOString()
   }, undefined, 201)

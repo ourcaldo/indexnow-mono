@@ -1,14 +1,14 @@
 import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
+import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ServerActivityLogger } from '@/lib/monitoring'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -34,13 +34,11 @@ export const POST = adminApiWrapper(async (
   )
 
   if (!users || users.length === 0) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.AUTHORIZATION,
       'User not found',
-      404,
-      ErrorSeverity.MEDIUM,
-      { userId }
-    )
+      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
+    ))
   }
 
   const currentUser = users[0]
@@ -48,16 +46,16 @@ export const POST = adminApiWrapper(async (
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
     let password = ''
-    
+
     password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
     password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
     password += '0123456789'[Math.floor(Math.random() * 10)]
     password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
-    
+
     for (let i = 4; i < 12; i++) {
       password += chars[Math.floor(Math.random() * chars.length)]
     }
-    
+
     return password.split('').sort(() => Math.random() - 0.5).join('')
   }
 
@@ -89,32 +87,30 @@ export const POST = adminApiWrapper(async (
       const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         password: newPassword
       })
-      
+
       if (error) {
         throw new Error('Failed to reset password')
       }
-      
+
       return { success: true }
     }
   )
 
   if (!updateResult || !updateResult.success) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.DATABASE,
       'Failed to reset password',
-      500,
-      ErrorSeverity.HIGH,
-      { userId }
-    )
+      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { userId } }
+    ))
   }
 
-  await ServerActivityLogger.logAdminAction(
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'password_reset',
     userId,
     `Generated new password for ${currentUser.full_name || 'User'} (${newPassword.length} chars)`,
     request,
-    { 
+    {
       passwordReset: true,
       userRole: currentUser.role,
       passwordLength: newPassword.length,
@@ -122,7 +118,7 @@ export const POST = adminApiWrapper(async (
     }
   )
 
-  return formatSuccess({ 
+  return formatSuccess({
     newPassword: newPassword,
     message: 'Password reset successfully'
   }, undefined, 201)

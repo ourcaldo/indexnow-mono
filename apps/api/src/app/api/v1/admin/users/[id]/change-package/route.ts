@@ -1,14 +1,14 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
+import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ServerActivityLogger } from '@/lib/monitoring'
-import { ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   if (!context) {
     throw new Error('Missing context parameters')
@@ -18,13 +18,11 @@ export const POST = adminApiWrapper(async (
   const { packageId, reason, effectiveDate, notifyUser } = body
 
   if (!packageId) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.VALIDATION,
       'Package ID is required',
-      400,
-      ErrorSeverity.LOW,
-      { field: 'packageId' }
-    )
+      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { field: 'packageId' } }
+    ))
   }
 
   const packageResult = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -61,13 +59,11 @@ export const POST = adminApiWrapper(async (
   const { data: packageData, error: packageError } = packageResult
 
   if (packageError || !packageData) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.VALIDATION,
       'Invalid package selected',
-      400,
-      ErrorSeverity.LOW,
-      { packageId }
-    )
+      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { packageId } }
+    ))
   }
 
   const userResult = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -96,14 +92,14 @@ export const POST = adminApiWrapper(async (
         .select('full_name, package_id, package:indb_payment_packages(name)')
         .eq('user_id', userId)
         .single()
-      
-      return { 
-        data: data as { 
-          full_name: string | null; 
-          package_id: string | null; 
-          package: { name: string } | Array<{ name: string }> | null 
-        } | null, 
-        error 
+
+      return {
+        data: data as {
+          full_name: string | null;
+          package_id: string | null;
+          package: { name: string } | Array<{ name: string }> | null
+        } | null,
+        error
       }
     }
   )
@@ -111,13 +107,11 @@ export const POST = adminApiWrapper(async (
   const { data: currentUser, error: userError } = userResult
 
   if (userError || !currentUser) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.AUTHORIZATION,
       'User not found',
-      404,
-      ErrorSeverity.MEDIUM,
-      { userId }
-    )
+      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
+    ))
   }
 
   const updateResult = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -172,35 +166,33 @@ export const POST = adminApiWrapper(async (
   const { error: updateError } = updateResult
 
   if (updateError) {
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.DATABASE,
       'Failed to change package',
-      500,
-      ErrorSeverity.HIGH,
-      { userId, packageId }
-    )
+      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { userId, packageId } }
+    ))
   }
 
-  const oldPackageName = Array.isArray(currentUser.package) ? 
+  const oldPackageName = Array.isArray(currentUser.package) ?
     currentUser.package[0]?.name : currentUser.package?.name || 'No Package'
-  
-  await ServerActivityLogger.logAdminAction(
+
+  await ActivityLogger.logAdminAction(
     adminUser.id,
     'package_change',
     userId,
     `Changed package for ${currentUser.full_name || 'User'} from "${oldPackageName}" to "${packageData.name}"`,
     request,
-    { 
+    {
       packageChange: true,
       oldPackageId: currentUser.package_id,
       newPackageId: packageId,
       oldPackageName,
       newPackageName: packageData.name,
-      userFullName: currentUser.full_name 
+      userFullName: currentUser.full_name
     }
   )
 
-  return formatSuccess({ 
+  return formatSuccess({
     message: `Package successfully changed to ${packageData.name}`,
     package: packageData
   }, undefined, 201)

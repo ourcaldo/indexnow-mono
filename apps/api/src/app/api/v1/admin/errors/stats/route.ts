@@ -5,8 +5,9 @@
  */
 
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { adminApiWrapper, formatSuccess } from '../../../../../../../lib/core/api-response-middleware';
+import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface ErrorCount {
     message: string;
@@ -47,7 +48,7 @@ interface StatsResult {
  * Query Parameters:
  * - range: Time range (24h, 7d, 30d) - defaults to 24h
  */
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     const { searchParams } = new URL(request.url);
     const endpoint = new URL(request.url).pathname;
     const timeRange = searchParams.get('range') || '24h';

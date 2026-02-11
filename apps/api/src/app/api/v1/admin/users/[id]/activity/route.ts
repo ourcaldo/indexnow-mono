@@ -1,11 +1,11 @@
-import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, SecurityActivityLog, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, SecureServiceRoleHelpers, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware'
-import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { logger, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { adminApiWrapper, createStandardError, formatError, formatSuccess } from '@/lib/core/api-response-middleware'
+import { logger } from '@/lib/monitoring/error-handling'
+import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 interface ActivityLogsResult {
-  logs: SecurityActivityLog[];
+  logs: any[]; // Changed from SecurityActivityLog[]
   count: number;
 }
 
@@ -20,7 +20,7 @@ interface AuthUserSubset {
 }
 
 export const GET = adminApiWrapper(async (
-  request, 
+  request,
   adminUser,
   context
 ) => {
@@ -35,7 +35,7 @@ export const GET = adminApiWrapper(async (
   const offset = (page - 1) * limit
 
   // Fetch user's activity logs using secure wrapper
-  let logs: SecurityActivityLog[] = []
+  let logs: any[] = []
   let count = 0
   let userProfile: UserProfileSubset | null = null
   let userEmail: string | undefined | null = null
@@ -80,7 +80,7 @@ export const GET = adminApiWrapper(async (
         if (countQuery.error) throw countQuery.error
 
         return {
-          logs: (logsQuery.data || []) as SecurityActivityLog[],
+          logs: (logsQuery.data || []) as any[],
           count: countQuery.count || 0
         }
       }
@@ -151,16 +151,14 @@ export const GET = adminApiWrapper(async (
 
   } catch (error) {
     logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching user activity data:')
-    return await createStandardError(
+    return formatError(await createStandardError(
       ErrorType.DATABASE,
       'Failed to fetch user activity logs',
-      500,
-      ErrorSeverity.HIGH,
-      { error: error instanceof Error ? error.message : String(error) }
-    )
+      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { error: error instanceof Error ? error.message : String(error) } }
+    ))
   }
 
-  return formatSuccess({ 
+  return formatSuccess({
     logs: logs || [],
     user: {
       id: userId,

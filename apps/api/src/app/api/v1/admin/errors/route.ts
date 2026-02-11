@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
+import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { adminApiWrapper, formatSuccess } from '../../../../../../lib/core/api-response-middleware';
+import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface ErrorLog {
     id: string;
@@ -33,7 +34,7 @@ interface ErrorLog {
  * - sortBy: Sort field (default: created_at)
  * - sortOrder: Sort order (asc|desc, default: desc)
  */
-export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     const { searchParams } = new URL(request.url);
     const endpoint = new URL(request.url).pathname;
 
