@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { userManagementService } from '@/lib/services'
+import { UserManagementService } from '@indexnow/services';
+const userManagementService = new UserManagementService();
 import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const GET = adminApiWrapper(async (

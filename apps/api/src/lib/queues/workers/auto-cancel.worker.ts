@@ -3,7 +3,7 @@ import { queueManager } from '../QueueManager'
 import { AutoCancelJob, AutoCancelJobSchema } from '../types'
 import { supabaseAdmin } from '@indexnow/database'
 import { SecureServiceRoleWrapper } from '@indexnow/database'
-import { emailService } from '@/lib/email/emailService'
+import { emailService } from '@indexnow/mail'
 import { logger } from '@/lib/monitoring/error-handling'
 
 async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{

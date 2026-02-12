@@ -1,18 +1,9 @@
-/**
- * Enhanced API Response Middleware for Phase 2 Standardization
- * 
- * This module provides middleware that enforces standardized response formats
- * across ALL API routes (admin, authenticated, public) with automatic error handling,
- * logging, and monitoring integration.
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { requireServerSuperAdminAuth, type AdminUser } from '@indexnow/auth';
 import { ErrorHandlingService, logger } from '../monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { formatSuccess, formatError, type ApiSuccessResponse, type ApiErrorResponse } from './api-response-formatter';
 import { authenticateRequest, type AuthenticatedRequest } from './api-middleware';
-import { AdminSecurityLogger } from '../services/security/AdminSecurityLogger';
 
 // Re-export formatter functions for convenience
 export { formatSuccess, formatError } from './api-response-formatter';
@@ -63,9 +54,10 @@ export function adminApiWrapper<T = unknown>(
       }
 
       if (!adminUser) {
-        const { ipAddress, userAgent } = AdminSecurityLogger.extractRequestMetadata(request);
+        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+        const userAgent = request.headers.get('user-agent') || 'unknown';
 
-        await AdminSecurityLogger.logUnauthorizedAccess({
+        logger.warn({
           eventType: 'unauthorized_access',
           endpoint,
           method,
@@ -74,7 +66,7 @@ export function adminApiWrapper<T = unknown>(
           reason: 'Attempted to access admin endpoint without super admin privileges',
           requiredRole: 'super_admin',
           severity: 'high'
-        });
+        }, `Unauthorized admin access attempt: ${method} ${endpoint}`);
 
         const error = await ErrorHandlingService.createError(
           ErrorType.AUTHORIZATION,

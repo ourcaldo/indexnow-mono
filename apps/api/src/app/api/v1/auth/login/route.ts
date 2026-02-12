@@ -1,19 +1,19 @@
 import { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { loginSchema, AppConfig } from '@indexnow/shared';
-import { 
-  publicApiWrapper, 
-  formatSuccess, 
-  formatError 
+import {
+  publicApiWrapper,
+  formatSuccess,
+  formatError
 } from '../../../../../lib/core/api-response-middleware';
-import { 
-  ErrorHandlingService, 
-  ErrorType, 
-  ErrorSeverity 
+import {
+  ErrorHandlingService,
+  ErrorType,
+  ErrorSeverity
 } from '../../../../../lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '../../../../../lib/monitoring/activity-logger';
-import { loginNotificationService } from '../../../../../lib/email/login-notification-service';
-import { getRequestInfo } from '../../../../../lib/utils/ip-device-utils';
+import { loginNotificationService } from '../../../../../lib/monitoring/login-notification-service';
+import { getRequestInfo } from '@indexnow/shared';
 
 /**
  * POST /api/v1/auth/login
@@ -53,7 +53,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       {
         cookies: {
           getAll() { return []; },
-          setAll() {},
+          setAll() { },
         },
       }
     );

@@ -10,8 +10,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { getRequestInfo } from '@/lib/utils/ip-device-utils';
-import { loginNotificationService } from '@/lib/email/login-notification-service';
+import { getRequestInfo } from '@indexnow/shared';
+import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 
 // Types for session operations
 interface SessionData {

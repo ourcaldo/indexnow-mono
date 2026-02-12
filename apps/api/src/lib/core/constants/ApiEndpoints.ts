@@ -1,1 +1,0 @@
-export { ApiEndpoints, AUTH_ENDPOINTS, ADMIN_ENDPOINTS }

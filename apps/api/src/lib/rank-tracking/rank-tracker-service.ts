@@ -1,7 +1,7 @@
 import { db as supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
 import { logger } from '../monitoring/error-handling'
 import { RankTracker, RankResult } from './rank-tracker'
-import { removeUrlParameters } from '../utils/url-utils'
+import { removeUrlParameters } from '@indexnow/shared'
 
 export class RankTrackerService {
   /**
@@ -74,7 +74,7 @@ export class RankTrackerService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       logger.error({ error: errorMessage, keywordId }, 'RankTrackerService: Failed to process rank check')
-      
+
       // Update keyword with error status
       await SecureServiceRoleWrapper.run(
         () => supabaseAdmin

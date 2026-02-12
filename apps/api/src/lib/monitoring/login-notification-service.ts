@@ -9,8 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SiteSettingsRow } from '@indexnow/shared';
 
-import { DeviceInfo, LocationData } from '../utils/ip-device-utils';
-import { logger } from '../monitoring/error-handling';
+import { DeviceInfo, LocationData } from '@indexnow/shared';
+import { logger } from './error-handling';
 
 interface LoginNotificationData {
   userId: string;
@@ -36,9 +36,9 @@ interface SmtpConfig {
 
 export class LoginNotificationService {
   private static instance: LoginNotificationService;
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   public static getInstance(): LoginNotificationService {
     if (!LoginNotificationService.instance) {
       LoginNotificationService.instance = new LoginNotificationService();
@@ -55,7 +55,7 @@ export class LoginNotificationService {
 
       // Get SMTP configuration from site settings
       const smtpConfig = await this.getEmailConfiguration();
-      
+
       if (!smtpConfig.enabled) {
         logger.info('📧 Email notifications disabled, skipping login notification');
         return false;
@@ -110,7 +110,7 @@ export class LoginNotificationService {
    */
   private createFallbackEmailContent(data: LoginNotificationData): string {
     const loginTime = new Date(data.loginTime).toLocaleString();
-    
+
     return `
       <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -169,7 +169,7 @@ export class LoginNotificationService {
       // Since we selected specific columns, the result is a partial of SiteSettingsRow
       // However, the wrapper returns what the callback returns.
       // We need to handle null.
-      
+
       if (!settings || !settings.smtp_enabled) {
         return this.getFallbackEmailConfiguration();
       }
@@ -196,7 +196,7 @@ export class LoginNotificationService {
   private getFallbackEmailConfiguration(): SmtpConfig {
     const host = process.env.SMTP_HOST;
     const user = process.env.SMTP_USER;
-    
+
     if (!host || !user) {
       return { enabled: false };
     }
@@ -245,12 +245,12 @@ export class LoginNotificationService {
     try {
       // Use path.join/resolve safely
       const templatePath = path.resolve(process.cwd(), '../../packages/mail/src/templates/login-notification.html');
-      
+
       if (!fs.existsSync(templatePath)) {
         logger.error({ templatePath }, '❌ Login notification template not found');
         return null;
       }
-      
+
       let template = fs.readFileSync(templatePath, 'utf8');
 
       const deviceInfo = data.deviceInfo;
@@ -260,7 +260,7 @@ export class LoginNotificationService {
       const deviceType = deviceInfo?.type || 'Unknown Device';
       const browser = deviceInfo?.browser || 'Unknown';
       const operatingSystem = deviceInfo?.os || 'Unknown';
-      
+
       const loginTime = new Date(data.loginTime).toLocaleString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
       });

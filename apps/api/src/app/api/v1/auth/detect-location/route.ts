@@ -1,5 +1,5 @@
 ﻿import { NextRequest } from 'next/server';
-import { getRequestInfo } from '@/lib/utils/ip-device-utils';
+import { getRequestInfo } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 /**

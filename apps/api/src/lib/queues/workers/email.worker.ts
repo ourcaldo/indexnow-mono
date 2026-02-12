@@ -2,7 +2,7 @@ import { Job } from 'bullmq'
 import { queueManager } from '../QueueManager'
 import { queueConfig } from '../config'
 import { EmailJob, EmailJobSchema } from '../types'
-import { emailService } from '@/lib/email/emailService'
+import { emailService } from '@indexnow/mail'
 import { logger } from '@/lib/monitoring/error-handling'
 
 async function processEmail(job: Job<EmailJob>): Promise<{

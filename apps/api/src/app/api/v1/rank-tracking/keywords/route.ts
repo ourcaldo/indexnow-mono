@@ -6,7 +6,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { rankTrackingService } from '@/lib/services';
+import { RankTrackingService } from '@indexnow/services';
+const rankTrackingService = new RankTrackingService();
 import {
   authenticatedApiWrapper,
   formatSuccess,

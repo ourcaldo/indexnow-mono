@@ -6,7 +6,7 @@
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { InsertSecurityActivityLog, Json } from '@indexnow/shared';
 import { logger } from './error-handling';
-import { getRequestInfo, formatDeviceInfo, formatLocationData, DeviceInfo, LocationData } from '../utils/ip-device-utils';
+import { getRequestInfo, formatDeviceInfo, formatLocationData, DeviceInfo, LocationData } from '@indexnow/shared';
 import { NextRequest } from 'next/server';
 
 export interface ActivityLogData {
@@ -83,8 +83,8 @@ export class ActivityLogger {
       }
 
       // Ensure metadata is an object before spreading
-      const sourceMetadata = (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)) 
-        ? data.metadata as Record<string, unknown> 
+      const sourceMetadata = (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata))
+        ? data.metadata as Record<string, unknown>
         : {};
 
       const enhancedMetadata: Json = {
