@@ -1,10 +1,11 @@
-import { PackageRow, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
+import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 
 export const GET = publicApiWrapper(async (request, context) => {
   // Get packageId from context params (Next.js 15 dynamic routes)
@@ -27,8 +28,8 @@ export const GET = publicApiWrapper(async (request, context) => {
   // Get user context for optional audit tracking (public endpoint, no auth required)
   const cookieStore = await cookies()
   const userSupabaseClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    AppConfig.supabase.url,
+    AppConfig.supabase.anonKey,
     {
       cookies: {
         get(name: string) {
@@ -48,7 +49,7 @@ export const GET = publicApiWrapper(async (request, context) => {
 
   // Get package details using SecureWrapper
   // Use 'system' userId for public operations (package viewing is public)
-  const packageData = await SecureServiceRoleWrapper.executeSecureOperation<PackageRow | null>(
+  const packageData = await SecureServiceRoleWrapper.executeSecureOperation(
     {
       userId: 'system',
       operation: 'public_get_package_details',
@@ -76,7 +77,7 @@ export const GET = publicApiWrapper(async (request, context) => {
         throw new Error('Failed to fetch package details')
       }
 
-      return data as PackageRow | null
+      return data
     }
   )
 
@@ -95,8 +96,8 @@ export const GET = publicApiWrapper(async (request, context) => {
     return formatError(error)
   }
 
-  return formatSuccess({ 
-    data: packageData 
+  return formatSuccess({
+    data: packageData
   })
 })
 

@@ -1,45 +1,25 @@
 import { SecureServiceRoleWrapper, UpdateDashboardNotification, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { ErrorType, type StructuredError } from '@indexnow/shared';
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
-import { ErrorHandlingService, ErrorType, StructuredError } from '@/lib/monitoring/error-handling'
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 
 export const POST = authenticatedApiWrapper(async (
   request: NextRequest,
   auth,
-  context?: { params: Promise<{ id: string }> }
+  context?: { params: Promise<Record<string, string>> }
 ) => {
   try {
     if (!context) {
       throw new Error('Missing context parameters')
     }
-    const { id: notificationId } = await context.params
-
-    // Create user's authenticated Supabase client
-    const cookieStore = await cookies()
-    const userSupabaseClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set(name, value, options)
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set(name, '', { ...options, maxAge: 0 })
-          }
-        }
-      }
-    )
+    const params = await context.params
+    const notificationId = params.id
 
     // Dismiss the notification using SecureWrapper
     await SecureServiceRoleWrapper.executeWithUserSession<boolean>(
-      userSupabaseClient,
+      auth.supabase,
       {
         userId: auth.userId,
         operation: 'dismiss_user_notification',
@@ -57,7 +37,7 @@ export const POST = authenticatedApiWrapper(async (
       async (db) => {
         const { error } = await db
           .from('indb_notifications_dashboard')
-          .update({ 
+          .update({
             is_read: true,
             dismissed_at: new Date().toISOString()
           } as UpdateDashboardNotification)
@@ -83,10 +63,10 @@ export const POST = authenticatedApiWrapper(async (
     })
 
   } catch (error) {
-    if (error && typeof error === 'object' && 'type' in error) {
+    if (error && typeof error === 'object' && 'type' in error && 'statusCode' in error) {
       return formatError(error as StructuredError)
     }
-    
+
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
       error instanceof Error ? error : new Error(String(error)),

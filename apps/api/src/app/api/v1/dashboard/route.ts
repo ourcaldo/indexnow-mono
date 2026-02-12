@@ -12,8 +12,8 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 interface PricingTiers {
     [key: string]: {
@@ -42,11 +42,11 @@ interface UserProfileWithPackage {
     package?: PackageData | null;
     daily_quota_limit: number;
     daily_quota_used: number;
-    has_used_trial: boolean;
-    trial_used_at: string | null;
+    is_trial_active: boolean;
+    trial_ends_at: string | null;
     package_id: string | null;
-    subscribed_at: string | null;
-    expires_at: string | null;
+    subscription_start_date: string | null;
+    subscription_end_date: string | null;
     country: string | null;
 }
 
@@ -135,7 +135,9 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         // Process Profile & Package
         let profile: UserProfileWithPackage | null = null;
         if (userProfileResult.data) {
-            const rawPackage = userProfileResult.data.package as unknown as PackageData;
+            // Supabase join typing: .select() returns the join as an array or object,
+            // but cannot infer the joined table's shape. We use a deliberate cast here.
+            const rawPackage = userProfileResult.data.package as unknown as PackageData | null;
             let transformedPackage = rawPackage;
 
             if (rawPackage) {
@@ -166,18 +168,26 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             // Get email from auth object directly to avoid extra call
             const { data: { user } } = await auth.supabase.auth.getUser();
 
+            const profileData = userProfileResult.data;
             profile = {
-                ...(userProfileResult.data as any),
+                id: profileData.id ?? profileData.user_id,
+                daily_quota_limit: profileData.daily_quota_limit,
+                daily_quota_used: profileData.daily_quota_used,
+                is_trial_active: profileData.is_trial_active,
+                trial_ends_at: profileData.trial_ends_at,
+                package_id: profileData.package_id,
+                subscription_start_date: profileData.subscription_start_date,
+                subscription_end_date: profileData.subscription_end_date,
+                country: profileData.country,
                 package: transformedPackage,
                 email: user?.email || null,
-                email_confirmed_at: user?.email_confirmed_at || null,
-                last_sign_in_at: user?.last_sign_in_at || null
             };
         }
 
         // Process Quota
         const keywordsUsed = keywordCountResult.count || 0;
-        const keywordsLimit = (profile?.package?.quota_limits as any)?.keywords_limit || 10;
+        const quotaLimits = profile?.package?.quota_limits;
+        const keywordsLimit = quotaLimits?.keywords_limit || 10;
         const isKeywordsUnlimited = keywordsLimit === -1;
 
         const dailyQuotaUsed = profile?.daily_quota_used || 0;
@@ -201,18 +211,20 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         };
 
         // Process Trial Eligibility
-        let trialEligibility = { eligible: false, message: '', available_packages: [] as any[] };
+        let trialEligibility: { eligible: boolean; message: string; available_packages: typeof packagesResult.data } = {
+            eligible: false, message: '', available_packages: []
+        };
         if (profile) {
-            if (profile.has_used_trial) {
+            if (profile.is_trial_active) {
                 trialEligibility = {
                     eligible: false,
-                    message: `Free trial already used on ${profile.trial_used_at ? new Date(profile.trial_used_at).toLocaleDateString() : 'unknown date'}`,
+                    message: `Trial is already active${profile.trial_ends_at ? ` (ends ${new Date(profile.trial_ends_at).toLocaleDateString()})` : ''}`,
                     available_packages: []
                 };
             } else {
                 const trialPackages = (packagesResult.data || [])
-                    .filter((p: any) => ['premium', 'pro'].includes(p.slug))
-                    .sort((a: any, b: any) => a.sort_order - b.sort_order);
+                    .filter((p) => ['premium', 'pro'].includes(p.slug))
+                    .sort((a, b) => a.sort_order - b.sort_order);
 
                 trialEligibility = {
                     eligible: true,
@@ -223,7 +235,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         }
 
         // Process Recent Keywords (Manual mapping for FE compatibility)
-        const recentKeywords = (recentKeywordsResult.data || []).map((kw: any) => ({
+        const recentKeywords = (recentKeywordsResult.data || []).map((kw) => ({
             id: kw.id,
             keyword: kw.keyword,
             device_type: kw.device,
@@ -242,7 +254,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             billing: {
                 packages: packagesResult.data || [],
                 current_package_id: profile?.package_id,
-                expires_at: profile?.expires_at
+                expires_at: profile?.subscription_end_date
             },
             rankTracking: {
                 domains: domainsResult.data || [],

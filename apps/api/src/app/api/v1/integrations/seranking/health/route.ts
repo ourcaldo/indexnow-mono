@@ -11,7 +11,7 @@
 
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@indexnow/database';
-import { publicApiWrapper, formatSuccess } from '../../../../../../lib/core/api-response-middleware';
+import { publicApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface HealthCheckResult {
     status: 'healthy' | 'degraded' | 'unhealthy' | 'unconfigured';

@@ -15,8 +15,8 @@ import {
     authenticatedApiWrapper,
     formatSuccess,
     formatError
-} from '../../../../../../../lib/core/api-response-middleware';
-import { ErrorHandlingService } from '../../../../../../../lib/monitoring/error-handling';
+} from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 interface QuotaStatusData {
     current_usage: number;
