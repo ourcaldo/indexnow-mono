@@ -1,1 +1,0 @@
-- **Payment Operations**: 2 retries, 2s initial delay, 10s max delay (fail-fast)
