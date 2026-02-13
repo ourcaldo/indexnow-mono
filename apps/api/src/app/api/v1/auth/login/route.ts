@@ -9,7 +9,8 @@ import {
 import {
   ErrorHandlingService,
   ErrorType,
-  ErrorSeverity
+  ErrorSeverity,
+  logger
 } from '../../../../../lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '../../../../../lib/monitoring/activity-logger';
 import { loginNotificationService } from '../../../../../lib/monitoring/login-notification-service';

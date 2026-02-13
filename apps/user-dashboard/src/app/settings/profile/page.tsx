@@ -1,28 +1,29 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  authService, 
-  ApiEndpoints as AUTH_ENDPOINTS
+import {
+  authService,
+  ApiEndpoints as AUTH_ENDPOINTS,
+  logger
 } from '@indexnow/shared'
 import { supabaseBrowser as supabase, usePageViewLogger, useActivityLogger } from '@indexnow/database'
 import { useAuth } from '@indexnow/auth'
-import { 
+import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  Button, 
-  Input, 
-  Label, 
+  Button,
+  Input,
+  Label,
   Badge,
   Skeleton,
   SettingCard,
   SettingInput,
   useToast
 } from '@indexnow/ui'
-import { 
-  User as UserIcon, 
+import {
+  User as UserIcon,
   RefreshCw,
   Eye,
   EyeOff,
@@ -40,7 +41,7 @@ export default function ProfileSettingsPage() {
   const { addToast } = useToast()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
-  
+
   // Log page view and settings activities
   usePageViewLogger('/dashboard/settings/profile', 'Profile Settings', { section: 'profile_settings' })
   const { logDashboardActivity } = useActivityLogger()
@@ -81,7 +82,7 @@ export default function ProfileSettingsPage() {
         headers: { Authorization: `Bearer ${token}` },
         credentials: 'include'
       })
-      
+
       if (profileResponse.ok) {
         const profileData = await profileResponse.json() as { profile: UserProfile }
         setUserProfile(profileData.profile)
@@ -179,7 +180,7 @@ export default function ProfileSettingsPage() {
 
     try {
       setSavingPassword(true)
-      
+
       // First verify current password by attempting to sign in
       if (!user?.email) {
         addToast({
@@ -189,7 +190,7 @@ export default function ProfileSettingsPage() {
         })
         return
       }
-      
+
       try {
         await authService.signIn(user.email, passwordForm.currentPassword)
       } catch (signInError) {
@@ -223,7 +224,7 @@ export default function ProfileSettingsPage() {
       })
 
       await logDashboardActivity('password_change', 'Password updated successfully')
-      
+
       // Clear password form
       setPasswordForm({
         currentPassword: '',
@@ -256,7 +257,7 @@ export default function ProfileSettingsPage() {
             <div className="h-4 w-28 bg-muted rounded animate-pulse" />
             <div className="h-10 w-full bg-muted rounded animate-pulse" />
           </div>
-          
+
           {/* Password Change Skeleton */}
           <div className="space-y-4 p-6 bg-card border rounded-lg">
             <div className="h-4 w-32 bg-muted rounded animate-pulse" />
@@ -275,8 +276,8 @@ export default function ProfileSettingsPage() {
     <div className="space-y-6">
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Profile Information */}
-        <SettingCard 
-          title="Profile Information" 
+        <SettingCard
+          title="Profile Information"
           description="Update your personal details and contact information"
         >
           <div className="space-y-4">
@@ -285,7 +286,7 @@ export default function ProfileSettingsPage() {
               label="Full Name"
               placeholder="Enter your full name"
               value={profileForm.full_name}
-              onChange={(value) => setProfileForm(prev => ({...prev, full_name: value}))}
+              onChange={(value) => setProfileForm(prev => ({ ...prev, full_name: value }))}
             />
 
             <SettingInput
@@ -304,13 +305,13 @@ export default function ProfileSettingsPage() {
               type="tel"
               placeholder="Enter your phone number"
               value={profileForm.phone_number}
-              onChange={(value) => setProfileForm(prev => ({...prev, phone_number: value}))}
+              onChange={(value) => setProfileForm(prev => ({ ...prev, phone_number: value }))}
               description="Optional - used for account recovery and notifications"
             />
           </div>
 
           <div className="pt-4">
-            <Button 
+            <Button
               onClick={handleSaveProfile}
               disabled={savingProfile}
               className="w-full sm:w-auto"
@@ -331,8 +332,8 @@ export default function ProfileSettingsPage() {
         </SettingCard>
 
         {/* Change Password */}
-        <SettingCard 
-          title="Security" 
+        <SettingCard
+          title="Security"
           description="Update your password to keep your account secure"
         >
           <div className="space-y-4">
@@ -346,7 +347,7 @@ export default function ProfileSettingsPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter current password"
                   value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm(prev => ({...prev, currentPassword: e.target.value}))}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                   className="pr-10"
                   data-testid="input-current-password"
                 />
@@ -368,7 +369,7 @@ export default function ProfileSettingsPage() {
               type="password"
               placeholder="Enter new password"
               value={passwordForm.newPassword}
-              onChange={(value) => setPasswordForm(prev => ({...prev, newPassword: value}))}
+              onChange={(value) => setPasswordForm(prev => ({ ...prev, newPassword: value }))}
               description="Must be at least 6 characters long"
             />
 
@@ -378,12 +379,12 @@ export default function ProfileSettingsPage() {
               type="password"
               placeholder="Confirm new password"
               value={passwordForm.confirmPassword}
-              onChange={(value) => setPasswordForm(prev => ({...prev, confirmPassword: value}))}
+              onChange={(value) => setPasswordForm(prev => ({ ...prev, confirmPassword: value }))}
             />
           </div>
 
           <div className="pt-4">
-            <Button 
+            <Button
               onClick={handleChangePassword}
               disabled={savingPassword}
               variant="outline"

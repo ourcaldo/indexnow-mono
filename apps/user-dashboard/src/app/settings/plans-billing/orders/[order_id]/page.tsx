@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { BILLING_ENDPOINTS, type Json } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, type Json, logger } from '@indexnow/shared'
 import { usePageViewLogger, supabaseBrowser } from '@indexnow/database'
 import {
   Check,
@@ -124,7 +124,7 @@ export default function OrderSuccessPage() {
       }, 1000)
       return () => clearTimeout(timer)
     }
-    
+
     if (countdown === 0) {
       router.push('/dashboard/settings/plans-billing')
     }
@@ -241,33 +241,61 @@ export default function OrderSuccessPage() {
               {/* Payment Details */}
               {(orderData.payment_details?.va_numbers ||
                 orderData.payment_details?.payment_code) && (
-                <div className="mt-8">
-                  <h4 className="font-semibold text-foreground mb-4 flex items-center">
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Payment Details
-                  </h4>
+                  <div className="mt-8">
+                    <h4 className="font-semibold text-foreground mb-4 flex items-center">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Payment Details
+                    </h4>
 
-                  {/* Display VA numbers from payment_details */}
-                  {orderData.payment_details?.va_numbers?.map(
-                    (va, index) => (
-                      <div
-                        key={index}
-                        className="bg-background/30 rounded-lg p-4 mb-3"
-                      >
+                    {/* Display VA numbers from payment_details */}
+                    {orderData.payment_details?.va_numbers?.map(
+                      (va, index) => (
+                        <div
+                          key={index}
+                          className="bg-background/30 rounded-lg p-4 mb-3"
+                        >
+                          <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
+                            {va.bank.toUpperCase()} Virtual Account
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-mono text-lg font-bold tracking-wider">
+                              {va.va_number}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                copyToClipboard(
+                                  va.va_number,
+                                  `${va.bank.toUpperCase()} VA Number`
+                                )
+                              }
+                              className="text-accent hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    )}
+
+                    {/* Display payment code from payment_details */}
+                    {orderData.payment_details?.payment_code && (
+                      <div className="bg-background/30 rounded-lg p-4 mb-3">
                         <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
-                          {va.bank.toUpperCase()} Virtual Account
+                          {(orderData.payment_details?.store || 'Payment')} Code
                         </p>
                         <div className="flex items-center justify-between">
                           <p className="text-foreground font-mono text-lg font-bold tracking-wider">
-                            {va.va_number}
+                            {orderData.payment_details?.payment_code}
                           </p>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() =>
                               copyToClipboard(
-                                va.va_number,
-                                `${va.bank.toUpperCase()} VA Number`
+                                orderData.payment_details?.payment_code!,
+                                'Payment Code'
                               )
                             }
                             className="text-accent hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0"
@@ -276,37 +304,9 @@ export default function OrderSuccessPage() {
                           </Button>
                         </div>
                       </div>
-                    )
-                  )}
-
-                  {/* Display payment code from payment_details */}
-                  {orderData.payment_details?.payment_code && (
-                    <div className="bg-background/30 rounded-lg p-4 mb-3">
-                      <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
-                        {(orderData.payment_details?.store || 'Payment')} Code
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-foreground font-mono text-lg font-bold tracking-wider">
-                          {orderData.payment_details?.payment_code}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            copyToClipboard(
-                              orderData.payment_details?.payment_code!,
-                              'Payment Code'
-                            )
-                          }
-                          className="text-accent hover:bg-accent hover:text-accent-foreground h-8 w-8 p-0"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
             </div>
 
             {/* Contact Support */}

@@ -19,7 +19,7 @@ import {
   CheckoutSubmitButton,
   PaymentMethodSelector
 } from '@indexnow/ui'
-import { ApiEndpoints as API, usePaddle, PaymentSchemas } from '@indexnow/shared'
+import { ApiEndpoints as API, usePaddle, PaymentSchemas, logger } from '@indexnow/shared'
 import { usePageViewLogger, useActivityLogger, supabaseBrowser } from '@indexnow/database'
 import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
@@ -203,7 +203,7 @@ function CheckoutPageContent() {
 
     if (selectedPackage.pricing_tiers && typeof selectedPackage.pricing_tiers === 'object' && selectedPackage.pricing_tiers[billing_period]) {
       const pricingData = selectedPackage.pricing_tiers[billing_period]
-      
+
       const price = pricingData.promo_price || pricingData.regular_price
       const originalPrice = pricingData.regular_price
       const discount = pricingData.promo_price ? Math.round(((originalPrice - pricingData.promo_price) / originalPrice) * 100) : 0
@@ -273,7 +273,7 @@ function CheckoutPageContent() {
       // Users can close overlay and retry. Only successful payments redirect to successUrl.
       paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],
-        customer: { 
+        customer: {
           email: form.email
         },
         customData: {
@@ -307,7 +307,7 @@ function CheckoutPageContent() {
         description: error instanceof Error ? error.message : "Unable to open checkout. Please try again.",
         type: "error"
       })
-      
+
       logBillingActivity('checkout_error', `Checkout error: ${error instanceof Error ? error.message : 'Unknown error'}`, {
         package_id: selectedPackage?.id,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -333,9 +333,9 @@ function CheckoutPageContent() {
     <PaymentErrorBoundary>
       <div className="min-h-screen bg-secondary py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <CheckoutHeader 
-            selectedPackage={selectedPackage} 
-            onBack={() => router.push('/dashboard/settings/plans-billing')} 
+          <CheckoutHeader
+            selectedPackage={selectedPackage}
+            onBack={() => router.push('/dashboard/settings/plans-billing')}
           />
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -361,11 +361,11 @@ function CheckoutPageContent() {
                     <div className="space-y-4">
                       <div className="bg-muted/50 p-4 rounded-lg">
                         <p className="text-sm text-muted-foreground">
-                          You will be redirected to our secure payment partner, Paddle, to complete your purchase. 
+                          You will be redirected to our secure payment partner, Paddle, to complete your purchase.
                           Paddle accepts all major credit cards and supports multiple payment methods.
                         </p>
                       </div>
-                      
+
                       {isTrialFlow && trialEligible && (
                         <div className="bg-success/10 border border-success/20 p-4 rounded-lg">
                           <p className="text-sm font-medium text-success">

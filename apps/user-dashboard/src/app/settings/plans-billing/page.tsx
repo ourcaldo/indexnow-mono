@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Download } from 'lucide-react'
-import { authService, AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate } from '@indexnow/shared'
+import { authService, AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate, logger } from '@indexnow/shared'
 import { supabaseBrowser as supabase, usePageViewLogger, useActivityLogger } from '@indexnow/database'
-import { 
-  LoadingSpinner, 
-  Button, 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle, 
-  Badge, 
-  Progress, 
-  useToast, 
+import {
+  LoadingSpinner,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Progress,
+  useToast,
   useApiError,
   CancelSubscriptionDialog,
   SubscriptionStatusBadge,
@@ -166,7 +166,7 @@ export default function BillingPage() {
   const [trialEligible, setTrialEligible] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Subscription management state
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
@@ -175,7 +175,7 @@ export default function BillingPage() {
   const [selectedBillingPeriod, setSelectedBillingPeriod] = useState<string>('monthly')
   const [subscribing, setSubscribing] = useState<string | null>(null)
   const [startingTrial, setStartingTrial] = useState<string | null>(null)
-  
+
   // Billing history pagination
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -190,11 +190,11 @@ export default function BillingPage() {
   // Load data on mount
   useEffect(() => {
     loadAllData()
-    
+
     // Handle payment status from URL
     const urlParams = new URLSearchParams(window.location.search)
     const paymentStatus = urlParams.get('payment')
-    
+
     if (paymentStatus) {
       const url = new URL(window.location.href)
       url.searchParams.delete('payment')
@@ -218,7 +218,7 @@ export default function BillingPage() {
       setLoading(false)
     }
   }
-  
+
   const loadSubscriptionData = async () => {
     try {
       const token = await authService.getAccessToken()
@@ -286,7 +286,7 @@ export default function BillingPage() {
       })
 
       if (!packagesResponse.ok) throw new Error('Failed to load packages')
-      
+
       const packagesResult = await packagesResponse.json()
       const packages = packagesResult?.data?.packages || []
 
@@ -300,10 +300,10 @@ export default function BillingPage() {
       })
 
       if (!dashboardResponse.ok) throw new Error('Failed to load dashboard data')
-      
+
       const dashboardResult = await dashboardResponse.json()
       const dashboardData = dashboardResult?.data || {}
-      
+
       // Extract profile data from nested structure
       const profileData = dashboardData.user?.profile || {}
       const billingData = dashboardData.billing || {}
@@ -316,17 +316,17 @@ export default function BillingPage() {
         user_currency: 'USD',
         user_country: billingData.user_country || profileData.country || ''
       })
-      
+
       // Extract usage data from dashboard
       if (dashboardData.user?.quota) {
         setUsageData(dashboardData.user.quota)
       }
-      
+
       // Extract keyword usage from rank tracking
       if (dashboardData.rankTracking?.usage) {
         setKeywordUsage(dashboardData.rankTracking.usage)
       }
-      
+
       // Fetch total keywords count across all domains
       try {
         const keywordsResponse = await fetch(`${AppConfig.app.baseUrl}/v1/rank-tracking/keywords`, {
@@ -336,7 +336,7 @@ export default function BillingPage() {
           },
           credentials: 'include'
         })
-        
+
         if (keywordsResponse.ok) {
           const keywordsResult = await keywordsResponse.json()
           if (keywordsResult.success && keywordsResult.data) {
@@ -350,7 +350,7 @@ export default function BillingPage() {
         // Fallback to usage data if keywords endpoint fails
         setTotalKeywords(keywordUsage?.keywords_used || 0)
       }
-      
+
       // Extract trial eligibility from dashboard
       if (dashboardData.user?.trial) {
         setTrialEligible(dashboardData.user.trial.eligible)
@@ -393,7 +393,7 @@ export default function BillingPage() {
       setError(error instanceof Error ? error.message : 'Failed to load billing history')
     }
   }
-  
+
   const handlePageChange = async (page: number) => {
     await loadBillingHistory(page)
   }
@@ -402,10 +402,10 @@ export default function BillingPage() {
   const getBillingPeriodPrice = (pkg: PaymentPackage, period: string): { price: number, originalPrice?: number, discount?: number } => {
     // Map 'yearly' to 'annual' as the API returns 'annual' but UI uses 'yearly'
     const apiPeriod = period === 'yearly' ? 'annual' : period
-    
+
     if (pkg.pricing_tiers && typeof pkg.pricing_tiers === 'object' && pkg.pricing_tiers[apiPeriod]) {
       const periodTier = pkg.pricing_tiers[apiPeriod]
-      
+
       // Use flat USD pricing structure (Paddle handles currency conversion)
       return {
         price: periodTier.promo_price || periodTier.regular_price,
@@ -413,7 +413,7 @@ export default function BillingPage() {
         discount: periodTier.promo_price ? Math.round(((periodTier.regular_price - periodTier.promo_price) / periodTier.regular_price) * 100) : undefined
       }
     }
-    
+
     if (Array.isArray(pkg.pricing_tiers)) {
       const tier = pkg.pricing_tiers.find((t) => t.period === apiPeriod)
       if (tier) {
@@ -424,7 +424,7 @@ export default function BillingPage() {
         }
       }
     }
-    
+
     return { price: pkg.price }
   }
 
@@ -468,7 +468,7 @@ export default function BillingPage() {
   const isTrialEligiblePackage = (pkg: PaymentPackage) => {
     return pkg.free_trial_enabled === true
   }
-  
+
   const handleCancelSuccess = async () => {
     setShowCancelDialog(false)
     addToast({
@@ -509,17 +509,17 @@ export default function BillingPage() {
     switch (status) {
       case 'active':
       case 'completed':
-      case 'confirmed': 
+      case 'confirmed':
         return { bg: 'bg-success/10', text: 'text-success', border: 'border-success/20' }
       case 'expired':
       case 'failed':
-      case 'cancelled': 
+      case 'cancelled':
         return { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-destructive/20' }
       case 'expiring_soon':
       case 'pending':
-      case 'proof_uploaded': 
+      case 'proof_uploaded':
         return { bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/20' }
-      default: 
+      default:
         return { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border' }
     }
   }
@@ -556,7 +556,7 @@ export default function BillingPage() {
   return (
     <div className="space-y-8">
       {/* Current Plan & Usage */}
-      <BillingStats 
+      <BillingStats
         billingData={billingData}
         currentPackageId={packagesData?.current_package_id || null}
         formatCurrency={formatCurrency}
@@ -571,8 +571,8 @@ export default function BillingPage() {
           <h2 className="text-2xl font-bold text-foreground" data-testid="text-heading-plans">Available Plans</h2>
           <div className="bg-success/10 text-success px-3 py-1 rounded-full text-xs font-medium">Save 20% on Annual Plans</div>
         </div>
-        
-        <PricingCards 
+
+        <PricingCards
           packages={packagesData?.packages || []}
           selectedBillingPeriod={selectedBillingPeriod === 'yearly' ? 'annual' : 'monthly'}
           setSelectedBillingPeriod={(period: string) => setSelectedBillingPeriod(period === 'annual' ? 'yearly' : 'monthly')}
@@ -586,23 +586,23 @@ export default function BillingPage() {
           handleSubscribe={(pkgId: string) => handleSubscribe(pkgId, selectedBillingPeriod)}
           handleStartTrial={handleStartTrial}
           isTrialEligiblePackage={isTrialEligiblePackage}
-          togglePlanDetails={() => {}}
+          togglePlanDetails={() => { }}
         />
       </div>
 
       {/* Billing History Section */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="p-6 border-b border-border">
-          <BillingHistory 
+          <BillingHistory
             historyData={historyData}
             statusFilter=""
             typeFilter=""
             searchTerm=""
-            setStatusFilter={() => {}}
-            setTypeFilter={() => {}}
-            setSearchTerm={() => {}}
+            setStatusFilter={() => { }}
+            setTypeFilter={() => { }}
+            setSearchTerm={() => { }}
             handlePageChange={handlePageChange}
-            resetFilters={() => {}}
+            resetFilters={() => { }}
             getStatusIcon={getStatusIcon}
             getStatusText={getStatusText}
             getStatusColor={getStatusColor}
@@ -635,7 +635,7 @@ export default function BillingPage() {
           </div>
         </div>
       )}
-      
+
       {/* Cancel Subscription Dialog */}
       {showCancelDialog && subscriptionData?.hasSubscription && subscriptionData.subscription?.paddle_subscription_id && (
         <CancelSubscriptionDialog
