@@ -1,5 +1,6 @@
-import { db, supabaseAdmin } from '@indexnow/database';
-import { USER_ROLES,
+import { db, supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import {
+  USER_ROLES,
   DEFAULT_SETTINGS,
   type TrialEligibility,
   type DbUserProfile,
@@ -7,7 +8,8 @@ import { USER_ROLES,
   type InsertUserProfile,
   type UpdateUserProfile,
   type InsertUserSettings,
-  type UpdateUserSettings, logger } from '@indexnow/shared';
+  type UpdateUserSettings, logger
+} from '@indexnow/shared';
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
@@ -274,13 +276,30 @@ export class UserManagementService {
   private async getPackageConfig(packageId: string | null): Promise<any> {
     if (!packageId) return null;
 
-    const { data } = await supabaseAdmin
-      .from('indb_payment_packages')
-      .select('settings')
-      .eq('id', packageId)
-      .single();
+    const pkg = await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: 'system',
+        operation: 'get_package_config',
+        reason: 'Fetching package configuration for quota calculation',
+        source: 'UserManagementService.getPackageConfig',
+      },
+      {
+        table: 'indb_payment_packages',
+        operationType: 'select',
+        columns: ['settings'],
+        whereConditions: { id: packageId },
+      },
+      async () => {
+        const { data } = await supabaseAdmin
+          .from('indb_payment_packages')
+          .select('settings')
+          .eq('id', packageId)
+          .single();
+        return data;
+      }
+    );
 
-    return data?.settings || null;
+    return pkg?.settings || null;
   }
 
   /**
@@ -493,15 +512,31 @@ export class UserManagementService {
    */
   private async getUserEmail(userId: string): Promise<string | null> {
     try {
-      const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+      return await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'get_user_email',
+          reason: 'Fetching user email from auth for profile mapping',
+          source: 'UserManagementService.getUserEmail',
+          metadata: { targetUserId: userId },
+        },
+        {
+          table: 'auth.users',
+          operationType: 'select',
+          columns: ['email'],
+          whereConditions: { id: userId },
+        },
+        async () => {
+          const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
 
-      if (error || !data.user) {
-        if (error) logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching user email');
-        // Return null instead of empty string to indicate failure
-        return null;
-      }
+          if (error || !data.user) {
+            if (error) logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching user email');
+            return null;
+          }
 
-      return data.user.email || null;
+          return data.user.email || null;
+        }
+      );
     } catch (err) {
       logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching user email');
       return null;

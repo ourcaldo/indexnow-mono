@@ -3,7 +3,7 @@
  * Handles subscription update events (plan changes, status changes)
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { safeGet } from './utils';
 
 interface SubscriptionItem {
@@ -60,7 +60,6 @@ export async function processSubscriptionUpdated(data: unknown) {
         ? safeGet(items[0] as unknown as Record<string, unknown>, 'price.id', null)
         : null;
 
-    // Build update data with only existing columns
     const updateData: Record<string, unknown> = {
         status: mapPaddleStatus(status),
         paddle_price_id: priceId,
@@ -72,37 +71,53 @@ export async function processSubscriptionUpdated(data: unknown) {
         updateData.current_period_end = current_billing_period.ends_at;
     }
 
-    const { error: subscriptionError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .update(updateData)
-        .eq('paddle_subscription_id', subscription_id);
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId: 'system',
+            operation: 'update_subscription',
+            reason: 'Paddle webhook subscription.updated event',
+            source: 'webhook.processors.subscription-updated',
+            metadata: { subscription_id, status },
+        },
+        {
+            table: 'indb_payment_subscriptions',
+            operationType: 'update',
+            data: { status: mapPaddleStatus(status) },
+            whereConditions: { paddle_subscription_id: subscription_id },
+        },
+        async () => {
+            const { error: subscriptionError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .update(updateData)
+                .eq('paddle_subscription_id', subscription_id);
 
-    if (subscriptionError) {
-        throw new Error(`Failed to update subscription: ${subscriptionError.message}`);
-    }
+            if (subscriptionError) {
+                throw new Error(`Failed to update subscription: ${subscriptionError.message}`);
+            }
 
-    // Get subscription to update user profile
-    const { data: subscription, error: fetchError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .select('user_id, id')
-        .eq('paddle_subscription_id', subscription_id)
-        .maybeSingle();
+            const { data: subscription, error: fetchError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .select('user_id, id')
+                .eq('paddle_subscription_id', subscription_id)
+                .maybeSingle();
 
-    if (fetchError) {
-        throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
-    }
+            if (fetchError) {
+                throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
+            }
 
-    if (subscription) {
-        // Update user profile subscription_end_date based on status
-        const { error: profileError } = await supabaseAdmin
-            .from('indb_auth_user_profiles')
-            .update({
-                subscription_end_date: status === 'active' ? (current_billing_period?.ends_at || null) : new Date().toISOString(),
-            })
-            .eq('user_id', subscription.user_id);
+            if (subscription) {
+                const { error: profileError } = await supabaseAdmin
+                    .from('indb_auth_user_profiles')
+                    .update({
+                        subscription_end_date: status === 'active' ? (current_billing_period?.ends_at || null) : new Date().toISOString(),
+                    })
+                    .eq('user_id', subscription.user_id);
 
-        if (profileError) {
-            throw new Error(`Failed to update user profile: ${profileError.message}`);
+                if (profileError) {
+                    throw new Error(`Failed to update user profile: ${profileError.message}`);
+                }
+            }
         }
-    }
+    );
 }
+

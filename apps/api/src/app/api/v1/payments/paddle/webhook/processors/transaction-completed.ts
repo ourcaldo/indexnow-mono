@@ -7,7 +7,7 @@
  * 2. Insert into Paddle-specific table (indb_paddle_transactions) with FK
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { Json, TransactionMetadata } from '@indexnow/shared';
 import { validateCustomData, safeGet, getPackageIdFromSubscription, CustomData } from './utils';
 
@@ -81,7 +81,6 @@ export async function processTransactionCompleted(data: unknown) {
         validatedData as CustomData & { packageId?: string }
     );
 
-    // Build metadata conforming to TransactionMetadata interface
     const transactionMetadata: TransactionMetadata = {
         custom_data: custom_data as Json,
         transactionId: subscription_id || undefined,
@@ -89,40 +88,54 @@ export async function processTransactionCompleted(data: unknown) {
         package_id: packageId,
     };
 
-    // Insert into main payment transactions table
-    const { data: mainTransaction, error: mainError } = await supabaseAdmin
-        .from('indb_payment_transactions')
-        .insert({
-            user_id: userId,
-            package_id: packageId,
-            amount: parseFloat(amount) / 100,
-            currency: currency,
-            status: 'completed',
-            external_transaction_id: transaction_id,
-            payment_method: paymentMethod,
-            metadata: transactionMetadata,
-        })
-        .select()
-        .single();
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId,
+            operation: 'record_completed_transaction',
+            reason: 'Paddle webhook transaction.completed event',
+            source: 'webhook.processors.transaction-completed',
+            metadata: { transaction_id, subscription_id: subscription_id || null },
+        },
+        {
+            table: 'indb_payment_transactions',
+            operationType: 'insert',
+            data: { user_id: userId, status: 'completed', external_transaction_id: transaction_id },
+        },
+        async () => {
+            const { data: mainTransaction, error: mainError } = await supabaseAdmin
+                .from('indb_payment_transactions')
+                .insert({
+                    user_id: userId,
+                    package_id: packageId,
+                    amount: parseFloat(amount) / 100,
+                    currency: currency,
+                    status: 'completed',
+                    external_transaction_id: transaction_id,
+                    payment_method: paymentMethod,
+                    metadata: transactionMetadata,
+                })
+                .select()
+                .single();
 
-    if (mainError || !mainTransaction) {
-        throw new Error(`Failed to insert main transaction: ${mainError?.message || 'unknown error'}`);
-    }
+            if (mainError || !mainTransaction) {
+                throw new Error(`Failed to insert main transaction: ${mainError?.message || 'unknown error'}`);
+            }
 
-    // Insert into Paddle-specific transactions table
-    const { error: paddleError } = await supabaseAdmin
-        .from('indb_paddle_transactions')
-        .insert({
-            transaction_id: mainTransaction.id,
-            paddle_transaction_id: transaction_id,
-            paddle_subscription_id: subscription_id || null,
-            paddle_customer_id: txData.customer_id || null,
-            event_type: 'transaction.completed',
-            event_data: { details, payments } as unknown as Json,
-            status: 'completed',
-        });
+            const { error: paddleError } = await supabaseAdmin
+                .from('indb_paddle_transactions')
+                .insert({
+                    transaction_id: mainTransaction.id,
+                    paddle_transaction_id: transaction_id,
+                    paddle_subscription_id: subscription_id || null,
+                    paddle_customer_id: txData.customer_id || null,
+                    event_type: 'transaction.completed',
+                    event_data: { details, payments } as unknown as Json,
+                    status: 'completed',
+                });
 
-    if (paddleError) {
-        throw new Error(`Failed to insert Paddle transaction: ${paddleError.message}`);
-    }
+            if (paddleError) {
+                throw new Error(`Failed to insert Paddle transaction: ${paddleError.message}`);
+            }
+        }
+    );
 }

@@ -1,7 +1,14 @@
 import { NextRequest } from 'next/server'
 import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { supabaseAdmin } from '@indexnow/database'
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+
+interface UsageLog {
+  operation: string;
+  quota_used: number;
+  status: string;
+  created_at: string;
+}
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
@@ -13,25 +20,47 @@ export const GET = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
 
-  // Fetch API stats from usage logs
-  const { data: usageLogs, error } = await (supabaseAdmin
-    .from('indb_seranking_usage_logs') as any)
-    .select('operation, quota_used, status, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const usageLogs = await SecureServiceRoleWrapper.executeSecureOperation<UsageLog[]>(
+    {
+      userId: adminUser.id,
+      operation: 'admin_get_user_api_stats',
+      reason: 'Admin fetching user API usage statistics',
+      source: 'admin/users/[id]/api-stats',
+      metadata: {
+        targetUserId: userId,
+        endpoint: '/api/v1/admin/users/[id]/api-stats'
+      },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      userAgent: request.headers.get('user-agent') || undefined
+    },
+    {
+      table: 'indb_seranking_usage_logs',
+      operationType: 'select',
+      columns: ['operation', 'quota_used', 'status', 'created_at'],
+      whereConditions: { user_id: userId }
+    },
+    async () => {
+      const { data, error } = await (supabaseAdmin
+        .from('indb_seranking_usage_logs') as ReturnType<typeof supabaseAdmin.from>)
+        .select('operation, quota_used, status, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100)
 
-  if (error) {
-    throw error
-  }
+      if (error) {
+        throw new Error(`Failed to fetch API stats: ${error.message}`)
+      }
 
-  // Aggregate stats
+      return (data || []) as UsageLog[]
+    }
+  )
+
   const stats = {
-    totalRequests: usageLogs?.length || 0,
-    totalQuotaUsed: usageLogs?.reduce((acc: number, log: any) => acc + (log.quota_used || 0), 0) || 0,
-    successCount: usageLogs?.filter((log: any) => log.status === 'success').length || 0,
-    errorCount: usageLogs?.filter((log: any) => log.status === 'error').length || 0,
-    recentLogs: usageLogs || []
+    totalRequests: usageLogs.length,
+    totalQuotaUsed: usageLogs.reduce((acc, log) => acc + (log.quota_used || 0), 0),
+    successCount: usageLogs.filter(log => log.status === 'success').length,
+    errorCount: usageLogs.filter(log => log.status === 'error').length,
+    recentLogs: usageLogs
   }
 
   return formatSuccess(stats)

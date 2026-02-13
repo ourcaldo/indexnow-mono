@@ -3,7 +3,7 @@
  * Handles subscription resume events
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 
 interface PaddleResumedData {
     id: string;
@@ -25,42 +25,57 @@ export async function processSubscriptionResumed(data: unknown) {
         throw new Error('Missing subscription_id in resume event');
     }
 
-    // Update subscription status to active, clear paused_at
-    const { error: subscriptionError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .update({
-            status: 'active',
-            paused_at: null,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('paddle_subscription_id', subscription_id);
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId: 'system',
+            operation: 'resume_subscription',
+            reason: 'Paddle webhook subscription.resumed event',
+            source: 'webhook.processors.subscription-resumed',
+            metadata: { subscription_id },
+        },
+        {
+            table: 'indb_payment_subscriptions',
+            operationType: 'update',
+            data: { status: 'active', paused_at: null },
+            whereConditions: { paddle_subscription_id: subscription_id },
+        },
+        async () => {
+            const { error: subscriptionError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .update({
+                    status: 'active',
+                    paused_at: null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('paddle_subscription_id', subscription_id);
 
-    if (subscriptionError) {
-        throw new Error(`Failed to update subscription resume: ${subscriptionError.message}`);
-    }
+            if (subscriptionError) {
+                throw new Error(`Failed to update subscription resume: ${subscriptionError.message}`);
+            }
 
-    // Get subscription to update user profile
-    const { data: subscription, error: fetchError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .select('user_id')
-        .eq('paddle_subscription_id', subscription_id)
-        .maybeSingle();
+            const { data: subscription, error: fetchError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .select('user_id')
+                .eq('paddle_subscription_id', subscription_id)
+                .maybeSingle();
 
-    if (fetchError) {
-        throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
-    }
+            if (fetchError) {
+                throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
+            }
 
-    if (subscription) {
-        // Restore subscription_end_date
-        const { error: profileError } = await supabaseAdmin
-            .from('indb_auth_user_profiles')
-            .update({
-                subscription_end_date: current_billing_period?.ends_at || null,
-            })
-            .eq('user_id', subscription.user_id);
+            if (subscription) {
+                const { error: profileError } = await supabaseAdmin
+                    .from('indb_auth_user_profiles')
+                    .update({
+                        subscription_end_date: current_billing_period?.ends_at || null,
+                    })
+                    .eq('user_id', subscription.user_id);
 
-        if (profileError) {
-            throw new Error(`Failed to update user profile on resume: ${profileError.message}`);
+                if (profileError) {
+                    throw new Error(`Failed to update user profile on resume: ${profileError.message}`);
+                }
+            }
         }
-    }
+    );
 }
+

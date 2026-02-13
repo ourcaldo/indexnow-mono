@@ -8,7 +8,7 @@
  * - Keeps subscription record for potential recovery when payment succeeds
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, logger } from '@indexnow/shared';
 
 interface PaddlePastDueData {
@@ -32,51 +32,64 @@ export async function processSubscriptionPastDue(data: unknown) {
         throw new Error('Missing subscription_id in past_due event');
     }
 
-    // Update subscription status to past_due
-    const { error: subscriptionError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .update({
-            status: 'past_due',
-            updated_at: new Date().toISOString(),
-        })
-        .eq('paddle_subscription_id', subscription_id);
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId: 'system',
+            operation: 'mark_subscription_past_due',
+            reason: 'Paddle webhook subscription.past_due event',
+            source: 'webhook.processors.subscription-past-due',
+            metadata: { subscription_id },
+        },
+        {
+            table: 'indb_payment_subscriptions',
+            operationType: 'update',
+            data: { status: 'past_due' },
+            whereConditions: { paddle_subscription_id: subscription_id },
+        },
+        async () => {
+            const { error: subscriptionError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .update({
+                    status: 'past_due',
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('paddle_subscription_id', subscription_id);
 
-    if (subscriptionError) {
-        throw new Error(`Failed to update subscription to past_due: ${subscriptionError.message}`);
-    }
+            if (subscriptionError) {
+                throw new Error(`Failed to update subscription to past_due: ${subscriptionError.message}`);
+            }
 
-    // Get subscription for user profile update
-    const { data: subscription, error: fetchError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .select('user_id, package_id')
-        .eq('paddle_subscription_id', subscription_id)
-        .maybeSingle();
+            const { data: subscription, error: fetchError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .select('user_id, package_id')
+                .eq('paddle_subscription_id', subscription_id)
+                .maybeSingle();
 
-    if (fetchError) {
-        throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
-    }
+            if (fetchError) {
+                throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
+            }
 
-    if (subscription) {
-        // Set subscription_end_date to now to disable access
-        const { error: profileError } = await supabaseAdmin
-            .from('indb_auth_user_profiles')
-            .update({
-                subscription_end_date: new Date().toISOString(),
-            })
-            .eq('user_id', subscription.user_id);
+            if (subscription) {
+                const { error: profileError } = await supabaseAdmin
+                    .from('indb_auth_user_profiles')
+                    .update({
+                        subscription_end_date: new Date().toISOString(),
+                    })
+                    .eq('user_id', subscription.user_id);
 
-        if (profileError) {
-            throw new Error(`Failed to disable user access: ${profileError.message}`);
+                if (profileError) {
+                    throw new Error(`Failed to disable user access: ${profileError.message}`);
+                }
+
+                logger.info({
+                    type: ErrorType.EXTERNAL_API,
+                    severity: ErrorSeverity.HIGH,
+                    subscription_id,
+                    user_id: subscription.user_id,
+                    package_id: subscription.package_id,
+                    next_billing_period: current_billing_period,
+                });
+            }
         }
-
-        // Log payment failure
-        logger.info({
-            type: ErrorType.EXTERNAL_API,
-            severity: ErrorSeverity.HIGH,
-            subscription_id,
-            user_id: subscription.user_id,
-            package_id: subscription.package_id,
-            next_billing_period: current_billing_period,
-        });
-    }
+    );
 }

@@ -178,10 +178,21 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   // 2. Bulk fetch profiles
   if (allProfileIds.length > 0) {
     try {
-      const { data: profiles } = await supabaseAdmin
-        .from('indb_auth_user_profiles')
-        .select('user_id, full_name, role, created_at')
-        .in('user_id', allProfileIds);
+      const profiles = await SecureServiceRoleWrapper.executeSecureOperation(
+        { ...ordersContext, operation: 'admin_enrich_orders_profiles' },
+        {
+          table: 'indb_auth_user_profiles',
+          operationType: 'select',
+          columns: ['user_id', 'full_name', 'role', 'created_at'],
+        },
+        async () => {
+          const { data } = await supabaseAdmin
+            .from('indb_auth_user_profiles')
+            .select('user_id, full_name, role, created_at')
+            .in('user_id', allProfileIds);
+          return data;
+        }
+      );
       profiles?.forEach(p => profileMap.set(p.user_id, p));
     } catch (e) {
       logger.error({ error: e }, 'Failed to bulk fetch profiles');
@@ -192,9 +203,21 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   if (userIds.size > 0) {
     await Promise.all([...userIds].map(async (uid) => {
       try {
-        const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
-        if (data?.user?.email) {
-          emailMap.set(uid, data.user.email);
+        const email = await SecureServiceRoleWrapper.executeSecureOperation(
+          { ...ordersContext, operation: 'admin_enrich_orders_email' },
+          {
+            table: 'auth.users',
+            operationType: 'select',
+            columns: ['email'],
+            whereConditions: { id: uid }
+          },
+          async () => {
+            const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
+            return data?.user?.email || null;
+          }
+        );
+        if (email) {
+          emailMap.set(uid, email);
         }
       } catch (e) { /* ignore */ }
     }));

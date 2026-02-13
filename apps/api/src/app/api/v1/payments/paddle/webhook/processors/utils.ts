@@ -2,7 +2,7 @@
  * Shared utilities for Paddle webhook processors
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, logger } from '@indexnow/shared';
 
 export interface CustomData {
@@ -77,11 +77,28 @@ export async function getPackageIdFromSubscription(
     customData: CustomData & { packageId?: string }
 ): Promise<string> {
     if (subscriptionId) {
-        const { data: subscription } = await supabaseAdmin
-            .from('indb_payment_subscriptions')
-            .select('package_id')
-            .eq('paddle_subscription_id', subscriptionId)
-            .maybeSingle();
+        const subscription = await SecureServiceRoleWrapper.executeSecureOperation(
+            {
+                userId: 'system',
+                operation: 'lookup_subscription_package',
+                reason: 'Resolve package_id from subscription for transaction processing',
+                source: 'webhook.processors.utils',
+            },
+            {
+                table: 'indb_payment_subscriptions',
+                operationType: 'select',
+                columns: ['package_id'],
+                whereConditions: { paddle_subscription_id: subscriptionId },
+            },
+            async () => {
+                const { data } = await supabaseAdmin
+                    .from('indb_payment_subscriptions')
+                    .select('package_id')
+                    .eq('paddle_subscription_id', subscriptionId)
+                    .maybeSingle();
+                return data;
+            }
+        );
 
         if (subscription?.package_id) {
             return subscription.package_id;
@@ -93,11 +110,28 @@ export async function getPackageIdFromSubscription(
     }
 
     if (customData.packageSlug) {
-        const { data: pkg } = await supabaseAdmin
-            .from('indb_payment_packages')
-            .select('id')
-            .eq('slug', customData.packageSlug)
-            .maybeSingle();
+        const pkg = await SecureServiceRoleWrapper.executeSecureOperation(
+            {
+                userId: 'system',
+                operation: 'lookup_package_by_slug',
+                reason: 'Resolve package_id from slug for transaction processing',
+                source: 'webhook.processors.utils',
+            },
+            {
+                table: 'indb_payment_packages',
+                operationType: 'select',
+                columns: ['id'],
+                whereConditions: { slug: customData.packageSlug },
+            },
+            async () => {
+                const { data } = await supabaseAdmin
+                    .from('indb_payment_packages')
+                    .select('id')
+                    .eq('slug', customData.packageSlug!)
+                    .maybeSingle();
+                return data;
+            }
+        );
 
         if (pkg?.id) {
             return pkg.id;
@@ -125,12 +159,29 @@ export function getBillingPeriod(items: PriceItem[]): 'month' | 'year' | null {
 }
 
 export async function getPaddleGatewayId(): Promise<string> {
-    const { data: gateway } = await supabaseAdmin
-        .from('indb_payment_gateways')
-        .select('id')
-        .eq('slug', 'paddle')
-        .eq('is_active', true)
-        .maybeSingle();
+    const gateway = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId: 'system',
+            operation: 'lookup_paddle_gateway',
+            reason: 'Resolve Paddle gateway ID',
+            source: 'webhook.processors.utils',
+        },
+        {
+            table: 'indb_payment_gateways',
+            operationType: 'select',
+            columns: ['id'],
+            whereConditions: { slug: 'paddle', is_active: true },
+        },
+        async () => {
+            const { data } = await supabaseAdmin
+                .from('indb_payment_gateways')
+                .select('id')
+                .eq('slug', 'paddle')
+                .eq('is_active', true)
+                .maybeSingle();
+            return data;
+        }
+    );
 
     if (!gateway) {
         return PADDLE_GATEWAY_ID;
@@ -138,3 +189,4 @@ export async function getPaddleGatewayId(): Promise<string> {
 
     return gateway.id;
 }
+

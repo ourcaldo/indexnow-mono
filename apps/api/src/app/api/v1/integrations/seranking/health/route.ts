@@ -10,7 +10,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { publicApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface HealthCheckResult {
@@ -38,20 +38,33 @@ async function checkDatabaseHealth(checkTime: string): Promise<HealthCheckResult
         const startTime = Date.now();
 
         // Simple database health check - just verify we can query something
-        const { error } = await supabaseAdmin
-            .from('indb_payment_packages')
-            .select('id')
-            .limit(1);
+        await SecureServiceRoleWrapper.executeSecureOperation(
+            {
+                userId: 'system',
+                operation: 'seranking_database_health_check',
+                reason: 'SeRanking integration health check verifying database connectivity',
+                source: 'integrations/seranking/health',
+            },
+            {
+                table: 'indb_payment_packages',
+                operationType: 'select',
+                columns: ['id'],
+            },
+            async () => {
+                const { error } = await supabaseAdmin
+                    .from('indb_payment_packages')
+                    .select('id')
+                    .limit(1);
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                return { success: true };
+            }
+        );
 
         const responseTime = Date.now() - startTime;
-
-        if (error) {
-            return {
-                status: 'unhealthy',
-                error_message: error.message,
-                last_check: checkTime
-            };
-        }
 
         return { status: 'healthy', response_time: responseTime, last_check: checkTime };
     } catch (error) {

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Json, type TransactionMetadata } from '@indexnow/shared';
 import {
     formatSuccess,
@@ -62,56 +62,114 @@ export abstract class BasePaymentHandler {
 
     // Common validation logic
     async validatePackage(): Promise<void> {
-        const { data: packageData, error } = await supabaseAdmin
-            .from('indb_payment_packages')
-            .select('*')
-            .eq('id', this.paymentData.package_id)
-            .eq('is_active', true)
-            .single();
+        const packageData = await SecureServiceRoleWrapper.executeSecureOperation<PackageData | null>(
+            {
+                userId: this.paymentData.user.id,
+                operation: 'validate_payment_package',
+                reason: 'Validating package exists and is active before payment processing',
+                source: 'billing/channels/shared/base-handler',
+                metadata: {
+                    packageId: this.paymentData.package_id,
+                    billingPeriod: this.paymentData.billing_period
+                }
+            },
+            {
+                table: 'indb_payment_packages',
+                operationType: 'select',
+                whereConditions: { id: this.paymentData.package_id, is_active: true }
+            },
+            async () => {
+                const { data, error } = await supabaseAdmin
+                    .from('indb_payment_packages')
+                    .select('*')
+                    .eq('id', this.paymentData.package_id)
+                    .eq('is_active', true)
+                    .single();
 
-        if (error || !packageData) {
+                if (error && error.code !== 'PGRST116') {
+                    throw new Error(`Failed to validate package: ${error.message}`);
+                }
+
+                return data as PackageData | null;
+            }
+        );
+
+        if (!packageData) {
             throw new Error('Package not found or inactive');
         }
 
-        this.packageData = packageData as PackageData;
+        this.packageData = packageData;
     }
 
     // Common transaction creation BEFORE payment processing
     async createPendingTransaction(gatewayId: string, additionalData: Record<string, unknown> = {}): Promise<string> {
         const amount = this.calculateAmount();
 
-        // Note: Using correct schema columns. 'status' is the correct column (not transaction_status)
-        // transaction_type and billing_period don't exist - put in metadata instead
-        const { data: transaction, error: dbError } = await supabaseAdmin
-            .from('indb_payment_transactions')
-            .insert({
-                user_id: this.paymentData.user.id,
-                package_id: this.paymentData.package_id,
-                gateway_id: gatewayId,
-                status: 'pending',  // Using correct enum column name
-                amount: amount.finalAmount,
-                currency: amount.currency,
-                payment_method: this.getPaymentMethodSlug(),
+        const transaction = await SecureServiceRoleWrapper.executeSecureOperation<{ id: string }>(
+            {
+                userId: this.paymentData.user.id,
+                operation: 'create_pending_payment_transaction',
+                reason: 'Creating pending transaction record before payment gateway processing',
+                source: 'billing/channels/shared/base-handler',
                 metadata: {
-                    transaction_type: 'payment',  // Moved to metadata (column doesn't exist on table)
-                    billing_period: this.paymentData.billing_period,  // Moved to metadata
-                    original_amount: amount.originalAmount,
-                    original_currency: amount.originalCurrency,
-                    customer_info: { ...this.paymentData.customer_info } as Json,  // Cast to Json for compatibility
+                    packageId: this.paymentData.package_id,
+                    gatewayId,
+                    amount: amount.finalAmount,
+                    currency: amount.currency,
+                    paymentMethod: this.getPaymentMethodSlug(),
+                    isTrial: this.paymentData.is_trial || false
+                }
+            },
+            {
+                table: 'indb_payment_transactions',
+                operationType: 'insert',
+                data: {
                     user_id: this.paymentData.user.id,
-                    user_email: this.paymentData.user.email,
                     package_id: this.paymentData.package_id,
-                    created_at: new Date().toISOString(),
-                    payment_type: this.paymentData.is_trial ? 'trial_payment' : 'regular_payment',
-                    ...additionalData
-                } satisfies TransactionMetadata
-            })
-            .select('id')
-            .single();
+                    gateway_id: gatewayId,
+                    status: 'pending',
+                    amount: amount.finalAmount,
+                    currency: amount.currency,
+                    payment_method: this.getPaymentMethodSlug()
+                }
+            },
+            async () => {
+                // Note: Using correct schema columns. 'status' is the correct column (not transaction_status)
+                // transaction_type and billing_period don't exist - put in metadata instead
+                const { data: txn, error: dbError } = await supabaseAdmin
+                    .from('indb_payment_transactions')
+                    .insert({
+                        user_id: this.paymentData.user.id,
+                        package_id: this.paymentData.package_id,
+                        gateway_id: gatewayId,
+                        status: 'pending',  // Using correct enum column name
+                        amount: amount.finalAmount,
+                        currency: amount.currency,
+                        payment_method: this.getPaymentMethodSlug(),
+                        metadata: {
+                            transaction_type: 'payment',  // Moved to metadata (column doesn't exist on table)
+                            billing_period: this.paymentData.billing_period,  // Moved to metadata
+                            original_amount: amount.originalAmount,
+                            original_currency: amount.originalCurrency,
+                            customer_info: { ...this.paymentData.customer_info } as Json,  // Cast to Json for compatibility
+                            user_id: this.paymentData.user.id,
+                            user_email: this.paymentData.user.email,
+                            package_id: this.paymentData.package_id,
+                            created_at: new Date().toISOString(),
+                            payment_type: this.paymentData.is_trial ? 'trial_payment' : 'regular_payment',
+                            ...additionalData
+                        } satisfies TransactionMetadata
+                    })
+                    .select('id')
+                    .single();
 
-        if (dbError || !transaction) {
-            throw new Error('Failed to create transaction record');
-        }
+                if (dbError || !txn) {
+                    throw new Error('Failed to create transaction record');
+                }
+
+                return txn;
+            }
+        );
 
         return transaction.id;
     }

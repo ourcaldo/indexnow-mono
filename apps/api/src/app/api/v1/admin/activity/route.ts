@@ -92,18 +92,41 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
 
   if (userIds.length > 0) {
     try {
-      const { data: profiles } = await supabaseAdmin
-        .from('indb_auth_user_profiles')
-        .select('user_id, full_name')
-        .in('user_id', userIds);
+      const profiles = await SecureServiceRoleWrapper.executeSecureOperation(
+        { ...operationContext, operation: 'admin_enrich_activity_profiles' },
+        {
+          table: 'indb_auth_user_profiles',
+          operationType: 'select',
+          columns: ['user_id', 'full_name'],
+        },
+        async () => {
+          const { data } = await supabaseAdmin
+            .from('indb_auth_user_profiles')
+            .select('user_id, full_name')
+            .in('user_id', userIds);
+          return data;
+        }
+      );
 
       profiles?.forEach(p => profileMap.set(p.user_id, p));
 
       await Promise.all(userIds.map(async (uid) => {
         try {
-          const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
-          if (data?.user?.email) {
-            emailMap.set(uid, data.user.email);
+          const email = await SecureServiceRoleWrapper.executeSecureOperation(
+            { ...operationContext, operation: 'admin_enrich_activity_email' },
+            {
+              table: 'auth.users',
+              operationType: 'select',
+              columns: ['email'],
+              whereConditions: { id: uid }
+            },
+            async () => {
+              const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
+              return data?.user?.email || null;
+            }
+          );
+          if (email) {
+            emailMap.set(uid, email);
           }
         } catch (e) { /* ignore */ }
       }));

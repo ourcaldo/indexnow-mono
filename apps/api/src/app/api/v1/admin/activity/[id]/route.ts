@@ -61,9 +61,21 @@ export const GET = adminApiWrapper(async (
         userName = profiles[0].full_name || 'Unknown User';
       }
 
-      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(log.user_id);
-      if (userData?.user?.email) {
-        userEmail = userData.user.email;
+      const authResult = await SecureServiceRoleWrapper.executeSecureOperation(
+        { ...operationContext, operation: 'admin_get_activity_user_email' },
+        {
+          table: 'auth.users',
+          operationType: 'select',
+          columns: ['email'],
+          whereConditions: { id: log.user_id }
+        },
+        async () => {
+          const { data: userData } = await supabaseAdmin.auth.admin.getUserById(log.user_id);
+          return userData?.user?.email || null;
+        }
+      );
+      if (authResult) {
+        userEmail = authResult;
       }
     } catch (err) {
       // Ignore

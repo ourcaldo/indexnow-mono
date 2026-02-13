@@ -12,7 +12,7 @@
  * - Handles trial-to-paid transitions
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 
 interface PaddleActivatedData {
     id: string;
@@ -39,43 +39,57 @@ export async function processSubscriptionActivated(data: unknown) {
         throw new Error('Missing required billing period dates in subscription activation');
     }
 
-    // Update subscription status to active
-    const { error: subscriptionError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .update({
-            status: 'active',
-            current_period_end: current_billing_period.ends_at,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('paddle_subscription_id', subscription_id);
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId: 'system',
+            operation: 'activate_subscription',
+            reason: 'Paddle webhook subscription.activated event',
+            source: 'webhook.processors.subscription-activated',
+            metadata: { subscription_id },
+        },
+        {
+            table: 'indb_payment_subscriptions',
+            operationType: 'update',
+            data: { status: 'active' },
+            whereConditions: { paddle_subscription_id: subscription_id },
+        },
+        async () => {
+            const { error: subscriptionError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .update({
+                    status: 'active',
+                    current_period_end: current_billing_period.ends_at,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('paddle_subscription_id', subscription_id);
 
-    if (subscriptionError) {
-        throw new Error(`Failed to activate subscription: ${subscriptionError.message}`);
-    }
+            if (subscriptionError) {
+                throw new Error(`Failed to activate subscription: ${subscriptionError.message}`);
+            }
 
-    // Get subscription to update user profile
-    const { data: subscription, error: fetchError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .select('user_id, package_id')
-        .eq('paddle_subscription_id', subscription_id)
-        .maybeSingle();
+            const { data: subscription, error: fetchError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .select('user_id, package_id')
+                .eq('paddle_subscription_id', subscription_id)
+                .maybeSingle();
 
-    if (fetchError) {
-        throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
-    }
+            if (fetchError) {
+                throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
+            }
 
-    if (subscription) {
-        // Update user profile with subscription end date
-        const { error: profileError } = await supabaseAdmin
-            .from('indb_auth_user_profiles')
-            .update({
-                subscription_end_date: current_billing_period.ends_at,
-                subscription_start_date: current_billing_period.starts_at,
-            })
-            .eq('user_id', subscription.user_id);
+            if (subscription) {
+                const { error: profileError } = await supabaseAdmin
+                    .from('indb_auth_user_profiles')
+                    .update({
+                        subscription_end_date: current_billing_period.ends_at,
+                        subscription_start_date: current_billing_period.starts_at,
+                    })
+                    .eq('user_id', subscription.user_id);
 
-        if (profileError) {
-            throw new Error(`Failed to enable user access: ${profileError.message}`);
+                if (profileError) {
+                    throw new Error(`Failed to enable user access: ${profileError.message}`);
+                }
+            }
         }
-    }
+    );
 }

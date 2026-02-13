@@ -3,7 +3,7 @@
  * Handles new subscription creation events
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { validateCustomData, safeGet } from './utils';
 
 // Type for subscription data from Paddle
@@ -65,47 +65,60 @@ export async function processSubscriptionCreated(data: unknown) {
         throw new Error('Missing or invalid current_billing_period');
     }
 
-    // Get package by slug
-    const { data: packageData, error: packageError } = await supabaseAdmin
-        .from('indb_payment_packages')
-        .select('*')
-        .eq('slug', packageSlug)
-        .single();
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId,
+            operation: 'create_subscription',
+            reason: 'Paddle webhook subscription.created event',
+            source: 'webhook.processors.subscription-created',
+            metadata: { subscription_id, customer_id, packageSlug },
+        },
+        {
+            table: 'indb_payment_subscriptions',
+            operationType: 'insert',
+            data: { user_id: userId, paddle_subscription_id: subscription_id, status: 'active' },
+        },
+        async () => {
+            const { data: packageData, error: packageError } = await supabaseAdmin
+                .from('indb_payment_packages')
+                .select('*')
+                .eq('slug', packageSlug)
+                .single();
 
-    if (packageError || !packageData) {
-        throw new Error(`Failed to fetch package data for ${packageSlug}: ${packageError?.message || 'not found'}`);
-    }
+            if (packageError || !packageData) {
+                throw new Error(`Failed to fetch package data for ${packageSlug}: ${packageError?.message || 'not found'}`);
+            }
 
-    // Create subscription record - use existing columns only
-    const { data: subscription, error: subscriptionError } = await supabaseAdmin
-        .from('indb_payment_subscriptions')
-        .insert({
-            user_id: userId,
-            paddle_subscription_id: subscription_id,
-            status: 'active',
-            package_id: packageData.id,
-            paddle_price_id: priceId,
-            start_date: current_billing_period.starts_at,
-            current_period_end: current_billing_period.ends_at,
-        })
-        .select()
-        .single();
+            const { data: subscription, error: subscriptionError } = await supabaseAdmin
+                .from('indb_payment_subscriptions')
+                .insert({
+                    user_id: userId,
+                    paddle_subscription_id: subscription_id,
+                    status: 'active',
+                    package_id: packageData.id,
+                    paddle_price_id: priceId,
+                    start_date: current_billing_period.starts_at,
+                    current_period_end: current_billing_period.ends_at,
+                })
+                .select()
+                .single();
 
-    if (subscriptionError || !subscription) {
-        throw new Error(`Failed to create subscription record: ${subscriptionError?.message || 'unknown error'}`);
-    }
+            if (subscriptionError || !subscription) {
+                throw new Error(`Failed to create subscription record: ${subscriptionError?.message || 'unknown error'}`);
+            }
 
-    // Update user profile with subscription dates
-    const { error: profileError } = await supabaseAdmin
-        .from('indb_auth_user_profiles')
-        .update({
-            package_id: packageData.id,
-            subscription_start_date: current_billing_period.starts_at,
-            subscription_end_date: current_billing_period.ends_at,
-        })
-        .eq('user_id', userId);
+            const { error: profileError } = await supabaseAdmin
+                .from('indb_auth_user_profiles')
+                .update({
+                    package_id: packageData.id,
+                    subscription_start_date: current_billing_period.starts_at,
+                    subscription_end_date: current_billing_period.ends_at,
+                })
+                .eq('user_id', userId);
 
-    if (profileError) {
-        throw new Error(`Failed to update user profile: ${profileError.message}`);
-    }
+            if (profileError) {
+                throw new Error(`Failed to update user profile: ${profileError.message}`);
+            }
+        }
+    );
 }

@@ -7,7 +7,7 @@
  * 2. Insert into Paddle-specific table (indb_paddle_transactions) with failure details
  */
 
-import { supabaseAdmin } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, TransactionMetadata, logger } from '@indexnow/shared';
 import { validateCustomData, getPackageIdFromSubscription, CustomData } from './utils';
 
@@ -67,7 +67,6 @@ export async function processTransactionPaymentFailed(data: unknown) {
         validatedData as CustomData & { packageId?: string }
     );
 
-    // Build metadata conforming to TransactionMetadata interface
     const transactionMetadata: TransactionMetadata = {
         custom_data: custom_data as Json,
         transactionId: subscription_id || undefined,
@@ -76,52 +75,65 @@ export async function processTransactionPaymentFailed(data: unknown) {
         paymentStatus: 'failed',
     };
 
-    // Insert into main payment transactions table
-    const { data: mainTransaction, error: mainError } = await supabaseAdmin
-        .from('indb_payment_transactions')
-        .insert({
-            user_id: userId,
-            package_id: packageId,
-            amount: parseFloat(amount) / 100,
-            currency: currency,
-            status: 'failed',
-            external_transaction_id: transaction_id,
-            payment_method: 'unknown',
-            notes: 'Payment failed',
-            metadata: transactionMetadata,
-        })
-        .select()
-        .single();
+    await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+            userId,
+            operation: 'record_failed_transaction',
+            reason: 'Paddle webhook transaction.payment_failed event',
+            source: 'webhook.processors.transaction-payment-failed',
+            metadata: { transaction_id, subscription_id: subscription_id || null },
+        },
+        {
+            table: 'indb_payment_transactions',
+            operationType: 'insert',
+            data: { user_id: userId, status: 'failed', external_transaction_id: transaction_id },
+        },
+        async () => {
+            const { data: mainTransaction, error: mainError } = await supabaseAdmin
+                .from('indb_payment_transactions')
+                .insert({
+                    user_id: userId,
+                    package_id: packageId,
+                    amount: parseFloat(amount) / 100,
+                    currency: currency,
+                    status: 'failed',
+                    external_transaction_id: transaction_id,
+                    payment_method: 'unknown',
+                    notes: 'Payment failed',
+                    metadata: transactionMetadata,
+                })
+                .select()
+                .single();
 
-    if (mainError || !mainTransaction) {
-        throw new Error(`Failed to insert main transaction: ${mainError?.message || 'unknown error'}`);
-    }
+            if (mainError || !mainTransaction) {
+                throw new Error(`Failed to insert main transaction: ${mainError?.message || 'unknown error'}`);
+            }
 
-    // Insert into Paddle-specific transactions table
-    const { error: paddleError } = await supabaseAdmin
-        .from('indb_paddle_transactions')
-        .insert({
-            transaction_id: mainTransaction.id,
-            paddle_transaction_id: transaction_id,
-            paddle_subscription_id: subscription_id || null,
-            paddle_customer_id: txData.customer_id || null,
-            event_type: 'transaction.payment_failed',
-            event_data: { details, failure_reason: 'payment_failed' } as unknown as Json,
-            status: 'failed',
-        });
+            const { error: paddleError } = await supabaseAdmin
+                .from('indb_paddle_transactions')
+                .insert({
+                    transaction_id: mainTransaction.id,
+                    paddle_transaction_id: transaction_id,
+                    paddle_subscription_id: subscription_id || null,
+                    paddle_customer_id: txData.customer_id || null,
+                    event_type: 'transaction.payment_failed',
+                    event_data: { details, failure_reason: 'payment_failed' } as unknown as Json,
+                    status: 'failed',
+                });
 
-    if (paddleError) {
-        throw new Error(`Failed to insert Paddle transaction: ${paddleError.message}`);
-    }
+            if (paddleError) {
+                throw new Error(`Failed to insert Paddle transaction: ${paddleError.message}`);
+            }
 
-    // Log payment failure
-    logger.info({
-        type: ErrorType.EXTERNAL_API,
-        severity: ErrorSeverity.MEDIUM,
-        transaction_id,
-        user_id: userId,
-        subscription_id,
-        amount: parseFloat(amount) / 100,
-        currency,
-    });
+            logger.info({
+                type: ErrorType.EXTERNAL_API,
+                severity: ErrorSeverity.MEDIUM,
+                transaction_id,
+                user_id: userId,
+                subscription_id,
+                amount: parseFloat(amount) / 100,
+                currency,
+            });
+        }
+    );
 }
