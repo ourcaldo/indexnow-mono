@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { 
-  ArrowLeft, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertCircle,
   User,
   Package,
@@ -22,11 +22,12 @@ import {
   ImageIcon
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge, Separator, Textarea, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, useToast } from '@indexnow/ui'
-import { 
-  formatCurrency, 
-  formatDate, 
-  formatRelativeTime, 
+import {
+  formatCurrency,
+  formatDate,
+  formatRelativeTime,
   ADMIN_ENDPOINTS,
+  logger,
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
   type AdminTransactionHistory,
@@ -53,7 +54,7 @@ export default function AdminOrderDetailPage() {
   const [statusAction, setStatusAction] = useState<'completed' | 'failed' | null>(null)
   const [statusNotes, setStatusNotes] = useState('')
   const [updating, setUpdating] = useState(false)
-  
+
   const router = useRouter()
   const params = useParams()
   const { addToast } = useToast()
@@ -146,10 +147,10 @@ export default function AdminOrderDetailPage() {
           title: 'Success',
           description: data.message
         })
-        
+
         // Reload order data
         await loadOrderDetail()
-        
+
         // Close modal and reset state
         setStatusModalOpen(false)
         setStatusAction(null)
@@ -255,9 +256,9 @@ export default function AdminOrderDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button 
-            onClick={() => router.back()} 
-            variant="outline" 
+          <Button
+            onClick={() => router.back()}
+            variant="outline"
             size="sm"
             className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
@@ -276,7 +277,7 @@ export default function AdminOrderDetailPage() {
 
       {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* COLUMN 1 */}
         <div className="space-y-6">
           {/* Order Details Box */}
@@ -306,7 +307,7 @@ export default function AdminOrderDetailPage() {
                   <p className="text-sm text-foreground">{formatRelativeTime(order.updated_at)}</p>
                 </div>
               </div>
-              
+
               {order.verified_by && order.verified_at && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <label className="text-sm font-medium text-muted-foreground">Verified</label>
@@ -410,7 +411,7 @@ export default function AdminOrderDetailPage() {
                     <label className="text-sm font-medium text-muted-foreground">Description</label>
                     <p className="text-sm text-muted-foreground">{order.package.description}</p>
                   </div>
-                  
+
                   {features && features.length > 0 && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-2 block">Features</label>
@@ -456,8 +457,8 @@ export default function AdminOrderDetailPage() {
                         action_description: th.action_description,
                         created_at: th.created_at,
                         user: th.user || { full_name: th.changed_by_type === 'admin' ? 'Admin User' : 'System', role: th.changed_by_type },
-                        metadata: { 
-                          old_status: th.old_status, 
+                        metadata: {
+                          old_status: th.old_status,
                           new_status: th.new_status,
                           notes: th.notes,
                           ...thMetadata
@@ -483,29 +484,29 @@ export default function AdminOrderDetailPage() {
                     <div className="relative">
                       {/* Timeline line */}
                       <div className="absolute left-2 top-0 bottom-0 w-px bg-border"></div>
-                      
+
                       {allActivity.map((activity, index) => (
                         <div key={activity.id} className="relative flex items-start space-x-3 pb-4">
                           {/* Timeline dot */}
                           <div className="flex-shrink-0 w-4 h-4 bg-brand-accent rounded-full border-2 border-background relative z-10"></div>
-                          
+
                           {/* Activity content */}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground">{activity.action_description}</p>
-                            
+
                             {/* Enhanced display for transaction history */}
                             {activity.type === 'transaction' && activity.metadata?.old_status && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 Status: {activity.metadata.old_status as string} → {activity.metadata.new_status as string}
                               </p>
                             )}
-                            
+
                             {activity.metadata?.notes && (
                               <p className="text-xs text-muted-foreground mt-1 italic">
                                 "{activity.metadata.notes as string}"
                               </p>
                             )}
-                            
+
                             <div className="flex items-center space-x-1 text-xs text-muted-foreground mt-1">
                               <CalendarDays className="w-3 h-3" />
                               <span>{formatRelativeTime(activity.created_at)}</span>
@@ -564,9 +565,9 @@ export default function AdminOrderDetailPage() {
                   </Button>
                 </div>
               )}
-              
+
               <Separator className="bg-border" />
-              
+
               <div className="space-y-2">
                 <Button
                   variant="outline"
@@ -700,13 +701,13 @@ export default function AdminOrderDetailPage() {
                 {statusAction === 'completed' ? 'Approve Payment' : 'Reject Payment'}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                {statusAction === 'completed' 
+                {statusAction === 'completed'
                   ? 'This will immediately activate the customer\'s subscription and grant access to their selected plan.'
                   : 'This will mark the payment as failed and notify the customer.'
                 }
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="p-4 bg-secondary rounded-lg">
                 <h4 className="font-medium text-foreground mb-2">Order Summary</h4>
@@ -719,14 +720,14 @@ export default function AdminOrderDetailPage() {
                   <p><span className="text-muted-foreground">Amount:</span> <span className="text-foreground">{formatCurrency(order.amount, order.currency)}</span></p>
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Notes (optional)
                 </label>
                 <Textarea
-                  placeholder={statusAction === 'completed' 
-                    ? 'Payment verified and approved...' 
+                  placeholder={statusAction === 'completed'
+                    ? 'Payment verified and approved...'
                     : 'Payment rejected due to...'
                   }
                   value={statusNotes}
@@ -737,19 +738,19 @@ export default function AdminOrderDetailPage() {
             </div>
 
             <DialogFooter>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setStatusModalOpen(false)}
                 disabled={updating}
                 className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleStatusUpdate}
                 disabled={updating}
-                className={statusAction === 'completed' 
-                  ? 'bg-success hover:bg-success/90 text-white' 
+                className={statusAction === 'completed'
+                  ? 'bg-success hover:bg-success/90 text-white'
                   : 'bg-destructive hover:bg-destructive/90 text-white'
                 }
               >

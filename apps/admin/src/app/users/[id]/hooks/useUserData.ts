@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ADMIN_ENDPOINTS, BILLING_ENDPOINTS, type Package, type Json } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, BILLING_ENDPOINTS, logger, type Package, type Json } from '@indexnow/shared'
 
 interface UserProfile {
   id: string

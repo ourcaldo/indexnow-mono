@@ -1,0 +1,10 @@
+﻿apps/admin/src/app/orders/[id]/page.tsx
+apps/admin/src/app/settings/payments/page.tsx
+apps/admin/src/app/users/[id]/hooks/useUserData.ts
+apps/admin/src/app/users/[id]/hooks/useUserManagement.ts
+apps/api/src/lib/core/api-middleware.ts
+apps/api/src/lib/monitoring/error-handling.ts
+apps/api/src/lib/rank-tracking/seranking/services/ErrorHandlingService.ts
+apps/user-dashboard/src/app/settings/plans-billing/plans/PlansTab.tsx
+packages/services/src/UserManagementService.ts
+packages/shared/src/utils/logger.ts

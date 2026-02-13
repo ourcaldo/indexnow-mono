@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
 import { useNotification } from '@indexnow/ui'
 
 interface UserActions {
@@ -64,7 +64,7 @@ export function useUserManagement(): UseUserManagementReturn {
     changePackage: false,
     extendSubscription: false,
   })
-  
+
   const [newPassword, setNewPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -80,7 +80,7 @@ export function useUserManagement(): UseUserManagementReturn {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   })
 
   const handleSuspendUser = useCallback(async (userId: string, onSuccess: () => void) => {
@@ -93,7 +93,7 @@ export function useUserManagement(): UseUserManagementReturn {
       onConfirm: async () => {
         try {
           setActionLoading(prev => ({ ...prev, suspend: true }))
-          
+
           const response = await fetch(ADMIN_ENDPOINTS.USER_BY_ID(userId), {
             method: 'PATCH',
             headers: {
@@ -129,7 +129,7 @@ export function useUserManagement(): UseUserManagementReturn {
       onConfirm: async () => {
         try {
           setActionLoading(prev => ({ ...prev, resetPassword: true }))
-          
+
           const response = await fetch(ADMIN_ENDPOINTS.RESET_USER_PASSWORD(userId), {
             method: 'POST',
             headers: {
@@ -164,7 +164,7 @@ export function useUserManagement(): UseUserManagementReturn {
       onConfirm: async () => {
         try {
           setActionLoading(prev => ({ ...prev, resetQuota: true }))
-          
+
           const response = await fetch(ADMIN_ENDPOINTS.RESET_USER_QUOTA(userId), {
             method: 'POST',
             headers: {
@@ -202,7 +202,7 @@ export function useUserManagement(): UseUserManagementReturn {
       onConfirm: async () => {
         try {
           setActionLoading(prev => ({ ...prev, extendSubscription: true }))
-          
+
           const response = await fetch(ADMIN_ENDPOINTS.EXTEND_SUBSCRIPTION(userId), {
             method: 'POST',
             headers: {
@@ -265,7 +265,7 @@ export function useUserManagement(): UseUserManagementReturn {
 
     try {
       setActionLoading(prev => ({ ...prev, changePackage: true }))
-      
+
       const response = await fetch(ADMIN_ENDPOINTS.CHANGE_PACKAGE(userId), {
         method: 'POST',
         headers: {
