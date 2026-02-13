@@ -11,12 +11,10 @@ import {
   Save,
   X
 } from 'lucide-react'
-import {
-  ADMIN_ENDPOINTS,
+import { ADMIN_ENDPOINTS,
   PaymentGatewayRow,
   PaymentGatewayConfiguration,
-  PaymentGatewayCredentials
-} from '@indexnow/shared'
+  PaymentGatewayCredentials, logger } from '@indexnow/shared'
 import { ConfirmationDialog } from '@indexnow/ui'
 
 // Strict type helper for UI state
@@ -65,7 +63,7 @@ export default function PaymentGateways() {
         setGateways(sanitizedGateways)
       }
     } catch (error) {
-      console.error('Failed to fetch payment gateways:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch payment gateways')
     } finally {
       setLoading(false)
     }
@@ -97,7 +95,7 @@ export default function PaymentGateways() {
         setMessage({ type: 'error', text: 'Failed to save payment gateway' })
       }
     } catch (error) {
-      console.error('Failed to save payment gateway:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to save payment gateway')
       setMessage({ type: 'error', text: 'Failed to save payment gateway' })
     }
   }
@@ -123,7 +121,7 @@ export default function PaymentGateways() {
             setMessage({ type: 'error', text: 'Failed to delete payment gateway' })
           }
         } catch (error) {
-          console.error('Failed to delete payment gateway:', error)
+          logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to delete payment gateway')
           setMessage({ type: 'error', text: 'Failed to delete payment gateway' })
         } finally {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }))
@@ -146,7 +144,7 @@ export default function PaymentGateways() {
         setMessage({ type: 'error', text: 'Failed to update default gateway' })
       }
     } catch (error) {
-      console.error('Failed to update default gateway:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to update default gateway')
       setMessage({ type: 'error', text: 'Failed to update default gateway' })
     }
   }

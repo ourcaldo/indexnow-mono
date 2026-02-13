@@ -179,7 +179,7 @@ function CheckoutPageContent() {
         }
 
       } catch (error) {
-        console.error('Error fetching checkout data:', error)
+        logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching checkout data')
         addToast({
           title: "Error loading checkout",
           description: "Please try again later.",
@@ -301,7 +301,7 @@ function CheckoutPageContent() {
       })
 
     } catch (error) {
-      console.error('Checkout error:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Checkout error')
       addToast({
         title: "Checkout failed",
         description: error instanceof Error ? error.message : "Unable to open checkout. Please try again.",

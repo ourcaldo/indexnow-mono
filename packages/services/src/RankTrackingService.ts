@@ -1,5 +1,5 @@
 import { supabaseBrowser as supabase } from '@indexnow/database';
-import { type RankTrackingDomain } from '@indexnow/shared';
+import { type RankTrackingDomain, logger } from '@indexnow/shared';
 import { QuotaService } from './monitoring/QuotaService';
 
 export class RankTrackingService {
@@ -12,7 +12,7 @@ export class RankTrackingService {
     });
 
     if (error) {
-      console.error('Error fetching user domains:', error);
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching user domains');
       throw error;
     }
 
@@ -58,13 +58,13 @@ export class RankTrackingService {
     };
 
     const { data: keyword, error } = await supabase
-        .from('indb_rank_keywords')
-        .insert(data)
-        .select()
-        .single();
-    
+      .from('indb_rank_keywords')
+      .insert(data)
+      .select()
+      .single();
+
     if (error) {
-      console.error('Failed to create keyword:', error);
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to create keyword');
       throw new Error(`Failed to create keyword: ${error.message}`);
     }
 
@@ -92,21 +92,21 @@ export class RankTrackingService {
    * Get user keywords with filtering
    */
   async getUserKeywords(userId: string, options: any = {}): Promise<{ keywords: any[]; total: number }> {
-     let query = supabase
+    let query = supabase
       .from('indb_rank_keywords')
       .select('*', { count: 'exact' })
       .eq('user_id', userId);
-     
-     if (options.domain) query = query.eq('domain', options.domain);
-     if (options.limit) query = query.limit(options.limit);
-     
-     const { data, count, error } = await query;
-     
-     if (error) {
-       throw new Error(`Failed to fetch keywords: ${error.message}`);
-     }
-     
-     return { keywords: data || [], total: count || 0 };
+
+    if (options.domain) query = query.eq('domain', options.domain);
+    if (options.limit) query = query.limit(options.limit);
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch keywords: ${error.message}`);
+    }
+
+    return { keywords: data || [], total: count || 0 };
   }
 
   /**
@@ -121,23 +121,23 @@ export class RankTrackingService {
     });
 
     if (error) {
-        // Fallback to standard update if RPC fails or doesn't exist
-        console.warn('Atomic update failed, falling back to standard update', error);
-        
-        const { data: currentKeyword } = await supabase
+      // Fallback to standard update if RPC fails or doesn't exist
+      logger.warn({ error: error instanceof Error ? error : undefined }, 'Atomic update failed, falling back to standard update');
+
+      const { data: currentKeyword } = await supabase
         .from('indb_rank_keywords')
         .select('position')
         .eq('id', keywordId)
         .single();
 
-        const previousPosition = currentKeyword?.position ?? null;
+      const previousPosition = currentKeyword?.position ?? null;
 
-        await supabase
+      await supabase
         .from('indb_rank_keywords')
         .update({
-            position: newPosition,
-            previous_position: previousPosition,
-            last_checked: new Date().toISOString(),
+          position: newPosition,
+          previous_position: previousPosition,
+          last_checked: new Date().toISOString(),
         })
         .eq('id', keywordId);
     }
@@ -153,39 +153,39 @@ export class RankTrackingService {
     tags: string[]
   ): Promise<number> {
     if (!tags || tags.length === 0) return 0;
-    
+
     // Use Postgres array concatenation operator via RPC for atomicity
     const { data: updatedCount, error } = await supabase.rpc('add_tags_to_keywords_atomic', {
-        target_keyword_ids: keywordIds,
-        target_user_id: userId,
-        new_tags: tags
+      target_keyword_ids: keywordIds,
+      target_user_id: userId,
+      new_tags: tags
     });
 
     if (error) {
-        console.warn('Atomic tag update failed, falling back to standard update', error);
-        // Fallback to original read-modify-write logic
-        const { data: keywords, error: fetchError } = await supabase
+      logger.warn({ error: error instanceof Error ? error : undefined }, 'Atomic tag update failed, falling back to standard update');
+      // Fallback to original read-modify-write logic
+      const { data: keywords, error: fetchError } = await supabase
         .from('indb_rank_keywords')
         .select('id, tags')
         .in('id', keywordIds)
         .eq('user_id', userId);
 
-        if (fetchError || !keywords || keywords.length === 0) return 0;
+      if (fetchError || !keywords || keywords.length === 0) return 0;
 
-        let count = 0;
-        for (const keyword of keywords) {
-            const existingTags = (keyword.tags as string[] | null) || [];
-            const newTags = Array.from(new Set([...existingTags, ...tags]));
-            
-            if (newTags.length !== existingTags.length) {
-                await supabase
-                .from('indb_rank_keywords')
-                .update({ tags: newTags })
-                .eq('id', keyword.id);
-                count++;
-            }
+      let count = 0;
+      for (const keyword of keywords) {
+        const existingTags = (keyword.tags as string[] | null) || [];
+        const newTags = Array.from(new Set([...existingTags, ...tags]));
+
+        if (newTags.length !== existingTags.length) {
+          await supabase
+            .from('indb_rank_keywords')
+            .update({ tags: newTags })
+            .eq('id', keyword.id);
+          count++;
         }
-        return count;
+      }
+      return count;
     }
 
     return updatedCount || 0;

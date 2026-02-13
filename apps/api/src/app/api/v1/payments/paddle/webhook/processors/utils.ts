@@ -3,7 +3,7 @@
  */
 
 import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, logger } from '@indexnow/shared';
 
 export interface CustomData {
     userId?: string;
@@ -15,7 +15,7 @@ export const PADDLE_GATEWAY_ID = 'e24339a4-ec2c-44f7-a6d5-41836025fd47';
 
 export function validateCustomData(customData: unknown, eventId: string): CustomData | null {
     if (!customData || typeof customData !== 'object') {
-        console.warn('[VALIDATION]', {
+        logger.warn('[VALIDATION]', {
             type: ErrorType.VALIDATION,
             severity: ErrorSeverity.MEDIUM,
             message: `Missing or invalid custom_data in webhook event ${eventId}`,
@@ -28,7 +28,7 @@ export function validateCustomData(customData: unknown, eventId: string): Custom
     const data = customData as Record<string, unknown>;
 
     if (!data.userId) {
-        console.warn('[VALIDATION]', {
+        logger.warn('[VALIDATION]', {
             type: ErrorType.VALIDATION,
             severity: ErrorSeverity.MEDIUM,
             message: `Missing userId in custom_data for webhook event ${eventId}`,
@@ -61,7 +61,7 @@ export async function logProcessorError(
     error: Error,
     metadata?: Record<string, unknown>
 ) {
-    console.error('[PROCESSOR_ERROR]', {
+    logger.error('[PROCESSOR_ERROR]', {
         type: ErrorType.EXTERNAL_API,
         severity: ErrorSeverity.HIGH,
         event_id: eventId,

@@ -6,7 +6,7 @@
 import { PaymentProcessor } from './core/PaymentProcessor'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
 import { PaddleService } from './paddle'
-import { Database } from '@indexnow/shared'
+import { Database, logger } from '@indexnow/shared'
 
 type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row']
 
@@ -66,7 +66,7 @@ export class PaymentServiceFactory {
       }
 
     } catch (error) {
-      console.error('Error initializing payment gateways:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error initializing payment gateways')
     }
   }
 
@@ -83,10 +83,10 @@ export class PaymentServiceFactory {
           break
 
         default:
-          console.warn(`Unknown payment gateway: ${config.slug}`)
+          logger.warn(`Unknown payment gateway: ${config.slug}`)
       }
     } catch (error) {
-      console.error(`Error registering ${config.slug} gateway:`, error)
+      logger.error({ error: error instanceof Error ? error : undefined }, `Error registering ${config.slug} gateway`)
     }
   }
 
@@ -105,9 +105,9 @@ export class PaymentServiceFactory {
       // Initialize Paddle SDK instance
       await PaddleService.getInstance()
 
-      console.log('✅ Paddle payment gateway initialized successfully')
+      logger.info('Paddle payment gateway initialized successfully')
     } catch (error) {
-      console.error('❌ Failed to initialize Paddle gateway:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to initialize Paddle gateway')
       throw error
     }
   }

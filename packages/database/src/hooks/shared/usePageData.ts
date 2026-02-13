@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { authService, type AuthUser, PUBLIC_ENDPOINTS } from '@indexnow/shared'
+import { authService, type AuthUser, PUBLIC_ENDPOINTS, logger } from '@indexnow/shared'
 
 interface SiteSettings {
   site_name: string
@@ -41,7 +41,7 @@ export function usePageData() {
       const actualData = result.success === true && result.data ? result.data : result
       setSiteSettings(actualData.siteSettings)
     } catch (error) {
-      console.error('Failed to load site settings:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to load site settings')
     }
   }
 

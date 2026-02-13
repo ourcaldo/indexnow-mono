@@ -13,7 +13,7 @@
  */
 
 import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, logger } from '@indexnow/shared';
 
 interface RefundAdjustment {
     total?: string;
@@ -133,7 +133,7 @@ export async function processTransactionRefunded(data: unknown) {
             }
 
             // Log refund event (using console since ErrorHandlingService has complex dependencies)
-            console.log('[REFUND]', {
+            logger.info({
                 type: ErrorType.BUSINESS_LOGIC,
                 severity: ErrorSeverity.LOW,
                 paddle_transaction_id,

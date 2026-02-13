@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   Eye
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
 
 interface UserProfile {
   id: string
@@ -69,7 +69,7 @@ export default function UserManagement() {
         setUsers(data.data?.users || [])
       }
     } catch (error) {
-      console.error('Failed to fetch users:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch users')
     } finally {
       setLoading(false)
     }
@@ -90,7 +90,7 @@ export default function UserManagement() {
         fetchUsers() // Refresh the list
       }
     } catch (error) {
-      console.error('Failed to update user role:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to update user role')
     }
   }
 
@@ -109,7 +109,7 @@ export default function UserManagement() {
         fetchUsers() // Refresh the list
       }
     } catch (error) {
-      console.error('Failed to suspend user:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to suspend user')
     }
   }
 

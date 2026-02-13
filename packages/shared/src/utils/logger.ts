@@ -26,10 +26,10 @@ class Logger {
     const ctx = typeof context === 'string' ? {} : context;
     const msg = typeof context === 'string' ? context : message || '';
 
-    if (this.isProduction && level === 'debug') return;
+    if (this.isProduction) return;
 
     const formattedMsg = this.formatMessage(level, ctx, msg);
-    
+
     switch (level) {
       case 'debug':
         console.debug(formattedMsg, ctx);
@@ -72,27 +72,27 @@ import { ErrorSeverity, ErrorType } from '../types/common/ErrorTypes';
 
 export const ErrorHandlingService = {
   handle: (error: Error | string | object | null | undefined, context?: LogContext) => {
-    const message = error instanceof Error 
-      ? error.message 
-      : typeof error === 'string' 
-        ? error 
+    const message = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
         : 'An unexpected error occurred';
-    
+
     // Safely convert non-Error objects to Json for logging
-    const safeErrorMetadata = error instanceof Error 
+    const safeErrorMetadata = error instanceof Error
       ? { message: error.message, stack: error.stack }
       : typeof error === 'object' && error !== null
         ? JSON.parse(JSON.stringify(error)) // Deep copy to ensure serializability
         : { rawError: String(error) };
 
-    const logContext: LogContext = { 
-      ...(context || {}), 
+    const logContext: LogContext = {
+      ...(context || {}),
       error: safeErrorMetadata
     };
 
     logger.error(logContext, message);
   },
-  createError: (config: { message: string; [key: string]: Json | undefined }) => {
+  createError: (config: { message: string;[key: string]: Json | undefined }) => {
     logger.error(config as LogContext, config.message || 'Created error');
     return new Error(config.message);
   }

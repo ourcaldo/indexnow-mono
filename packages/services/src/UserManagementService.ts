@@ -1,6 +1,5 @@
 import { db, supabaseAdmin } from '@indexnow/database';
-import {
-  USER_ROLES,
+import { USER_ROLES,
   DEFAULT_SETTINGS,
   type TrialEligibility,
   type DbUserProfile,
@@ -8,8 +7,7 @@ import {
   type InsertUserProfile,
   type UpdateUserProfile,
   type InsertUserSettings,
-  type UpdateUserSettings
-} from '@indexnow/shared';
+  type UpdateUserSettings, logger } from '@indexnow/shared';
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
@@ -464,7 +462,7 @@ export class UserManagementService {
       .insert(defaultSettings);
 
     if (error) {
-      console.error('Failed to create default user settings:', error);
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to create default user settings');
     }
   }
 
@@ -498,14 +496,14 @@ export class UserManagementService {
       const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
 
       if (error || !data.user) {
-        if (error) console.error('Error fetching user email:', error);
+        if (error) logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching user email');
         // Return null instead of empty string to indicate failure
         return null;
       }
 
       return data.user.email || null;
     } catch (err) {
-      console.error('Error fetching user email:', err);
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching user email');
       return null;
     }
   }

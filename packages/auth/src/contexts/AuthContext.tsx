@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { authService, AuthUser } from '@indexnow/shared'
+import { authService, AuthUser, logger } from '@indexnow/shared'
 import { useRouter } from 'next/navigation'
 import { AuthErrorHandler } from '../auth-error-handler'
 import { supabase } from '@indexnow/database'
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null)
       window.location.href = '/login'
     } catch (error) {
-      console.error('Sign out error:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Sign out error')
     }
   }
 
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const currentUser = await authService.getCurrentUser()
       setUser(currentUser)
     } catch (error) {
-      console.error('Refresh auth error:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Refresh auth error')
       setUser(null)
     }
   }

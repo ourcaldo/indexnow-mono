@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { DASHBOARD_ENDPOINTS } from '@indexnow/shared'
+import { DASHBOARD_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../client'
 
 export interface QuotaInfo {
@@ -125,7 +125,7 @@ export function useGlobalQuotaManager() {
       return updatedData
 
     } catch (error) {
-      console.error('Failed to fetch quota data:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch quota data')
       const errorData = { ...globalQuotaData, loading: false }
       notifySubscribers(errorData)
       return errorData

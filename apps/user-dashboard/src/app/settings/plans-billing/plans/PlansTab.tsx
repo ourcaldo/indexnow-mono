@@ -14,13 +14,11 @@ import {
   X,
   Clock
 } from 'lucide-react'
-import { 
-  authService, 
+import { authService, 
   formatCurrency, 
   type ApiResponse,
   AUTH_ENDPOINTS, 
-  BILLING_ENDPOINTS 
-} from '@indexnow/shared'
+  BILLING_ENDPOINTS, logger } from '@indexnow/shared'
 import { LoadingSpinner, useApiError } from '@indexnow/ui'
 
 interface PricingTier {
@@ -123,7 +121,7 @@ export default function PlansTab() {
         throw new Error(result.error?.message || 'Failed to load packages')
       }
     } catch (error) {
-      console.error('Error loading packages:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading packages')
       setError(error instanceof Error ? error.message : 'Failed to load packages')
     } finally {
       setLoading(false)

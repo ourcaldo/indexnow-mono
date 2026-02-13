@@ -110,7 +110,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       locationData: requestInfo.locationData,
       loginTime: new Date().toISOString()
     }).catch(emailError => {
-      console.error('Failed to send login notification email:', emailError);
+      logger.error({ error: emailError instanceof Error ? emailError : undefined }, 'Failed to send login notification email');
     });
 
     // 6. Return success response with session data

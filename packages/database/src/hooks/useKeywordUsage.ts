@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { RANK_TRACKING_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../client'
 
 export interface KeywordUsageData {
@@ -51,7 +51,7 @@ export function useKeywordUsage() {
       const data = await response.json()
       setKeywordUsage(data)
     } catch (err) {
-      console.error('Error fetching keyword usage:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching keyword usage')
       setError(err instanceof Error ? err.message : 'Failed to fetch keyword usage')
     } finally {
       setLoading(false)

@@ -99,7 +99,7 @@ export default function ProfileSettingsPage() {
         })
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading data')
     } finally {
       setLoading(false)
     }
@@ -138,7 +138,7 @@ export default function ProfileSettingsPage() {
         })
       }
     } catch (error) {
-      console.error('Error saving profile:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error saving profile')
       addToast({
         title: 'Error',
         description: 'Failed to update profile',
@@ -231,7 +231,7 @@ export default function ProfileSettingsPage() {
         confirmPassword: ''
       })
     } catch (error) {
-      console.error('Error changing password:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error changing password')
       addToast({
         title: 'Error',
         description: 'Failed to change password',

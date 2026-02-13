@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Badge, Separator, useToast } from '@indexnow/ui'
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, formatCurrency, logger } from '@indexnow/shared'
 import { type Json, supabaseBrowser } from '@indexnow/auth'
 
 interface Transaction {
@@ -79,8 +79,7 @@ export default function OrderCompletedPage() {
       }
 
       const data = await response.json()
-      console.log('API Response:', data) // Debug log
-      
+
       if (data.success && data.data) {
         // Map API response to frontend Transaction interface
         const orderData = data.data
@@ -120,7 +119,7 @@ export default function OrderCompletedPage() {
         throw new Error('Invalid response format')
       }
     } catch (error) {
-      console.error('Error fetching transaction:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching transaction')
       addToast({
         type: 'error',
         title: 'Error',
@@ -208,7 +207,7 @@ export default function OrderCompletedPage() {
       setProofFile(null)
 
     } catch (error) {
-      console.error('Error uploading proof:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error uploading proof')
       addToast({
         type: 'error',
         title: 'Upload Failed',
@@ -252,7 +251,7 @@ export default function OrderCompletedPage() {
           <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">Order Not Found</h2>
           <p className="text-muted-foreground mb-4">The order you're looking for doesn't exist or you don't have access to it.</p>
-          <Button 
+          <Button
             onClick={() => router.push('/dashboard/settings?tab=plans-billing')}
             className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
@@ -353,8 +352,8 @@ export default function OrderCompletedPage() {
                     <span className="font-semibold text-foreground">Total Amount</span>
                     <span className="text-xl font-bold text-foreground">
                       {transaction.amount !== null && transaction.amount !== undefined ? (
-                        transaction.currency === 'USD' 
-                          ? `$${transaction.amount}` 
+                        transaction.currency === 'USD'
+                          ? `$${transaction.amount}`
                           : `Rp ${transaction.amount.toLocaleString('id-ID')}`
                       ) : 'N/A'}
                     </span>
@@ -450,8 +449,8 @@ export default function OrderCompletedPage() {
                     <p className="text-sm font-medium text-foreground">Amount to Pay</p>
                     <p className="text-lg font-bold text-foreground">
                       {transaction.amount !== null && transaction.amount !== undefined ? (
-                        transaction.currency === 'USD' 
-                          ? `$${transaction.amount}` 
+                        transaction.currency === 'USD'
+                          ? `$${transaction.amount}`
                           : `Rp ${transaction.amount.toLocaleString('id-ID')}`
                       ) : 'N/A'}
                     </p>

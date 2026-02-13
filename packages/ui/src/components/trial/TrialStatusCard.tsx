@@ -6,7 +6,7 @@ import { Button } from '../button'
 import { Badge } from '../badge'
 import { Clock, Calendar, CreditCard, AlertCircle } from 'lucide-react'
 import { useToast } from '../toast'
-import { AUTH_ENDPOINTS, BILLING_ENDPOINTS, type Json } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, BILLING_ENDPOINTS, type Json, logger } from '@indexnow/shared'
 import { supabaseBrowser } from '@indexnow/database'
 
 interface TrialStatusData {
@@ -49,7 +49,7 @@ export function TrialStatusCard() {
         setTrialData(result.data)
       }
     } catch (error) {
-      console.error('Failed to fetch trial status:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch trial status')
     } finally {
       setLoading(false)
     }

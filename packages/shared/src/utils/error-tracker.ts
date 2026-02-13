@@ -5,6 +5,7 @@
 
 import { RankCheckError, ErrorStats, SystemErrorStats } from '../types/monitoring/ErrorTrackingTypes';
 import { trackError, trackEvent } from './analytics';
+import { logger } from './logger';
 
 export class ErrorTracker {
   /**
@@ -20,7 +21,7 @@ export class ErrorTracker {
       severity: error.severity,
       ...(error.context || {})
     });
-    
+
     trackEvent('rank_check_error', {
       ...error,
       timestamp: error.timestamp instanceof Date ? error.timestamp.toISOString() : error.timestamp
@@ -31,7 +32,7 @@ export class ErrorTracker {
    * Get error statistics (Placeholder - should be implemented via API/Database)
    */
   async getErrorStats(_userId: string, _dateRange: { start: Date, end: Date }): Promise<ErrorStats[]> {
-    console.warn('getErrorStats is not implemented in shared package');
+    logger.warn('getErrorStats is not implemented in shared package');
     return [];
   }
 

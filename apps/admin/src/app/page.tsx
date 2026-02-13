@@ -39,7 +39,7 @@ export default function AdminDashboard() {
       const token = session?.access_token
 
       if (!token) {
-        console.error('No authentication session found')
+        logger.error('No authentication session found')
         return
       }
 
@@ -59,12 +59,12 @@ export default function AdminDashboard() {
           logStatsRefresh()
         }
       } else {
-        console.error('Error fetching dashboard stats:', response.status)
+        logger.error('Error fetching dashboard stats: ' + response.status)
         const errorData = await response.text()
-        console.error('Error details:', errorData)
+        logger.error({ error: errorData instanceof Error ? errorData : undefined }, 'Error details')
       }
     } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch dashboard stats')
     } finally {
       setLoading(false)
     }

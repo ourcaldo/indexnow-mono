@@ -6,7 +6,7 @@
 import { PaymentGateway, PaymentRequest, PaymentResponse, CustomerDetails } from './PaymentGateway'
 import { PaymentValidator } from './PaymentValidator'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
-import { Database, DbPackageRow, DbTransactionRow, InsertTransaction, TransactionGatewayResponse, PackagePricingTiers, Json } from '@indexnow/shared'
+import { Database, DbPackageRow, DbTransactionRow, InsertTransaction, TransactionGatewayResponse, PackagePricingTiers, Json, logger } from '@indexnow/shared'
 
 export interface ProcessPaymentRequest {
   user_id: string
@@ -146,7 +146,7 @@ export class PaymentProcessor {
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Payment processing error:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Payment processing error')
       return {
         success: false,
         error: `Payment processing failed: ${errorMessage}`
@@ -189,7 +189,7 @@ export class PaymentProcessor {
 
       return packageData;
     } catch (error) {
-      console.error('Error fetching package details:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching package details')
       return null
     }
   }
@@ -293,7 +293,7 @@ export class PaymentProcessor {
 
       return transaction;
     } catch (error) {
-      console.error('Error creating transaction record:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error creating transaction record')
       return null
     }
   }
@@ -339,7 +339,7 @@ export class PaymentProcessor {
         }
       );
     } catch (error) {
-      console.error('Error updating transaction status:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error updating transaction status')
     }
   }
 
@@ -403,7 +403,7 @@ export class PaymentProcessor {
         }
       )
     } catch (error) {
-      console.error('Error updating transaction with result:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error updating transaction with result')
     }
   }
 

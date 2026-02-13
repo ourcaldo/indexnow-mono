@@ -3,7 +3,7 @@
  * Provides dynamic site configuration from admin panel
  */
 
-import { PUBLIC_ENDPOINTS } from '@indexnow/shared'
+import { PUBLIC_ENDPOINTS, logger } from '@indexnow/shared'
 
 export interface SiteSettings {
   id: string
@@ -66,7 +66,7 @@ class SiteSettingsService {
    */
   async getSiteSettings(): Promise<SiteSettings> {
     const now = Date.now()
-    
+
     // Return cached settings if still valid
     if (this.cachedSettings && now < this.cacheExpiry) {
       return this.cachedSettings
@@ -80,7 +80,7 @@ class SiteSettingsService {
         const result = await response.json()
         // API response structure: { success: true, data: { siteSettings: {...}, packages: {...} } }
         const siteSettings = result.data?.siteSettings
-        
+
         // Validate we have valid settings before caching
         if (siteSettings && typeof siteSettings === 'object') {
           this.cachedSettings = siteSettings
@@ -89,7 +89,7 @@ class SiteSettingsService {
         }
       }
     } catch (error) {
-      console.warn('Failed to fetch site settings, using defaults:', error)
+      logger.warn({ error: error instanceof Error ? error : undefined }, 'Failed to fetch site settings, using defaults')
     }
 
     // Return defaults if API fails or returns invalid data
@@ -102,7 +102,7 @@ class SiteSettingsService {
    */
   async getLogoUrl(isExpanded: boolean = true): Promise<string> {
     const settings = await this.getSiteSettings()
-    return isExpanded 
+    return isExpanded
       ? settings.site_logo_url || ''
       : settings.site_icon_url || ''
   }

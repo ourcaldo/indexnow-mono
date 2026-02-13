@@ -32,13 +32,11 @@ import {
   Activity
 } from 'lucide-react'
 
-import { 
-  usePageViewLogger, 
+import { usePageViewLogger, 
   useActivityLogger,
   useDashboardData,
   useDomain,
-  type Json
-} from '@indexnow/shared'
+  type Json, logger } from '@indexnow/shared'
 import { 
   useToast,
   LegacyRankingDistribution as RankingDistribution,
@@ -215,7 +213,7 @@ function DashboardContent() {
       const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=${period}`
       window.location.href = checkoutUrl
     } catch (error) {
-      console.error('Error starting subscription:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error starting subscription')
     } finally {
       setSubscribing(null)
     }
@@ -233,7 +231,7 @@ function DashboardContent() {
       const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`
       window.location.href = checkoutUrl
     } catch (error) {
-      console.error('Error starting trial:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error starting trial')
     } finally {
       setStartingTrial(null)
     }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { type Json, authService, type AuthUser, ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { type Json, authService, type AuthUser, ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../client'
 
 interface AdminActivityMetadata {
@@ -20,7 +20,7 @@ export function useAdminActivityLogger() {
         const currentUser = await authService.getCurrentUser()
         setUser(currentUser)
       } catch (error) {
-        console.error('Error getting current user:', error)
+        logger.error({ error: error instanceof Error ? error : undefined }, 'Error getting current user')
       }
     }
     getCurrentUser()
@@ -33,7 +33,7 @@ export function useAdminActivityLogger() {
   ) => {
     try {
       if (!user?.id) {
-        console.warn('Cannot log admin activity: No authenticated user')
+        logger.warn('Cannot log admin activity: No authenticated user')
         return
       }
 
@@ -56,10 +56,10 @@ export function useAdminActivityLogger() {
       })
 
       if (!response.ok) {
-        console.error('Failed to log admin activity:', response.status)
+        logger.error('Failed to log admin activity: ' + response.status)
       }
     } catch (error) {
-      console.error('Error logging admin activity:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error logging admin activity')
     }
   }
 
@@ -118,8 +118,8 @@ export function useAdminOrderLogger() {
   const logOrderView = (orderId: string, orderDetails?: { amount?: number; status?: string }) => logAdminActivity(
     'admin_order_view',
     `Viewed order details: ${orderId}`,
-    { 
-      section: 'orders', 
+    {
+      section: 'orders',
       action: 'view_order',
       orderId,
       orderAmount: orderDetails?.amount,
@@ -130,8 +130,8 @@ export function useAdminOrderLogger() {
   const logOrderStatusUpdate = (orderId: string, oldStatus: string, newStatus: string) => logAdminActivity(
     'order_status_update',
     `Updated order ${orderId} status from ${oldStatus} to ${newStatus}`,
-    { 
-      section: 'orders', 
+    {
+      section: 'orders',
       action: 'update_status',
       orderId,
       oldStatus,
@@ -142,8 +142,8 @@ export function useAdminOrderLogger() {
   const logOrderApproval = (orderId: string, amount: number) => logAdminActivity(
     'order_approve',
     `Approved order ${orderId} for amount ${amount}`,
-    { 
-      section: 'orders', 
+    {
+      section: 'orders',
       action: 'approve_order',
       orderId,
       approvedAmount: amount
@@ -153,20 +153,20 @@ export function useAdminOrderLogger() {
   const logOrderRejection = (orderId: string, reason?: string) => logAdminActivity(
     'order_reject',
     `Rejected order ${orderId}${reason ? `: ${reason}` : ''}`,
-    { 
-      section: 'orders', 
+    {
+      section: 'orders',
       action: 'reject_order',
       orderId,
       rejectionReason: reason
     }
   )
 
-  return { 
-    logOrderView, 
-    logOrderStatusUpdate, 
-    logOrderApproval, 
+  return {
+    logOrderView,
+    logOrderStatusUpdate,
+    logOrderApproval,
     logOrderRejection,
-    logAdminActivity 
+    logAdminActivity
   }
 }
 
@@ -182,9 +182,9 @@ export function useAdminSettingsLogger() {
   const logSettingsUpdate = (settingsType: string, updatedFields: string[]) => logAdminActivity(
     `${settingsType}_settings_update`,
     `Updated ${settingsType} settings: ${updatedFields.join(', ')}`,
-    { 
-      section: 'settings', 
-      action: 'update_settings', 
+    {
+      section: 'settings',
+      action: 'update_settings',
       settingsType,
       updatedFields: updatedFields.join(', ')
     }
@@ -193,8 +193,8 @@ export function useAdminSettingsLogger() {
   const logPackageCreate = (packageName: string, price: number) => logAdminActivity(
     'package_create',
     `Created new package: ${packageName} ($${price})`,
-    { 
-      section: 'packages', 
+    {
+      section: 'packages',
       action: 'create_package',
       packageName,
       packagePrice: price
@@ -204,8 +204,8 @@ export function useAdminSettingsLogger() {
   const logPackageUpdate = (packageId: string, packageName: string) => logAdminActivity(
     'package_update',
     `Updated package: ${packageName}`,
-    { 
-      section: 'packages', 
+    {
+      section: 'packages',
       action: 'update_package',
       packageId,
       packageName
@@ -215,20 +215,20 @@ export function useAdminSettingsLogger() {
   const logGatewayCreate = (gatewayName: string) => logAdminActivity(
     'payment_gateway_create',
     `Created payment gateway: ${gatewayName}`,
-    { 
-      section: 'payment_gateways', 
+    {
+      section: 'payment_gateways',
       action: 'create_gateway',
       gatewayName
     }
   )
 
-  return { 
-    logSettingsView, 
-    logSettingsUpdate, 
-    logPackageCreate, 
-    logPackageUpdate, 
+  return {
+    logSettingsView,
+    logSettingsUpdate,
+    logPackageCreate,
+    logPackageUpdate,
     logGatewayCreate,
-    logAdminActivity 
+    logAdminActivity
   }
 }
 
@@ -238,8 +238,8 @@ export function useAdminUserLogger() {
   const logUserView = (targetUserId: string, targetUserEmail: string) => logAdminActivity(
     'user_management',
     `Viewed user profile: ${targetUserEmail}`,
-    { 
-      section: 'user_management', 
+    {
+      section: 'user_management',
       action: 'view_user',
       targetUserId,
       targetUserEmail
@@ -249,8 +249,8 @@ export function useAdminUserLogger() {
   const logUserRoleChange = (targetUserId: string, targetUserEmail: string, oldRole: string, newRole: string) => logAdminActivity(
     'user_role_change',
     `Changed user ${targetUserEmail} role from ${oldRole} to ${newRole}`,
-    { 
-      section: 'user_management', 
+    {
+      section: 'user_management',
       action: 'change_role',
       targetUserId,
       targetUserEmail,
@@ -262,8 +262,8 @@ export function useAdminUserLogger() {
   const logUserSuspension = (targetUserId: string, targetUserEmail: string) => logAdminActivity(
     'user_suspend',
     `Suspended user: ${targetUserEmail}`,
-    { 
-      section: 'user_management', 
+    {
+      section: 'user_management',
       action: 'suspend_user',
       targetUserId,
       targetUserEmail
@@ -273,19 +273,19 @@ export function useAdminUserLogger() {
   const logUserQuotaReset = (targetUserId: string, targetUserEmail: string) => logAdminActivity(
     'user_quota_reset',
     `Reset quota for user: ${targetUserEmail}`,
-    { 
-      section: 'user_management', 
+    {
+      section: 'user_management',
       action: 'reset_quota',
       targetUserId,
       targetUserEmail
     }
   )
 
-  return { 
-    logUserView, 
-    logUserRoleChange, 
-    logUserSuspension, 
+  return {
+    logUserView,
+    logUserRoleChange,
+    logUserSuspension,
     logUserQuotaReset,
-    logAdminActivity 
+    logAdminActivity
   }
 }

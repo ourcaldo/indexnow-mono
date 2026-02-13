@@ -23,7 +23,7 @@ import {
   Moon,
   Sun
 } from 'lucide-react'
-import { authService, UserRole } from '@indexnow/shared'
+import { authService, UserRole, logger } from '@indexnow/shared'
 import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/database'
 
 interface AdminSidebarUser {
@@ -74,7 +74,7 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
       await authService.signOut()
       router.push('/')
     } catch (error) {
-      console.error('Logout failed:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Logout failed')
     }
   }
 

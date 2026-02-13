@@ -1,5 +1,7 @@
 import { supabaseBrowser } from '@indexnow/database';
 
+import { logger } from '@indexnow/shared'
+
 export class QuotaService {
   /**
    * Consume quota for a user using atomic RPC.
@@ -12,7 +14,7 @@ export class QuotaService {
     });
 
     if (error) {
-      console.error('Error consuming quota:', error);
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error consuming quota');
       // Fail closed: if error, assume quota consumption failed
       return false;
     }
@@ -33,7 +35,7 @@ export class QuotaService {
       .single();
 
     if (error || !profile) {
-        console.error('Error checking quota:', error);
+        logger.error({ error: error instanceof Error ? error : undefined }, 'Error checking quota');
         return false;
     }
 

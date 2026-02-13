@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatCurrency as formatCurrencyUtil, PUBLIC_ENDPOINTS } from '@indexnow/shared'
+import { formatCurrency as formatCurrencyUtil, PUBLIC_ENDPOINTS, logger } from '@indexnow/shared'
 
 export interface PricingTierData {
   promo_price: number
@@ -91,7 +91,7 @@ export const usePricingData = (options: UsePricingDataOptions = {}) => {
         throw new Error('Failed to load packages')
       }
     } catch (err) {
-      console.error('Failed to load packages:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Failed to load packages')
       setError('Failed to load packages')
     } finally {
       setIsLoading(false)

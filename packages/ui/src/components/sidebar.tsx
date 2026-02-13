@@ -15,7 +15,7 @@ import {
   Search,
   ChevronDown
 } from 'lucide-react'
-import { authService, type Json } from '@indexnow/shared'
+import { authService, type Json, logger } from '@indexnow/shared'
 import { useSiteName, useSiteLogo, useDashboardData } from '@indexnow/database'
 import { SharedDomainSelector } from '..'
 
@@ -115,7 +115,7 @@ export function Sidebar({
       await authService.signOut()
       window.location.href = '/login'
     } catch (error) {
-      console.error('Logout failed:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Logout failed')
     }
   }
 

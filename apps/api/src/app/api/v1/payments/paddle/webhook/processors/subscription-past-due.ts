@@ -9,7 +9,7 @@
  */
 
 import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, logger } from '@indexnow/shared';
 
 interface PaddlePastDueData {
     id: string;
@@ -70,7 +70,7 @@ export async function processSubscriptionPastDue(data: unknown) {
         }
 
         // Log payment failure
-        console.log('[PAST_DUE]', {
+        logger.info({
             type: ErrorType.EXTERNAL_API,
             severity: ErrorSeverity.HIGH,
             subscription_id,

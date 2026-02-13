@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { authService, BILLING_ENDPOINTS, formatCurrency } from '@indexnow/shared'
+import { authService, BILLING_ENDPOINTS, formatCurrency, logger } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/database'
 import { LoadingSpinner, PricingCards, useApiError } from '@indexnow/ui'
 
@@ -91,7 +91,7 @@ export default function PlansPage() {
       const data = await response.json()
       setPackagesData(data)
     } catch (error) {
-      console.error('Error loading packages:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading packages')
       setError(error instanceof Error ? error.message : 'Failed to load packages')
     } finally {
       setLoading(false)

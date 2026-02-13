@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AUTH_ENDPOINTS } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../client'
 
 export interface UserProfile {
@@ -104,7 +104,7 @@ export function useUserProfile() {
 
       setUser(userWithRole)
     } catch (err) {
-      console.error('Error fetching user profile:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching user profile')
       setError(err instanceof Error ? err.message : 'Failed to fetch user profile')
     } finally {
       setLoading(false)

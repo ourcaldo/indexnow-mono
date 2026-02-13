@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { authService, formatDate, formatCurrency } from '@indexnow/shared'
+import { authService, formatDate, formatCurrency, logger } from '@indexnow/shared'
 import { LoadingSpinner } from '@indexnow/ui'
 import { BILLING_ENDPOINTS, buildEndpoint } from '@indexnow/shared'
 
@@ -112,7 +112,7 @@ export default function HistoryTab() {
       const data = await response.json()
       setHistoryData(data)
     } catch (error) {
-      console.error('Error loading billing history:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading billing history')
       setError(error instanceof Error ? error.message : 'Failed to load billing history')
     } finally {
       setLoading(false)

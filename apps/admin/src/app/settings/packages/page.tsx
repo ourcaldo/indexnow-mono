@@ -16,7 +16,7 @@ import {
   Zap,
   Search
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
 import { ConfirmationDialog } from '@indexnow/ui'
 
 import { Json } from '@indexnow/shared'
@@ -84,7 +84,7 @@ export default function PackageManagement() {
         setPackages(data.data?.packages || [])
       }
     } catch (error) {
-      console.error('Failed to fetch packages:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch packages')
     } finally {
       setLoading(false)
     }
@@ -116,7 +116,7 @@ export default function PackageManagement() {
         setMessage({ type: 'error', text: 'Failed to save package' })
       }
     } catch (error) {
-      console.error('Failed to save package:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to save package')
       setMessage({ type: 'error', text: 'Failed to save package' })
     }
   }
@@ -142,7 +142,7 @@ export default function PackageManagement() {
             setMessage({ type: 'error', text: 'Failed to delete package' })
           }
         } catch (error) {
-          console.error('Failed to delete package:', error)
+          logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to delete package')
           setMessage({ type: 'error', text: 'Failed to delete package' })
         } finally {
           setConfirmConfig(prev => ({ ...prev, isOpen: false }))

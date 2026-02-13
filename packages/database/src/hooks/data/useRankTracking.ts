@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { type Json, RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { type Json, RANK_TRACKING_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../../client'
 
 interface Keyword {
@@ -203,7 +203,7 @@ export function useRankTracking(): UseRankTrackingReturn {
 
       lastFetchTime.current = Date.now()
     } catch (err) {
-      console.error('Error fetching keywords:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching keywords')
       setError(err instanceof Error ? err.message : 'Failed to fetch keywords')
     } finally {
       setLoading(false)
@@ -240,7 +240,7 @@ export function useRankTracking(): UseRankTrackingReturn {
       
       return { success: true, keywordId: data.keyword?.id }
     } catch (err) {
-      console.error('Error adding keyword:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error adding keyword')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to add keyword' }
     }
   }, [fetchKeywords, pagination.page, pagination.limit])
@@ -277,7 +277,7 @@ export function useRankTracking(): UseRankTrackingReturn {
 
       return { success: true }
     } catch (err) {
-      console.error('Error updating keyword:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error updating keyword')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to update keyword' }
     }
   }, [])
@@ -309,7 +309,7 @@ export function useRankTracking(): UseRankTrackingReturn {
 
       return { success: true }
     } catch (err) {
-      console.error('Error deleting keyword:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error deleting keyword')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to delete keyword' }
     }
   }, [])
@@ -354,7 +354,7 @@ export function useRankTracking(): UseRankTrackingReturn {
         errors: data.errors || [] 
       }
     } catch (err) {
-      console.error('Error bulk adding keywords:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error bulk adding keywords')
       return { 
         success: false, 
         added: 0, 
@@ -392,7 +392,7 @@ export function useRankTracking(): UseRankTrackingReturn {
       
       return { success: true }
     } catch (err) {
-      console.error('Error checking rankings:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error checking rankings')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to check rankings' }
     }
   }, [fetchKeywords, pagination.page, pagination.limit])
@@ -418,7 +418,7 @@ export function useRankTracking(): UseRankTrackingReturn {
       
       return []
     } catch (err) {
-      console.error('Error fetching ranking history:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching ranking history')
       return []
     }
   }, [])
@@ -449,7 +449,7 @@ export function useRankTracking(): UseRankTrackingReturn {
         setRankingStats(data.stats)
       }
     } catch (err) {
-      console.error('Error fetching ranking stats:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching ranking stats')
     }
   }, [])
 
@@ -472,7 +472,7 @@ export function useRankTracking(): UseRankTrackingReturn {
         setCompetitors(data.competitors || [])
       }
     } catch (err) {
-      console.error('Error fetching competitor analysis:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching competitor analysis')
     }
   }, [])
 
@@ -502,7 +502,7 @@ export function useRankTracking(): UseRankTrackingReturn {
       const data = await response.json()
       return { success: true, downloadUrl: data.downloadUrl }
     } catch (err) {
-      console.error('Error exporting rankings:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error exporting rankings')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to export rankings' }
     }
   }, [filters])

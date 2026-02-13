@@ -1,6 +1,8 @@
 'use client'
 
 import React, { Component, ReactNode } from 'react'
+
+import { logger } from '@indexnow/shared'
 import { Card, CardContent, CardHeader, CardTitle } from '../card'
 import { Button } from '../button'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
@@ -55,7 +57,7 @@ export class PaymentErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo)
     
     // Log error details locally (error tracking service can be added later)
-    console.error('Payment Error Boundary:', errorDetails)
+    logger.error({ error: errorDetails instanceof Error ? errorDetails : undefined }, 'Payment Error Boundary')
   }
 
   private handleRetry = () => {

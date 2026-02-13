@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, Separator } from '../..'
-import { ADMIN_ENDPOINTS, RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, RANK_TRACKING_ENDPOINTS, logger } from '@indexnow/shared'
 
 interface JobStatus {
   isRunning: boolean
@@ -68,7 +68,7 @@ export function JobProcessorTest() {
         setStats(data.data.currentStats)
       }
     } catch (error) {
-      console.error('Error checking status:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error checking status')
     }
   }
 

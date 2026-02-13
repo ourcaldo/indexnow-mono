@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AUTH_ENDPOINTS } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../../client'
 
 interface QuotaInfo {
@@ -117,7 +117,7 @@ export function useQuotaManager(): UseQuotaManagerReturn {
       
       lastFetchTime.current = now
     } catch (err) {
-      console.error('Error fetching quota info:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching quota info')
       setError(err instanceof Error ? err.message : 'Failed to fetch quota info')
     } finally {
       setLoading(false)
@@ -143,7 +143,7 @@ export function useQuotaManager(): UseQuotaManagerReturn {
         setUsageHistory(data.history || [])
       }
     } catch (err) {
-      console.error('Error fetching usage history:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching usage history')
     }
   }, [])
 
@@ -166,7 +166,7 @@ export function useQuotaManager(): UseQuotaManagerReturn {
         setQuotaAlerts(data.alerts || [])
       }
     } catch (err) {
-      console.error('Error fetching quota alerts:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching quota alerts')
     }
   }, [])
 
@@ -201,7 +201,7 @@ export function useQuotaManager(): UseQuotaManagerReturn {
 
       return { success: true }
     } catch (err) {
-      console.error('Error acknowledging alert:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error acknowledging alert')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to acknowledge alert' }
     }
   }, [])
@@ -231,7 +231,7 @@ export function useQuotaManager(): UseQuotaManagerReturn {
 
       return { success: true }
     } catch (err) {
-      console.error('Error requesting quota increase:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error requesting quota increase')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to request quota increase' }
     }
   }, [])

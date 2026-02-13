@@ -4,6 +4,7 @@
  */
 
 import { NextRequest } from 'next/server'
+import { logger } from './logger'
 
 export interface DeviceInfo {
   type: 'mobile' | 'tablet' | 'desktop'
@@ -31,19 +32,19 @@ export function getClientIP(request?: NextRequest): string | null {
     const forwarded = request.headers.get('x-forwarded-for')
     const realIP = request.headers.get('x-real-ip')
     const clientIP = request.headers.get('x-client-ip')
-    
+
     if (forwarded) {
       // x-forwarded-for can contain multiple IPs, take the first one
       return forwarded.split(',')[0].trim()
     }
-    
+
     if (realIP) return realIP
     if (clientIP) return clientIP
-    
+
     // Fallback - NextRequest doesn't have ip property in this version
     return null
   }
-  
+
   // Client-side extraction not available without request context
   return null
 }
@@ -53,7 +54,7 @@ export function getClientIP(request?: NextRequest): string | null {
  */
 export function parseUserAgent(userAgent: string): DeviceInfo {
   const ua = userAgent.toLowerCase()
-  
+
   // Determine device type
   let type: DeviceInfo['type'] = 'desktop'
   if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
@@ -61,7 +62,7 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
   } else if (ua.includes('tablet') || ua.includes('ipad')) {
     type = 'tablet'
   }
-  
+
   // Determine browser
   let browser = 'Unrecognized Browser'
   if (ua.includes('chrome') && !ua.includes('edg')) {
@@ -75,7 +76,7 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
   } else if (ua.includes('opr') || ua.includes('opera')) {
     browser = 'Opera'
   }
-  
+
   // Determine OS
   let os = 'Unrecognized OS'
   if (ua.includes('windows')) {
@@ -89,7 +90,7 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
   } else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) {
     os = 'iOS'
   }
-  
+
   return { type, browser, os }
 }
 
@@ -106,32 +107,32 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
   let userAgent: string | null = null
   let deviceInfo: DeviceInfo | null = null
   let locationData: LocationData | null = null
-  
+
   if (request) {
     // Server-side extraction
     ipAddress = getClientIP(request)
     userAgent = request.headers.get('user-agent')
-    
+
     if (userAgent) {
       deviceInfo = parseUserAgent(userAgent)
     }
-    
+
     // Get location data using multiple methods
     if (ipAddress && ipAddress !== '127.0.0.1' && ipAddress !== '::1' && !ipAddress.startsWith('192.168.') && !ipAddress.startsWith('10.')) {
       // Use IP-API service
       try {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
-        
+
         const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,country,regionName,city,timezone,lat,lon,isp`, {
           signal: controller.signal,
           headers: {
             'User-Agent': 'IndexNow-Pro/1.0'
           }
         })
-        
+
         clearTimeout(timeoutId)
-        
+
         if (response.ok) {
           const ipApiData = await response.json()
           if (ipApiData && typeof ipApiData === 'object' && ipApiData.status === 'success') {
@@ -148,23 +149,23 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        console.warn('IP-API lookup failed for IP:', ipAddress, 'Error:', message)
+        logger.warn({ ipAddress }, `IP-API lookup failed: ${message}`)
       }
     }
-    
+
     // Fallback: Extract location from headers if available (from CDN/proxy)
     if (!locationData) {
       const country = request.headers.get('cf-ipcountry') || request.headers.get('x-country-code')
       const region = request.headers.get('cf-region') || request.headers.get('x-region')
       const city = request.headers.get('cf-ipcity') || request.headers.get('x-city')
       const timezone = request.headers.get('cf-timezone') || request.headers.get('x-timezone')
-      
+
       if (country || region || city || timezone) {
-        locationData = { 
-          country: country || undefined, 
-          region: region || undefined, 
-          city: city || undefined, 
-          timezone: timezone || undefined 
+        locationData = {
+          country: country || undefined,
+          region: region || undefined,
+          city: city || undefined,
+          timezone: timezone || undefined
         }
       }
     }
@@ -177,7 +178,7 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
       }
     }
   }
-  
+
   return {
     ipAddress,
     userAgent,
@@ -191,7 +192,7 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
  */
 export function formatDeviceInfo(deviceInfo?: DeviceInfo | null): string {
   if (!deviceInfo) return 'Unrecognized Device'
-  
+
   const { type, browser, os } = deviceInfo
   return `${browser} on ${os} (${type.charAt(0).toUpperCase() + type.slice(1)})`
 }
@@ -201,12 +202,12 @@ export function formatDeviceInfo(deviceInfo?: DeviceInfo | null): string {
  */
 export function formatLocationData(locationData?: LocationData | null): string {
   if (!locationData) return 'Unrecognized Location'
-  
+
   const parts = []
   if (locationData.city) parts.push(locationData.city)
   if (locationData.region) parts.push(locationData.region)
   if (locationData.country) parts.push(locationData.country)
-  
+
   return parts.length > 0 ? parts.join(', ') : 'Unrecognized Location'
 }
 
@@ -221,17 +222,17 @@ export function getSecurityRiskLevel(
   previousDevices: DeviceInfo[] = []
 ): 'low' | 'medium' | 'high' {
   let riskScore = 0
-  
+
   // New IP address
   if (ipAddress && !previousIPs.includes(ipAddress)) {
     riskScore += 1
   }
-  
+
   // New device type
   if (deviceInfo && !previousDevices.some(d => d.type === deviceInfo.type && d.browser === deviceInfo.browser)) {
     riskScore += 1
   }
-  
+
   // Location-based risk (if available)
   if (locationData?.country) {
     // Add logic for high-risk countries if needed
@@ -240,7 +241,7 @@ export function getSecurityRiskLevel(
       riskScore += 2
     }
   }
-  
+
   // Determine risk level
   if (riskScore >= 3) return 'high'
   if (riskScore >= 2) return 'medium'

@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { Button } from '@indexnow/ui'
 import { AlertCircle, RefreshCcw, Home } from 'lucide-react'
 import Link from 'next/link'
-import { errorTracker } from '@indexnow/shared'
+import { errorTracker, logger } from '@indexnow/shared'
 
 export default function AdminError({
   error,
@@ -15,7 +15,7 @@ export default function AdminError({
 }) {
   useEffect(() => {
     // Log the error to our tracking system
-    console.error('Admin Application Error:', error)
+    logger.error({ error: error instanceof Error ? error : undefined }, 'Admin Application Error')
     
     // We can't use keywordId here as it's a general app error
     errorTracker.logError({
@@ -30,7 +30,7 @@ export default function AdminError({
         stack: error.stack,
         url: window.location.href
       }
-    }).catch(console.error)
+    }).catch((err) => logger.error({ error: err instanceof Error ? err : undefined }, 'Caught error'))
   }, [error])
 
   return (

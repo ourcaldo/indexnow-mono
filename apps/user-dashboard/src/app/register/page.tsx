@@ -2,19 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { authService, countries, findCountryByCode } from '@indexnow/shared'
+import { authService, countries, findCountryByCode, logger } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { Eye, EyeOff } from 'lucide-react'
 import { registerSchema } from '@indexnow/shared/schema'
 // We'll use a simple fetch to our detect-location API instead
 
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  Button, 
-  Input, 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
   Label,
   DashboardPreview
 } from '@indexnow/ui'
@@ -42,7 +42,7 @@ export default function Register() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  
+
   // Site settings hooks
   const siteName = useSiteName()
   const logoUrl = useSiteLogo(true) // Always use full logo for register page
@@ -51,10 +51,10 @@ export default function Register() {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth <= 768)
     }
-    
+
     checkIfMobile()
     window.addEventListener('resize', checkIfMobile)
-    
+
     return () => window.removeEventListener('resize', checkIfMobile)
   }, [])
 
@@ -76,7 +76,7 @@ export default function Register() {
           setCountry('United States') // Fallback to full country name
         }
       } catch (error) {
-        console.warn('Country detection failed:', error)
+        logger.warn({ error: error instanceof Error ? error : undefined }, 'Country detection failed')
         setCountry('United States') // Fallback to full country name
       } finally {
         setIsDetectingCountry(false)
@@ -103,7 +103,7 @@ export default function Register() {
       }
 
       const result = registerSchema.safeParse(validationData)
-      
+
       if (!result.success) {
         // Extract the first validation error
         const firstError = result.error.errors[0]
@@ -157,8 +157,8 @@ export default function Register() {
         {/* Logo for both mobile and desktop */}
         {logoUrl && (
           <div className={`absolute ${isMobile ? 'top-5 left-5' : 'top-8 left-[60px]'} flex items-center z-10`}>
-            <img 
-              src={logoUrl} 
+            <img
+              src={logoUrl}
               alt="Logo"
               style={{
                 height: isMobile ? '48px' : '48px',
@@ -310,11 +310,10 @@ export default function Register() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-[14px] px-5 text-base font-semibold text-white border-0 rounded-lg transition-colors ${
-                isLoading 
-                  ? 'bg-muted-foreground cursor-not-allowed' 
-                  : 'bg-brand-primary cursor-pointer hover:bg-brand-secondary'
-              }`}
+              className={`w-full py-[14px] px-5 text-base font-semibold text-white border-0 rounded-lg transition-colors ${isLoading
+                ? 'bg-muted-foreground cursor-not-allowed'
+                : 'bg-brand-primary cursor-pointer hover:bg-brand-secondary'
+                }`}
             >
               {isLoading ? 'Creating Account...' : 'Create Account'}
             </button>

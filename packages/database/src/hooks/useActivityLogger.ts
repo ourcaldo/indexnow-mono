@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react'
-import { type Json, authService, ACTIVITY_ENDPOINTS } from '@indexnow/shared'
+import { type Json, authService, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../client'
 
 interface ActivityLogRequest {
@@ -38,7 +38,7 @@ export const useActivityLogger = () => {
         body: JSON.stringify(request)
       })
     } catch (error) {
-      console.error('Failed to log activity:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to log activity')
     }
   }
 
@@ -46,7 +46,7 @@ export const useActivityLogger = () => {
     // Avoid duplicate page view logs for the same page
     const currentPage = `${pagePath}-${pageTitle || ''}`
     if (pageViewLogged.current === currentPage) return
-    
+
     pageViewLogged.current = currentPage
 
     await logActivity({

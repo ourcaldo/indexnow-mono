@@ -98,7 +98,7 @@ export default function OrderSuccessPage() {
         const result = await response.json()
         setOrderData(result.data)
       } catch (error) {
-        console.error('Error fetching order:', error)
+        logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching order')
         addToast({
           title: 'Error loading order',
           description:

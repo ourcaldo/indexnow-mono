@@ -4,6 +4,8 @@
  */
 
 import { ACTIVITY_ENDPOINTS } from '../../constants/ApiEndpoints'
+
+import { logger } from '@indexnow/shared'
 import { type Json } from '../../types' // Assuming Json is available or I define it locally if not found
 
 export interface ActivityLogData {
@@ -154,7 +156,7 @@ export class ActivityLogger {
       return result.data?.id || 'success'
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.error('Exception while logging user activity via API:', message)
+      logger.error('Exception while logging user activity via API: ' + message)
       return null
     }
   }

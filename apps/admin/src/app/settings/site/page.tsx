@@ -18,7 +18,7 @@ import {
   FileText,
   Map
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS, SiteSettingsRow } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, SiteSettingsRow, logger } from '@indexnow/shared'
 
 type UI_SiteSettings = SiteSettingsRow & {
   robots_txt_content?: string
@@ -47,7 +47,7 @@ export default function SiteSettings() {
         setSettings(data.data?.settings)
       }
     } catch (error) {
-      console.error('Failed to fetch site settings:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch site settings')
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export default function SiteSettings() {
         setMessage({ type: 'error', text: 'Failed to save site settings' })
       }
     } catch (error) {
-      console.error('Failed to save site settings:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to save site settings')
       setMessage({ type: 'error', text: 'Failed to save site settings' })
     } finally {
       setSaving(false)

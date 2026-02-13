@@ -7,7 +7,7 @@ import 'server-only'
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { SecureServiceRoleHelpers } from '@indexnow/database'
-import { AppConfig } from '@indexnow/shared'
+import { AppConfig, logger } from '@indexnow/shared'
 
 // Define types
 export interface ServerAdminUser {
@@ -58,8 +58,8 @@ export async function getServerAdminUser(
             )
             return cookies[name]
           },
-          set() {},
-          remove() {},
+          set() { },
+          remove() { },
         },
       }
     )
@@ -74,14 +74,14 @@ export async function getServerAdminUser(
       user = result.data.user
       authError = result.error
     }
-    
+
     // 2. Fallback to cookies
     if (!user && !forceHeader) {
       const result = await supabase.auth.getUser()
       user = result.data.user
       authError = result.error
     }
-    
+
     if (authError || !user) {
       return null
     }
@@ -121,7 +121,7 @@ export async function getServerAdminUser(
     }
 
   } catch (error: unknown) {
-    console.error('Server auth error:', error instanceof Error ? error.message : String(error))
+    logger.error('Server auth error: ' + (error instanceof Error ? error.message : String(error)))
     return null
   }
 }
@@ -134,7 +134,7 @@ export async function requireServerSuperAdminAuth(request?: NextRequest): Promis
   if (!serverAdminUser?.isSuperAdmin) {
     throw new Error('Super admin access required')
   }
-  
+
   return serverAdminUser
 }
 
@@ -146,7 +146,7 @@ export async function requireServerAdminAuth(request?: NextRequest): Promise<Ser
   if (!serverAdminUser?.isAdmin) {
     throw new Error('Admin access required')
   }
-  
+
   return serverAdminUser
 }
 
@@ -154,20 +154,20 @@ export async function requireServerAdminAuth(request?: NextRequest): Promise<Ser
  * Get authenticated user (no role requirement)
  */
 export async function getServerAuthUser(
-  request?: NextRequest, 
+  request?: NextRequest,
   options: { forceHeaderAuth?: boolean } = {}
 ): Promise<ServerAdminUser | null> {
   try {
     if (!request) {
       return null
     }
-    
+
     const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
     const forceHeader = options.forceHeaderAuth || isStateChanging;
-    
+
     const authHeader = request.headers.get('authorization')
     const hasBearer = authHeader && authHeader.startsWith('Bearer ')
-    
+
     // Create Supabase client
     const supabase = createServerClient(
       AppConfig.supabase.url,
@@ -177,10 +177,10 @@ export async function getServerAuthUser(
           get(name: string) {
             // If forcing header auth, ignore cookies
             if (forceHeader) return undefined;
-            
+
             const cookieHeader = request.headers.get('cookie')
             if (!cookieHeader) return undefined
-            
+
             const cookies = Object.fromEntries(
               cookieHeader.split(';').map(cookie => {
                 const [key, value] = cookie.trim().split('=')
@@ -190,8 +190,8 @@ export async function getServerAuthUser(
 
             return cookies[name]
           },
-          set() {},
-          remove() {},
+          set() { },
+          remove() { },
         },
       }
     )
@@ -206,14 +206,14 @@ export async function getServerAuthUser(
       user = result.data.user
       authError = result.error
     }
-    
+
     // 2. Fallback to cookies only if not state-changing or explicitly allowed
     if (!user && !forceHeader) {
       const result = await supabase.auth.getUser()
       user = result.data.user
       authError = result.error
     }
-    
+
     if (authError || !user) {
       return null
     }
@@ -252,7 +252,7 @@ export async function getServerAuthUser(
     }
 
   } catch (error: unknown) {
-    console.error('Server auth error:', error instanceof Error ? error.message : String(error))
+    logger.error('Server auth error: ' + (error instanceof Error ? error.message : String(error)))
     return null
   }
 }

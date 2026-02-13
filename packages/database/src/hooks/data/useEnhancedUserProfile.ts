@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { type Json, AUTH_ENDPOINTS, type DbUserProfile, type DbSubscriptionRow, type DbUserSettings } from '@indexnow/shared'
+import { type Json, AUTH_ENDPOINTS, type DbUserProfile, type DbSubscriptionRow, type DbUserSettings, logger } from '@indexnow/shared'
 import { supabase } from '../../client'
 
 interface UserProfile extends DbUserProfile {
@@ -155,7 +155,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
       lastFetchTime.current = now
 
     } catch (err) {
-      console.error('Error fetching user profile:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching user profile')
       setError(err instanceof Error ? err.message : 'Failed to fetch user profile')
     } finally {
       setLoading(false)
@@ -193,7 +193,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
       
       return { success: true }
     } catch (err) {
-      console.error('Error updating profile:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error updating profile')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to update profile' }
     }
   }, [])
@@ -226,7 +226,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
       
       return { success: true }
     } catch (err) {
-      console.error('Error updating settings:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error updating settings')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to update settings' }
     }
   }, [])
@@ -250,7 +250,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
         setQuota(data.quota)
       }
     } catch (err) {
-      console.error('Error refreshing quota:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error refreshing quota')
     }
   }, [])
 
@@ -279,7 +279,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
 
       return { success: true }
     } catch (err) {
-      console.error('Error changing password:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error changing password')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to change password' }
     }
   }, [])
@@ -318,7 +318,7 @@ export function useEnhancedUserProfile(): UseEnhancedUserProfileReturn {
       
       return { success: true, avatarUrl: data.avatarUrl }
     } catch (err) {
-      console.error('Error uploading avatar:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error uploading avatar')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to upload avatar' }
     }
   }, [user])

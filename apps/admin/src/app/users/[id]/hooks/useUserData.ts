@@ -94,7 +94,7 @@ export function useUserData(userId: string): UseUserDataReturn {
         setUser(data.data?.user)
       }
     } catch (error) {
-      console.error('Failed to fetch user:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch user')
     } finally {
       setLoading(false)
     }
@@ -111,7 +111,7 @@ export function useUserData(userId: string): UseUserDataReturn {
         setActivityLogs(data.data?.logs || [])
       }
     } catch (error) {
-      console.error('Failed to fetch user activity:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch user activity')
     } finally {
       setActivityLoading(false)
     }
@@ -128,7 +128,7 @@ export function useUserData(userId: string): UseUserDataReturn {
         setSecurityData(data.data?.security)
       }
     } catch (error) {
-      console.error('Failed to fetch user security data:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch user security data')
     } finally {
       setSecurityLoading(false)
     }

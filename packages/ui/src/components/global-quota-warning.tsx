@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Package } from 'lucide-react'
-import { DASHBOARD_ENDPOINTS } from '@indexnow/shared'
+import { DASHBOARD_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/database'
 
 interface QuotaInfo {
@@ -45,7 +45,7 @@ export function GlobalQuotaWarning() {
         setQuotaInfo(data.user?.quota)
       }
     } catch (error) {
-      console.error('Failed to fetch quota info:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch quota info')
     } finally {
       setLoading(false)
     }

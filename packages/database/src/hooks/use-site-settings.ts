@@ -6,6 +6,8 @@
 "use client";
 
 import { useState, useEffect } from 'react'
+
+import { logger } from '@indexnow/shared'
 import { siteSettingsService, type SiteSettings } from '../utils/site-settings'
 
 export function useSiteSettings() {
@@ -23,7 +25,7 @@ export function useSiteSettings() {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load site settings';
         setError(errorMessage)
-        console.error('Site settings hook error:', err)
+        logger.error({ error: err instanceof Error ? err : undefined }, 'Site settings hook error')
       } finally {
         setLoading(false)
       }

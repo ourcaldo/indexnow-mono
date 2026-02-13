@@ -98,7 +98,7 @@ export default function AdminOrderDetailPage() {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      console.error('Error loading order detail:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading order detail')
       setError(errorMessage)
       addToast({
         type: 'error',
@@ -159,7 +159,7 @@ export default function AdminOrderDetailPage() {
       }
 
     } catch (error: unknown) {
-      console.error('Error updating order status:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error updating order status')
       const errorMessage = error instanceof Error ? error.message : 'Failed to update order status';
       addToast({
         type: 'error',

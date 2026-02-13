@@ -459,7 +459,7 @@ export default function BillingPage() {
       const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`
       window.location.href = checkoutUrl
     } catch (error) {
-      console.error('Error starting trial:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error starting trial')
     } finally {
       setStartingTrial(null)
     }

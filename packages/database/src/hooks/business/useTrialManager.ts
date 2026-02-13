@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BILLING_ENDPOINTS } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, logger } from '@indexnow/shared'
 import { supabase } from '../../client'
 
 interface TrialInfo {
@@ -110,7 +110,7 @@ export function useTrialManager(): UseTrialManagerReturn {
       
       lastFetchTime.current = now
     } catch (err) {
-      console.error('Error fetching trial info:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching trial info')
       setError(err instanceof Error ? err.message : 'Failed to fetch trial info')
     } finally {
       setLoading(false)
@@ -145,7 +145,7 @@ export function useTrialManager(): UseTrialManagerReturn {
       
       return { success: true }
     } catch (err) {
-      console.error('Error extending trial:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error extending trial')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to extend trial' }
     }
   }, [fetchTrialInfo])
@@ -182,7 +182,7 @@ export function useTrialManager(): UseTrialManagerReturn {
       
       return { success: true }
     } catch (err) {
-      console.error('Error upgrading to paid:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error upgrading to paid')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to upgrade' }
     }
   }, [])

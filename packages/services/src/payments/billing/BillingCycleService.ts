@@ -4,6 +4,8 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+
+import { logger } from '@indexnow/shared'
 import type { 
   Database, 
   UpdateUserProfile, 
@@ -165,7 +167,7 @@ export class BillingCycleService {
       }
 
     } catch (error) {
-      console.error('Error getting billing cycle:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error getting billing cycle')
       throw error
     }
   }
@@ -231,7 +233,7 @@ export class BillingCycleService {
       return true
 
     } catch (error) {
-      console.error('Error updating billing cycle:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error updating billing cycle')
       throw error // Propagate error
     }
   }
@@ -319,7 +321,7 @@ export class BillingCycleService {
         })
 
     } catch (error) {
-      console.error('Error getting upcoming renewals:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error getting upcoming renewals')
       return []
     }
   }
@@ -396,7 +398,7 @@ export class BillingCycleService {
         })
 
     } catch (error) {
-      console.error('Error getting expired subscriptions:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error getting expired subscriptions')
       throw error
     }
   }
@@ -442,7 +444,7 @@ export class BillingCycleService {
       )
 
       if (!freePackage) {
-        console.error('Free package not found')
+        logger.error('Free package not found')
         return 0
       }
 
@@ -496,7 +498,7 @@ export class BillingCycleService {
       return updatedProfiles?.length || 0
 
     } catch (error) {
-      console.error('Error suspending expired subscriptions:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error suspending expired subscriptions')
       throw error
     }
   }

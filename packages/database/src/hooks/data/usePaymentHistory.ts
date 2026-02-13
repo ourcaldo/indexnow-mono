@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { type Json, BILLING_ENDPOINTS, buildEndpoint } from '@indexnow/shared'
+import { type Json, BILLING_ENDPOINTS, buildEndpoint, logger } from '@indexnow/shared'
 import { supabase } from '../../client'
 
 interface PaymentTransaction {
@@ -149,7 +149,7 @@ export function usePaymentHistory(): UsePaymentHistoryReturn {
         totalPages: data.pagination?.totalPages || 0
       })
     } catch (err) {
-      console.error('Error fetching transactions:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching transactions')
       setError(err instanceof Error ? err.message : 'Failed to fetch transactions')
     } finally {
       setLoading(false)
@@ -175,7 +175,7 @@ export function usePaymentHistory(): UsePaymentHistoryReturn {
         setInvoices(data.invoices || [])
       }
     } catch (err) {
-      console.error('Error fetching invoices:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching invoices')
     }
   }, [])
 
@@ -198,7 +198,7 @@ export function usePaymentHistory(): UsePaymentHistoryReturn {
         setPaymentStats(data.stats || null)
       }
     } catch (err) {
-      console.error('Error fetching payment stats:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching payment stats')
     }
   }, [])
 
@@ -228,7 +228,7 @@ export function usePaymentHistory(): UsePaymentHistoryReturn {
       await fetchTransactions(pagination.page, pagination.limit)
       return { success: true }
     } catch (err) {
-      console.error('Error retrying payment:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error retrying payment')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to retry payment' }
     }
   }, [fetchTransactions, pagination.page, pagination.limit])
@@ -257,7 +257,7 @@ export function usePaymentHistory(): UsePaymentHistoryReturn {
       const data = await response.json()
       return { success: true, url: data.downloadUrl }
     } catch (err) {
-      console.error('Error downloading invoice:', err)
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error downloading invoice')
       return { success: false, error: err instanceof Error ? err.message : 'Failed to download invoice' }
     }
   }, [])

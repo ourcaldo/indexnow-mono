@@ -110,7 +110,7 @@ export function useUserManagement(): UseUserManagementReturn {
             showError('Action Failed', 'Failed to suspend user. Please try again.')
           }
         } catch (error) {
-          console.error('Failed to suspend user:', error)
+          logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to suspend user')
           showError('System Error', 'An error occurred while suspending user.')
         } finally {
           setActionLoading(prev => ({ ...prev, suspend: false }))
@@ -146,7 +146,7 @@ export function useUserManagement(): UseUserManagementReturn {
             showError('Action Failed', 'Failed to reset password. Please try again.')
           }
         } catch (error) {
-          console.error('Failed to reset password:', error)
+          logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to reset password')
           showError('System Error', 'An error occurred while resetting password.')
         } finally {
           setActionLoading(prev => ({ ...prev, resetPassword: false }))
@@ -180,7 +180,7 @@ export function useUserManagement(): UseUserManagementReturn {
             showError('Action Failed', 'Failed to reset quota. Please try again.')
           }
         } catch (error) {
-          console.error('Failed to reset quota:', error)
+          logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to reset quota')
           showError('System Error', 'An error occurred while resetting quota.')
         } finally {
           setActionLoading(prev => ({ ...prev, resetQuota: false }))
@@ -219,7 +219,7 @@ export function useUserManagement(): UseUserManagementReturn {
             showError('Action Failed', 'Failed to extend subscription. Please try again.')
           }
         } catch (error) {
-          console.error('Failed to extend subscription:', error)
+          logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to extend subscription')
           showError('System Error', 'An error occurred while extending subscription.')
         } finally {
           setActionLoading(prev => ({ ...prev, extendSubscription: false }))
@@ -250,7 +250,7 @@ export function useUserManagement(): UseUserManagementReturn {
         showError('Update Failed', 'Failed to update user. Please try again.')
       }
     } catch (error) {
-      console.error('Failed to update user:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to update user')
       showError('System Error', 'An error occurred while updating user.')
     } finally {
       setActionLoading(prev => ({ ...prev, editData: false }))
@@ -285,7 +285,7 @@ export function useUserManagement(): UseUserManagementReturn {
         showError('Action Failed', errorData.error || 'Failed to change package. Please try again.')
       }
     } catch (error) {
-      console.error('Failed to change package:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to change package')
       showError('System Error', 'An error occurred while changing package.')
     } finally {
       setActionLoading(prev => ({ ...prev, changePackage: false }))

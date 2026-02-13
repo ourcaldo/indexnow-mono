@@ -8,7 +8,7 @@
  */
 
 import { supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, Json, TransactionMetadata } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, Json, TransactionMetadata, logger } from '@indexnow/shared';
 import { validateCustomData, getPackageIdFromSubscription, CustomData } from './utils';
 
 interface TransactionTotals {
@@ -115,7 +115,7 @@ export async function processTransactionPaymentFailed(data: unknown) {
     }
 
     // Log payment failure
-    console.log('[PAYMENT_FAILED]', {
+    logger.info({
         type: ErrorType.EXTERNAL_API,
         severity: ErrorSeverity.MEDIUM,
         transaction_id,

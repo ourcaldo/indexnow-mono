@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { authService } from '@indexnow/shared'
+import { authService, logger } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 
 import { 
@@ -38,7 +38,7 @@ export default function Login() {
           return
         }
       } catch (error) {
-        console.error('Auth check error on login page:', error)
+        logger.error({ error: error instanceof Error ? error : undefined }, 'Auth check error on login page')
         // Don't block login page if auth check fails
       } finally {
         // Always stop checking auth, even if there's an error

@@ -4,6 +4,8 @@
  */
 
 import crypto from 'crypto'
+
+import { logger } from '@indexnow/shared'
 import type { CustomerDetails } from './PaymentGateway'
 import type { ProcessPaymentRequest } from './PaymentProcessor'
 
@@ -153,7 +155,7 @@ export class PaymentValidator {
 
       return signature === expectedSignature
     } catch (error) {
-      console.error('Webhook signature validation error:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Webhook signature validation error')
       return false
     }
   }

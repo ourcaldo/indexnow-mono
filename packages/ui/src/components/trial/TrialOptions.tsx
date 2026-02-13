@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../card'
 import { Badge } from '../badge'
 import { Clock, CreditCard, CheckCircle, Star } from 'lucide-react'
 import { useToast } from '../toast'
-import { AUTH_ENDPOINTS, type PackageData } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, type PackageData, logger } from '@indexnow/shared'
 import { supabaseBrowser } from '@indexnow/database'
 
 interface TrialEligibility {
@@ -48,7 +48,7 @@ export function TrialOptions({}: TrialOptionsProps) {
         setEligibility(result)
       }
     } catch (error) {
-      console.error('Failed to check trial eligibility:', error)
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to check trial eligibility')
     } finally {
       setLoading(false)
     }
