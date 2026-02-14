@@ -5,6 +5,7 @@
 
 import { ErrorType, ErrorSeverity } from '../types/common/ErrorTypes'
 import { type Json } from '../types/common/Json'
+import { isProduction } from './config/AppConfig'
 
 /**
  * Standardized API Error Details
@@ -84,8 +85,8 @@ export function formatError(
   },
   requestId?: string
 ): ApiErrorResponse {
-  const isProd = process.env.NODE_ENV === 'production';
-  
+  const isProd = isProduction();
+
   // Use user-friendly message as the primary message in production
   const clientMessage = isProd ? (error.userMessage || 'An unexpected error occurred') : error.message;
 

@@ -8,7 +8,11 @@ import {
   type InsertUserProfile,
   type UpdateUserProfile,
   type InsertUserSettings,
-  type UpdateUserSettings, logger
+  type UpdateUserSettings,
+  logger,
+  ErrorHandlingService,
+  ErrorType,
+  ErrorSeverity
 } from '@indexnow/shared';
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
@@ -159,7 +163,7 @@ export class UserManagementService {
     const profile = await db.createUserProfile(userData);
 
     if (!profile) {
-      throw new Error('Failed to create user profile');
+      throw ErrorHandlingService.createError({ message: 'Failed to create user profile', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     // Create default user settings
@@ -214,7 +218,7 @@ export class UserManagementService {
     const updatedProfile = await db.updateUserProfile(userId, updateData);
 
     if (!updatedProfile) {
-      throw new Error('Failed to update user profile');
+      throw ErrorHandlingService.createError({ message: 'Failed to update user profile', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -267,7 +271,7 @@ export class UserManagementService {
     const updatedSettings = await db.updateUserSettings(userId, updateData);
 
     if (!updatedSettings) {
-      throw new Error('Failed to update user settings');
+      throw ErrorHandlingService.createError({ message: 'Failed to update user settings', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return this.mapDatabaseSettingsToModel(updatedSettings);
@@ -307,7 +311,7 @@ export class UserManagementService {
    */
   async getUserQuota(userId: string, feature: string): Promise<number> {
     const profile = await this.getUserProfile(userId);
-    if (!profile) throw new Error('User profile not found');
+    if (!profile) throw ErrorHandlingService.createError({ message: 'User profile not found', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
 
     const packageConfig = await this.getPackageConfig(profile.packageId || null);
 
@@ -370,7 +374,7 @@ export class UserManagementService {
   async activateTrial(userId: string, trialDays: number = 14): Promise<UserProfile> {
     const eligibility = await this.checkTrialEligibility(userId);
     if (!eligibility.isEligible) {
-      throw new Error(`Trial not eligible: ${eligibility.restrictions?.join(', ')}`);
+      throw ErrorHandlingService.createError({ message: `Trial not eligible: ${eligibility.restrictions?.join(', ')}`, type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM });
     }
 
     const trialEndsAt = new Date();
@@ -382,7 +386,7 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw new Error('Failed to activate trial');
+      throw ErrorHandlingService.createError({ message: 'Failed to activate trial', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -398,7 +402,7 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw new Error('Failed to cancel trial');
+      throw ErrorHandlingService.createError({ message: 'Failed to cancel trial', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -425,7 +429,7 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw new Error('Failed to suspend user');
+      throw ErrorHandlingService.createError({ message: 'Failed to suspend user', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -442,7 +446,7 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw new Error('Failed to unsuspend user');
+      throw ErrorHandlingService.createError({ message: 'Failed to unsuspend user', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);

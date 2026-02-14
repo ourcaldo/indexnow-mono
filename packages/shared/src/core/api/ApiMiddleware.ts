@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { type Json } from '../../types/common/Json';
-import { AppConfig } from '../config/AppConfig';
+import { AppConfig, isDevelopment } from '../config/AppConfig';
 import { logger } from '../../utils/logger';
 
 export interface MiddlewareContext {
@@ -55,7 +55,7 @@ export const corsMiddleware: MiddlewareFunction = async (context, next) => {
 
     if (origin && allowedOrigins.includes(origin)) {
       preflightResponse.headers.set('Access-Control-Allow-Origin', origin);
-    } else if (!origin && process.env.NODE_ENV === 'development') {
+    } else if (!origin && isDevelopment()) {
       // Allow local development without origin header (e.g. Postman)
       preflightResponse.headers.set('Access-Control-Allow-Origin', '*');
     }
@@ -73,7 +73,7 @@ export const corsMiddleware: MiddlewareFunction = async (context, next) => {
   if (origin && allowedOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
-  } else if (!origin && process.env.NODE_ENV === 'development') {
+  } else if (!origin && isDevelopment()) {
     response.headers.set('Access-Control-Allow-Origin', '*');
   }
 

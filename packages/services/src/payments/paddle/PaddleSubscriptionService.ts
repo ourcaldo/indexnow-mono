@@ -11,6 +11,7 @@
 
 import { PaddleService } from './PaddleService'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 // Explicit type for subscription to avoid never type inference
 interface SubscriptionRecord {
@@ -144,7 +145,7 @@ export class PaddleSubscriptionService {
           if (error.code === 'PGRST116') {
             return null
           }
-          throw new Error(`Failed to get subscription for user: ${error.message}`)
+          throw ErrorHandlingService.createError({ message: `Failed to get subscription for user: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
         }
 
         return data as SubscriptionRecord

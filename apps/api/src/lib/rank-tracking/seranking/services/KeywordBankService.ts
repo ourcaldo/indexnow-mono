@@ -486,77 +486,80 @@ export class KeywordBankService implements IKeywordBankService {
    */
   async queryKeywordData(query: KeywordBankQuery): Promise<KeywordBankQueryResult> {
     try {
-      let dbQuery = supabaseAdmin
-        .from('indb_keyword_bank')
-        .select('*', { count: 'exact' });
-
-      // Apply filters
-      if (query.keyword) {
-        dbQuery = dbQuery.ilike('keyword', `%${query.keyword}%`);
-      }
-
-      if (query.country_code) {
-        dbQuery = dbQuery.eq('country_id', query.country_code.toLowerCase());
-      }
-
-      if (query.language_code) {
-        dbQuery = dbQuery.eq('language_code', query.language_code.toLowerCase());
-      }
-
-      if (query.is_data_found !== undefined) {
-        dbQuery = dbQuery.eq('is_data_found', query.is_data_found);
-      }
-
-      if (query.min_volume !== undefined) {
-        dbQuery = dbQuery.gte('volume', query.min_volume);
-      }
-
-      if (query.max_volume !== undefined) {
-        dbQuery = dbQuery.lte('volume', query.max_volume);
-      }
-
-      if (query.min_difficulty !== undefined) {
-        dbQuery = dbQuery.gte('difficulty', query.min_difficulty);
-      }
-
-      if (query.max_difficulty !== undefined) {
-        dbQuery = dbQuery.lte('difficulty', query.max_difficulty);
-      }
-
-      if (query.keyword_intent) {
-        dbQuery = dbQuery.eq('keyword_intent', query.keyword_intent);
-      }
-
-      if (query.updated_since) {
-        dbQuery = dbQuery.gte('data_updated_at', query.updated_since.toISOString());
-      }
-
-      // Apply ordering
-      if (query.order_by) {
-        const ascending = query.order_direction === 'asc';
-        dbQuery = dbQuery.order(query.order_by, { ascending });
-      } else {
-        dbQuery = dbQuery.order('data_updated_at', { ascending: false });
-      }
-
-      // Apply pagination
       const limit = query.limit || 50;
       const offset = query.offset || 0;
-      dbQuery = dbQuery.range(offset, offset + limit - 1);
 
-      const { data, error, count } = await dbQuery;
+      const result = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'query_keyword_bank_data',
+          reason: 'Searching and filtering keyword bank data with query parameters',
+          source: 'KeywordBankService.queryKeywordData',
+          metadata: {
+            keyword: query.keyword,
+            countryCode: query.country_code,
+            limit,
+            offset
+          }
+        },
+        { table: 'indb_keyword_bank', operationType: 'select' },
+        async () => {
+          let dbQuery = supabaseAdmin
+            .from('indb_keyword_bank')
+            .select('*', { count: 'exact' });
 
-      if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error querying keyword data');
-        return {
-          data: [],
-          total: 0,
-          has_more: false
-        };
-      }
+          if (query.keyword) {
+            dbQuery = dbQuery.ilike('keyword', `%${query.keyword}%`);
+          }
+          if (query.country_code) {
+            dbQuery = dbQuery.eq('country_id', query.country_code.toLowerCase());
+          }
+          if (query.language_code) {
+            dbQuery = dbQuery.eq('language_code', query.language_code.toLowerCase());
+          }
+          if (query.is_data_found !== undefined) {
+            dbQuery = dbQuery.eq('is_data_found', query.is_data_found);
+          }
+          if (query.min_volume !== undefined) {
+            dbQuery = dbQuery.gte('volume', query.min_volume);
+          }
+          if (query.max_volume !== undefined) {
+            dbQuery = dbQuery.lte('volume', query.max_volume);
+          }
+          if (query.min_difficulty !== undefined) {
+            dbQuery = dbQuery.gte('difficulty', query.min_difficulty);
+          }
+          if (query.max_difficulty !== undefined) {
+            dbQuery = dbQuery.lte('difficulty', query.max_difficulty);
+          }
+          if (query.keyword_intent) {
+            dbQuery = dbQuery.eq('keyword_intent', query.keyword_intent);
+          }
+          if (query.updated_since) {
+            dbQuery = dbQuery.gte('data_updated_at', query.updated_since.toISOString());
+          }
 
-      const entities = (data || []).map(row => this.mapRowToEntity(row));
-      const total = count || 0;
+          if (query.order_by) {
+            const ascending = query.order_direction === 'asc';
+            dbQuery = dbQuery.order(query.order_by, { ascending });
+          } else {
+            dbQuery = dbQuery.order('data_updated_at', { ascending: false });
+          }
+
+          dbQuery = dbQuery.range(offset, offset + limit - 1);
+
+          const { data, error, count } = await dbQuery;
+
+          if (error) {
+            throw new Error(`Error querying keyword data: ${error.message}`);
+          }
+
+          return { data: data || [], count: count || 0 };
+        }
+      );
+
+      const entities = result.data.map(row => this.mapRowToEntity(row));
+      const total = result.count;
       const has_more = (offset + limit) < total;
 
       return {
@@ -583,46 +586,57 @@ export class KeywordBankService implements IKeywordBankService {
     languageCode?: string
   ): Promise<CacheStats> {
     try {
-      let query = supabaseAdmin
-        .from('indb_keyword_bank')
-        .select('*', { count: 'exact', head: true });
+      const stats = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'get_keyword_bank_cache_stats',
+          reason: 'Fetching keyword bank cache statistics for monitoring',
+          source: 'KeywordBankService.getCacheStats',
+          metadata: { countryCode, languageCode }
+        },
+        { table: 'indb_keyword_bank', operationType: 'select' },
+        async () => {
+          let query = supabaseAdmin
+            .from('indb_keyword_bank')
+            .select('*', { count: 'exact', head: true });
 
-      if (countryCode) {
-        query = query.eq('country_id', countryCode.toLowerCase());
-      }
+          if (countryCode) query = query.eq('country_id', countryCode.toLowerCase());
+          if (languageCode) query = query.eq('language_code', languageCode.toLowerCase());
 
-      if (languageCode) {
-        query = query.eq('language_code', languageCode.toLowerCase());
-      }
+          const { count: totalCount } = await query;
 
-      const { count: totalCount } = await query;
+          let dataFoundQuery = supabaseAdmin
+            .from('indb_keyword_bank')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_data_found', true);
 
-      // Get data found count
-      let dataFoundQuery = supabaseAdmin
-        .from('indb_keyword_bank')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_data_found', true);
+          if (countryCode) dataFoundQuery = dataFoundQuery.eq('country_id', countryCode.toLowerCase());
+          if (languageCode) dataFoundQuery = dataFoundQuery.eq('language_code', languageCode.toLowerCase());
 
-      if (countryCode) dataFoundQuery = dataFoundQuery.eq('country_id', countryCode.toLowerCase());
-      if (languageCode) dataFoundQuery = dataFoundQuery.eq('language_code', languageCode.toLowerCase());
+          const { count: dataFoundCount } = await dataFoundQuery;
 
-      const { count: dataFoundCount } = await dataFoundQuery;
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          let freshQuery = supabaseAdmin
+            .from('indb_keyword_bank')
+            .select('*', { count: 'exact', head: true })
+            .gte('data_updated_at', sevenDaysAgo.toISOString());
 
-      // Get fresh data count (within last 7 days)
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      let freshQuery = supabaseAdmin
-        .from('indb_keyword_bank')
-        .select('*', { count: 'exact', head: true })
-        .gte('data_updated_at', sevenDaysAgo.toISOString());
+          if (countryCode) freshQuery = freshQuery.eq('country_id', countryCode.toLowerCase());
+          if (languageCode) freshQuery = freshQuery.eq('language_code', languageCode.toLowerCase());
 
-      if (countryCode) freshQuery = freshQuery.eq('country_id', countryCode.toLowerCase());
-      if (languageCode) freshQuery = freshQuery.eq('language_code', languageCode.toLowerCase());
+          const { count: freshCount } = await freshQuery;
 
-      const { count: freshCount } = await freshQuery;
+          return {
+            totalCount: totalCount || 0,
+            dataFoundCount: dataFoundCount || 0,
+            freshCount: freshCount || 0
+          };
+        }
+      );
 
-      const total = totalCount || 0;
-      const dataFound = dataFoundCount || 0;
-      const fresh = freshCount || 0;
+      const total = stats.totalCount;
+      const dataFound = stats.dataFoundCount;
+      const fresh = stats.freshCount;
       const stale = total - fresh;
 
       return {
@@ -630,7 +644,7 @@ export class KeywordBankService implements IKeywordBankService {
         cache_hits: dataFound,
         cache_misses: total - dataFound,
         hit_ratio: total > 0 ? dataFound / total : 0,
-        average_age: 0, // Could be enhanced
+        average_age: 0,
         expired_entries: stale,
         memory_usage: 0,
         total_keywords: total,
@@ -671,66 +685,57 @@ export class KeywordBankService implements IKeywordBankService {
     try {
       const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
 
-      // First, get the records to be deleted for reporting
-      const { data: staleRecords, error: selectError } = await supabaseAdmin
-        .from('indb_keyword_bank')
-        .select('keyword')
-        .lt('data_updated_at', cutoffDate.toISOString());
+      const cleanupResult = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'cleanup_stale_keyword_bank_data',
+          reason: `Cleaning up keyword bank entries older than ${olderThanDays} days`,
+          source: 'KeywordBankService.cleanupStaleData',
+          metadata: { olderThanDays, cutoffDate: cutoffDate.toISOString() }
+        },
+        { table: 'indb_keyword_bank', operationType: 'delete' },
+        async () => {
+          // First, get the records to be deleted for reporting
+          const { data: staleRecords, error: selectError } = await supabaseAdmin
+            .from('indb_keyword_bank')
+            .select('keyword')
+            .lt('data_updated_at', cutoffDate.toISOString());
 
-      if (selectError) {
-        logger.error({ error: selectError instanceof Error ? selectError.message : String(selectError) }, 'Error selecting stale records');
-        return {
-          total_operations: 0,
-          successful_operations: 0,
-          failed_operations: 0,
-          success_rate: 0,
-          results: [],
-          errors: [selectError.message]
-        };
-      }
+          if (selectError) {
+            throw new Error(`Error selecting stale records: ${selectError.message}`);
+          }
 
-      const recordCount = staleRecords?.length || 0;
+          const recordCount = staleRecords?.length || 0;
 
-      if (recordCount === 0) {
-        return {
-          total_operations: 0,
-          successful_operations: 0,
-          failed_operations: 0,
-          success_rate: 1,
-          results: [],
-          errors: []
-        };
-      }
+          if (recordCount === 0) {
+            return { staleRecords: [], recordCount: 0, deleted: true };
+          }
 
-      // Delete stale records
-      const { error: deleteError } = await supabaseAdmin
-        .from('indb_keyword_bank')
-        .delete()
-        .lt('data_updated_at', cutoffDate.toISOString());
+          // Delete stale records
+          const { error: deleteError } = await supabaseAdmin
+            .from('indb_keyword_bank')
+            .delete()
+            .lt('data_updated_at', cutoffDate.toISOString());
 
-      if (deleteError) {
-        logger.error({ error: deleteError instanceof Error ? deleteError.message : String(deleteError) }, 'Error deleting stale records');
-        return {
-          total_operations: recordCount,
-          successful_operations: 0,
-          failed_operations: recordCount,
-          success_rate: 0,
-          results: [],
-          errors: [deleteError.message]
-        };
-      }
+          if (deleteError) {
+            throw new Error(`Error deleting stale records: ${deleteError.message}`);
+          }
 
-      const results: KeywordBankOperationResult[] = (staleRecords || []).map(record => ({
+          return { staleRecords: staleRecords || [], recordCount, deleted: true };
+        }
+      );
+
+      const results: KeywordBankOperationResult[] = cleanupResult.staleRecords.map(record => ({
         success: true,
         keyword: record.keyword,
         operation: 'cleanup'
       }));
 
       return {
-        total_operations: recordCount,
-        successful_operations: recordCount,
+        total_operations: cleanupResult.recordCount,
+        successful_operations: cleanupResult.recordCount,
         failed_operations: 0,
-        success_rate: 1,
+        success_rate: cleanupResult.recordCount > 0 ? 1 : 1,
         results,
         errors: []
       };
@@ -789,26 +794,35 @@ export class KeywordBankService implements IKeywordBankService {
         data_updated_at: new Date().toISOString()
       };
 
-      const { data: result, error } = await supabaseAdmin
-        .from('indb_keyword_bank')
-        .upsert(insertData, {
-          onConflict: 'keyword,country_id,language_code'
-        })
-        .select()
-        .single();
+      const result = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'upsert_keyword_bank_data',
+          reason: 'Inserting or updating keyword intelligence data in bank',
+          source: 'KeywordBankService.upsertKeywordData',
+          metadata: {
+            keyword: data.keyword,
+            countryCode: data.country_id,
+            hasData: data.is_data_found
+          }
+        },
+        { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
+        async () => {
+          const { data: upsertResult, error } = await supabaseAdmin
+            .from('indb_keyword_bank')
+            .upsert(insertData, {
+              onConflict: 'keyword,country_id,language_code'
+            })
+            .select()
+            .single();
 
-      if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error upserting keyword data');
-        return {
-          success: false,
-          error: {
-            message: error.message,
-            code: error.code
-          },
-          keyword: data.keyword,
-          operation: 'upsert'
-        };
-      }
+          if (error) {
+            throw new Error(`Error upserting keyword data: ${error.message}`);
+          }
+
+          return upsertResult;
+        }
+      );
 
       return {
         success: true,
@@ -860,12 +874,26 @@ export class KeywordBankService implements IKeywordBankService {
         data_updated_at: new Date().toISOString()
       }));
 
-      const { data: result, error } = await supabaseAdmin
-        .from('indb_keyword_bank')
-        .upsert(insertData, {
-          onConflict: 'keyword,country_id,language_code'
-        })
-        .select();
+      const { data: result, error } = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'bulk_upsert_keyword_bank_data',
+          reason: 'Bulk inserting/updating keyword intelligence data in bank',
+          source: 'KeywordBankService.bulkUpsertKeywordData',
+          metadata: { batchSize: data.length }
+        },
+        { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
+        async () => {
+          const { data: upsertResult, error: upsertError } = await supabaseAdmin
+            .from('indb_keyword_bank')
+            .upsert(insertData, {
+              onConflict: 'keyword,country_id,language_code'
+            })
+            .select();
+
+          return { data: upsertResult, error: upsertError };
+        }
+      );
 
       if (error) {
         logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in bulk upsert operation');
@@ -930,24 +958,37 @@ export class KeywordBankService implements IKeywordBankService {
     try {
       const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
 
-      let query = supabaseAdmin
-        .from('indb_keyword_bank')
-        .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
-        .lt('data_updated_at', cutoffDate.toISOString())
-        .order('data_updated_at', { ascending: true });
+      const data = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'get_stale_keyword_bank_entries',
+          reason: `Fetching keyword bank entries older than ${olderThanDays} days for refresh`,
+          source: 'KeywordBankService.getStaleKeywords',
+          metadata: { olderThanDays, limit, cutoffDate: cutoffDate.toISOString() }
+        },
+        { table: 'indb_keyword_bank', operationType: 'select' },
+        async () => {
+          let query = supabaseAdmin
+            .from('indb_keyword_bank')
+            .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
+            .lt('data_updated_at', cutoffDate.toISOString())
+            .order('data_updated_at', { ascending: true });
 
-      if (limit) {
-        query = query.limit(limit);
-      }
+          if (limit) {
+            query = query.limit(limit);
+          }
 
-      const { data, error } = await query;
+          const { data: rows, error } = await query;
 
-      if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching stale keywords');
-        return [];
-      }
+          if (error) {
+            throw new Error(`Error fetching stale keywords: ${error.message}`);
+          }
 
-      return (data || []).map(row => this.mapRowToEntity(row));
+          return rows || [];
+        }
+      );
+
+      return data.map(row => this.mapRowToEntity(row));
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getStaleKeywords');
       return [];
@@ -987,24 +1028,32 @@ export class KeywordBankService implements IKeywordBankService {
    */
   async deleteKeywordData(keyword: string, countryCode: string): Promise<KeywordBankOperationResult> {
     try {
-      const { error } = await supabaseAdmin
-        .from('indb_keyword_bank')
-        .delete()
-        .eq('keyword', keyword.trim().toLowerCase())
-        .eq('country_id', countryCode.toLowerCase());
+      await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'delete_keyword_bank_data',
+          reason: 'Deleting keyword intelligence data from bank',
+          source: 'KeywordBankService.deleteKeywordData',
+          metadata: {
+            keyword: keyword.trim().toLowerCase(),
+            countryCode: countryCode.toLowerCase()
+          }
+        },
+        { table: 'indb_keyword_bank', operationType: 'delete' },
+        async () => {
+          const { error } = await supabaseAdmin
+            .from('indb_keyword_bank')
+            .delete()
+            .eq('keyword', keyword.trim().toLowerCase())
+            .eq('country_id', countryCode.toLowerCase());
 
-      if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error deleting keyword data');
-        return {
-          success: false,
-          error: {
-            message: error.message,
-            code: error.code
-          },
-          keyword,
-          operation: 'delete'
-        };
-      }
+          if (error) {
+            throw new Error(`Error deleting keyword data: ${error.message}`);
+          }
+
+          return null;
+        }
+      );
 
       return {
         success: true,

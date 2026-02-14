@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { PaddleSubscriptionService } from './PaddleSubscriptionService';
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
 
 interface DbSubscriptionRow {
   id: string;
@@ -35,7 +36,7 @@ export class PaddleCancellationService {
       .single();
 
     if (error || !subscription) {
-      throw new Error('Subscription not found');
+      throw ErrorHandlingService.createError({ message: 'Subscription not found', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
     }
 
     // Safe casting since we know the schema

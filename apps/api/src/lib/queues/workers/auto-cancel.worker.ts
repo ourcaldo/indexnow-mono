@@ -49,13 +49,28 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
 
     for (const transaction of expiredTransactions) {
       try {
-        await supabaseAdmin
-          .from('indb_payment_transactions')
-          .update({
-            transaction_status: 'cancelled',
-            processed_at: new Date().toISOString(),
-          })
-          .eq('id', transaction.id)
+        await SecureServiceRoleWrapper.executeSecureOperation(
+          {
+            userId: 'system',
+            operation: 'auto_cancel_expired_transaction',
+            reason: 'Auto-cancel worker marking expired pending transaction as cancelled',
+            source: 'auto-cancel.worker',
+            metadata: { transactionId: transaction.id, orderId: transaction.order_id }
+          },
+          { table: 'indb_payment_transactions', operationType: 'update' },
+          async () => {
+            const { error } = await supabaseAdmin
+              .from('indb_payment_transactions')
+              .update({
+                transaction_status: 'cancelled',
+                processed_at: new Date().toISOString(),
+              })
+              .eq('id', transaction.id)
+
+            if (error) throw new Error(`Failed to cancel transaction: ${error.message}`)
+            return null
+          }
+        )
 
         await emailService.sendEmail({
           to: transaction.user_email,

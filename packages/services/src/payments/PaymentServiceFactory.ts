@@ -6,7 +6,7 @@
 import { PaymentProcessor } from './core/PaymentProcessor'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
 import { PaddleService } from './paddle'
-import { Database, logger } from '@indexnow/shared'
+import { Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row']
 
@@ -53,7 +53,7 @@ export class PaymentServiceFactory {
             .eq('is_active', true)
 
           if (error) {
-            throw new Error(`Failed to load payment gateways: ${error.message}`)
+            throw ErrorHandlingService.createError({ message: `Failed to load payment gateways: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
           }
 
           return data || []
@@ -99,7 +99,7 @@ export class PaymentServiceFactory {
       const isConfigured = await PaddleService.isConfigured()
 
       if (!isConfigured) {
-        throw new Error('Paddle gateway is not properly configured')
+        throw ErrorHandlingService.createError({ message: 'Paddle gateway is not properly configured', type: ErrorType.SYSTEM, severity: ErrorSeverity.HIGH })
       }
 
       // Initialize Paddle SDK instance

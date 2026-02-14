@@ -373,50 +373,62 @@ export class EnrichmentQueue extends EventEmitter {
     progress: Partial<JobProgress>
   ): Promise<boolean> {
     try {
-      // Get current job
-      const { data: job, error: fetchError } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .select('progress_data')
-        .eq('id', jobId)
-        .single();
+      const success = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'update_enrichment_job_progress',
+          reason: 'Updating enrichment job progress during processing',
+          source: 'EnrichmentQueue.updateJobProgress',
+          metadata: { jobId }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'update' },
+        async () => {
+          // Get current job
+          const { data: job, error: fetchError } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .select('progress_data')
+            .eq('id', jobId)
+            .single();
 
-      if (fetchError || !job) {
-        logger.error({ jobId }, 'Job not found for progress update');
-        return false;
-      }
+          if (fetchError || !job) {
+            throw new Error('Job not found for progress update');
+          }
 
-      // Merge progress data
-      const updatedProgress: JobProgress = {
-        ...job.progress_data,
-        ...progress
-      };
+          // Merge progress data
+          const updatedProgress: JobProgress = {
+            ...job.progress_data,
+            ...progress
+          };
 
-      // Calculate estimated completion
-      if (updatedProgress.processed > 0 && updatedProgress.total > 0) {
-        const averageTime = (Date.now() - new Date(updatedProgress.startedAt).getTime()) / updatedProgress.processed;
-        const remainingItems = updatedProgress.total - updatedProgress.processed;
-        updatedProgress.remainingTime = remainingItems * averageTime;
-        updatedProgress.estimatedCompletionAt = new Date(Date.now() + updatedProgress.remainingTime);
-        updatedProgress.averageProcessingTime = averageTime;
-      }
+          // Calculate estimated completion
+          if (updatedProgress.processed > 0 && updatedProgress.total > 0) {
+            const averageTime = (Date.now() - new Date(updatedProgress.startedAt).getTime()) / updatedProgress.processed;
+            const remainingItems = updatedProgress.total - updatedProgress.processed;
+            updatedProgress.remainingTime = remainingItems * averageTime;
+            updatedProgress.estimatedCompletionAt = new Date(Date.now() + updatedProgress.remainingTime);
+            updatedProgress.averageProcessingTime = averageTime;
+          }
 
-      // Update database
-      const { error: updateError } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .update({
-          progress_data: updatedProgress as unknown as Json,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', jobId);
+          // Update database
+          const { error: updateError } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .update({
+              progress_data: updatedProgress as unknown as Json,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', jobId);
 
-      if (updateError) {
-        logger.error({ error: updateError.message || String(updateError) }, 'Failed to update job progress');
-        return false;
-      }
+          if (updateError) {
+            throw new Error(`Failed to update job progress: ${updateError.message}`);
+          }
+
+          return updatedProgress;
+        }
+      );
 
       // Emit progress event
       if (this.config.enableEvents) {
-        this.emitJobEvent(JobEventType.JOB_PROGRESS, jobId, undefined, { progress: updatedProgress });
+        this.emitJobEvent(JobEventType.JOB_PROGRESS, jobId, undefined, { progress: success });
       }
 
       return true;
@@ -444,15 +456,28 @@ export class EnrichmentQueue extends EventEmitter {
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .update(updates)
-        .eq('id', jobId);
+      await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'complete_enrichment_job',
+          reason: 'Marking enrichment job as completed',
+          source: 'EnrichmentQueue.completeJob',
+          metadata: { jobId, status }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'update' },
+        async () => {
+          const { error } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .update(updates)
+            .eq('id', jobId);
 
-      if (error) {
-        logger.error({ error: error.message || String(error) }, 'Failed to complete job');
-        return false;
-      }
+          if (error) {
+            throw new Error(`Failed to complete job: ${error.message}`);
+          }
+
+          return null;
+        }
+      );
 
       this.metrics.jobsProcessed++;
       this.metrics.lastProcessedAt = new Date();
@@ -481,76 +506,84 @@ export class EnrichmentQueue extends EventEmitter {
     shouldRetry: boolean = true
   ): Promise<boolean> {
     try {
-      // Get current job
-      const { data: job, error: fetchError } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .select('retry_count, config')
-        .eq('id', jobId)
-        .single();
+      const result = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'handle_enrichment_job_failure',
+          reason: 'Handling enrichment job failure with retry logic',
+          source: 'EnrichmentQueue.failJob',
+          metadata: { jobId, shouldRetry, errorMessage: error.message }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'update' },
+        async () => {
+          // Get current job
+          const { data: job, error: fetchError } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .select('retry_count, config')
+            .eq('id', jobId)
+            .single();
 
-      if (fetchError || !job) {
-        logger.error({ jobId }, 'Job not found for failure handling');
-        return false;
-      }
+          if (fetchError || !job) {
+            throw new Error('Job not found for failure handling');
+          }
 
-      const retryCount = job.retry_count + 1;
-      const config = job.config as EnrichmentJobConfig;
-      const maxRetries = config.maxRetries || this.config.maxRetries;
+          const retryCount = job.retry_count + 1;
+          const config = job.config as EnrichmentJobConfig;
+          const maxRetries = config.maxRetries || this.config.maxRetries;
 
-      let updates: EnrichmentJobUpdate;
+          let updates: EnrichmentJobUpdate;
+          let willRetry = false;
 
-      if (shouldRetry && retryCount <= maxRetries) {
-        // Schedule retry
-        const retryDelay = config.retryDelayMs * Math.pow(this.config.retryDelayMultiplier, retryCount - 1);
-        const nextRetryAt = new Date(Date.now() + retryDelay);
+          if (shouldRetry && retryCount <= maxRetries) {
+            const retryDelay = config.retryDelayMs * Math.pow(this.config.retryDelayMultiplier, retryCount - 1);
+            const nextRetryAt = new Date(Date.now() + retryDelay);
 
-        updates = {
-          status: EnrichmentJobStatus.RETRYING,
-          retry_count: retryCount,
-          last_retry_at: new Date().toISOString(),
-          next_retry_at: nextRetryAt.toISOString(),
-          error_message: error.message,
-          locked_at: null,
-          worker_id: null,
-          updated_at: new Date().toISOString()
-        };
+            updates = {
+              status: EnrichmentJobStatus.RETRYING,
+              retry_count: retryCount,
+              last_retry_at: new Date().toISOString(),
+              next_retry_at: nextRetryAt.toISOString(),
+              error_message: error.message,
+              locked_at: null,
+              worker_id: null,
+              updated_at: new Date().toISOString()
+            };
+            willRetry = true;
+          } else {
+            updates = {
+              status: EnrichmentJobStatus.FAILED,
+              retry_count: retryCount,
+              error_message: error.message,
+              completed_at: new Date().toISOString(),
+              locked_at: null,
+              worker_id: null,
+              updated_at: new Date().toISOString()
+            };
+          }
 
-        // Emit retry event
-        if (this.config.enableEvents) {
-          this.emitJobEvent(JobEventType.JOB_RETRYING, jobId, undefined, {
-            retryCount,
-            nextRetryAt,
-            error
-          });
+          const { error: updateError } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .update(updates)
+            .eq('id', jobId);
+
+          if (updateError) {
+            throw new Error(`Failed to update failed job: ${updateError.message}`);
+          }
+
+          return { willRetry, retryCount };
         }
-      } else {
-        // Mark as permanently failed
-        updates = {
-          status: EnrichmentJobStatus.FAILED,
-          retry_count: retryCount,
-          error_message: error.message,
-          completed_at: new Date().toISOString(),
-          locked_at: null,
-          worker_id: null,
-          updated_at: new Date().toISOString()
-        };
+      );
 
-        this.metrics.jobsFailed++;
-
-        // Emit failure event
-        if (this.config.enableEvents) {
+      // Emit events based on result
+      if (this.config.enableEvents) {
+        if (result.willRetry) {
+          this.emitJobEvent(JobEventType.JOB_RETRYING, jobId, undefined, { retryCount: result.retryCount, error });
+        } else {
+          this.metrics.jobsFailed++;
           this.emitJobEvent(JobEventType.JOB_FAILED, jobId, undefined, { error });
         }
-      }
-
-      const { error: updateError } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .update(updates)
-        .eq('id', jobId);
-
-      if (updateError) {
-        logger.error({ error: updateError.message || String(updateError) }, 'Failed to update failed job');
-        return false;
+      } else if (!result.willRetry) {
+        this.metrics.jobsFailed++;
       }
 
       return true;
@@ -565,33 +598,43 @@ export class EnrichmentQueue extends EventEmitter {
    */
   async cancelJob(jobId: string, userId?: string): Promise<QueueOperationResponse> {
     try {
-      let query = supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .update({
-          status: EnrichmentJobStatus.CANCELLED,
-          cancelled_at: new Date().toISOString(),
-          locked_at: null,
-          worker_id: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', jobId)
-        .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING]);
+      const cancelResult = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: userId || 'system',
+          operation: 'cancel_enrichment_job',
+          reason: 'Cancelling enrichment job by user or system request',
+          source: 'EnrichmentQueue.cancelJob',
+          metadata: { jobId, userId }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'update' },
+        async () => {
+          let query = supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .update({
+              status: EnrichmentJobStatus.CANCELLED,
+              cancelled_at: new Date().toISOString(),
+              locked_at: null,
+              worker_id: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', jobId)
+            .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING]);
 
-      if (userId) {
-        query = query.eq('user_id', userId);
-      }
+          if (userId) {
+            query = query.eq('user_id', userId);
+          }
 
-      const { error, count } = await query;
+          const { error, count } = await query;
 
-      if (error) {
-        logger.error({ error: error.message || String(error) }, 'Failed to cancel job');
-        return {
-          success: false,
-          error: 'Failed to cancel job'
-        };
-      }
+          if (error) {
+            throw new Error(`Failed to cancel job: ${error.message}`);
+          }
 
-      const success = (count || 0) > 0;
+          return { count: count || 0 };
+        }
+      );
+
+      const success = cancelResult.count > 0;
 
       if (success && this.config.enableEvents) {
         this.emitJobEvent(JobEventType.JOB_CANCELLED, jobId, userId);
@@ -599,7 +642,7 @@ export class EnrichmentQueue extends EventEmitter {
 
       return {
         success,
-        affectedJobs: count || 0,
+        affectedJobs: cancelResult.count,
         message: success ? 'Job cancelled successfully' : 'Job not found or already processed'
       };
     } catch (error) {
@@ -616,18 +659,36 @@ export class EnrichmentQueue extends EventEmitter {
    */
   async getJobStatus(jobId: string, userId?: string): Promise<JobStatusResponse> {
     try {
-      let query = supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .select('id, user_id, status, config, results, error_message, created_at, updated_at')
-        .eq('id', jobId);
+      const data = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: userId || 'system',
+          operation: 'get_enrichment_job_status',
+          reason: 'Fetching enrichment job status and details',
+          source: 'EnrichmentQueue.getJobStatus',
+          metadata: { jobId, userId }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'select' },
+        async () => {
+          let query = supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .select('id, user_id, status, config, results, error_message, created_at, updated_at')
+            .eq('id', jobId);
 
-      if (userId) {
-        query = query.eq('user_id', userId);
-      }
+          if (userId) {
+            query = query.eq('user_id', userId);
+          }
 
-      const { data, error } = await query.single();
+          const { data, error } = await query.single();
 
-      if (error || !data) {
+          if (error || !data) {
+            return null;
+          }
+
+          return data;
+        }
+      );
+
+      if (!data) {
         return {
           success: false,
           error: 'Job not found'
@@ -725,24 +786,34 @@ export class EnrichmentQueue extends EventEmitter {
     try {
       const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
 
-      const { error, count } = await supabaseAdmin
-        .from('indb_enrichment_jobs')
-        .delete()
-        .in('status', [EnrichmentJobStatus.COMPLETED, EnrichmentJobStatus.CANCELLED])
-        .lt('completed_at', cutoffDate.toISOString());
+      const result = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'cleanup_completed_enrichment_jobs',
+          reason: `Cleaning up completed/cancelled enrichment jobs older than ${olderThanDays} days`,
+          source: 'EnrichmentQueue.cleanupCompletedJobs',
+          metadata: { olderThanDays, cutoffDate: cutoffDate.toISOString() }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'delete' },
+        async () => {
+          const { error, count } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .delete()
+            .in('status', [EnrichmentJobStatus.COMPLETED, EnrichmentJobStatus.CANCELLED])
+            .lt('completed_at', cutoffDate.toISOString());
 
-      if (error) {
-        logger.error({ error: error.message || String(error) }, 'Error cleaning up jobs');
-        return {
-          success: false,
-          error: 'Failed to cleanup jobs'
-        };
-      }
+          if (error) {
+            throw new Error(`Error cleaning up jobs: ${error.message}`);
+          }
+
+          return { count: count || 0 };
+        }
+      );
 
       return {
         success: true,
-        affectedJobs: count || 0,
-        message: `Cleaned up ${count || 0} old jobs`
+        affectedJobs: result.count,
+        message: `Cleaned up ${result.count} old jobs`
       };
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in job cleanup');
@@ -757,17 +828,35 @@ export class EnrichmentQueue extends EventEmitter {
    * Get queue size
    */
   private async getQueueSize(): Promise<number> {
-    const { count, error } = await supabaseAdmin
-      .from('indb_enrichment_jobs')
-      .select('*', { count: 'exact', head: true })
-      .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING, EnrichmentJobStatus.RETRYING]);
+    try {
+      const result = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'get_enrichment_queue_size',
+          reason: 'Checking enrichment queue size for capacity validation',
+          source: 'EnrichmentQueue.getQueueSize',
+          metadata: {}
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'select' },
+        async () => {
+          const { count, error } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .select('*', { count: 'exact', head: true })
+            .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING, EnrichmentJobStatus.RETRYING]);
 
-    if (error) {
-      logger.error({ error: error.message || String(error) }, 'Error getting queue size');
+          if (error) {
+            throw new Error(`Error getting queue size: ${error.message}`);
+          }
+
+          return count || 0;
+        }
+      );
+
+      return result;
+    } catch (error) {
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting queue size');
       return 0;
     }
-
-    return count || 0;
   }
 
   /**
@@ -860,21 +949,40 @@ export class EnrichmentQueue extends EventEmitter {
    * Get job queue position
    */
   private async getJobQueuePosition(jobId: string): Promise<number> {
-    const { data: job } = await supabaseAdmin
-      .from('indb_enrichment_jobs')
-      .select('priority, created_at')
-      .eq('id', jobId)
-      .single();
+    try {
+      const position = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'get_enrichment_job_queue_position',
+          reason: 'Calculating queue position for enrichment job',
+          source: 'EnrichmentQueue.getJobQueuePosition',
+          metadata: { jobId }
+        },
+        { table: 'indb_enrichment_jobs', operationType: 'select' },
+        async () => {
+          const { data: job } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .select('priority, created_at')
+            .eq('id', jobId)
+            .single();
 
-    if (!job) return 0;
+          if (!job) return 0;
 
-    const { count } = await supabaseAdmin
-      .from('indb_enrichment_jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', EnrichmentJobStatus.QUEUED)
-      .or(`priority.gt.${job.priority},and(priority.eq.${job.priority},created_at.lt.${job.created_at})`);
+          const { count } = await supabaseAdmin
+            .from('indb_enrichment_jobs')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', EnrichmentJobStatus.QUEUED)
+            .or(`priority.gt.${job.priority},and(priority.eq.${job.priority},created_at.lt.${job.created_at})`);
 
-    return (count || 0) + 1;
+          return (count || 0) + 1;
+        }
+      );
+
+      return position;
+    } catch (error) {
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting job queue position');
+      return 0;
+    }
   }
 
   /**

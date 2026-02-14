@@ -5,6 +5,7 @@
 
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 // Explicit type for gateway config to avoid never type inference
 interface PaddleGatewayConfig {
@@ -37,7 +38,7 @@ export class PaddleService {
     const gateway = await this.getGatewayConfig()
 
     if (!gateway) {
-      throw new Error('Paddle gateway is not configured or inactive')
+      throw ErrorHandlingService.createError({ message: 'Paddle gateway is not configured or inactive', type: ErrorType.SYSTEM, severity: ErrorSeverity.CRITICAL })
     }
 
     // CRITICAL: Get API key from DATABASE (not environment variables)
@@ -45,7 +46,7 @@ export class PaddleService {
     const apiKey = apiCredentials.api_key
 
     if (!apiKey) {
-      throw new Error('PADDLE API key not found in database. Please update indb_payment_gateways.api_credentials with actual API key.')
+      throw ErrorHandlingService.createError({ message: 'PADDLE API key not found in database. Please update indb_payment_gateways.api_credentials with actual API key.', type: ErrorType.SYSTEM, severity: ErrorSeverity.CRITICAL })
     }
 
     // Initialize Paddle SDK
@@ -80,7 +81,7 @@ export class PaddleService {
           .single()
 
         if (error) {
-          throw new Error(`Failed to load Paddle gateway configuration: ${error.message}`)
+          throw ErrorHandlingService.createError({ message: `Failed to load Paddle gateway configuration: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
         }
 
         return data as PaddleGatewayConfig

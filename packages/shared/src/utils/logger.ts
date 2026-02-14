@@ -4,6 +4,7 @@
  */
 
 import { type Json } from '../types/common/Json';
+import { isProduction } from '../core/config/AppConfig';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -15,7 +16,7 @@ interface LogContext extends Record<string, Json | Error | object | undefined> {
 }
 
 class Logger {
-  private isProduction = process.env.NODE_ENV === 'production';
+  private isProductionEnv = isProduction();
 
   private formatMessage(level: LogLevel, context: LogContext, message: string): string {
     const timestamp = new Date().toISOString();
@@ -26,7 +27,7 @@ class Logger {
     const ctx = typeof context === 'string' ? {} : context;
     const msg = typeof context === 'string' ? context : message || '';
 
-    if (this.isProduction) return;
+    if (this.isProductionEnv) return;
 
     const formattedMsg = this.formatMessage(level, ctx, msg);
 
@@ -92,8 +93,18 @@ export const ErrorHandlingService = {
 
     logger.error(logContext, message);
   },
-  createError: (config: { message: string;[key: string]: Json | undefined }) => {
-    logger.error(config as LogContext, config.message || 'Created error');
+  createError: (config: {
+    message: string;
+    type?: ErrorType;
+    severity?: ErrorSeverity;
+    [key: string]: Json | ErrorType | ErrorSeverity | undefined;
+  }) => {
+    const logContext: LogContext = {
+      errorType: config.type,
+      severity: config.severity,
+      ...config,
+    };
+    logger.error(logContext, config.message || 'Created error');
     return new Error(config.message);
   }
 };

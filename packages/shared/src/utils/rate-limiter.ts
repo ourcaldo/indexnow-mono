@@ -37,9 +37,9 @@ export interface HeadersObject {
   [key: string]: HeaderValue;
 }
 
-export type HeadersLike = 
-  | Headers 
-  | HeadersObject 
+export type HeadersLike =
+  | Headers
+  | HeadersObject
   | { get(name: string): string | null | undefined };
 
 export interface RequestLike {
@@ -48,12 +48,19 @@ export interface RequestLike {
 }
 
 /**
+ * Type guard to check if the headers object has a .get() method
+ */
+function isHeadersWithGet(h: HeadersLike): h is { get(name: string): string | null } {
+  return 'get' in h && typeof (h as Record<string, unknown>).get === 'function';
+}
+
+/**
  * Safely get a header value from various header structures
  */
 function getHeaderValue(headers: HeadersLike, name: string): string | null {
   // Check if it's a Headers object or similar with .get()
-  if ('get' in headers && typeof (headers as any).get === 'function') {
-    return (headers as any).get(name) ?? null;
+  if (isHeadersWithGet(headers)) {
+    return headers.get(name) ?? null;
   }
 
   // Treat as plain object (Record)
@@ -64,7 +71,7 @@ function getHeaderValue(headers: HeadersLike, name: string): string | null {
   if (Array.isArray(value)) {
     return value[0] || null;
   }
-  
+
   return value || null;
 }
 

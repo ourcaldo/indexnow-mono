@@ -1012,18 +1012,37 @@ export class HealthChecker implements IHealthChecker {
   private async loadHistoricalHealthData(): Promise<void> {
     // Load historical health data for trend analysis
     try {
-      const { data, error } = await supabaseAdmin
-        .from('indb_seranking_health_checks')
-        .select('id, service_name, status, response_time, error_message, timestamp, created_at')
-        .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .order('timestamp', { ascending: false })
-        .limit(100);
+      await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          operation: 'load_historical_health_data',
+          reason: 'Loading historical health check data for trend analysis and comparison',
+          source: 'HealthChecker.loadHistoricalHealthData',
+          metadata: {
+            lookbackHours: 24,
+            limit: 100
+          }
+        },
+        {
+          table: 'indb_seranking_health_checks',
+          operationType: 'select'
+        },
+        async () => {
+          const { data, error } = await supabaseAdmin
+            .from('indb_seranking_health_checks')
+            .select('id, service_name, status, response_time, error_message, timestamp, created_at')
+            .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order('timestamp', { ascending: false })
+            .limit(100);
 
-      if (error) {
-        this.log('warn', `Failed to load historical health data: ${error.message}`);
-      } else {
-        this.log('info', `Loaded ${(data || []).length} historical health records`);
-      }
+          if (error) {
+            this.log('warn', `Failed to load historical health data: ${error.message}`);
+            return [];
+          }
+
+          this.log('info', `Loaded ${(data || []).length} historical health records`);
+          return data || [];
+        }
+      );
     } catch (error) {
       this.log('error', `Error loading historical health data: ${error}`);
     }

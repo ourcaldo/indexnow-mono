@@ -1,5 +1,5 @@
 import { supabaseBrowser as supabase } from '@indexnow/database';
-import { type RankTrackingDomain, logger } from '@indexnow/shared';
+import { type RankTrackingDomain, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { QuotaService } from './monitoring/QuotaService';
 
 export class RankTrackingService {
@@ -43,7 +43,7 @@ export class RankTrackingService {
     // 1. Check & Consume Quota
     const quotaConsumed = await QuotaService.consumeQuota(userId, 1);
     if (!quotaConsumed) {
-      throw new Error('Insufficient quota to track new keyword');
+      throw ErrorHandlingService.createError({ message: 'Insufficient quota to track new keyword', type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM });
     }
 
     const data = {
@@ -65,7 +65,7 @@ export class RankTrackingService {
 
     if (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to create keyword');
-      throw new Error(`Failed to create keyword: ${error.message}`);
+      throw ErrorHandlingService.createError({ message: `Failed to create keyword: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return keyword;
@@ -82,7 +82,7 @@ export class RankTrackingService {
       .in('id', keywordIds);
 
     if (error) {
-      throw new Error(`Failed to delete keywords: ${error.message}`);
+      throw ErrorHandlingService.createError({ message: `Failed to delete keywords: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return count || 0;
@@ -103,7 +103,7 @@ export class RankTrackingService {
     const { data, count, error } = await query;
 
     if (error) {
-      throw new Error(`Failed to fetch keywords: ${error.message}`);
+      throw ErrorHandlingService.createError({ message: `Failed to fetch keywords: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
     }
 
     return { keywords: data || [], total: count || 0 };

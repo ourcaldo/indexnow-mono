@@ -6,7 +6,7 @@
 import { PaymentGateway, PaymentRequest, PaymentResponse, CustomerDetails } from './PaymentGateway'
 import { PaymentValidator } from './PaymentValidator'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
-import { Database, DbPackageRow, DbTransactionRow, InsertTransaction, TransactionGatewayResponse, PackagePricingTiers, Json, logger } from '@indexnow/shared'
+import { Database, DbPackageRow, DbTransactionRow, InsertTransaction, TransactionGatewayResponse, PackagePricingTiers, Json, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export interface ProcessPaymentRequest {
   user_id: string
@@ -206,7 +206,7 @@ export class PaymentProcessor {
     }
 
     // If no pricing_tiers found, throw error
-    throw new Error(`No pricing found for ${billingPeriod} billing period`)
+    throw ErrorHandlingService.createError({ message: `No pricing found for ${billingPeriod} billing period`, type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM })
   }
 
   /**
@@ -396,7 +396,7 @@ export class PaymentProcessor {
             .eq('id', transactionId)
 
           if (error) {
-            throw new Error(`Failed to update transaction with result: ${error.message}`)
+            throw ErrorHandlingService.createError({ message: `Failed to update transaction with result: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
           }
 
           return { success: true }

@@ -4,7 +4,7 @@ import { queueConfig } from '../config'
 import { ImmediateRankCheckJob, ImmediateRankCheckJobSchema } from '../types'
 import { RankTracker } from '@/lib/rank-tracking/rank-tracker'
 import { logger } from '@/lib/monitoring/error-handling'
-import { supabaseAdmin } from '@indexnow/database'
+import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
 
 async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
   success: boolean
@@ -19,15 +19,29 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
     const validatedData = ImmediateRankCheckJobSchema.parse(job.data)
 
     // 1. Get keyword details
-    const { data: keyword, error: keywordError } = await supabaseAdmin
-      .from('indb_rank_keywords')
-      .select('id, keyword, domain, country, device, position')
-      .eq('id', keywordId)
-      .single()
+    const keyword = await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: userId || 'system',
+        operation: 'worker_get_keyword_for_rank_check',
+        reason: 'Rank check worker fetching keyword details for rank check job',
+        source: 'queues/workers/rank-check.worker',
+        metadata: { keywordId, jobId: job.id }
+      },
+      { table: 'indb_rank_keywords', operationType: 'select' },
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from('indb_rank_keywords')
+          .select('id, keyword, domain, country, device, position')
+          .eq('id', keywordId)
+          .single()
 
-    if (keywordError || !keyword) {
-      throw new Error('Keyword not found or not accessible')
-    }
+        if (error || !data) {
+          throw new Error('Keyword not found or not accessible')
+        }
+
+        return data
+      }
+    )
 
     // 2. Check rank using Firecrawl (RankTracker class)
     const result = await RankTracker.checkRank(
@@ -37,28 +51,46 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
       keyword.device
     )
 
-    // 3. Update DB
-    // Update keyword position
-    await supabaseAdmin
-      .from('indb_rank_keywords')
-      .update({
-        position: result.position,
-        previous_position: keyword.position, // Move current to previous
-        last_checked: new Date().toISOString()
-      })
-      .eq('id', keywordId)
+    // 3. Update DB — update keyword position + insert ranking history
+    await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: userId || 'system',
+        operation: 'worker_save_rank_check_result',
+        reason: 'Rank check worker saving rank check results to database',
+        source: 'queues/workers/rank-check.worker',
+        metadata: { keywordId, jobId: job.id, position: result.position }
+      },
+      { table: 'indb_rank_keywords', operationType: 'update' },
+      async () => {
+        // Update keyword position
+        const { error: updateError } = await supabaseAdmin
+          .from('indb_rank_keywords')
+          .update({
+            position: result.position,
+            previous_position: keyword.position,
+            last_checked: new Date().toISOString()
+          })
+          .eq('id', keywordId)
 
-    // Insert ranking history
-    await supabaseAdmin
-      .from('indb_keyword_rankings')
-      .insert({
-        keyword_id: keywordId,
-        position: result.position,
-        url: result.url,
-        check_date: new Date().toISOString().split('T')[0], // DATE type (YYYY-MM-DD)
-        device_type: keyword.device,
-        metadata: result // Store complete API response
-      })
+        if (updateError) throw new Error(`Failed to update keyword position: ${updateError.message}`)
+
+        // Insert ranking history
+        const { error: insertError } = await supabaseAdmin
+          .from('indb_keyword_rankings')
+          .insert({
+            keyword_id: keywordId,
+            position: result.position,
+            url: result.url,
+            check_date: new Date().toISOString().split('T')[0],
+            device_type: keyword.device,
+            metadata: result
+          })
+
+        if (insertError) throw new Error(`Failed to insert ranking history: ${insertError.message}`)
+
+        return null
+      }
+    )
 
     logger.info({ jobId: job.id, keywordId, rank: result.position }, 'Rank check completed successfully')
 

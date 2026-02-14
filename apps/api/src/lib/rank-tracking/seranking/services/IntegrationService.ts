@@ -1087,14 +1087,34 @@ export class IntegrationService implements IIntegrationService {
 
   private async checkAutoQuotaReset(): Promise<void> {
     try {
-      const { data: integrations, error } = await supabaseAdmin
-        .from('indb_site_integration')
-        .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
-        .eq('service_name', 'seranking_keyword_export');
+      const integrations = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'check_auto_quota_reset',
+          reason: 'Checking if SeRanking quota needs automatic reset based on reset date',
+          source: 'IntegrationService.checkAutoQuotaReset',
+          metadata: {
+            serviceName: 'seranking_keyword_export',
+            checkTime: new Date().toISOString()
+          }
+        },
+        {
+          table: 'indb_site_integration',
+          operationType: 'select'
+        },
+        async () => {
+          const { data, error } = await supabaseAdmin
+            .from('indb_site_integration')
+            .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
+            .eq('service_name', 'seranking_keyword_export');
 
-      if (error || !integrations) {
-        return;
-      }
+          if (error) {
+            throw error;
+          }
+
+          return data || [];
+        }
+      );
 
       const now = new Date();
       for (const integration of integrations) {
