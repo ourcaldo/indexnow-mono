@@ -12,7 +12,10 @@ import {
   SeRankingErrorType,
   RateLimitConfig,
   ApiMetrics,
-  Database
+  Database,
+  ErrorHandlingService,
+  ErrorType,
+  ErrorSeverity
 } from '@indexnow/shared';
 import { IIntegrationService, ISeRankingApiClient } from '../types/ServiceTypes';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
@@ -307,7 +310,7 @@ export class IntegrationService implements IIntegrationService {
       // Get current integration
       const integrationResult = await this.getIntegrationSettings();
       if (!integrationResult.success) {
-        throw new Error('Failed to get integration settings');
+        throw ErrorHandlingService.createError({ message: 'Failed to get integration settings', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
       }
 
       // Update quota usage in integration table
@@ -342,7 +345,7 @@ export class IntegrationService implements IIntegrationService {
             .eq('service_name', 'seranking_keyword_export')
 
           if (updateError) {
-            throw new Error(`Failed to update quota usage: ${updateError.message}`)
+            throw ErrorHandlingService.createError({ message: `Failed to update quota usage: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
           }
 
           return { success: true }
@@ -397,7 +400,7 @@ export class IntegrationService implements IIntegrationService {
               })
 
             if (logError) {
-              throw new Error(`Failed to log usage details: ${logError.message}`)
+              throw ErrorHandlingService.createError({ message: `Failed to log usage details: ${logError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
             }
 
             return { success: true }
@@ -483,7 +486,7 @@ export class IntegrationService implements IIntegrationService {
             .eq('service_name', 'seranking_keyword_export')
 
           if (error) {
-            throw new Error(`Failed to reset quota usage: ${error.message}`)
+            throw ErrorHandlingService.createError({ message: `Failed to reset quota usage: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
           }
 
           return { success: true }
@@ -683,7 +686,7 @@ export class IntegrationService implements IIntegrationService {
     try {
       const settingsResult = await this.getIntegrationSettings();
       if (!settingsResult.success) {
-        throw new Error('Failed to get integration settings');
+        throw ErrorHandlingService.createError({ message: 'Failed to get integration settings', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
       }
 
       const settings = settingsResult.data!;
@@ -733,7 +736,7 @@ export class IntegrationService implements IIntegrationService {
     try {
       const quotaResult = await this.getQuotaStatus();
       if (!quotaResult.success) {
-        throw new Error('Failed to get quota status');
+        throw ErrorHandlingService.createError({ message: 'Failed to get quota status', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
       }
 
       const quota = quotaResult.data!;
@@ -800,7 +803,7 @@ export class IntegrationService implements IIntegrationService {
               .order('timestamp', { ascending: true });
 
             if (error) {
-              throw new Error(`Usage logs table not accessible: ${error.message}`);
+              throw ErrorHandlingService.createError({ message: `Usage logs table not accessible: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
             }
 
             return usageLogs || [];

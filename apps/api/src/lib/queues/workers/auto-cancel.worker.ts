@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@indexnow/database'
 import { SecureServiceRoleWrapper } from '@indexnow/database'
 import { emailService } from '@indexnow/mail'
 import { logger } from '@/lib/monitoring/error-handling'
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
   successCount: number
@@ -67,7 +68,7 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
               })
               .eq('id', transaction.id)
 
-            if (error) throw new Error(`Failed to cancel transaction: ${error.message}`)
+            if (error) throw ErrorHandlingService.createError({ message: `Failed to cancel transaction: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
             return null
           }
         )

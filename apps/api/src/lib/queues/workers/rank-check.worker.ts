@@ -5,6 +5,7 @@ import { ImmediateRankCheckJob, ImmediateRankCheckJobSchema } from '../types'
 import { RankTracker } from '@/lib/rank-tracking/rank-tracker'
 import { logger } from '@/lib/monitoring/error-handling'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
   success: boolean
@@ -36,7 +37,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
           .single()
 
         if (error || !data) {
-          throw new Error('Keyword not found or not accessible')
+          throw ErrorHandlingService.createError({ message: 'Keyword not found or not accessible', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM })
         }
 
         return data
@@ -72,7 +73,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
           })
           .eq('id', keywordId)
 
-        if (updateError) throw new Error(`Failed to update keyword position: ${updateError.message}`)
+        if (updateError) throw ErrorHandlingService.createError({ message: `Failed to update keyword position: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
 
         // Insert ranking history
         const { error: insertError } = await supabaseAdmin
@@ -86,7 +87,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
             metadata: result
           })
 
-        if (insertError) throw new Error(`Failed to insert ranking history: ${insertError.message}`)
+        if (insertError) throw ErrorHandlingService.createError({ message: `Failed to insert ranking history: ${insertError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
 
         return null
       }

@@ -4,7 +4,7 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { type Database, logger } from '@indexnow/shared';
+import { type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
   KeywordBankEntity,
   KeywordBankInsert,
@@ -551,7 +551,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data, error, count } = await dbQuery;
 
           if (error) {
-            throw new Error(`Error querying keyword data: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Error querying keyword data: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return { data: data || [], count: count || 0 };
@@ -702,7 +702,7 @@ export class KeywordBankService implements IKeywordBankService {
             .lt('data_updated_at', cutoffDate.toISOString());
 
           if (selectError) {
-            throw new Error(`Error selecting stale records: ${selectError.message}`);
+            throw ErrorHandlingService.createError({ message: `Error selecting stale records: ${selectError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           const recordCount = staleRecords?.length || 0;
@@ -718,7 +718,7 @@ export class KeywordBankService implements IKeywordBankService {
             .lt('data_updated_at', cutoffDate.toISOString());
 
           if (deleteError) {
-            throw new Error(`Error deleting stale records: ${deleteError.message}`);
+            throw ErrorHandlingService.createError({ message: `Error deleting stale records: ${deleteError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return { staleRecords: staleRecords || [], recordCount, deleted: true };
@@ -817,7 +817,7 @@ export class KeywordBankService implements IKeywordBankService {
             .single();
 
           if (error) {
-            throw new Error(`Error upserting keyword data: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Error upserting keyword data: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return upsertResult;
@@ -981,7 +981,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data: rows, error } = await query;
 
           if (error) {
-            throw new Error(`Error fetching stale keywords: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Error fetching stale keywords: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return rows || [];
@@ -1048,7 +1048,7 @@ export class KeywordBankService implements IKeywordBankService {
             .eq('country_id', countryCode.toLowerCase());
 
           if (error) {
-            throw new Error(`Error deleting keyword data: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Error deleting keyword data: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return null;

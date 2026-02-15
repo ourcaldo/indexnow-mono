@@ -4,7 +4,7 @@
  * Handles job prioritization, scheduling, and persistence
  */
 
-import { Database, Json } from '@indexnow/shared';
+import { Database, Json, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import {
   EnrichmentJob,
@@ -196,7 +196,7 @@ export class EnrichmentQueue extends EventEmitter {
             .single();
 
           if (error) {
-            throw new Error(`Failed to insert job: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to insert job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return data;
@@ -300,7 +300,7 @@ export class EnrichmentQueue extends EventEmitter {
             .limit(1);
 
           if (error) {
-            throw new Error(`Failed to get next job: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to get next job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return jobs || [];
@@ -343,7 +343,7 @@ export class EnrichmentQueue extends EventEmitter {
             .is('locked_at', null); // Ensure no race condition
 
           if (lockError) {
-            throw new Error(`Failed to lock job: ${lockError.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to lock job: ${lockError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return { success: true };
@@ -391,7 +391,7 @@ export class EnrichmentQueue extends EventEmitter {
             .single();
 
           if (fetchError || !job) {
-            throw new Error('Job not found for progress update');
+            throw ErrorHandlingService.createError({ message: 'Job not found for progress update', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
           }
 
           // Merge progress data
@@ -419,7 +419,7 @@ export class EnrichmentQueue extends EventEmitter {
             .eq('id', jobId);
 
           if (updateError) {
-            throw new Error(`Failed to update job progress: ${updateError.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to update job progress: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return updatedProgress;
@@ -472,7 +472,7 @@ export class EnrichmentQueue extends EventEmitter {
             .eq('id', jobId);
 
           if (error) {
-            throw new Error(`Failed to complete job: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to complete job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return null;
@@ -524,7 +524,7 @@ export class EnrichmentQueue extends EventEmitter {
             .single();
 
           if (fetchError || !job) {
-            throw new Error('Job not found for failure handling');
+            throw ErrorHandlingService.createError({ message: 'Job not found for failure handling', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
           }
 
           const retryCount = job.retry_count + 1;
@@ -567,7 +567,7 @@ export class EnrichmentQueue extends EventEmitter {
             .eq('id', jobId);
 
           if (updateError) {
-            throw new Error(`Failed to update failed job: ${updateError.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to update failed job: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return { willRetry, retryCount };
@@ -627,7 +627,7 @@ export class EnrichmentQueue extends EventEmitter {
           const { error, count } = await query;
 
           if (error) {
-            throw new Error(`Failed to cancel job: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Failed to cancel job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return { count: count || 0 };
@@ -803,7 +803,7 @@ export class EnrichmentQueue extends EventEmitter {
             .lt('completed_at', cutoffDate.toISOString());
 
           if (error) {
-            throw new Error(`Error cleaning up jobs: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Error cleaning up jobs: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return { count: count || 0 };
@@ -845,7 +845,7 @@ export class EnrichmentQueue extends EventEmitter {
             .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING, EnrichmentJobStatus.RETRYING]);
 
           if (error) {
-            throw new Error(`Error getting queue size: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Error getting queue size: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
 
           return count || 0;

@@ -18,7 +18,7 @@ import {
 } from '../types/ServiceTypes';
 import { supabaseAdmin } from '@indexnow/database';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { logger, Database } from '@indexnow/shared';
+import { logger, Database, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
 
 // Comprehensive health check configuration
 export interface HealthCheckConfig {
@@ -421,7 +421,7 @@ export class HealthChecker implements IHealthChecker {
             .limit(1);
 
           if (error) {
-            throw new Error(`Database query failed: ${error.message}`);
+            throw ErrorHandlingService.createError({ message: `Database query failed: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
           }
           return [];
         }
@@ -532,7 +532,7 @@ export class HealthChecker implements IHealthChecker {
       const responseTime = Date.now() - startTime;
 
       if (!integrationResult.success || !integrationResult.data) {
-        throw new Error('Integration service test failed');
+        throw ErrorHandlingService.createError({ message: 'Integration service test failed', type: ErrorType.SYSTEM, severity: ErrorSeverity.HIGH });
       }
 
       const integrationHealth = integrationResult.data;
