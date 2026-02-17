@@ -11,6 +11,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   transpilePackages: ["@indexnow/shared", "@indexnow/ui", "@indexnow/auth", "@indexnow/database"],
   // Empty turbopack config to silence Next.js 16 Turbopack/webpack coexistence error
   turbopack: {},

@@ -151,10 +151,22 @@ jobs:
         working-directory: indexnow-dev
     env:
       # Minimal env vars required for Next.js build (non-secret placeholders)
+      NODE_ENV: production
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
       NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: placeholder-paddle-token
       NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      # Secrets required by AppConfig production validation (CI placeholders)
+      ENCRYPTION_KEY: ci-placeholder-encryption-key-32ch
+      ENCRYPTION_MASTER_KEY: ci-placeholder-master-key
+      JWT_SECRET: ci-placeholder-jwt-secret
+      SYSTEM_API_KEY: ci-placeholder-system-api-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      SUPABASE_JWT_SECRET: ci-placeholder-jwt-secret
+      REDIS_URL: redis://localhost:6379
+      SMTP_HOST: smtp.placeholder.local
+      SMTP_USER: ci@placeholder.local
+      SMTP_PASS: ci-placeholder-pass
     steps:
       - uses: actions/checkout@v4
 

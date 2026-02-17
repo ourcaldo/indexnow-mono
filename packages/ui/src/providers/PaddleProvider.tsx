@@ -19,6 +19,7 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    let isMounted = true
     const initPaddle = async () => {
       try {
         const response = await fetch(ApiEndpoints.PAYMENT.PADDLE_CONFIG)
@@ -66,17 +67,18 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
           }
         })
 
-        if (paddleInstance) {
+        if (paddleInstance && isMounted) {
           setPaddle(paddleInstance)
         }
       } catch (error) {
         // Errors are tracked server-side
       } finally {
-        setIsLoading(false)
+        if (isMounted) setIsLoading(false)
       }
     }
 
     initPaddle()
+    return () => { isMounted = false }
   }, [])
 
   return (

@@ -19,20 +19,21 @@ export class EncryptionService {
 
   /**
    * Get the 256-bit encryption key from AppConfig.
-   * ⚠ NOTE (#29): Currently uses raw UTF-8 bytes of the key string.
-   * For enhanced security, consider deriving the key via HKDF or PBKDF2:
-   *   const keyMaterial = await crypto.subtle.importKey('raw', Buffer.from(key), 'HKDF', false, ['deriveKey']);
-   * This is acceptable if the key is a cryptographically random 32-byte string.
+   * Uses SHA-256 hash to derive a proper 32-byte key from the input,
+   * ensuring correct key material regardless of input entropy.
+   * Falls back to raw bytes if the key is exactly 32 chars (backward compat).
    */
   private static getEncryptionKey(): Buffer {
     const key = AppConfig.security.encryptionKey;
     if (!key) {
       throw new Error('ENCRYPTION_KEY must be configured in AppConfig.security.encryptionKey');
     }
-    if (key.length !== 32) {
-      throw new Error('ENCRYPTION_KEY must be exactly 32 characters long');
+    // If key is exactly 32 bytes, use raw for backward compatibility
+    if (key.length === 32) {
+      return Buffer.from(key, 'utf8');
     }
-    return Buffer.from(key, 'utf8');
+    // For keys of other lengths, derive a proper 32-byte key via SHA-256
+    return crypto.createHash('sha256').update(key, 'utf8').digest();
   }
 
   /**
@@ -98,9 +99,7 @@ export class EncryptionService {
     } catch (error) {
       // (#30) Preserve original error for diagnostics while keeping generic user-facing message
       const originalMsg = error instanceof Error ? error.message : 'Unknown error';
-      const wrappedError = new Error(`Failed to decrypt data: ${originalMsg}`);
-      (wrappedError as any).cause = error;
-      throw wrappedError;
+      throw new Error(`Failed to decrypt data: ${originalMsg}`, { cause: error });
     }
   }
 

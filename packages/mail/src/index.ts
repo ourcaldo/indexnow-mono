@@ -77,12 +77,3 @@ export function getEmailService(): EmailService {
   }
   return _emailService;
 }
-
-/** @deprecated Use `getEmailService()` for lazy initialization (#48).
- * This proxy is kept for backward compatibility but may have context binding issues.
- * TODO: Remove in next major version and update all consumers to use getEmailService(). */
-export const emailService = new Proxy({} as EmailService, {
-  get(_target, prop) {
-    return Reflect.get(getEmailService(), prop);
-  },
-});

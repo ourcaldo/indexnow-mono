@@ -108,7 +108,7 @@ export const securityHeaders: MiddlewareFunction = async (context, next) => {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.paddle.com https://*.googletagmanager.com https://*.google-analytics.com https://*.posthog.com",
+      "script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://*.googletagmanager.com https://*.google-analytics.com https://*.posthog.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self'",

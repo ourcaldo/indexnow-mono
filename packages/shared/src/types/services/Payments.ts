@@ -139,87 +139,6 @@ export interface PaymentGateway {
   updated_at: Date;
 }
 
-// Payment service configuration
-export interface PaymentServiceConfig {
-  environment: 'sandbox' | 'production';
-  currency: Currency;
-  timeout: number;
-  retryAttempts: number;
-  webhookSecret: string;
-  logging: {
-    enabled: boolean;
-    level: 'debug' | 'info' | 'warn' | 'error';
-    includeRequestBody: boolean;
-    includeResponseBody: boolean;
-  };
-  security: {
-    encryptionKey: string;
-    algorithm: string;
-    tokenExpiry: number;
-  };
-}
-
-// Payment gateway interfaces
-export interface PaymentGatewayInterface {
-  name: string;
-  version: string;
-  supportedMethods: PaymentMethod[];
-  supportedCurrencies: Currency[];
-  capabilities: GatewayCapabilities;
-  config: Record<string, Json>;
-}
-
-export interface GatewayCapabilities {
-  recurringPayments: boolean;
-  refunds: boolean;
-  partialRefunds: boolean;
-  webhooks: boolean;
-  tokenization: boolean;
-  threeDSecure: boolean;
-  disputes: boolean;
-  reporting: boolean;
-}
-
-// Paddle-specific types will be added here when implementing Paddle integration
-
-// Payment processor types
-export interface PaymentProcessor {
-  id: string;
-  name: string;
-  type: 'gateway' | 'processor' | 'wallet';
-  supportedMethods: PaymentMethod[];
-  supportedCurrencies: Currency[];
-  fees: ProcessorFees;
-  limits: ProcessorLimits;
-  isActive: boolean;
-  config: Record<string, Json>;
-}
-
-export interface ProcessorFees {
-  domestic: {
-    percentage: number;
-    fixed: number;
-  };
-  international: {
-    percentage: number;
-    fixed: number;
-  };
-  refund: {
-    percentage: number;
-    fixed: number;
-  };
-  chargeback: number;
-  currency: Currency;
-}
-
-export interface ProcessorLimits {
-  minAmount: number;
-  maxAmount: number;
-  dailyLimit: number;
-  monthlyLimit: number;
-  currency: Currency;
-}
-
 // Payment data types
 export interface PaymentData {
   packageId: string;
@@ -252,34 +171,6 @@ export interface PaymentError {
   retryable: boolean;
   details?: Record<string, Json>;
   timestamp: Date;
-}
-
-// Payment handler interfaces
-export interface PaymentHandlerInterface {
-  processPayment: (data: PaymentData) => Promise<PaymentResult>;
-  verifyPayment: (transactionId: string) => Promise<PaymentResult>;
-  refundPayment: (transactionId: string, amount?: number) => Promise<PaymentResult>;
-  getPaymentStatus: (transactionId: string) => Promise<PaymentStatus>;
-  handleWebhook: (payload: Json, signature?: string) => Promise<WebhookResult>;
-  getConfig: () => Record<string, Json>;
-  validateConfig: () => boolean;
-}
-
-export interface WebhookResult {
-  processed: boolean;
-  transactionId?: string;
-  status?: PaymentStatus;
-  order?: Order;
-  error?: PaymentError;
-  timestamp: Date;
-}
-
-// Payment factory types
-export interface PaymentServiceFactory {
-  createHandler: (method: PaymentMethod, config: Record<string, Json>) => PaymentHandlerInterface;
-  getSupportedMethods: () => PaymentMethod[];
-  validateMethod: (method: PaymentMethod) => boolean;
-  getMethodConfig: (method: PaymentMethod) => Record<string, Json>;
 }
 
 // Payment analytics types

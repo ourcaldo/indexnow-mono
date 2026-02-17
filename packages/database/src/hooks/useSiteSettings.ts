@@ -16,22 +16,25 @@ export function useSiteSettings() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let isMounted = true
     const fetchSettings = async () => {
       try {
         setLoading(true)
         setError(null)
         const siteSettings = await siteSettingsService.getSiteSettings()
-        setSettings(siteSettings)
+        if (isMounted) setSettings(siteSettings)
       } catch (err) {
+        if (!isMounted) return
         const errorMessage = err instanceof Error ? err.message : 'Failed to load site settings';
         setError(errorMessage)
         logger.error({ error: err instanceof Error ? err : undefined }, 'Site settings hook error')
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
     fetchSettings()
+    return () => { isMounted = false }
   }, [])
 
   const refreshSettings = async () => {
@@ -52,11 +55,13 @@ export function useSiteLogo(isExpanded: boolean = true) {
   const [logoUrl, setLogoUrl] = useState<string>('')
   
   useEffect(() => {
+    let isMounted = true
     const fetchLogo = async () => {
       const url = await siteSettingsService.getLogoUrl(isExpanded)
-      setLogoUrl(url)
+      if (isMounted) setLogoUrl(url)
     }
     fetchLogo()
+    return () => { isMounted = false }
   }, [isExpanded])
 
   return logoUrl
@@ -66,11 +71,13 @@ export function useSiteName() {
   const [siteName, setSiteName] = useState<string>('')
   
   useEffect(() => {
+    let isMounted = true
     const fetchName = async () => {
       const name = await siteSettingsService.getSiteName()
-      setSiteName(name)
+      if (isMounted) setSiteName(name)
     }
     fetchName()
+    return () => { isMounted = false }
   }, [])
 
   return siteName
@@ -80,8 +87,10 @@ export function useFavicon() {
   const [faviconUrl, setFaviconUrl] = useState<string>('')
   
   useEffect(() => {
+    let isMounted = true
     const fetchFavicon = async () => {
       const url = await siteSettingsService.getFaviconUrl()
+      if (!isMounted) return
       setFaviconUrl(url)
       
       // Update favicon in document head
@@ -92,6 +101,7 @@ export function useFavicon() {
       document.getElementsByTagName('head')[0].appendChild(link)
     }
     fetchFavicon()
+    return () => { isMounted = false }
   }, [])
 
   return faviconUrl

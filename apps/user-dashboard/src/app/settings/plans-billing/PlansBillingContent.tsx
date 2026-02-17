@@ -173,7 +173,6 @@ export default function BillingPage() {
 
       // Fetch dashboard data to get current package and usage data
       const dashboardResponse = await authenticatedFetch(`${AppConfig.app.baseUrl}/v1/dashboard`)
-      })
 
       if (!dashboardResponse.ok) throw new Error('Failed to load dashboard data')
 

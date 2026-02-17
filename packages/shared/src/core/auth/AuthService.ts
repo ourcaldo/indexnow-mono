@@ -36,9 +36,15 @@ export class AuthService {
 
   async getUserRole(user: User): Promise<string> {
     try {
+      // SECURITY: Validate with getUser() first, then extract token for API call
+      const { data: { user: validatedUser } } = await supabase.auth.getUser()
+      if (!validatedUser) return 'user'
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+
       const response = await fetch(AUTH_ENDPOINTS.PROFILE, {
         headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include'
@@ -290,6 +296,9 @@ export class AuthService {
   }
 
   async getToken(): Promise<string | null> {
+    // SECURITY: Validate user first, then extract token
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
     const session = await this.getSession()
     return session?.access_token || null
   }

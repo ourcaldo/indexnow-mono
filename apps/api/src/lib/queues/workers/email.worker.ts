@@ -2,7 +2,7 @@ import { Job } from 'bullmq'
 import { queueManager } from '../QueueManager'
 import { queueConfig } from '../config'
 import { EmailJob, EmailJobSchema } from '../types'
-import { emailService } from '@indexnow/mail'
+import { getEmailService } from '@indexnow/mail'
 import { logger } from '@/lib/monitoring/error-handling'
 
 async function processEmail(job: Job<EmailJob>): Promise<{
@@ -24,7 +24,7 @@ async function processEmail(job: Job<EmailJob>): Promise<{
       data: validatedData.data
     }
 
-    await emailService.sendEmail(emailOptions)
+    await getEmailService().sendEmail(emailOptions)
 
     logger.info({ jobId: job.id, to, template }, 'Email sent successfully')
 

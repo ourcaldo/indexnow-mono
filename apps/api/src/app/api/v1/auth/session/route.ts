@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
+import { AppConfig, ErrorType, ErrorSeverity, getClientIP, getRequestInfo } from '@indexnow/shared';
 import {
   publicApiWrapper,
   formatSuccess,
@@ -9,7 +9,6 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { getRequestInfo , getClientIP} from '@indexnow/shared';
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 import { z } from 'zod';
 

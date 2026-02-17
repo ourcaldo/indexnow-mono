@@ -3,7 +3,7 @@ import { queueManager } from '../QueueManager'
 import { AutoCancelJob, AutoCancelJobSchema } from '../types'
 import { supabaseAdmin } from '@indexnow/database'
 import { SecureServiceRoleWrapper } from '@indexnow/database'
-import { emailService } from '@indexnow/mail'
+import { getEmailService } from '@indexnow/mail'
 import { logger } from '@/lib/monitoring/error-handling'
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
@@ -74,7 +74,7 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
           }
         )
 
-        await emailService.sendEmail({
+        await getEmailService().sendEmail({
           to: transaction.user_email,
           subject: 'Order Expired',
           template: 'order_expired',

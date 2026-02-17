@@ -43,11 +43,12 @@ export const apiRequest = async <T = Json>(url: string, options?: RequestInit): 
   const fullUrl = url.startsWith('http') || url.includes('/api/v1') ? url : 
     url.startsWith('/') ? url : `/${url}`
   
-  // SECURITY: Use getUser() instead of getSession() to validate the token against the auth server.
+  // SECURITY: Use getUser() to validate the token against the auth server.
   // getSession() only reads the local JWT without server validation, which can be spoofed.
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: { session } } = await supabase.auth.getSession()
-  const accessToken = session?.access_token
+  // After validating the user, get the session to extract the access token for API calls.
+  // This is safe because we've already verified the user is authentic via getUser().
+  const accessToken = user ? (await supabase.auth.getSession()).data.session?.access_token : undefined
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
