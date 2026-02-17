@@ -1,6 +1,6 @@
 import { typedSupabaseBrowser } from '@indexnow/database';
 import { type RankTrackingDomain, type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@indexnow/database'
 import { QuotaService } from './monitoring/QuotaService';
 
 // Use typed client that preserves the Database generic through the re-export chain

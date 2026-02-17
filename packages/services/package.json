@@ -24,8 +24,7 @@
   },
   "dependencies": {
     "@indexnow/database": "workspace:*",
-    "@indexnow/shared": "workspace:*",
-    "@supabase/supabase-js": "^2.54.0"
+    "@indexnow/shared": "workspace:*"
   },
   "devDependencies": {
     "@indexnow/eslint-config": "workspace:*",

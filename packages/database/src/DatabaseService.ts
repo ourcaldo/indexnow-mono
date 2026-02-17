@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { logger, AppConfig } from '@indexnow/shared'
 import {
   type Database,
@@ -11,10 +11,10 @@ import {
   type UpdateDashboardNotification
 } from '@indexnow/shared'
 
-// Create Supabase client with Database type - direct usage avoids SSR wrapper type issues
-// NOTE (#20): Uses anon key intentionally — all operations in this service go through RLS.
+// Default anon client — used by the singleton for backward compatibility.
+// NOTE (#20): Uses anon key intentionally — all operations go through RLS.
 // For admin/service-role operations, use SecureServiceRoleHelpers from this package.
-const supabase = createClient<Database>(
+const defaultAnonClient = createClient<Database>(
   AppConfig.supabase.url,
   AppConfig.supabase.anonKey
 )
@@ -23,12 +23,30 @@ const supabase = createClient<Database>(
 type Tables = Database['public']['Tables']
 
 export class DatabaseService {
+  private readonly supabase: SupabaseClient<Database>
+
+  /**
+   * Create a DatabaseService instance.
+   * @param client - Optional scoped SupabaseClient (e.g. user-scoped for RLS).
+   *                 Falls back to the default anon client when omitted.
+   */
+  constructor(client?: SupabaseClient<Database>) {
+    this.supabase = client ?? defaultAnonClient
+  }
+
+  /**
+   * Factory: create a DatabaseService backed by a specific (e.g. user-scoped) client.
+   * Use this when you need RLS to run in the context of the authenticated user.
+   */
+  static withClient(client: SupabaseClient<Database>): DatabaseService {
+    return new DatabaseService(client)
+  }
   // ============================================================================
   // USER PROFILES & SETTINGS
   // ============================================================================
 
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('indb_auth_user_profiles')
       .select('id, user_id, full_name, phone_number, country, role, is_active, is_suspended, is_trial_active, trial_ends_at, subscription_end_date, package_id, daily_quota_used, daily_quota_limit, created_at, updated_at')
       .eq('user_id', userId)
@@ -46,7 +64,7 @@ export class DatabaseService {
     // Create a typed insert object that matches the table's Insert type
     const insertData: Tables['indb_auth_user_profiles']['Insert'] = profile
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('indb_auth_user_profiles')
       .insert(insertData)
       .select()
@@ -64,7 +82,7 @@ export class DatabaseService {
     // Create a typed update object that matches the table's Update type
     const updateData: Tables['indb_auth_user_profiles']['Update'] = updates
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('indb_auth_user_profiles')
       .update(updateData)
       .eq('user_id', userId)
@@ -80,7 +98,7 @@ export class DatabaseService {
   }
 
   async getUserSettings(userId: string): Promise<UserSettings | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('indb_auth_user_settings')
       .select('id, user_id, timeout_duration, retry_attempts, email_job_completion, email_job_failure, email_quota_alerts, default_schedule, email_daily_report, created_at, updated_at')
       .eq('user_id', userId)
@@ -98,7 +116,7 @@ export class DatabaseService {
     // Create a typed update object that matches the table's Update type
     const updateData: Tables['indb_auth_user_settings']['Update'] = updates
 
-    const { data, error } = await supabase
+    const { data, error } = await this.supabase
       .from('indb_auth_user_settings')
       .update(updateData)
       .eq('user_id', userId)
@@ -118,7 +136,7 @@ export class DatabaseService {
   // ============================================================================
 
   async getNotifications(userId: string, unreadOnly: boolean = false): Promise<DashboardNotification[]> {
-    let query = supabase
+    let query = this.supabase
       .from('indb_notifications_dashboard')
       .select('id, user_id, type, title, message, is_read, action_url, metadata, expires_at, created_at')
       .eq('user_id', userId)
@@ -143,7 +161,7 @@ export class DatabaseService {
     // Create a typed update object that matches the table's Update type
     const updateData: Tables['indb_notifications_dashboard']['Update'] = { is_read: true }
 
-    const { error } = await supabase
+    const { error } = await this.supabase
       .from('indb_notifications_dashboard')
       .update(updateData)
       .eq('id', notificationId)

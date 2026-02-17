@@ -16,7 +16,7 @@ import {
   ErrorType,
   ErrorSeverity
 } from '@indexnow/shared';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@indexnow/database';
 
 // Use typed admin client that preserves the Database generic through the re-export chain
 const supabaseAdmin = typedSupabaseAdmin;

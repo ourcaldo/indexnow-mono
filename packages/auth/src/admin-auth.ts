@@ -1,5 +1,5 @@
 import { supabase as _supabase, authService, type Json, type Database, logger } from '@indexnow/shared'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@indexnow/database'
 
 // Re-assert the Database generic lost through the external package re-export chain during DTS generation
 const supabase = _supabase as unknown as SupabaseClient<Database>

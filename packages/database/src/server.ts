@@ -174,6 +174,82 @@ export function createAdminClient(): ReturnType<typeof createSupabaseClient<Data
 export const supabaseAdmin = createAdminClient()
 
 /**
+ * Request-like object with headers for auth client creation.
+ */
+export interface AuthRequest {
+    headers: {
+        get(name: string): string | null
+    }
+    method?: string
+}
+
+/**
+ * Options for createRequestAuthClient.
+ */
+export interface RequestAuthClientOptions {
+    /** When true, cookies are ignored — only bearer token (via getUser(token)) works */
+    forceHeaderAuth?: boolean
+}
+
+/**
+ * Parses a raw `cookie` header string into the `{ name, value }[]` format
+ * expected by `@supabase/ssr`'s `getAll` method.
+ */
+function parseCookieHeader(cookieHeader: string): { name: string; value: string }[] {
+    return cookieHeader.split(';').map(cookie => {
+        const [key, ...rest] = cookie.trim().split('=')
+        const value = rest.join('=')
+        try {
+            return { name: key, value: decodeURIComponent(value || '') }
+        } catch {
+            return { name: key, value: value || '' }
+        }
+    })
+}
+
+/**
+ * Creates a Supabase server client from a raw HTTP request (e.g. NextRequest).
+ * 
+ * Reads cookies from the `cookie` header. For state-changing methods (POST/PUT/PATCH/DELETE)
+ * or when `forceHeaderAuth` is true, cookies are ignored — the caller should use
+ * bearer-token auth via `supabase.auth.getUser(token)` instead.
+ * 
+ * This is read-only (no set/remove) — suitable for API route auth checks.
+ */
+export function createRequestAuthClient(
+    request: AuthRequest,
+    options: RequestAuthClientOptions = {}
+): ReturnType<typeof createSupabaseServerClient<Database>> {
+    const supabaseUrl = AppConfig.supabase.url
+    const supabaseAnonKey = AppConfig.supabase.anonKey
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase URL or Anon Key in configuration')
+    }
+
+    const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method ?? '')
+    const skipCookies = options.forceHeaderAuth || isStateChanging
+
+    return createSupabaseServerClient<Database>(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+            cookies: {
+                getAll() {
+                    if (skipCookies) return []
+                    const cookieHeader = request.headers.get('cookie')
+                    if (!cookieHeader) return []
+                    return parseCookieHeader(cookieHeader)
+                },
+                setAll() {
+                    // Read-only — session refresh handled by middleware
+                },
+            },
+        }
+    )
+}
+
+/**
  * Creates a Supabase client for use in middleware
  * Handles cookie refresh for auth sessions
  * 

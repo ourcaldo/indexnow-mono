@@ -5,8 +5,7 @@
 
 import 'server-only'
 import { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { SecureServiceRoleHelpers } from '@indexnow/database'
+import { createRequestAuthClient, SecureServiceRoleHelpers } from '@indexnow/database'
 import { AppConfig, logger } from '@indexnow/shared'
 
 // Define types
@@ -45,38 +44,8 @@ export async function getServerAdminUser(
     const authHeader = request.headers.get('authorization')
     const hasBearer = authHeader && authHeader.startsWith('Bearer ')
 
-    // Create Supabase client
-    const supabase = createServerClient(
-      AppConfig.supabase.url,
-      AppConfig.supabase.anonKey,
-      {
-        cookies: {
-          get(name: string) {
-            if (forceHeader) return undefined;
-            const cookieHeader = request.headers.get('cookie')
-            if (!cookieHeader) return undefined
-            try {
-              const cookies = Object.fromEntries(
-                cookieHeader.split(';').map(cookie => {
-                  const [key, ...rest] = cookie.trim().split('=')
-                  const value = rest.join('=')
-                  try {
-                    return [key, decodeURIComponent(value || '')]
-                  } catch {
-                    return [key, value || ''] // (#32) Fallback for malformed URI components
-                  }
-                })
-              )
-              return cookies[name]
-            } catch {
-              return undefined
-            }
-          },
-          set() { },
-          remove() { },
-        },
-      }
-    )
+    // Create Supabase client using centralized factory
+    const supabase = createRequestAuthClient(request, { forceHeaderAuth: forceHeader })
 
     let user = null;
     let authError = null;
@@ -183,41 +152,8 @@ export async function getServerAuthUser(
     const authHeader = request.headers.get('authorization')
     const hasBearer = authHeader && authHeader.startsWith('Bearer ')
 
-    // Create Supabase client
-    const supabase = createServerClient(
-      AppConfig.supabase.url,
-      AppConfig.supabase.anonKey,
-      {
-        cookies: {
-          get(name: string) {
-            // If forcing header auth, ignore cookies
-            if (forceHeader) return undefined;
-
-            const cookieHeader = request.headers.get('cookie')
-            if (!cookieHeader) return undefined
-
-            try {
-              const cookies = Object.fromEntries(
-                cookieHeader.split(';').map(cookie => {
-                  const [key, ...rest] = cookie.trim().split('=')
-                  const value = rest.join('=')
-                  try {
-                    return [key, decodeURIComponent(value || '')]
-                  } catch {
-                    return [key, value || ''] // (#32) Fallback for malformed URI components
-                  }
-                })
-              )
-              return cookies[name]
-            } catch {
-              return undefined
-            }
-          },
-          set() { },
-          remove() { },
-        },
-      }
-    )
+    // Create Supabase client using centralized factory
+    const supabase = createRequestAuthClient(request, { forceHeaderAuth: forceHeader })
 
     let user = null;
     let authError = null;

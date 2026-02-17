@@ -47,6 +47,10 @@ import { supabaseBrowser as _supabaseBrowser } from '@indexnow/shared';
 import { supabaseAdmin as _supabaseAdmin } from './server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+// Re-export commonly used Supabase types so consumers don't need a direct @supabase dependency
+export type { SupabaseClient } from '@supabase/supabase-js'
+export type { User as SupabaseUser, Session as SupabaseSession, AuthChangeEvent, Subscription as AuthSubscription, PostgrestError } from '@supabase/supabase-js'
+
 /** Browser Supabase client with Database generic preserved */
 export const typedSupabaseBrowser = _supabaseBrowser as unknown as SupabaseClient<Database>;
 /** Admin (service role) Supabase client with Database generic preserved */
@@ -58,8 +62,11 @@ export {
     createAdminClient,
     createTokenClient,
     createAnonServerClient,
+    createRequestAuthClient,
     supabaseAdmin, 
     type CookieStore, 
+    type AuthRequest,
+    type RequestAuthClientOptions,
     createMiddlewareClient,
     type MiddlewareRequest,
     type MiddlewareResponse,

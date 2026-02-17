@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createTokenClient, type Database } from '@indexnow/database';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@indexnow/database';
 import { 
   ErrorHandlingService, 
   ErrorType, 

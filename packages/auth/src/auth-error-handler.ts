@@ -1,5 +1,5 @@
 import { supabaseBrowser as supabase } from '@indexnow/shared'
-import { AuthChangeEvent, Session } from '@supabase/supabase-js'
+import type { AuthChangeEvent, SupabaseSession as Session } from '@indexnow/database'
 
 export interface AuthErrorContext {
   error: {

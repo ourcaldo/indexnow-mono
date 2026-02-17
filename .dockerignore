@@ -1,9 +1,55 @@
+# Dependencies & build artifacts
 node_modules
 .next
 dist
 .turbo
+.pnpm-store
+
+# Environment & secrets
 .env*
+
+# Logs
 *.log
+
+# Version control
 .git
+.gitignore
+
+# Documentation
 README.md
 CHANGELOG.md
+*.md
+doc/
+docs/
+LICENSE
+
+# Tests
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/vitest.config.*
+**/vitest.workspace.*
+coverage/
+
+# IDE & editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# CI/CD
+.github/
+.husky/
+
+# Database schema docs (not needed at runtime)
+database-schema/
+
+# Dev tooling config
+.eslintrc*
+eslint.config.*
+prettier*
+.editorconfig
+tsconfig.base.json
+turbo.json

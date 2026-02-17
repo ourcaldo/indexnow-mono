@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../server'
-import { type SupabaseClient, type PostgrestError, type User, type AuthError } from '@supabase/supabase-js'
+import type { SupabaseClient, PostgrestError, User, AuthError } from '@supabase/supabase-js'
 import { type Database, type Json } from '@indexnow/shared'
 import {
   SecurityService,
@@ -15,17 +15,14 @@ type PublicTables = Database['public']['Tables']
  * STRUCTURAL DATABASE BUILDER: Extended interface for user-facing route handlers.
  * Includes full Supabase query builder chain methods to support real-world usage patterns.
  */
-interface SimpleSelectBuilder<TRow> {
-  match: (conditions: Record<string, Json>) => Promise<{ data: TRow[] | null; error: PostgrestError | null }>
-  eq: (column: string, value: Json) => SimpleSelectBuilder<TRow> & {
-    single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
-    order: (column: string, options?: { ascending?: boolean }) => SimpleSelectBuilder<TRow>
-    limit: (count: number) => SimpleSelectBuilder<TRow>
-  }
+/** Postgrest-like select builder: every filter method is chainable and the builder is thenable */
+interface SimpleSelectBuilder<TRow> extends PromiseLike<{ data: TRow[] | null; error: PostgrestError | null }> {
+  match: (conditions: Record<string, Json>) => SimpleSelectBuilder<TRow>
+  eq: (column: string, value: Json) => SimpleSelectBuilder<TRow>
   in: (column: string, values: Json[]) => SimpleSelectBuilder<TRow>
   order: (column: string, options?: { ascending?: boolean }) => SimpleSelectBuilder<TRow>
   limit: (count: number) => SimpleSelectBuilder<TRow>
-  single: () => Promise<{ data: TRow | null; error: PostgrestError | null }>
+  single: () => PromiseLike<{ data: TRow | null; error: PostgrestError | null }>
   gte: (column: string, value: Json) => SimpleSelectBuilder<TRow>
 }
 
