@@ -5,7 +5,7 @@ import { logger } from '@/lib/monitoring/error-handling'
 import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 interface ActivityLogsResult {
-  logs: any[]; // Changed from SecurityActivityLog[]
+  logs: Record<string, unknown>[]; // Changed from SecurityActivityLog[]
   count: number;
 }
 
@@ -30,19 +30,19 @@ export const GET = adminApiWrapper(async (
   const { id: userId } = await context.params
 
   const searchParams = request.nextUrl.searchParams
-  const limit = parseInt(searchParams.get('limit') || '50')
-  const page = parseInt(searchParams.get('page') || '1')
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50))
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
   const offset = (page - 1) * limit
 
   // Fetch user's activity logs using secure wrapper
-  let logs: any[] = []
+  let logs: Record<string, unknown>[] = []
   let count = 0
   let userProfile: UserProfileSubset | null = null
   let userEmail: string | undefined | null = null
 
   try {
     const logsContext = {
-      userId: 'system',
+      userId: adminUser.id,
       operation: 'admin_get_user_activity_logs',
       reason: 'Admin fetching user activity logs for review',
       source: 'admin/users/[id]/activity',
@@ -80,7 +80,7 @@ export const GET = adminApiWrapper(async (
         if (countQuery.error) throw countQuery.error
 
         return {
-          logs: (logsQuery.data || []) as any[],
+          logs: (logsQuery.data || []) as Record<string, unknown>[],
           count: countQuery.count || 0
         }
       }
@@ -91,7 +91,7 @@ export const GET = adminApiWrapper(async (
 
     // Get user profile for context using secure wrapper
     const profileContext = {
-      userId: 'system',
+      userId: adminUser.id,
       operation: 'admin_get_user_profile_for_activity',
       reason: 'Admin fetching user profile for activity log context',
       source: 'admin/users/[id]/activity',
@@ -115,7 +115,7 @@ export const GET = adminApiWrapper(async (
       const targetUserId = userProfile.user_id
       try {
         const authContext = {
-          userId: 'system',
+          userId: adminUser.id,
           operation: 'admin_get_user_auth_for_activity',
           reason: 'Admin fetching user auth data for activity log context',
           source: 'admin/users/[id]/activity',

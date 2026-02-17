@@ -1,4 +1,4 @@
-import { db, supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { db, typedSupabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import {
   USER_ROLES,
   DEFAULT_SETTINGS,
@@ -9,11 +9,17 @@ import {
   type UpdateUserProfile,
   type InsertUserSettings,
   type UpdateUserSettings,
+  type Database,
+  type PackageQuotaLimits,
   logger,
   ErrorHandlingService,
   ErrorType,
   ErrorSeverity
 } from '@indexnow/shared';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// Use typed admin client that preserves the Database generic through the re-export chain
+const supabaseAdmin = typedSupabaseAdmin;
 
 export type UserRole = 'user' | 'admin' | 'super_admin';
 
@@ -74,6 +80,7 @@ export interface UserQuota {
 }
 
 export interface CreateUserRequest {
+  userId: string;  // Auth user UUID (from Supabase auth.users.id)
   email: string;
   fullName: string;
   phoneNumber?: string;
@@ -95,7 +102,7 @@ export interface EmailOptions {
   to: string;
   subject: string;
   template: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 }
 
 export interface IEmailService {
@@ -151,7 +158,7 @@ export class UserManagementService {
    */
   async createUserProfile(request: CreateUserRequest): Promise<UserProfile> {
     const userData: InsertUserProfile = {
-      user_id: request.email.toLowerCase(), // This should be the auth user ID, but following existing logic
+      user_id: request.userId, // Auth user UUID from Supabase auth.users.id
       full_name: request.fullName,
       phone_number: request.phoneNumber,
       country: request.country,
@@ -187,9 +194,9 @@ export class UserManagementService {
    * Get user profile by email
    */
   async getUserProfileByEmail(email: string): Promise<UserProfile | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('indb_auth_user_profiles')
-      .select('id, user_id, full_name, phone_number, country, role, is_active, is_suspended, is_trial_active, trial_ends_at, subscription_end_date, package_id, daily_quota_used, daily_quota_limit, created_at, updated_at')
+      .select('*')
       .eq('email', email.toLowerCase())
       .single();
 
@@ -228,7 +235,7 @@ export class UserManagementService {
    * Update user login information
    */
   async updateLastLogin(userId: string, ipAddress?: string): Promise<void> {
-    await supabase
+    await supabaseAdmin
       .from('indb_auth_user_profiles')
       .update({
         updated_at: new Date().toISOString(),
@@ -277,7 +284,7 @@ export class UserManagementService {
     return this.mapDatabaseSettingsToModel(updatedSettings);
   }
 
-  private async getPackageConfig(packageId: string | null): Promise<any> {
+  private async getPackageConfig(packageId: string | null): Promise<PackageQuotaLimits | null> {
     if (!packageId) return null;
 
     const pkg = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -290,20 +297,21 @@ export class UserManagementService {
       {
         table: 'indb_payment_packages',
         operationType: 'select',
-        columns: ['settings'],
+        columns: ['quota_limits'],
         whereConditions: { id: packageId },
       },
       async () => {
         const { data } = await supabaseAdmin
           .from('indb_payment_packages')
-          .select('settings')
+          .select('quota_limits')
           .eq('id', packageId)
+          .is('deleted_at', null)
           .single();
         return data;
       }
     );
 
-    return pkg?.settings || null;
+    return pkg?.quota_limits || null;
   }
 
   /**
@@ -324,7 +332,7 @@ export class UserManagementService {
     };
 
     // Prioritize DB config -> then defaults
-    return packageConfig?.quotas?.[feature] ?? defaults[feature] ?? 0;
+    return packageConfig?.[feature] ?? defaults[feature] ?? 0;
   }
 
   /**
@@ -453,7 +461,14 @@ export class UserManagementService {
   }
 
   /**
-   * Delete user account
+   * Delete user account (soft delete).
+   * TODO (#45): For GDPR compliance, implement data erasure:
+   *   1. Anonymize PII (full_name, email, phone_number) in user profile
+   *   2. Delete or anonymize security/activity logs
+   *   3. Remove user's keyword data and rankings
+   *   4. Cancel active subscriptions
+   *   5. Log the deletion request for audit trail
+   *   6. Prevent re-login by revoking all sessions
    */
   async deleteUser(userId: string): Promise<void> {
     // This should be a soft delete in production
@@ -480,7 +495,7 @@ export class UserManagementService {
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('indb_auth_user_settings')
       .insert(defaultSettings);
 
@@ -502,7 +517,7 @@ export class UserManagementService {
    * Get keyword usage
    */
   private async getKeywordUsage(userId: string): Promise<number> {
-    const { count, error } = await supabase
+    const { count, error } = await supabaseAdmin
       .from('indb_rank_keywords')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);

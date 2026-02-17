@@ -15,7 +15,12 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "clean": "rm -rf dist"
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@indexnow/shared": "workspace:*",
@@ -23,8 +28,10 @@
     "handlebars": "^4.7.8"
   },
   "devDependencies": {
+    "@indexnow/eslint-config": "workspace:*",
     "@types/node": "^20.0.0",
     "@types/nodemailer": "^6.4.14",
+    "eslint": "^9",
     "tsup": "^8.0.1",
     "typescript": "^5.6.3"
   }

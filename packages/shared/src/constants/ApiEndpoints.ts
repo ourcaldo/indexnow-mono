@@ -22,7 +22,6 @@ export const AUTH_ENDPOINTS = {
   LOGOUT: `${API_BASE.V1}/auth/logout`,
   REGISTER: `${API_BASE.V1}/auth/register`,
   SESSION: `${API_BASE.V1}/auth/session`,
-  TEST_LOGIN: `${API_BASE.V1}/auth/test-login`,
   DETECT_LOCATION: `${API_BASE.V1}/auth/detect-location`,
   RESEND_VERIFICATION: `${API_BASE.V1}/auth/resend-verification`,
   CHANGE_PASSWORD: `${API_BASE.V1}/auth/user/change-password`,
@@ -43,7 +42,6 @@ export const AUTH_ENDPOINTS = {
 export const ADMIN_ENDPOINTS = {
   DASHBOARD: `${API_BASE.V1}/admin/dashboard`,
   VERIFY_ROLE: `${API_BASE.V1}/admin/verify-role`,
-  DEBUG_AUTH: `${API_BASE.V1}/admin/debug-auth`,
 
   // User management
   USERS: `${API_BASE.V1}/admin/users`,
@@ -170,9 +168,6 @@ export const PUBLIC_ENDPOINTS = {
 export const SYSTEM_ENDPOINTS = {
   HEALTH: `${API_BASE.V1}/system/health`,
   STATUS: `${API_BASE.V1}/system/status`,
-  WORKER_STATUS: `${API_BASE.SYSTEM}/worker-status`,
-  RESTART_WORKER: `${API_BASE.SYSTEM}/restart-worker`,
-  LEGACY_STATUS: `${API_BASE.SYSTEM}/status`,
 } as const;
 
 // Error logging endpoints

@@ -6,10 +6,11 @@
  * API key and webhook secret are NEVER exposed to frontend
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, formatSuccess, type Database , getClientIP} from '@indexnow/shared';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { publicApiWrapper, formatError } from '@/lib/core/api-response-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ interface GatewayConfiguration {
     environment?: 'sandbox' | 'production';
 }
 
-export async function GET(request: NextRequest) {
+export const GET = publicApiWrapper(async (request: NextRequest) => {
     try {
         // Load Paddle gateway configuration using SecureServiceRoleWrapper
         // This is a public operation to get client-safe config
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
                 source: 'paddle/config',
                 reason: 'Frontend requesting Paddle client configuration',
                 metadata: { endpoint: '/api/v1/payments/paddle/config' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_payment_gateways', operationType: 'select' },
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
                     .select('*')
                     .eq('slug', 'paddle')
                     .eq('is_active', true)
+                    .is('deleted_at', null)
                     .single();
 
                 if (error && error.code !== 'PGRST116') throw error;
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
         );
 
         if (!gateway) {
-            await ErrorHandlingService.createError(
+            const notFoundError = await ErrorHandlingService.createError(
                 ErrorType.DATABASE,
                 'Paddle gateway not found or not active',
                 {
@@ -63,14 +65,7 @@ export async function GET(request: NextRequest) {
                     statusCode: 404
                 }
             );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'Paddle payment gateway is not configured'
-                },
-                { status: 404 }
-            );
+            return formatError(notFoundError);
         }
 
         // Extract credentials from database
@@ -82,7 +77,7 @@ export async function GET(request: NextRequest) {
         const clientToken = apiCredentials.client_token;
 
         if (!clientToken) {
-            await ErrorHandlingService.createError(
+            const tokenError = await ErrorHandlingService.createError(
                 ErrorType.DATABASE,
                 'Paddle client token not found in database',
                 {
@@ -96,38 +91,21 @@ export async function GET(request: NextRequest) {
                 }
             );
 
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'Paddle client token not configured in database'
-                },
-                { status: 500 }
-            );
+            return formatError(tokenError);
         }
 
         // Return safe configuration for frontend
-        return NextResponse.json(
-            {
-                success: true,
-                data: {
-                    clientToken,
-                    environment: configuration.environment || 'sandbox',
-                    isActive: gateway.is_active,
-                    isDefault: gateway.is_default
-                }
-            },
-            {
-                status: 200,
-                headers: {
-                    'Cache-Control': 'private, max-age=300' // Cache for 5 minutes
-                }
-            }
-        );
+        return formatSuccess({
+            clientToken,
+            environment: configuration.environment || 'sandbox',
+            isActive: gateway.is_active,
+            isDefault: gateway.is_default
+        });
 
     } catch (error) {
         logger.error({ error: error instanceof Error ? error.message : String(error) }, '[Paddle Config API] Error loading configuration');
 
-        await ErrorHandlingService.createError(
+        const configError = await ErrorHandlingService.createError(
             ErrorType.EXTERNAL_API,
             error instanceof Error ? error.message : String(error),
             {
@@ -137,12 +115,6 @@ export async function GET(request: NextRequest) {
             }
         );
 
-        return NextResponse.json(
-            {
-                success: false,
-                error: 'Failed to load Paddle configuration'
-            },
-            { status: 500 }
-        );
+        return formatError(configError);
     }
-}
+});

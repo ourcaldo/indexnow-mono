@@ -1,20 +1,82 @@
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { loginSchema, AppConfig } from '@indexnow/shared';
+import { createAnonServerClient } from '@indexnow/database';
+import { loginSchema, getClientIP } from '@indexnow/shared';
 import {
   publicApiWrapper,
   formatSuccess,
   formatError
-} from '../../../../../lib/core/api-response-middleware';
+} from '@/lib/core/api-response-middleware';
 import {
   ErrorHandlingService,
   ErrorType,
   ErrorSeverity,
   logger
-} from '../../../../../lib/monitoring/error-handling';
-import { ActivityLogger, ActivityEventTypes } from '../../../../../lib/monitoring/activity-logger';
-import { loginNotificationService } from '../../../../../lib/monitoring/login-notification-service';
+} from '@/lib/monitoring/error-handling';
+import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
+import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 import { getRequestInfo } from '@indexnow/shared';
+
+// In-memory rate limit store for login attempts
+// NOTE: In-memory store is per-process; use Redis for multi-instance deployments
+const loginRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+const LOGIN_RATE_LIMIT = {
+  MAX_ATTEMPTS_PER_EMAIL: 5,    // 5 failed attempts per email
+  MAX_ATTEMPTS_PER_IP: 20,      // 20 attempts per IP (allows multiple users behind NAT)
+  WINDOW_MS: 15 * 60 * 1000,    // 15-minute window
+};
+
+/**
+ * Check rate limit for login requests
+ */
+function checkLoginRateLimit(email: string, clientIP: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const emailKey = `login_email_${email.toLowerCase()}`;
+  const ipKey = `login_ip_${clientIP}`;
+
+  // Clear expired entries
+  for (const key of [emailKey, ipKey]) {
+    const record = loginRateLimitStore.get(key);
+    if (record && now > record.resetTime) {
+      loginRateLimitStore.delete(key);
+    }
+  }
+
+  const emailRecord = loginRateLimitStore.get(emailKey);
+  const ipRecord = loginRateLimitStore.get(ipKey);
+
+  // Check email limit
+  if (emailRecord && emailRecord.count >= LOGIN_RATE_LIMIT.MAX_ATTEMPTS_PER_EMAIL) {
+    const retryAfter = Math.ceil((emailRecord.resetTime - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  // Check IP limit
+  if (ipRecord && ipRecord.count >= LOGIN_RATE_LIMIT.MAX_ATTEMPTS_PER_IP) {
+    const retryAfter = Math.ceil((ipRecord.resetTime - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Record a failed login attempt for rate limiting
+ */
+function recordFailedLogin(email: string, clientIP: string): void {
+  const now = Date.now();
+  const emailKey = `login_email_${email.toLowerCase()}`;
+  const ipKey = `login_ip_${clientIP}`;
+
+  for (const key of [emailKey, ipKey]) {
+    const record = loginRateLimitStore.get(key);
+    if (record && now <= record.resetTime) {
+      record.count++;
+    } else {
+      loginRateLimitStore.set(key, { count: 1, resetTime: now + LOGIN_RATE_LIMIT.WINDOW_MS });
+    }
+  }
+}
 
 /**
  * POST /api/v1/auth/login
@@ -47,25 +109,37 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     const { email, password } = validationResult.data;
 
-    // 2. Initialize Supabase client
-    const supabase = createServerClient(
-      AppConfig.supabase.url,
-      AppConfig.supabase.anonKey,
-      {
-        cookies: {
-          getAll() { return []; },
-          setAll() { },
-        },
-      }
-    );
+    // 2. Check rate limit before attempting authentication
+    const clientIP = getClientIP(request) || 'unknown';
+    const rateLimit = checkLoginRateLimit(email, clientIP);
+    if (!rateLimit.allowed) {
+      const error = await ErrorHandlingService.createError(
+        ErrorType.RATE_LIMIT,
+        'Too many login attempts. Please try again later.',
+        {
+          severity: ErrorSeverity.MEDIUM,
+          endpoint,
+          method,
+          statusCode: 429,
+          metadata: { retryAfter: rateLimit.retryAfter }
+        }
+      );
+      return formatError(error);
+    }
 
-    // 3. Attempt login with Supabase
+    // 3. Initialize Supabase client
+    const supabase = createAnonServerClient();
+
+    // 4. Attempt login with Supabase
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (authError || !authData.user) {
+      // Record failed attempt for rate limiting
+      recordFailedLogin(email, clientIP);
+
       // Log failed login attempt
       await ActivityLogger.logAuth(
         'anonymous',
@@ -91,7 +165,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     const user = authData.user;
 
-    // 4. Log successful login activity
+    // 5. Log successful login activity
     const requestInfo = await getRequestInfo(request);
     await ActivityLogger.logAuth(
       user.id,
@@ -100,7 +174,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       request
     );
 
-    // 5. Send login notification email (async)
+    // 6. Send login notification email (async)
     loginNotificationService.sendLoginNotification({
       userId: user.id,
       userEmail: user.email!,
@@ -114,7 +188,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       logger.error({ error: emailError instanceof Error ? emailError : undefined }, 'Failed to send login notification email');
     });
 
-    // 6. Return success response with session data
+    // 7. Return success response with session data
     return formatSuccess({
       user: {
         id: user.id,

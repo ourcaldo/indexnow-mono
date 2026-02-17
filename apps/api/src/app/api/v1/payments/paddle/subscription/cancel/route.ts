@@ -5,12 +5,20 @@
  * Auto-applies 7-day refund policy:
  * - ≤7 days from purchase: Full refund + immediate cancellation
  * - >7 days: No refund + scheduled cancellation (access until period end)
+ * 
+ * TODO (#65): This route performs 2 writes across separate executeWithUserSession calls:
+ *   1. Update indb_payment_subscriptions (cancel subscription)
+ *   2. Update indb_auth_user_profiles (set subscription_end_date)
+ * These should be wrapped in a single Postgres RPC for atomicity.
+ * Blocked by schema discrepancies: route uses canceled_at/cancel_at_period_end/current_period_end
+ * columns that don't exist in database_schema.sql (schema has cancelled_at, no cancel_at_period_end).
+ * Resolve schema alignment first, then create cancel_subscription_service RPC.
  */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -52,7 +60,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/cancel',
             reason: 'User attempting to cancel subscription - ownership verification',
             metadata: { subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/cancel' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'select' },
@@ -102,7 +110,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/cancel',
             reason: refundEligible ? 'User canceling subscription with refund (within 7 days)' : 'User canceling subscription (past 7 day window)',
             metadata: { subscriptionId, daysActive, refundEligible, endpoint: '/api/v1/payments/paddle/subscription/cancel' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'update' },
@@ -133,7 +141,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/cancel',
             reason: 'Updating user profile after subscription cancellation',
             metadata: { subscriptionId, newEndDate: refundEligible ? canceledAt : subscription.current_period_end },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_auth_user_profiles', operationType: 'update' },

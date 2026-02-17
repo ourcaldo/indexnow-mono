@@ -24,7 +24,7 @@ export interface ProcessPaymentResponse extends ApiResponse<{
   nextAction?: {
     type: 'redirect' | '3ds_authentication' | 'complete';
     url?: string;
-    data?: Record<string, any>;
+    data?: Record<string, unknown>;
   };
 }> {}
 
@@ -41,7 +41,7 @@ export interface PaymentTimeline {
   status: string;
   timestamp: Date;
   description: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Subscription responses
@@ -182,7 +182,7 @@ export interface ProcessRefundResponse extends ApiResponse<{
   processed: boolean;
   refund: Refund;
   processedAt: Date;
-  gatewayResponse?: Record<string, any>;
+  gatewayResponse?: Record<string, unknown>;
 }> {}
 
 // Promo code responses

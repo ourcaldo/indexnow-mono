@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -63,7 +63,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'dashboard',
                 reason: 'User fetching complete dashboard data',
                 metadata: { endpoint: '/api/v1/dashboard' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -91,7 +91,9 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     db.from('indb_payment_packages')
                         .select('*')
                         .eq('is_active', true)
-                        .order('sort_order', { ascending: true }),
+                        .is('deleted_at', null)
+                        .order('sort_order', { ascending: true })
+                        .limit(50),
 
                     // 4. Domains (using indb_keyword_domains if it exists, or distinct domains from rank_keywords?)
                     // indb_keyword_domains exists and has user_id, so use it
@@ -99,7 +101,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                         .select('*')
                         .eq('user_id', userId)
                         .eq('is_active', true)
-                        .order('created_at', { ascending: false }),
+                        .order('created_at', { ascending: false })
+                        .limit(100),
 
                     // 5. Notifications (Warnings only)
                     db.from('indb_notifications_dashboard')

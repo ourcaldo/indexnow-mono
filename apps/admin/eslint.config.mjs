@@ -1,10 +1,13 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import sharedNext from "@indexnow/eslint-config/next";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Shared project rules (type-safety, code-quality)
+  ...sharedNext,
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

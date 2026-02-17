@@ -17,11 +17,25 @@ export function formatDate(dateString: string | Date): string {
 
 /**
  * Formats a date string into a relative time string (e.g., "2 days ago")
+ * Handles future dates and invalid input gracefully (#14)
  */
 export function formatRelativeTime(dateString: string | Date): string {
   const date = new Date(dateString)
+
+  // Guard against invalid dates (NaN)
+  if (isNaN(date.getTime())) {
+    return 'Invalid date'
+  }
+
   const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  const diffInMs = now.getTime() - date.getTime()
+
+  // Handle future dates
+  if (diffInMs < 0) {
+    return 'In the future'
+  }
+
+  const diffInSeconds = Math.floor(diffInMs / 1000)
 
   if (diffInSeconds < 60) {
     return 'Just now'

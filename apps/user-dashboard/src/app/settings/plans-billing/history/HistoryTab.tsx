@@ -12,56 +12,9 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { authService, formatDate, formatCurrency, logger } from '@indexnow/shared'
-import { LoadingSpinner } from '@indexnow/ui'
+import { authService, authenticatedFetch, formatDate, formatCurrency, logger } from '@indexnow/shared'
+import { LoadingSpinner, formatTransactionType, getTransactionStatusColors, type Transaction, type BillingHistoryData } from '@indexnow/ui'
 import { BILLING_ENDPOINTS, buildEndpoint } from '@indexnow/shared'
-
-interface Transaction {
-  id: string
-  transaction_type: string
-  transaction_status: string
-  amount: number
-  currency: string
-  payment_method: string
-  gateway_transaction_id: string
-  created_at: string
-  processed_at: string | null
-  verified_at: string | null
-  notes: string | null
-  package_name?: string
-  package?: {
-    name: string
-    slug: string
-  }
-  gateway?: {
-    name: string
-    slug: string
-  }
-  subscription?: {
-    billing_period: string
-    started_at: string
-    expires_at: string
-  } | null
-}
-
-interface BillingHistoryData {
-  transactions: Transaction[]
-  summary: {
-    total_transactions: number
-    completed_transactions: number
-    pending_transactions: number
-    failed_transactions: number
-    total_amount_spent: number
-  }
-  pagination: {
-    current_page: number
-    total_pages: number
-    total_items: number
-    items_per_page: number
-    has_next: boolean
-    has_prev: boolean
-  }
-}
 
 export default function HistoryTab() {
   const [historyData, setHistoryData] = useState<BillingHistoryData | null>(null)
@@ -84,11 +37,6 @@ export default function HistoryTab() {
         throw new Error('User not authenticated')
       }
 
-      const token = await authService.getToken()
-      if (!token) {
-        throw new Error('No authentication token')
-      }
-
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10'
@@ -97,13 +45,7 @@ export default function HistoryTab() {
       if (statusFilter) params.append('status', statusFilter)
       if (typeFilter) params.append('type', typeFilter)
 
-      const response = await fetch(buildEndpoint(BILLING_ENDPOINTS.HISTORY, Object.fromEntries(params)), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Essential for cross-subdomain authentication
-      })
+      const response = await authenticatedFetch(buildEndpoint(BILLING_ENDPOINTS.HISTORY, Object.fromEntries(params)))
 
       if (!response.ok) {
         throw new Error('Failed to load billing history')
@@ -129,25 +71,7 @@ export default function HistoryTab() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return { bg: 'bg-success/10', text: 'text-success', border: 'border-success/20' }
-      case 'pending': return { bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/20' }
-      case 'failed': return { bg: 'bg-error/10', text: 'text-error', border: 'border-error/20' }
-      case 'cancelled': return { bg: 'bg-muted-foreground/10', text: 'text-muted-foreground', border: 'border-muted-foreground/20' }
-      default: return { bg: 'bg-muted-foreground/10', text: 'text-muted-foreground', border: 'border-muted-foreground/20' }
-    }
-  }
-
-  const formatTransactionType = (type: string) => {
-    switch (type) {
-      case 'subscription': return 'New Subscription'
-      case 'renewal': return 'Renewal'
-      case 'upgrade': return 'Plan Upgrade'
-      case 'downgrade': return 'Plan Downgrade'
-      default: return type.charAt(0).toUpperCase() + type.slice(1)
-    }
-  }
+  const getStatusColor = getTransactionStatusColors
 
   const filteredTransactions = historyData?.transactions.filter(transaction => {
     if (!searchTerm) return true

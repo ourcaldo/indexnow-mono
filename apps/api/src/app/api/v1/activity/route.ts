@@ -10,17 +10,38 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
+import { z } from 'zod';
+
+const activitySchema = z.object({
+    eventType: z.string().optional(),
+    action_type: z.string().optional(),
+    actionDescription: z.string().optional(),
+    action_description: z.string().optional(),
+    ip_address: z.string().optional(),
+    user_agent: z.string().optional(),
+    metadata: z.record(z.unknown()).optional(),
+});
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
     try {
-        const body = await request.json();
+        const rawBody = await request.json();
+        const parseResult = activitySchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            const validationError = await ErrorHandlingService.createError(
+                ErrorType.VALIDATION,
+                parseResult.error.errors[0]?.message || 'Invalid request body',
+                { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400 }
+            );
+            return formatError(validationError);
+        }
+        const body = parseResult.data;
 
         const userId = auth.userId;
         const userEmail = auth.user.email || '';
 
         // Extract and parse IP address properly (handle multiple IPs from proxy)
-        const rawIpAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || body.ip_address || '';
+        const rawIpAddress = getClientIP(request) ?? body.ip_address ?? '';
         const cleanIpAddress = rawIpAddress.split(',')[0].trim() || '';
 
         // Log the activity using the ActivityLogger static method

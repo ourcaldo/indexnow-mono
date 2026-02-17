@@ -83,6 +83,7 @@ export async function processSubscriptionCreated(data: unknown) {
                 .from('indb_payment_packages')
                 .select('*')
                 .eq('slug', packageSlug)
+                .is('deleted_at', null)
                 .single();
 
             if (packageError || !packageData) {

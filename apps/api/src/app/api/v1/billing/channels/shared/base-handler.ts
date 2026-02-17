@@ -84,6 +84,7 @@ export abstract class BasePaymentHandler {
                     .select('*')
                     .eq('id', this.paymentData.package_id)
                     .eq('is_active', true)
+                    .is('deleted_at', null)
                     .single();
 
                 if (error && error.code !== 'PGRST116') {

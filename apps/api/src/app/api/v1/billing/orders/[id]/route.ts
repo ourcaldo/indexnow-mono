@@ -1,9 +1,9 @@
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { logger } from '@/lib/monitoring/error-handling'
-import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
+import { authenticatedApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { DbTransactionRow as TransactionRow, DbPackageRow as PackageRow } from '@indexnow/shared'
+import { DbTransactionRow as TransactionRow, DbPackageRow as PackageRow, ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
 
 type TransactionWithPackage = TransactionRow & {
   package: Pick<PackageRow, 'id' | 'name' | 'description' | 'features' | 'quota_limits'> | null
@@ -18,7 +18,11 @@ export const GET = authenticatedApiWrapper(async (
   const id = params?.id
   
   if (!id) {
-    throw new Error('Order ID is required')
+    return formatError(await createStandardError(
+      ErrorType.VALIDATION,
+      'Order ID is required',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
+    ))
   }
   
   logger.info({ data: [id] }, '[ORDER-API] Received order ID:')
@@ -39,7 +43,7 @@ export const GET = authenticatedApiWrapper(async (
         endpoint: '/api/v1/billing/orders/[id]',
         method: 'GET'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     { table: 'indb_payment_transactions', operationType: 'select' },
@@ -60,12 +64,20 @@ export const GET = authenticatedApiWrapper(async (
 
       if (transactionError || !transaction) {
         logger.info({ message: '[ORDER-API] Transaction not found for user' }, 'Info')
-        throw new Error('Access denied')
+        return null
       }
 
       return transaction as TransactionWithPackage
     }
   )
+
+  if (!transaction) {
+    return formatError(await createStandardError(
+      ErrorType.NOT_FOUND,
+      'Order not found or access denied',
+      { statusCode: 404, severity: ErrorSeverity.LOW, metadata: { orderId: id } }
+    ))
+  }
   
   logger.info({ data: [`order ID: ${transaction.id}`] }, '[ORDER-API] Order found successfully')
 

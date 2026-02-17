@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, type PackagePricingTiers } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database, type PackagePricingTiers , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
@@ -63,7 +63,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'billing/overview',
                 reason: 'User fetching their billing profile with package information',
                 metadata: { endpoint: '/api/v1/billing/overview' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -93,7 +93,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     source: 'billing/overview',
                     reason: 'User fetching their active billing subscription for overview',
                     metadata: { endpoint: '/api/v1/billing/overview' },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_payment_subscriptions', operationType: 'select' },
@@ -129,7 +129,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     source: 'billing/overview',
                     reason: 'User fetching their recent billing transactions for overview',
                     metadata: { endpoint: '/api/v1/billing/overview' },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_payment_transactions', operationType: 'select' },

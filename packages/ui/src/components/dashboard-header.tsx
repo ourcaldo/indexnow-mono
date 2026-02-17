@@ -66,7 +66,7 @@ export function DashboardHeader({
   const isIndexNowPage = (pathname?.includes('/indexnow/overview') || pathname?.includes('/indexnow/rank-history'))
   
   // Show notification icon only on main dashboard page
-  const showNotification = pathname === '/dashboard' || pathname === '/backend/admin'
+  const showNotification = pathname === '/dashboard' || pathname === '/'
 
   return (
     <>

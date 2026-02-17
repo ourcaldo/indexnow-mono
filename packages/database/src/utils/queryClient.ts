@@ -4,7 +4,7 @@ import {
   ErrorSeverity, 
   type Json
 } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '../client'
+import { supabaseBrowser as supabase } from '@indexnow/shared'
 
 export class ApiError extends Error {
   id: string
@@ -43,6 +43,9 @@ export const apiRequest = async <T = Json>(url: string, options?: RequestInit): 
   const fullUrl = url.startsWith('http') || url.includes('/api/v1') ? url : 
     url.startsWith('/') ? url : `/${url}`
   
+  // SECURITY: Use getUser() instead of getSession() to validate the token against the auth server.
+  // getSession() only reads the local JWT without server validation, which can be spoofed.
+  const { data: { user } } = await supabase.auth.getUser()
   const { data: { session } } = await supabase.auth.getSession()
   const accessToken = session?.access_token
   
@@ -51,7 +54,8 @@ export const apiRequest = async <T = Json>(url: string, options?: RequestInit): 
     ...(options?.headers as Record<string, string>),
   }
   
-  if (accessToken) {
+  // Only attach the access token if user is validated by the auth server
+  if (user && accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`
   }
   

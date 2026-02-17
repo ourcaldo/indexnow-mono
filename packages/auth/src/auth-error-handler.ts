@@ -112,11 +112,9 @@ export class AuthErrorHandler {
 
     if (typeof window !== 'undefined') {
       const currentPath = window.location.pathname
-      const isAdminRoute = currentPath.startsWith('/backend/admin')
-      const loginPath = isAdminRoute ? '/backend/admin/login' : '/login'
       
       if (!currentPath.includes('/login')) {
-        window.location.href = loginPath
+        window.location.href = '/login'
       }
     }
   }

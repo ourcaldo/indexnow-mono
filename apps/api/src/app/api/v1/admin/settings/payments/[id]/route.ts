@@ -1,50 +1,54 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { type AdminUser } from '@indexnow/auth'
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
-  // Extract ID from URL path
-  const id = request.url.split('/').filter(Boolean).pop() || ''
-  const body = await request.json()
+const updateGatewaySchema = z.object({
+  name: z.string().max(255).optional(),
+  slug: z.string().max(100).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  is_active: z.boolean().optional(),
+  is_default: z.boolean().optional(),
+  configuration: z.record(z.string(), z.unknown()).optional(),
+  api_credentials: z.record(z.string(), z.unknown()).optional(),
+}).strict();
 
-  // If setting as default, remove default from other gateways using secure wrapper
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+  // Extract ID from route params
+  if (!context) throw new Error('Missing route context');
+  const { id } = await context.params;
+  const rawBody = await request.json()
+
+  // Validate input with Zod schema
+  const validation = updateGatewaySchema.safeParse(rawBody);
+  if (!validation.success) {
+    const validationError = await ErrorHandlingService.createError(
+      ErrorType.VALIDATION,
+      validation.error.issues[0]?.message || 'Invalid request body',
+      { severity: ErrorSeverity.LOW, statusCode: 400 }
+    );
+    return formatError(validationError);
+  }
+
+  const body = validation.data;
+
+  // If setting as default, atomically swap defaults using RPC
   if (body.is_default) {
-    const resetDefaultContext = {
-      userId: adminUser.id,
-      operation: 'admin_reset_payment_gateway_defaults',
-      reason: 'Admin setting new default payment gateway - resetting others',
-      source: 'admin/settings/payments/[id]',
-      metadata: {
-        newDefaultGatewayId: id,
-        endpoint: '/api/v1/admin/settings/payments/[id]'
-      }
+    const { error: rpcError } = await (supabaseAdmin.rpc as Function)(
+      'set_default_payment_gateway_service', { p_gateway_id: id }
+    );
+
+    if (rpcError) {
+      const structuredError = await ErrorHandlingService.createError(
+        ErrorType.DATABASE,
+        `Failed to set default gateway: ${rpcError.message}`,
+        { severity: ErrorSeverity.MEDIUM, statusCode: 500 }
+      );
+      return formatError(structuredError);
     }
-
-    await SecureServiceRoleWrapper.executeSecureOperation(
-      resetDefaultContext,
-      {
-        table: 'indb_payment_gateways',
-        operationType: 'update',
-        columns: ['is_default'],
-        whereConditions: { 'id_neq': id },
-        data: { is_default: false }
-      },
-      async () => {
-        const { error } = await supabaseAdmin
-          .from('indb_payment_gateways')
-          .update({ is_default: false })
-          .neq('id', id)
-
-        if (error) {
-          throw new Error('Failed to reset default gateways')
-        }
-
-        return { success: true }
-      }
-    )
   }
 
   // Update the payment gateway using secure wrapper
@@ -113,9 +117,10 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
   }
 })
 
-export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
-  // Extract ID from URL path
-  const id = request.url.split('/').filter(Boolean).pop() || ''
+export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+  // Extract ID from route params
+  if (!context) throw new Error('Missing route context');
+  const { id } = await context.params;
 
   // Delete payment gateway using secure wrapper
   const deleteContext = {
@@ -140,8 +145,9 @@ export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: Ad
       async () => {
         const { error } = await supabaseAdmin
           .from('indb_payment_gateways')
-          .delete()
+          .update({ deleted_at: new Date().toISOString(), is_active: false })
           .eq('id', id)
+          .is('deleted_at', null)
 
         if (error) {
           throw new Error('Failed to delete payment gateway')

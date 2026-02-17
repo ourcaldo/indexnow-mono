@@ -1,11 +1,14 @@
-'use client'
-
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@indexnow/auth'
-import { ToastContainer, FaviconProvider, QueryProvider, AnalyticsProvider } from '@indexnow/ui'
+import { AdminClientProviders } from '@/components/providers/AdminClientProviders'
 
 const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'IndexNow Studio Admin',
+  description: 'Administration dashboard for IndexNow Studio. Manage users, packages, and platform settings.',
+}
 
 export default function RootLayout({
   children,
@@ -15,16 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <FaviconProvider />
-        <AnalyticsProvider>
-          <QueryProvider>
-            <AuthProvider>
-              <ToastContainer>
-                {children}
-              </ToastContainer>
-            </AuthProvider>
-          </QueryProvider>
-        </AnalyticsProvider>
+        <AdminClientProviders>
+          {children}
+        </AdminClientProviders>
       </body>
     </html>
   )

@@ -1,8 +1,7 @@
-﻿import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
+import { AppConfig, ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     publicApiWrapper,
     formatSuccess,
@@ -53,23 +52,8 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         const baseDomain = getBaseDomain();
 
         const supabase = createServerClient(
-            AppConfig.supabase.url,
-            AppConfig.supabase.anonKey,
-            {
-                cookies: {
-                    getAll() { return cookieStore.getAll(); },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            const cookieOptions = {
-                                ...options,
-                                maxAge: 0,
-                                ...(baseDomain && { domain: `.${baseDomain}` })
-                            };
-                            cookieStore.set(name, value, cookieOptions);
-                        });
-                    },
-                },
-            }
+            cookieStore,
+            { maxAge: 0, ...(baseDomain && { domain: `.${baseDomain}` }) }
         );
 
         const logoutResult = await SecureServiceRoleWrapper.executeWithUserSession<LogoutResult>(
@@ -80,7 +64,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
                 reason: 'User logging out of application',
                 source: 'auth/logout',
                 metadata: { endpoint: '/api/v1/auth/logout' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+                ipAddress: getClientIP(request) ?? 'unknown',
                 userAgent: request.headers.get('user-agent') || 'unknown'
             },
             { table: 'auth.sessions', operationType: 'delete' },

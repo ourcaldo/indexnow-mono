@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { requireServerSuperAdminAuth } from '@indexnow/auth';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     publicApiWrapper,
     formatSuccess,
@@ -35,7 +35,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                     endpoint: '/api/v1/system/status',
                     method: 'GET'
                 },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             {

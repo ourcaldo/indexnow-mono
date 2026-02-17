@@ -19,6 +19,7 @@ import {
   Map
 } from 'lucide-react'
 import { ADMIN_ENDPOINTS, SiteSettingsRow, logger } from '@indexnow/shared'
+import { SettingsPageSkeleton, ErrorState } from '@indexnow/ui'
 
 type UI_SiteSettings = SiteSettingsRow & {
   robots_txt_content?: string
@@ -129,18 +130,17 @@ export default function SiteSettings() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-border border-t-primary"></div>
-      </div>
-    )
+    return <SettingsPageSkeleton />
   }
 
   if (!settings) {
     return (
       <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-        <p className="text-muted-foreground">Failed to load site settings</p>
+        <ErrorState
+          title="Failed to load site settings"
+          message="Site settings could not be loaded. Please try refreshing the page."
+          onRetry={() => window.location.reload()}
+        />
       </div>
     )
   }

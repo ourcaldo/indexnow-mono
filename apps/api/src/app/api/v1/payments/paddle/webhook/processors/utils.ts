@@ -128,6 +128,7 @@ export async function getPackageIdFromSubscription(
                     .from('indb_payment_packages')
                     .select('id')
                     .eq('slug', customData.packageSlug!)
+                    .is('deleted_at', null)
                     .maybeSingle();
                 return data;
             }
@@ -178,6 +179,7 @@ export async function getPaddleGatewayId(): Promise<string> {
                 .select('id')
                 .eq('slug', 'paddle')
                 .eq('is_active', true)
+                .is('deleted_at', null)
                 .maybeSingle();
             return data;
         }

@@ -7,8 +7,8 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -47,38 +47,21 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/keywords/add-tag',
                 reason: 'User adding tags to their keywords',
                 metadata: { keywordIds, tag: cleanTag, keywordCount: keywordIds.length },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'update' },
-            async (db) => {
-                const { data: verifiedKeywords, error: verifyError } = await db
-                    .from('indb_rank_keywords')
-                    .select('id, keyword, tags, domain')
-                    .in('id', keywordIds)
-                    .eq('user_id', auth.userId);
+            async () => {
+                // Use atomic RPC — single transaction for all keyword tag updates
+                const { data, error } = await supabaseAdmin
+                    .rpc('add_tags_to_keywords_atomic', {
+                        target_keyword_ids: keywordIds,
+                        target_user_id: auth.userId,
+                        new_tags: [cleanTag]
+                    });
 
-                if (verifyError) throw new Error(`Failed to verify keywords: ${verifyError.message}`);
-                if (!verifiedKeywords || verifiedKeywords.length !== keywordIds.length) {
-                    throw new Error('Some keywords not found or access denied');
-                }
-
-                const keywordsNeedingUpdate = verifiedKeywords.filter(
-                    kw => !(kw.tags || []).includes(cleanTag)
-                );
-
-                if (keywordsNeedingUpdate.length === 0) {
-                    return { updatedCount: 0 };
-                }
-
-                await Promise.all(keywordsNeedingUpdate.map(kw =>
-                    db
-                        .from('indb_rank_keywords')
-                        .update({ tags: [...(kw.tags || []), cleanTag] })
-                        .eq('id', kw.id)
-                ));
-
-                return { updatedCount: keywordsNeedingUpdate.length };
+                if (error) throw new Error(`Failed to add tags: ${error.message}`);
+                return { updatedCount: data || 0 };
             }
         );
 

@@ -42,7 +42,7 @@ export const GET = adminApiWrapper(async (
     ));
   }
 
-  const log = logs[0] as any;
+  const log = logs[0] as Record<string, unknown>;
 
   // Fetch user profile
   let userName = 'Unknown User';
@@ -54,7 +54,7 @@ export const GET = adminApiWrapper(async (
         { ...operationContext, operation: 'admin_get_activity_user_profile' },
         'indb_auth_user_profiles',
         ['full_name', 'user_id'],
-        { user_id: log.user_id }
+        { user_id: log.user_id as string }
       );
 
       if (profiles && profiles.length > 0) {
@@ -67,10 +67,10 @@ export const GET = adminApiWrapper(async (
           table: 'auth.users',
           operationType: 'select',
           columns: ['email'],
-          whereConditions: { id: log.user_id }
+          whereConditions: { id: log.user_id as string }
         },
         async () => {
-          const { data: userData } = await supabaseAdmin.auth.admin.getUserById(log.user_id);
+          const { data: userData } = await supabaseAdmin.auth.admin.getUserById(log.user_id as string);
           return userData?.user?.email || null;
         }
       );
@@ -83,7 +83,7 @@ export const GET = adminApiWrapper(async (
   }
 
   // Fetch related logs (same user)
-  let relatedLogs: any[] = [];
+  let relatedLogs: Record<string, unknown>[] = [];
   if (log.user_id) {
     try {
       relatedLogs = (await SecureServiceRoleWrapper.executeSecureOperation(
@@ -92,29 +92,29 @@ export const GET = adminApiWrapper(async (
           table: 'indb_security_activity_logs',
           operationType: 'select',
           columns: ['*'],
-          whereConditions: { user_id: log.user_id }
+          whereConditions: { user_id: log.user_id as string }
         },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_security_activity_logs')
             .select('*')
-            .eq('user_id', log.user_id!)
-            .neq('id', log.id)
+            .eq('user_id', log.user_id as string)
+            .neq('id', log.id as string)
             .order('created_at', { ascending: false })
             .limit(5);
 
           if (error) throw error;
           return data || [];
         }
-      )) as any[];
+      )) as Record<string, unknown>[];
     } catch (err) {
       // Ignore related logs error
     }
   }
 
   // Helper to map log
-  const mapLog = (l: any) => {
-    const details = (l.details as Record<string, any>) || {};
+  const mapLog = (l: Record<string, unknown>) => {
+    const details = (l.details as Record<string, unknown>) || {};
     return {
       id: l.id,
       user_id: l.user_id,

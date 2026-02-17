@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
@@ -45,7 +45,7 @@ export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (requ
                 source: 'auth/user/trial-eligibility',
                 reason: 'User checking trial eligibility status and usage history',
                 metadata: { endpoint: '/api/v1/auth/user/trial-eligibility', method: 'GET' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -86,7 +86,7 @@ export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (requ
                     source: 'auth/user/trial-eligibility',
                     reason: 'User fetching available trial packages for eligibility check',
                     metadata: { eligible: true },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_payment_packages', operationType: 'select' },
@@ -94,7 +94,9 @@ export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (requ
                     const { data, error } = await db
                         .from('indb_payment_packages')
                         .select('id, name, slug, description, is_active')
-                        .eq('is_active', true);
+                        .eq('is_active', true)
+                        .is('deleted_at', null)
+                        .limit(20);
                     if (error) throw error;
                     return data ?? [];
                 }

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Badge, Separator, useToast } from '@indexnow/ui'
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { BILLING_ENDPOINTS, formatCurrency, logger } from '@indexnow/shared'
-import { type Json, supabaseBrowser } from '@indexnow/auth'
+import { BILLING_ENDPOINTS, formatCurrency, authenticatedFetch, logger, type Json } from '@indexnow/shared'
+import { supabaseBrowser } from '@indexnow/database'
 
 interface Transaction {
   id: string
@@ -59,20 +59,14 @@ export default function OrderCompletedPage() {
 
   const fetchTransactionDetails = async () => {
     try {
-      const supabase = supabaseBrowser
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await supabaseBrowser.auth.getSession()
 
       if (!session) {
         router.push('/auth/login')
         return
       }
 
-      const response = await fetch(`${BILLING_ENDPOINTS.HISTORY.replace('/history', '')}/orders/${params.id}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        credentials: 'include'
-      })
+      const response = await authenticatedFetch(`${BILLING_ENDPOINTS.HISTORY.replace('/history', '')}/orders/${params.id}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch transaction details')
@@ -164,24 +158,13 @@ export default function OrderCompletedPage() {
 
     setUploading(true)
     try {
-      const supabase = supabaseBrowser
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
-        throw new Error('Authentication required')
-      }
-
       const formData = new FormData()
       formData.append('proof_file', proofFile)
       formData.append('transaction_id', transaction.id)
 
-      const response = await fetch(BILLING_ENDPOINTS.UPLOAD_PROOF, {
+      const response = await authenticatedFetch(BILLING_ENDPOINTS.UPLOAD_PROOF, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        credentials: 'include',
-        body: formData
+        body: formData,
       })
 
       if (!response.ok) {
@@ -295,10 +278,10 @@ export default function OrderCompletedPage() {
                 <CardTitle className="text-lg font-semibold text-foreground">Order Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">Order ID</p>
-                    <p className="text-sm text-muted-foreground font-mono">{transaction.id}</p>
+                    <p className="text-sm text-muted-foreground font-mono break-all">{transaction.id}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Order Date</p>
@@ -368,7 +351,7 @@ export default function OrderCompletedPage() {
                 <CardTitle className="text-lg font-semibold text-foreground">Customer Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-foreground">Name</p>
                     <p className="text-sm text-muted-foreground">

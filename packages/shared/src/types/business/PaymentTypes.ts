@@ -1,5 +1,9 @@
 /**
- * Payment-related type definitions for IndexNow Studio
+ * Payment-related type definitions for IndexNow Studio (business/camelCase layer)
+ *
+ * @deprecated Most types overlap with `types/services/Payments.ts` (DB/snake_case layer).
+ * Only `Package` is still actively imported (by User.ts). Avoid adding new types here —
+ * use `types/services/Payments.ts` instead.
  */
 
 import { type Json } from '../common/Json';

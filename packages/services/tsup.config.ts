@@ -7,5 +7,9 @@ export default defineConfig({
     splitting: false,
     sourcemap: true,
     clean: true,
-    external: ['@supabase/supabase-js'],
+    external: [
+        '@supabase/supabase-js',
+        '@indexnow/database',
+        '@indexnow/shared',
+    ],
 })

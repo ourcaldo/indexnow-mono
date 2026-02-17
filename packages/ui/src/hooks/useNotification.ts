@@ -43,6 +43,18 @@ export function useNotification(): UseNotificationReturn {
     return `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }, [])
 
+  // (#132) Moved before addNotification to avoid TDZ — removeNotification is captured in closure
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id))
+    
+    // Clear timeout if exists
+    const timeout = timeoutsRef.current.get(id)
+    if (timeout) {
+      clearTimeout(timeout)
+      timeoutsRef.current.delete(id)
+    }
+  }, [])
+
   // Add notification
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {
     const id = generateId()
@@ -65,19 +77,7 @@ export function useNotification(): UseNotificationReturn {
     }
 
     return id
-  }, [generateId])
-
-  // Remove notification
-  const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id))
-    
-    // Clear timeout if exists
-    const timeout = timeoutsRef.current.get(id)
-    if (timeout) {
-      clearTimeout(timeout)
-      timeoutsRef.current.delete(id)
-    }
-  }, [])
+  }, [generateId, removeNotification]) // (#132) Added missing removeNotification dep
 
   // Clear all notifications
   const clearAllNotifications = useCallback(() => {

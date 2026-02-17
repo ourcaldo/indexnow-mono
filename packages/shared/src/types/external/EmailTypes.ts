@@ -21,7 +21,7 @@ export interface EmailOptions {
   to: EmailRecipient | EmailRecipient[];
   subject: string;
   template?: string;
-  templateData?: Record<string, any>;
+  templateData?: Record<string, unknown>;
   htmlContent?: string;
   textContent?: string;
 }

@@ -79,6 +79,23 @@ async function hardLogout(client: ReturnType<typeof createSupabaseBrowserClient<
 
 /**
  * Creates a Supabase client for use in the browser (client components)
+ * 
+ * Auth state handling architecture (2 layers, no more triple-redundancy):
+ * 
+ * Layer 1 (this file): Last-resort safety net at the Supabase client singleton level.
+ *   - Fires hardLogout on SIGNED_OUT or refresh_token_already_used errors.
+ *   - Operates independently of React — handles edge cases where React tree
+ *     isn't mounted (e.g., during SSR hydration or before AuthProvider initializes).
+ * 
+ * Layer 2 (AuthProvider in @indexnow/auth): Primary auth state management.
+ *   - Uses AuthErrorHandler.createAuthStateChangeHandler() for auth events.
+ *   - Manages React state (user, loading, authChecked, isAuthenticated).
+ *   - useSessionRefresh() proactively refreshes tokens before expiry (#106).
+ *   - Handles redirect to /login on unrecoverable sign-out.
+ * 
+ * Previously, there was also a Layer 3 (admin login page's own listener) which
+ * was removed to eliminate triple-redundancy. Per-page auth listeners should not
+ * be added — use AuthProvider centrally instead.
  */
 export function createBrowserClient() {
     const supabaseUrl = AppConfig.supabase.url

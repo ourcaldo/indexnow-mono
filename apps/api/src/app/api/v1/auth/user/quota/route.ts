@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
@@ -21,7 +21,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'auth/user/quota',
                 reason: 'User retrieving their own quota information for dashboard display',
                 metadata: { endpoint: '/api/v1/auth/user/quota', method: 'GET' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -78,7 +78,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                         newDate: today,
                         quotaReset: true
                     },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_auth_user_profiles', operationType: 'update' },

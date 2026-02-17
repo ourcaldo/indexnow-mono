@@ -1,8 +1,7 @@
-﻿import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
+import { AppConfig, ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
@@ -71,25 +70,8 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
     const baseDomain = getBaseDomain();
 
     const supabase = createServerClient(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
-                        // Add cross-subdomain support to Supabase cookies
-                        const cookieOptions = {
-                            ...options,
-                            ...(baseDomain && { domain: `.${baseDomain}` })
-                        };
-                        cookieStore.set(name, value, cookieOptions);
-                    });
-                },
-            },
-        }
+        cookieStore,
+        baseDomain ? { domain: `.${baseDomain}` } : undefined
     );
 
     try {
@@ -112,7 +94,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                                 redirectTo,
                                 tokenType: 'token_hash'
                             },
-                            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                            ipAddress: getClientIP(request),
                             userAgent: request.headers.get('user-agent') || undefined
                         },
                         { table: 'auth.users', operationType: 'update' },
@@ -165,7 +147,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                                 redirectTo,
                                 tokenType: 'token_hash'
                             },
-                            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                            ipAddress: getClientIP(request),
                             userAgent: request.headers.get('user-agent') || undefined
                         },
                         { table: 'auth.users', operationType: 'update' },
@@ -218,7 +200,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                                 redirectTo,
                                 tokenType: 'token_hash'
                             },
-                            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                            ipAddress: getClientIP(request),
                             userAgent: request.headers.get('user-agent') || undefined
                         },
                         { table: 'auth.users', operationType: 'update' },

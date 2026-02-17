@@ -8,9 +8,9 @@ import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { EnrichmentQueue } from './EnrichmentQueue';
 import { KeywordEnrichmentService } from './KeywordEnrichmentService';
-import { ErrorHandlingService } from './ErrorHandlingService';
-import { JobErrorHandler } from '../../../job-management/JobErrorHandler';
-import { logger } from '../../../monitoring/error-handling';
+import { SeRankingErrorHandler } from './ErrorHandlingService';
+import { JobErrorHandler } from '@/lib/job-management/JobErrorHandler';
+import { logger } from '@/lib/monitoring/error-handling';
 import {
   EnrichmentJob,
   EnrichmentJobType,
@@ -73,7 +73,7 @@ class Worker extends EventEmitter {
   private config: WorkerConfig;
   private queue: EnrichmentQueue;
   private enrichmentService: KeywordEnrichmentService;
-  private errorHandler: ErrorHandlingService;
+  private errorHandler: SeRankingErrorHandler;
   private isShuttingDown: boolean = false;
   private heartbeatTimer?: NodeJS.Timeout;
 
@@ -81,7 +81,7 @@ class Worker extends EventEmitter {
     config: WorkerConfig,
     queue: EnrichmentQueue,
     enrichmentService: KeywordEnrichmentService,
-    errorHandler: ErrorHandlingService
+    errorHandler: SeRankingErrorHandler
   ) {
     super();
     this.id = config.workerId;
@@ -569,7 +569,7 @@ export class JobProcessor extends EventEmitter {
   private config: ProcessorConfig;
   private queue: EnrichmentQueue;
   private enrichmentService: KeywordEnrichmentService;
-  private errorHandler: ErrorHandlingService;
+  private errorHandler: SeRankingErrorHandler;
   private workers: Map<string, Worker> = new Map();
   private isRunning: boolean = false;
   private scalingTimer?: NodeJS.Timeout;
@@ -585,7 +585,7 @@ export class JobProcessor extends EventEmitter {
     config: Partial<ProcessorConfig> = {},
     queue: EnrichmentQueue,
     enrichmentService: KeywordEnrichmentService,
-    errorHandler: ErrorHandlingService
+    errorHandler: SeRankingErrorHandler
   ) {
     super();
     this.config = { ...DEFAULT_PROCESSOR_CONFIG, ...config };

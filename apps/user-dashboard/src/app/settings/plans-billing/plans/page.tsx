@@ -10,40 +10,8 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { authService, BILLING_ENDPOINTS, formatCurrency, logger } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/database'
-import { LoadingSpinner, PricingCards, useApiError } from '@indexnow/ui'
-
-interface PackageFeature {
-  name: string
-  included: boolean
-  limit?: string
-}
-
-interface PricingTier {
-  name: string
-  regular_price: number
-  promo_price?: number
-  discount_percentage?: number
-}
-
-interface PaymentPackage {
-  id: string
-  name: string
-  slug: string
-  description: string
-  price: number
-  currency: string
-  billing_period: string
-  features: string[]
-  quota_limits: {
-    rank_tracking_limit: number
-    concurrent_jobs_limit: number
-  }
-  is_popular: boolean
-  is_current: boolean
-  pricing_tiers: Record<string, PricingTier>
-}
+import { authService, BILLING_ENDPOINTS, formatCurrency, authenticatedFetch, logger } from '@indexnow/shared'
+import { LoadingSpinner, PricingCards, useApiError, ErrorState, getBillingPeriodPrice, buildCheckoutUrl, type PaymentPackage } from '@indexnow/ui'
 
 interface PackagesData {
   packages: PaymentPackage[]
@@ -71,18 +39,7 @@ export default function PlansPage() {
         throw new Error('User not authenticated')
       }
 
-      const token = (await supabase.auth.getSession()).data.session?.access_token
-      if (!token) {
-        throw new Error('No authentication token')
-      }
-
-      const response = await fetch(BILLING_ENDPOINTS.PACKAGES, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
+      const response = await authenticatedFetch(BILLING_ENDPOINTS.PACKAGES)
 
       if (!response.ok) {
         throw new Error('Failed to load packages')
@@ -98,31 +55,10 @@ export default function PlansPage() {
     }
   }
 
-  const getBillingPeriodPrice = (pkg: PaymentPackage, period: string): { price: number, originalPrice?: number, discount?: number } => {
-    const tier = pkg.pricing_tiers?.[period]
-    if (tier) {
-      return {
-        price: tier.promo_price || tier.regular_price,
-        originalPrice: tier.promo_price ? tier.regular_price : undefined,
-        discount: tier.discount_percentage
-      }
-    }
-    return { price: 0 }
-  }
-
   const handleSubscribe = async (packageId: string) => {
     try {
       setSubscribing(packageId)
-      const user = await authService.getCurrentUser()
-      if (!user) {
-        throw new Error('User not authenticated')
-      }
-
-      // Redirect to unified checkout page with selected package and billing period
-      // This prevents duplicate transaction creation by using only the checkout API
-      const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=${selectedBillingPeriod}`
-      window.location.href = checkoutUrl
-
+      window.location.href = buildCheckoutUrl(packageId, selectedBillingPeriod)
     } catch (error) {
       handleApiError(error, { context: 'PlansPage.handleSubscribe', toastTitle: 'Subscription Error' })
       setSubscribing(null)
@@ -140,15 +76,11 @@ export default function PlansPage() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-error mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Plans</h3>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <button
-          onClick={loadPackages}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          Try Again
-        </button>
+        <ErrorState
+          title="Error Loading Plans"
+          message={error}
+          onRetry={loadPackages}
+        />
       </div>
     )
   }

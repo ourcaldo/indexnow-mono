@@ -14,7 +14,7 @@ export interface CreatePaymentRequest {
   promoCode?: string;
   isTrialToSubscription?: boolean;
   returnUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // CustomerInfo now imported from services layer
@@ -22,7 +22,7 @@ export interface CreatePaymentRequest {
 export interface ProcessPaymentRequest {
   orderId: string;
   paymentMethod: string;
-  paymentData?: Record<string, any>;
+  paymentData?: Record<string, unknown>;
   customerInfo?: Partial<CustomerInfo>;
 }
 
@@ -43,7 +43,7 @@ export interface UpdateSubscriptionRequest {
   billingPeriod?: 'monthly' | 'quarterly' | 'biannual' | 'annual';
   isActive?: boolean;
   endDate?: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CancelSubscriptionRequest {
@@ -66,7 +66,7 @@ export interface CreateRefundRequest {
 export interface ProcessRefundRequest {
   refundId: string;
   gatewayTransactionId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Promo code requests
@@ -82,7 +82,7 @@ export interface CreatePromoCodeRequest {
   validUntil: Date;
   applicablePackages?: string[];
   minOrderAmount?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdatePromoCodeRequest {
@@ -141,7 +141,7 @@ export interface AddPaymentMethodRequest {
   tokenId: string;
   isDefault?: boolean;
   billingAddress?: CustomerInfo['address'];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdatePaymentMethodRequest {

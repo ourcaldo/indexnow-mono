@@ -52,7 +52,7 @@ export interface SecurityData {
       success: boolean
       timestamp: string
       ip_address?: string
-      device_info?: any
+      device_info?: Record<string, unknown>
     }>
   }
   activity: {

@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
+
+// UUID validation for transaction_id from FormData
+const transactionIdSchema = z.string().uuid('Invalid transaction ID format');
 
 // Derived types from Database schema
 type PaymentTransactionRow = Database['public']['Tables']['indb_payment_transactions']['Row'];
@@ -40,6 +44,17 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
             return formatError(error);
         }
 
+        // Validate transaction_id is a valid UUID
+        const uuidValidation = transactionIdSchema.safeParse(transactionId);
+        if (!uuidValidation.success) {
+            const error = await ErrorHandlingService.createError(
+                ErrorType.VALIDATION,
+                'Invalid transaction_id: must be a valid UUID',
+                { severity: ErrorSeverity.MEDIUM, statusCode: 400, userId: auth.userId }
+            );
+            return formatError(error);
+        }
+
         // Validate file type
         if (!ALLOWED_FILE_TYPES.includes(proofFile.type)) {
             const error = await ErrorHandlingService.createError(
@@ -69,7 +84,7 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
                 source: 'billing/upload-proof',
                 reason: 'User verifying transaction ownership before uploading payment proof',
                 metadata: { transactionId, endpoint: '/api/v1/billing/upload-proof' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_payment_transactions', operationType: 'select' },
@@ -119,7 +134,7 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
                 source: 'billing/upload-proof',
                 reason: 'User uploading payment proof and updating transaction status',
                 metadata: { transactionId, fileName, fileSize: proofFile.size, fileType: proofFile.type },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_payment_transactions', operationType: 'update' },

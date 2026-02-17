@@ -3,97 +3,56 @@ import { NextRequest } from 'next/server'
 import { type AdminUser } from '@indexnow/auth'
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
-  // Extract ID from URL path - it's the second-to-last segment (before 'default')
-  const pathParts = request.url.split('/').filter(Boolean)
-  const id = pathParts[pathParts.length - 2]
-
-  // Reset all gateways' default status using secure wrapper
-  const resetDefaultContext = {
-    userId: adminUser.id,
-    operation: 'admin_reset_all_payment_gateway_defaults',
-    reason: 'Admin setting new default payment gateway - resetting all others first',
-    source: 'admin/settings/payments/[id]/default',
-    metadata: {
-      newDefaultGatewayId: id,
-      endpoint: '/api/v1/admin/settings/payments/[id]/default'
-    },
-    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
-    userAgent: request.headers.get('user-agent') || undefined
-  }
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+  // Extract ID from route params
+  if (!context) throw new Error('Missing route context');
+  const { id } = await context.params;
 
   try {
-    await SecureServiceRoleWrapper.executeSecureOperation(
-      resetDefaultContext,
-      {
-        table: 'indb_payment_gateways',
-        operationType: 'update',
-        columns: ['is_default'],
-        whereConditions: { 'id_neq': 'placeholder' },
-        data: { is_default: false }
-      },
-      async () => {
-        const { error } = await supabaseAdmin
-          .from('indb_payment_gateways')
-          .update({ is_default: false })
-          .neq('id', 'placeholder')
-
-        if (error) {
-          throw new Error(`Failed to reset default gateways: ${error.message}`)
-        }
-
-        return { success: true }
-      }
-    )
-
-    // Set this gateway as default using secure wrapper
-    const setDefaultContext = {
-      userId: adminUser.id,
-      operation: 'admin_set_payment_gateway_as_default',
-      reason: 'Admin setting specific payment gateway as the default',
-      source: 'admin/settings/payments/[id]/default',
-      metadata: {
-        defaultGatewayId: id,
-        endpoint: '/api/v1/admin/settings/payments/[id]/default'
-      },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
-      userAgent: request.headers.get('user-agent') || undefined
-    }
-
+    // Atomic RPC: unsets all other defaults + sets this one, in a single transaction
     const result = await SecureServiceRoleWrapper.executeSecureOperation(
-      setDefaultContext,
+      {
+        userId: adminUser.id,
+        operation: 'admin_set_payment_gateway_as_default',
+        reason: 'Admin setting specific payment gateway as the default (atomic)',
+        source: 'admin/settings/payments/[id]/default',
+        metadata: {
+          defaultGatewayId: id,
+          endpoint: '/api/v1/admin/settings/payments/[id]/default'
+        },
+        ipAddress: getClientIP(request),
+        userAgent: request.headers.get('user-agent') || undefined
+      },
       {
         table: 'indb_payment_gateways',
         operationType: 'update',
         columns: ['is_default', 'updated_at'],
         whereConditions: { id },
-        data: {
-          is_default: true,
-          updated_at: new Date().toISOString()
-        }
+        data: { is_default: true }
       },
       async () => {
+        // Atomic: reset all defaults + set new default in one transaction
+        const { error: rpcError } = await (supabaseAdmin.rpc as Function)(
+          'set_default_payment_gateway_service', { p_gateway_id: id }
+        );
+
+        if (rpcError) throw new Error(`Failed to set default gateway: ${rpcError.message}`);
+
+        // Fetch updated gateway for response
         const { data, error } = await supabaseAdmin
           .from('indb_payment_gateways')
-          .update({
-            is_default: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id)
           .select()
-          .single()
+          .eq('id', id)
+          .single();
 
-        if (error) {
-          throw new Error(`Failed to set default payment gateway: ${error.message}`)
-        }
-
-        return data
+        if (error) throw new Error(`Failed to fetch updated gateway: ${error.message}`);
+        return data;
       }
-    )
+    );
 
-    return formatSuccess({ gateway: result })
+    return formatSuccess({ gateway: result });
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.DATABASE,

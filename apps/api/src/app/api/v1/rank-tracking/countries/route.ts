@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     publicApiWrapper,
     formatSuccess,
@@ -24,7 +24,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                 source: 'rank-tracking/countries',
                 reason: 'Public API providing list of available countries for rank tracking',
                 metadata: { endpoint: '/api/v1/rank-tracking/countries', method: 'GET', isPublic: true },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_keyword_countries', operationType: 'select' },
@@ -33,7 +33,8 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                     .from('indb_keyword_countries')
                     .select('*')
                     .eq('is_active', true)
-                    .order('name', { ascending: true });
+                    .order('name', { ascending: true })
+                    .limit(300);
 
                 if (error) throw new Error(`Failed to fetch countries: ${error.message}`);
                 return data || [];

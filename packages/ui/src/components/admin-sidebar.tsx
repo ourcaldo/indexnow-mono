@@ -85,27 +85,27 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
       items: [
         {
           label: 'Dashboard',
-          href: '/backend/admin',
+          href: '/',
           icon: LayoutDashboard,
-          active: pathname === '/backend/admin'
+          active: pathname === '/'
         },
         {
           label: 'Users',
-          href: '/backend/admin/users',
+          href: '/users',
           icon: Users,
-          active: pathname?.startsWith('/backend/admin/users') || false
+          active: pathname?.startsWith('/users') || false
         },
         {
           label: 'Orders',
-          href: '/backend/admin/orders',
+          href: '/orders',
           icon: Receipt,
-          active: pathname?.startsWith('/backend/admin/orders') || false
+          active: pathname?.startsWith('/orders') || false
         },
         {
           label: 'Activity',
-          href: '/backend/admin/activity',
+          href: '/activity',
           icon: Activity,
-          active: pathname?.startsWith('/backend/admin/activity') || false
+          active: pathname?.startsWith('/activity') || false
         }
       ]
     },
@@ -114,27 +114,27 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
       items: [
         {
           label: 'Site Settings',
-          href: '/backend/admin/settings/site',
+          href: '/settings/site',
           icon: Globe,
-          active: pathname === '/backend/admin/settings/site'
+          active: pathname === '/settings/site'
         },
         {
           label: 'Payments',
-          href: '/backend/admin/settings/payments',
+          href: '/settings/payments',
           icon: CreditCard,
-          active: pathname === '/backend/admin/settings/payments'
+          active: pathname === '/settings/payments'
         },
         {
           label: 'Packages',
-          href: '/backend/admin/settings/packages',
+          href: '/settings/packages',
           icon: Package,
-          active: pathname === '/backend/admin/settings/packages'
+          active: pathname === '/settings/packages'
         },
         {
           label: 'Analytics',
-          href: '/backend/admin/analytics',
+          href: '/analytics',
           icon: BarChart3,
-          active: pathname?.startsWith('/backend/admin/analytics') || false
+          active: pathname?.startsWith('/analytics') || false
         }
       ]
     }

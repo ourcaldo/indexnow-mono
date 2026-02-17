@@ -52,8 +52,12 @@ interface CookieToSet {
  * Uses cookies for authentication state management.
  * 
  * @param cookieStore - The cookie store from `cookies()` call in Next.js
+ * @param cookieDefaults - Optional extra cookie options merged into every set call (e.g. cross-subdomain domain, maxAge)
  */
-export function createServerClient(cookieStore: CookieStore): ReturnType<typeof createSupabaseServerClient<Database>> {
+export function createServerClient(
+    cookieStore: CookieStore,
+    cookieDefaults?: CookieOptions
+): ReturnType<typeof createSupabaseServerClient<Database>> {
     const supabaseUrl = AppConfig.supabase.url
     const supabaseAnonKey = AppConfig.supabase.anonKey
 
@@ -72,13 +76,68 @@ export function createServerClient(cookieStore: CookieStore): ReturnType<typeof 
                 setAll(cookiesToSet: CookieToSet[]) {
                     try {
                         cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
+                            cookieStore.set(name, value, cookieDefaults ? { ...options, ...cookieDefaults } : options)
                         )
                     } catch {
                         // The `setAll` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing sessions.
                     }
                 },
+            },
+        }
+    )
+}
+
+/**
+ * Creates a user-authenticated Supabase client from a bearer token.
+ * Used by API middleware for authenticated requests without cookie handling.
+ * 
+ * @param token - The bearer token from the Authorization header
+ */
+export function createTokenClient(token: string): ReturnType<typeof createSupabaseServerClient<Database>> {
+    const supabaseUrl = AppConfig.supabase.url
+    const supabaseAnonKey = AppConfig.supabase.anonKey
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase URL or Anon Key in configuration')
+    }
+
+    return createSupabaseServerClient<Database>(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            },
+            cookies: {
+                getAll() { return [] },
+                setAll() {},
+            },
+        }
+    )
+}
+
+/**
+ * Creates a headless Supabase server client without cookie or auth handling.
+ * Used for server operations that don't require session management (e.g. login, resend-verification).
+ */
+export function createAnonServerClient(): ReturnType<typeof createSupabaseServerClient<Database>> {
+    const supabaseUrl = AppConfig.supabase.url
+    const supabaseAnonKey = AppConfig.supabase.anonKey
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase URL or Anon Key in configuration')
+    }
+
+    return createSupabaseServerClient<Database>(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+            cookies: {
+                getAll() { return [] },
+                setAll() {},
             },
         }
     )

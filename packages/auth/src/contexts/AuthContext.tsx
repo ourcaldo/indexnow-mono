@@ -1,23 +1,13 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { authService, AuthUser, logger } from '@indexnow/shared'
 import { useRouter } from 'next/navigation'
 import { AuthErrorHandler } from '../auth-error-handler'
-import { supabase } from '@indexnow/database'
+import { supabase } from '@indexnow/shared'
+import { useSessionRefresh } from '../hooks/useSessionRefresh'
 
-// Global auth state to persist across route changes
-let globalAuthState: {
-  user: AuthUser | null
-  isAuthenticated: boolean
-  isInitialized: boolean
-  promise: Promise<AuthUser | null> | null
-} = {
-  user: null,
-  isAuthenticated: false,
-  isInitialized: false,
-  promise: null
-}
+// (#34) Removed unused globalAuthState variable — was declared but never written to
 
 interface AuthContextType {
   user: AuthUser | null
@@ -49,7 +39,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [authChecked, setAuthChecked] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
-  const signOut = async () => {
+  // (#132) Memoize auth actions to prevent unstable context value
+  const signOut = useCallback(async () => {
     try {
       await authService.signOut()
       setUser(null)
@@ -57,9 +48,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Sign out error')
     }
-  }
+  }, [])
 
-  const refreshAuth = async () => {
+  const refreshAuth = useCallback(async () => {
     // For the simple pattern, just refetch current user
     try {
       const currentUser = await authService.getCurrentUser()
@@ -68,7 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Refresh auth error')
       setUser(null)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (initialized) return;
@@ -88,10 +79,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const protectedRoutes = ['/dashboard']
         const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route))
         
-        // Don't redirect if on admin routes (handled by admin middleware)
-        const isAdminRoute = currentPath.startsWith('/backend/admin')
-        
-        if (isProtectedRoute && !isAdminRoute) {
+        // Admin app handles its own auth via middleware
+        if (isProtectedRoute) {
           router.push('/login')
         }
       }
@@ -125,10 +114,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const protectedRoutes = ['/dashboard']
           const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route))
           
-          // Don't redirect if on admin routes (handled by admin middleware)
-          const isAdminRoute = currentPath.startsWith('/backend/admin')
-          
-          if (isProtectedRoute && !isAdminRoute) {
+          // Admin app handles its own auth via middleware
+          if (isProtectedRoute) {
             router.push('/login')
           }
         }
@@ -138,18 +125,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(authStateHandler)
 
     return () => subscription?.unsubscribe();
-  }, [initialized])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, router]) // (#35) Added router to deps
 
   const isAuthenticated = authChecked && !loading && !!user
 
-  const value: AuthContextType = {
+  // (#106) Proactively refresh session tokens before they expire
+  // This prevents silent 401 errors when tokens expire during active use
+  useSessionRefresh({ enabled: isAuthenticated })
+
+  // (#132) Memoize context value to prevent unnecessary re-renders in consumers
+  const value: AuthContextType = useMemo(() => ({
     user,
     loading,
     authChecked,
     isAuthenticated,
     signOut,
     refreshAuth,
-  }
+  }), [user, loading, authChecked, isAuthenticated, signOut, refreshAuth])
 
   return (
     <AuthContext.Provider value={value}>

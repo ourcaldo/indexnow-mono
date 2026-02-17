@@ -2,8 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../..'
 import { TrendingUp, TrendingDown, BarChart, Info } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/database'
+import { RANK_TRACKING_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
 
 interface WeeklyTrendsData {
   weekNumber: number
@@ -72,14 +71,7 @@ export const WeeklyTrendsAnalytics = ({
       if (deviceType && deviceType !== '__placeholder__') params.append('device_type', deviceType)
       if (countryId && countryId !== '__placeholder__') params.append('country_id', countryId)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      const response = await fetch(`${RANK_TRACKING_ENDPOINTS.WEEKLY_TRENDS}?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
+      const response = await authenticatedFetch(`${RANK_TRACKING_ENDPOINTS.WEEKLY_TRENDS}?${params}`)
 
       if (!response.ok) throw new Error('Failed to fetch weekly trends')
       

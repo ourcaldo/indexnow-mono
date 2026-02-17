@@ -18,6 +18,7 @@ import {
   Eye
 } from 'lucide-react'
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
+import { AdminPageSkeleton, ConfirmationDialog } from '@indexnow/ui'
 
 interface UserProfile {
   id: string
@@ -54,25 +55,61 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const pageSize = 20
+
+  // (#117) Confirmation dialog state for destructive actions
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'destructive' | 'primary'
+    onConfirm: () => void
+    loading: boolean
+  }>({ isOpen: false, title: '', message: '', variant: 'primary', onConfirm: () => {}, loading: false })
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, [currentPage])
 
   const fetchUsers = async () => {
+    setLoading(true)
     try {
-      const response = await fetch(ADMIN_ENDPOINTS.USERS, {
+      const response = await fetch(`${ADMIN_ENDPOINTS.USERS}?page=${currentPage}&limit=${pageSize}`, {
         credentials: 'include'
       })
       if (response.ok) {
         const data = await response.json()
         setUsers(data.data?.users || [])
+        const pagination = data.data?.pagination
+        if (pagination) {
+          setTotalPages(pagination.total_pages || 1)
+          setTotalItems(pagination.total_items || 0)
+        }
       }
     } catch (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch users')
     } finally {
       setLoading(false)
     }
+  }
+
+  // (#117) Wrap role change with confirmation dialog
+  const confirmRoleChange = (userId: string, newRole: string, userName: string | null) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Change User Role',
+      message: `Are you sure you want to change ${userName || 'this user'}'s role to "${newRole}"?`,
+      variant: 'primary',
+      loading: false,
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, loading: true }))
+        await handleRoleChange(userId, newRole)
+        setConfirmConfig(prev => ({ ...prev, isOpen: false, loading: false }))
+      },
+    })
   }
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -92,6 +129,22 @@ export default function UserManagement() {
     } catch (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to update user role')
     }
+  }
+
+  // (#117) Wrap suspend with confirmation dialog
+  const confirmSuspendUser = (userId: string, userName: string | null) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Suspend User',
+      message: `Are you sure you want to suspend ${userName || 'this user'}? They will lose access to their account.`,
+      variant: 'destructive',
+      loading: false,
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, loading: true }))
+        await handleSuspendUser(userId)
+        setConfirmConfig(prev => ({ ...prev, isOpen: false, loading: false }))
+      },
+    })
   }
 
   const handleSuspendUser = async (userId: string) => {
@@ -145,11 +198,7 @@ export default function UserManagement() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-border border-t-primary"></div>
-      </div>
-    )
+    return <AdminPageSkeleton />
   }
 
   return (
@@ -352,7 +401,7 @@ export default function UserManagement() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation()
-                          // Quick actions could be implemented here
+                          confirmSuspendUser(user.user_id, user.full_name)
                         }}
                         className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
                         title="Suspend User"
@@ -373,7 +422,46 @@ export default function UserManagement() {
             <p className="text-muted-foreground">No users found matching your criteria</p>
           </div>
         )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems} users
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-sm rounded border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-sm rounded border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* (#117) Confirmation dialog for destructive actions */}
+      <ConfirmationDialog
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        variant={confirmConfig.variant as 'destructive' | 'primary'}
+        loading={confirmConfig.loading}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 
 // Valid schedule types matching the database enum
 const scheduleEnumSchema = z.enum(['one-time', 'hourly', 'daily', 'weekly', 'monthly']);
@@ -31,7 +31,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'auth/user/settings',
                 reason: 'User retrieving their own settings for display',
                 metadata: { endpoint: '/api/v1/auth/user/settings', method: 'GET' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_settings', operationType: 'select' },
@@ -104,7 +104,7 @@ export const PUT = authenticatedApiWrapper(async (request, auth) => {
                 source: 'auth/user/settings',
                 reason: 'User updating their own settings',
                 metadata: { endpoint: '/api/v1/auth/user/settings', method: 'PUT', updatedFields: Object.keys(validation.data) },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_settings', operationType: 'update' },

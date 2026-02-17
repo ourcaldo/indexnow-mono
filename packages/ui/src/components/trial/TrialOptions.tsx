@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../card'
 import { Badge } from '../badge'
 import { Clock, CreditCard, CheckCircle, Star } from 'lucide-react'
 import { useToast } from '../toast'
-import { AUTH_ENDPOINTS, type PackageData, logger } from '@indexnow/shared'
-import { supabaseBrowser } from '@indexnow/database'
+import { AUTH_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
+import { type PackageData } from '../../hooks/business/usePricingData'
 
 interface TrialEligibility {
   eligible: boolean;
@@ -32,16 +32,7 @@ export function TrialOptions({}: TrialOptionsProps) {
 
   const checkTrialEligibility = async () => {
     try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession()
-      if (!session?.access_token) return
-
-      const response = await fetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Essential for cross-subdomain authentication
-      })
+      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY)
 
       if (response.ok) {
         const result = await response.json()

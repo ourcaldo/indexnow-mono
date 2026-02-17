@@ -1,49 +1,38 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@indexnow/ui'
-import { Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
-import { authService } from '@indexnow/shared'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, PasswordInput, AuthErrorAlert, AuthLoadingButton, useZodForm } from '@indexnow/ui'
+import { Input, Label } from '@indexnow/ui'
+import { authService, loginSchema, type LoginRequest } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS, type VerifyRoleResponse } from '@indexnow/shared'
-import { AuthErrorHandler } from '@indexnow/auth'
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // (#113) react-hook-form + zod for form validation
+  const { register, handleSubmit, formState: { errors } } = useZodForm(loginSchema, {
+    defaultValues: { email: '', password: '' },
+  })
   
   // Site settings hooks
   const siteName = useSiteName()
   const logoUrl = useSiteLogo(true) // Always use full logo for admin login
 
-  useEffect(() => {
-    const authStateHandler = AuthErrorHandler.createAuthStateChangeHandler(
-      undefined,
-      () => {
-        window.location.reload()
-      }
-    )
-    
-    const { data: authListener } = authService.onFullAuthStateChange(authStateHandler)
-    
-    return () => {
-      authListener?.subscription?.unsubscribe()
-    }
-  }, [])
+  // (#106) Removed duplicate AuthErrorHandler.createAuthStateChangeHandler() listener
+  // Auth state changes (including refresh token errors) are now handled centrally
+  // by AuthProvider which wraps this page in the app layout.
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: LoginRequest) => {
     setIsLoading(true)
     setError('')
 
     try {
       // Step 1: Authenticate using authService
-      const authData = await authService.signIn(email, password)
+      const authData = await authService.signIn(data.email, data.password)
 
       if (!authData.user || !authData.session) {
         throw new Error('Authentication failed')
@@ -76,10 +65,8 @@ export default function AdminLoginPage() {
       // Step 4: The authService.signIn already calls AUTH_ENDPOINTS.SESSION to set server-side cookies
       // We can just proceed to redirect
 
-      // Use router.push with a small delay to ensure cookies are set
-      setTimeout(() => {
-        router.push('/')
-      }, 100)
+      // Redirect to admin dashboard — cookies are already set by authService.signIn
+      router.push('/')
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.'
@@ -113,13 +100,8 @@ export default function AdminLoginPage() {
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive rounded-md">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-                <p className="text-sm text-destructive">{error}</p>
-              </div>
-            )}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <AuthErrorAlert error={error || null} />
             
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground font-medium">
@@ -128,59 +110,36 @@ export default function AdminLoginPage() {
               <Input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register('email')}
                 placeholder="admin@example.com"
                 className="border-border focus:border-accent focus:ring-accent"
-                required
                 disabled={isLoading}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="password" className="text-foreground font-medium">
                 Password
               </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="border-border focus:border-accent focus:ring-accent pr-10"
-                  required
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+              <Input
+                id="password"
+                type="password"
+                {...register('password')}
+                placeholder="Enter your password"
+                className="border-border focus:border-accent focus:ring-accent"
+                disabled={isLoading}
+              />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
             </div>
             
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2.5"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                'Sign In to Admin Dashboard'
-              )}
-            </Button>
+            <AuthLoadingButton isLoading={isLoading}>
+              Sign In to Admin Dashboard
+            </AuthLoadingButton>
           </form>
           
           <div className="mt-6 text-center">

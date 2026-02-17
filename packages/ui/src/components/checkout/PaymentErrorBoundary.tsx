@@ -56,8 +56,8 @@ export class PaymentErrorBoundary extends Component<Props, State> {
     // Call optional error callback
     this.props.onError?.(error, errorInfo)
     
-    // Log error details locally (error tracking service can be added later)
-    logger.error({ error: errorDetails instanceof Error ? errorDetails : undefined }, 'Payment Error Boundary')
+    // Log error with structured details — pass the actual Error object, not the plain details object
+    logger.error({ error, errorDetails }, 'Payment Error Boundary')
   }
 
   private handleRetry = () => {

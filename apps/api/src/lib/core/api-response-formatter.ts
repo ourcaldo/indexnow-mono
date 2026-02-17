@@ -1,19 +1,21 @@
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
-import { StructuredError } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type StructuredError } from '@indexnow/shared';
+import {
+  formatSuccess as sharedFormatSuccess,
+  type ApiSuccessResponse as SharedApiSuccessResponse,
+} from '@indexnow/shared';
 
 /**
- * Standardized API Success Response
+ * Re-export the shared formatSuccess — single source of truth
  */
-export interface ApiSuccessResponse<T = unknown> {
-  success: true;
-  data: T;
-  timestamp: string;
-  requestId?: string;
-  statusCode?: number;
-}
+export const formatSuccess = sharedFormatSuccess;
 
 /**
- * Standardized API Error Response
+ * Re-export shared success response type
+ */
+export type ApiSuccessResponse<T = unknown> = SharedApiSuccessResponse<T>;
+
+/**
+ * Standardized API Error Response (API-specific — tailored to StructuredError)
  */
 export interface ApiErrorResponse {
   success: false;
@@ -34,25 +36,9 @@ export interface ApiErrorResponse {
 export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /**
- * Format a successful API response
- * @param data - The response data
- * @param requestId - Optional request ID for tracking
- * @param statusCode - Optional HTTP status code (default: 200)
- * @returns Formatted success response object
- */
-export function formatSuccess<T>(data: T, requestId?: string, statusCode?: number): ApiSuccessResponse<T> {
-  return {
-    success: true,
-    data,
-    timestamp: new Date().toISOString(),
-    requestId,
-    ...(statusCode && { statusCode })
-  };
-}
-
-/**
  * Format an error API response from a StructuredError
- * @param error - The structured error object
+ * This is API-specific: the shared package formatError has a different parameter shape.
+ * @param error - The structured error object from ErrorHandlingService.createError()
  * @param requestId - Optional request ID for tracking
  * @returns Formatted error response object
  */

@@ -102,29 +102,19 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 .gte('created_at', timeFilter);
             if (unresolvedError) throw unresolvedError;
 
-            // Errors by type distribution
-            const { data: errorsByType, error: typeError } = await supabaseAdmin
-                .from('indb_system_error_logs')
-                .select('error_type')
-                .gte('created_at', timeFilter);
+            // Errors by type distribution (SQL GROUP BY via RPC)
+            const { data: typeDistributionData, error: typeError } = await (supabaseAdmin.rpc as Function)(
+                'get_error_type_distribution', { p_since: timeFilter }
+            );
             if (typeError) throw typeError;
+            const typeDistribution: Record<string, number> = typeDistributionData || {};
 
-            const typeDistribution = (errorsByType || []).reduce((acc, row) => {
-                acc[row.error_type] = (acc[row.error_type] || 0) + 1;
-                return acc;
-            }, {} as Record<string, number>);
-
-            // Errors by severity distribution
-            const { data: errorsBySeverity, error: severityError } = await supabaseAdmin
-                .from('indb_system_error_logs')
-                .select('severity')
-                .gte('created_at', timeFilter);
+            // Errors by severity distribution (SQL GROUP BY via RPC)
+            const { data: severityDistributionData, error: severityError } = await (supabaseAdmin.rpc as Function)(
+                'get_error_severity_distribution', { p_since: timeFilter }
+            );
             if (severityError) throw severityError;
-
-            const severityDistribution = (errorsBySeverity || []).reduce((acc, row) => {
-                acc[row.severity] = (acc[row.severity] || 0) + 1;
-                return acc;
-            }, {} as Record<string, number>);
+            const severityDistribution: Record<string, number> = severityDistributionData || {};
 
             // Most common errors (top 5 by message)
             const { data: commonErrors, error: commonError } = await supabaseAdmin
@@ -132,7 +122,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 .select('message, error_type, severity')
                 .gte('created_at', timeFilter)
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .limit(200);
             if (commonError) throw commonError;
 
             // Group by message and count occurrences
@@ -167,24 +157,15 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 ? (((totalErrors || 0) - previousPeriodErrors) / previousPeriodErrors) * 100
                 : (totalErrors || 0) > 0 ? 100 : 0;
 
-            // Most affected endpoints (top 5)
-            const { data: errorsByEndpoint, error: endpointError } = await supabaseAdmin
-                .from('indb_system_error_logs')
-                .select('endpoint')
-                .gte('created_at', timeFilter)
-                .not('endpoint', 'is', null);
+            // Most affected endpoints (top 5 via RPC GROUP BY)
+            const { data: endpointRows, error: endpointError } = await (supabaseAdmin.rpc as Function)(
+                'get_error_endpoint_distribution', { p_since: timeFilter, p_limit: 5 }
+            );
             if (endpointError) throw endpointError;
 
-            const endpointDistribution = (errorsByEndpoint || []).reduce((acc, row) => {
-                const ep = row.endpoint || 'Unknown';
-                acc[ep] = (acc[ep] || 0) + 1;
-                return acc;
-            }, {} as Record<string, number>);
-
-            const topEndpoints = Object.entries(endpointDistribution)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 5)
-                .map(([ep, count]) => ({ endpoint: ep, count }));
+            const topEndpoints: EndpointCount[] = (endpointRows || []).map(
+                (row: { endpoint: string; count: number }) => ({ endpoint: row.endpoint, count: Number(row.count) })
+            );
 
             return {
                 summary: {

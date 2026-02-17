@@ -70,6 +70,23 @@ interface SimpleDbClient {
 }
 
 /**
+ * Centralized adapter to obtain a structurally-typed DB client.
+ * All casts are isolated here to avoid scattering `as unknown as` throughout the codebase.
+ * This is safe because supabaseAdmin structurally satisfies SimpleDbClient.
+ */
+function asDbClient(): SimpleDbClient {
+  return supabaseAdmin as unknown as SimpleDbClient
+}
+
+/**
+ * Safely converts a typed object to Json for Supabase column storage.
+ * This encapsulates the `as unknown as Json` pattern in one place.
+ */
+function toJson<T>(value: T): Json {
+  return value as unknown as Json
+}
+
+/**
  * STRUCTURAL USER CLIENT: Extended interface for user-provided Supabase clients.
  * Includes full auth methods needed for password changes and user operations.
  */
@@ -174,7 +191,7 @@ export class SecureDatabaseHelpers {
         whereConditions
       },
       async () => {
-        const client = supabaseAdmin as unknown as SimpleDbClient
+        const client = asDbClient()
         const builder = client.from<
           PublicTables[TTableName]['Row'],
           Record<string, Json>,
@@ -184,6 +201,7 @@ export class SecureDatabaseHelpers {
         const { data, error } = await builder
           .select(columns.join(', '))
           .match(whereConditions)
+          .limit(1000)
 
         if (error) throw error
         return (data || [])
@@ -204,10 +222,10 @@ export class SecureDatabaseHelpers {
       {
         table,
         operationType: 'insert',
-        data: data as unknown as Json
+        data: toJson(data)
       },
       async () => {
-        const client = supabaseAdmin as unknown as SimpleDbClient
+        const client = asDbClient()
         const builder = client.from<
           PublicTables[TTableName]['Row'],
           PublicTables[TTableName]['Insert'],
@@ -240,11 +258,11 @@ export class SecureDatabaseHelpers {
       {
         table,
         operationType: 'update',
-        data: data as unknown as Json,
+        data: toJson(data),
         whereConditions
       },
       async () => {
-        const client = supabaseAdmin as unknown as SimpleDbClient
+        const client = asDbClient()
         const builder = client.from<
           PublicTables[TTableName]['Row'],
           PublicTables[TTableName]['Insert'],
@@ -278,7 +296,7 @@ export class SecureDatabaseHelpers {
         whereConditions
       },
       async () => {
-        const client = supabaseAdmin as unknown as SimpleDbClient
+        const client = asDbClient()
         const builder = client.from(table)
 
         const { error } = await builder

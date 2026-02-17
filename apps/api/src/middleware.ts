@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   corsMiddleware, 
-  securityHeaders, 
+  securityHeaders,
+  requestLogger,
+  rateLimit,
   composeMiddleware,
   MiddlewareContext
 } from '@indexnow/shared';
+
+// 100 requests per 60 seconds per IP
+const apiRateLimit = rateLimit(100, 60_000);
 
 export async function middleware(request: NextRequest) {
   // Skip middleware for certain paths if needed
@@ -16,8 +21,10 @@ export async function middleware(request: NextRequest) {
   
   // Compose and execute middlewares
   const composed = composeMiddleware(
+    requestLogger,
     corsMiddleware,
-    securityHeaders
+    securityHeaders,
+    apiRateLimit
   );
 
   return composed(context, async () => {

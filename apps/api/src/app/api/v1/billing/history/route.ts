@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type PaymentTransactionRow = Database['public']['Tables']['indb_payment_transactions']['Row'];
@@ -138,7 +138,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     source: 'billing/history',
                     reason: 'User fetching their legacy billing transaction history',
                     metadata: { page, limit, status: statusFilter, endpoint: '/api/v1/billing/history' },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_payment_transactions', operationType: 'select' },
@@ -173,7 +173,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     source: 'billing/history',
                     reason: 'User fetching their Paddle billing transaction history',
                     metadata: { page, limit, status: statusFilter, endpoint: '/api/v1/billing/history' },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_paddle_transactions', operationType: 'select' },
@@ -182,7 +182,8 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     const { data: userTransactions } = await db
                         .from('indb_payment_transactions')
                         .select('id')
-                        .eq('user_id', auth.userId);
+                        .eq('user_id', auth.userId)
+                        .limit(10000);
 
                     if (!userTransactions || userTransactions.length === 0) {
                         return { data: [], count: 0 };
@@ -216,14 +217,56 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         const paginatedTransactions = allTransactions.slice(offset, offset + limit);
         const totalCount = allTransactions.length;
 
-        // Calculate summary statistics
+        // Calculate summary statistics using SQL counts (not in-memory filtering)
+        const [completedCount, pendingCount, failedCount, totalAmountResult] = await Promise.all([
+            SecureServiceRoleWrapper.executeWithUserSession<number>(
+                auth.supabase,
+                { userId: auth.userId, operation: 'billing_summary_completed', source: 'billing/history', reason: 'Count completed' },
+                { table: 'indb_payment_transactions', operationType: 'select' },
+                async (db) => {
+                    const { count } = await db.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('user_id', auth.userId).eq('status', 'completed');
+                    return count ?? 0;
+                }
+            ),
+            SecureServiceRoleWrapper.executeWithUserSession<number>(
+                auth.supabase,
+                { userId: auth.userId, operation: 'billing_summary_pending', source: 'billing/history', reason: 'Count pending' },
+                { table: 'indb_payment_transactions', operationType: 'select' },
+                async (db) => {
+                    const { count } = await db.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('user_id', auth.userId).eq('status', 'pending');
+                    return count ?? 0;
+                }
+            ),
+            SecureServiceRoleWrapper.executeWithUserSession<number>(
+                auth.supabase,
+                { userId: auth.userId, operation: 'billing_summary_failed', source: 'billing/history', reason: 'Count failed' },
+                { table: 'indb_payment_transactions', operationType: 'select' },
+                async (db) => {
+                    const { count } = await db.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('user_id', auth.userId).eq('status', 'failed');
+                    return count ?? 0;
+                }
+            ),
+            SecureServiceRoleWrapper.executeWithUserSession<number>(
+                auth.supabase,
+                { userId: auth.userId, operation: 'billing_summary_amount', source: 'billing/history', reason: 'Sum completed amount' },
+                { table: 'indb_payment_transactions', operationType: 'select' },
+                async () => {
+                    const { data, error } = await (supabaseAdmin.rpc as Function)('get_user_completed_amount', { p_user_id: auth.userId });
+                    if (error) throw error;
+                    return typeof data === 'number' ? data : Number(data) || 0;
+                }
+            ),
+        ]);
+
+        // Add paddle completed count to summary
+        const paddleCompletedCount = normalizedPaddle.filter(t => t.transaction_status === 'completed').length;
+
         const summary: BillingSummary = {
             total_transactions: legacyResult.count + paddleResult.count,
-            completed_transactions: normalizedLegacy.filter(t => t.transaction_status === 'completed').length +
-                normalizedPaddle.filter(t => t.transaction_status === 'completed').length,
-            pending_transactions: normalizedLegacy.filter(t => t.transaction_status === 'pending').length,
-            failed_transactions: normalizedLegacy.filter(t => t.transaction_status === 'failed').length,
-            total_amount_spent: allTransactions
+            completed_transactions: completedCount + paddleCompletedCount,
+            pending_transactions: pendingCount,
+            failed_transactions: failedCount,
+            total_amount_spent: totalAmountResult + normalizedPaddle
                 .filter(t => t.transaction_status === 'completed')
                 .reduce((sum, t) => sum + t.amount, 0)
         };

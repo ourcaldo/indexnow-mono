@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
@@ -15,6 +15,14 @@ export const GET = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
 
+  // Pagination for log fetching (analysis uses up to maxAnalysisRows)
+  const { searchParams } = new URL(request.url)
+  const parsedPage = parseInt(searchParams.get('page') || '1')
+  const parsedLimit = parseInt(searchParams.get('limit') || '100')
+  const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
+  const limit = Number.isNaN(parsedLimit) ? 100 : Math.min(500, Math.max(1, parsedLimit))
+  const offset = (page - 1) * limit
+
   const securityContext = {
     userId: adminUser.id,
     operation: 'admin_get_user_security_logs',
@@ -24,11 +32,11 @@ export const GET = adminApiWrapper(async (
       targetUserId: userId,
       endpoint: '/api/v1/admin/users/[id]/security'
     },
-    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+    ipAddress: getClientIP(request) ?? 'unknown',
     userAgent: request.headers.get('user-agent') || undefined || 'unknown'
   }
 
-  const securityLogs = await SecureServiceRoleWrapper.executeSecureOperation(
+  const { logs: securityLogs, total: totalLogs } = await SecureServiceRoleWrapper.executeSecureOperation(
     securityContext,
     {
       table: 'indb_security_activity_logs',
@@ -37,23 +45,23 @@ export const GET = adminApiWrapper(async (
       whereConditions: { user_id: userId }
     },
     async () => {
-      const { data, error } = await (supabaseAdmin
-        .from('indb_security_activity_logs') as any)
-        .select('ip_address, device_info, location_data, event_type, created_at, success')
+      const { data, error, count } = await (supabaseAdmin
+        .from('indb_security_activity_logs') as unknown)
+        .select('ip_address, device_info, location_data, event_type, created_at, success', { count: 'exact' })
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(100)
+        .range(offset, offset + limit - 1)
 
       if (error) {
         throw new Error(`Failed to fetch user security data: ${error.message}`)
       }
 
-      return data || []
+      return { logs: data || [], total: count || 0 }
     }
   )
 
   const ipAddresses = new Set<string>()
-  const devices = new Map<string, any>()
+  const devices = new Map<string, Record<string, unknown>>()
   const locations = new Set<string>()
   const loginAttempts = []
   let lastActivity = null
@@ -149,10 +157,18 @@ export const GET = adminApiWrapper(async (
       activity: {
         lastActivity,
         firstSeen,
-        totalActivities: securityLogs.length
+        totalActivities: totalLogs
       },
       securityScore,
       riskLevel
+    },
+    pagination: {
+      page,
+      limit,
+      total: totalLogs,
+      totalPages: Math.ceil(totalLogs / limit),
+      hasNextPage: totalLogs > offset + limit,
+      hasPrevPage: page > 1
     }
   })
 })

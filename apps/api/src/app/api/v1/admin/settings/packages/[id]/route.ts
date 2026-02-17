@@ -1,11 +1,42 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
-  // Extract ID from URL path
-  const id = request.url.split('/').filter(Boolean).pop() || ''
+
+const updatePackageSchema = z.object({
+  name: z.string().max(255).optional(),
+  slug: z.string().max(100).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  currency: z.string().max(3).optional(),
+  billing_period: z.string().max(50).optional(),
+  features: z.array(z.string()).optional(),
+  quota_limits: z.record(z.string(), z.unknown()).optional(),
+  is_active: z.boolean().optional(),
+  is_popular: z.boolean().optional(),
+  sort_order: z.number().int().optional(),
+  pricing_tiers: z.array(z.record(z.string(), z.unknown())).optional(),
+}).strict();
+
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+  // Extract ID from route params
+  if (!context) throw new Error('Missing route context');
+  const { id } = await context.params;
   const body = await request.json()
+
+  // Validate input
+  const validation = updatePackageSchema.safeParse(body);
+  if (!validation.success) {
+    const { formatError } = await import('@/lib/core/api-response-middleware');
+    const { ErrorHandlingService } = await import('@/lib/monitoring/error-handling');
+    const { ErrorType, ErrorSeverity } = await import('@indexnow/shared');
+    const validationError = await ErrorHandlingService.createError(
+      ErrorType.VALIDATION,
+      validation.error.issues[0]?.message || 'Invalid request body',
+      { severity: ErrorSeverity.LOW, userId: adminUser.id, statusCode: 400 }
+    );
+    return formatError(validationError);
+  }
 
   // Update package using secure wrapper
   const updateContext = {
@@ -77,9 +108,10 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
   return formatSuccess({ package: result.data }, undefined, 200)
 })
 
-export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
-  // Extract ID from URL path
-  const id = request.url.split('/').filter(Boolean).pop() || ''
+export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+  // Extract ID from route params
+  if (!context) throw new Error('Missing route context');
+  const { id } = await context.params;
 
   // Delete package using secure wrapper
   const deleteContext = {
@@ -105,8 +137,9 @@ export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: Ad
         async () => {
           const { error } = await supabaseAdmin
             .from('indb_payment_packages')
-            .delete()
+            .update({ deleted_at: new Date().toISOString(), is_active: false })
             .eq('id', id)
+            .is('deleted_at', null)
 
           if (error) {
             throw new Error(`Failed to delete package: ${error.message}`)

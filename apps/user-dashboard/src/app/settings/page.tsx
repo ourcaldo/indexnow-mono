@@ -2,9 +2,9 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { usePageViewLogger } from '@indexnow/database'
-import GeneralSettingsPage from './general/page'
-import PlansBillingSettingsPage from './plans-billing/page'
+import { usePageViewLogger } from '@indexnow/ui'
+import GeneralSettingsPage from './general/GeneralSettingsContent'
+import PlansBillingSettingsPage from './plans-billing/PlansBillingContent'
 
 const tabs = [
   {
@@ -58,7 +58,7 @@ function SettingsPageContent() {
       {/* Tab Navigation */}
       <div className="mb-6">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-6" aria-label="Tabs" role="tablist" data-testid="nav-settings-tabs">
+          <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs" role="tablist" data-testid="nav-settings-tabs">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id
               return (

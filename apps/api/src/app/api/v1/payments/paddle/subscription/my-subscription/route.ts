@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { type Database } from '@indexnow/shared';
+import { type Database , getClientIP} from '@indexnow/shared';
 import { authenticatedApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 // Derived types from Database schema
@@ -45,7 +45,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             source: 'paddle/subscription/my-subscription',
             reason: 'User fetching their active Paddle subscription',
             metadata: { endpoint: '/api/v1/payments/paddle/subscription/my-subscription' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'select' },
@@ -92,7 +92,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             source: 'paddle/subscription/my-subscription',
             reason: 'User fetching their legacy subscription from profile',
             metadata: { endpoint: '/api/v1/payments/paddle/subscription/my-subscription' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_auth_user_profiles', operationType: 'select' },

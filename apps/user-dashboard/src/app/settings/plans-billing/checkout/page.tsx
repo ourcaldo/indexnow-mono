@@ -19,8 +19,10 @@ import {
   CheckoutSubmitButton,
   PaymentMethodSelector
 } from '@indexnow/ui'
-import { ApiEndpoints as API, usePaddle, PaymentSchemas, logger } from '@indexnow/shared'
-import { usePageViewLogger, useActivityLogger, supabaseBrowser } from '@indexnow/database'
+import { ApiEndpoints as API, PaymentSchemas, authenticatedFetch, logger } from '@indexnow/shared'
+import { usePaddle } from '@indexnow/ui'
+import { supabaseBrowser } from '@indexnow/database'
+import { usePageViewLogger, useActivityLogger } from '@indexnow/ui'
 import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
 
@@ -84,7 +86,7 @@ function CheckoutPageContent() {
     city: '',
     state: '',
     zip_code: '',
-    country: 'Indonesia',
+    country: 'ID',
     description: ''
   })
 
@@ -114,13 +116,7 @@ function CheckoutPageContent() {
         setUserId(session.user.id)
 
         // Fetch full user profile including country data
-        const profileResponse = await fetch(API.AUTH.PROFILE, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        })
+        const profileResponse = await authenticatedFetch(API.AUTH.PROFILE)
 
         if (!profileResponse.ok) {
           throw new Error('Failed to fetch user profile')
@@ -146,13 +142,7 @@ function CheckoutPageContent() {
         }))
 
         // Fetch package data
-        const packageResponse = await fetch(API.BILLING.PACKAGE_BY_ID(package_id!), {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        })
+        const packageResponse = await authenticatedFetch(API.BILLING.PACKAGE_BY_ID(package_id!))
 
         if (!packageResponse.ok) {
           throw new Error('Failed to load checkout data')
@@ -165,13 +155,7 @@ function CheckoutPageContent() {
 
         // Check trial eligibility if needed
         if (isTrialFlow) {
-          const trialResponse = await fetch(API.AUTH.TRIAL_ELIGIBILITY, {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-          })
+          const trialResponse = await authenticatedFetch(API.AUTH.TRIAL_ELIGIBILITY)
           if (trialResponse.ok) {
             const trialResult = await trialResponse.json()
             setTrialEligible(trialResult.eligible)
@@ -235,7 +219,7 @@ function CheckoutPageContent() {
         address: form.address,
         city: form.city,
         postalCode: form.zip_code,
-        country: 'ID' // Hardcoded for now as the schema expects 2 chars, or I should map it
+        country: form.country // Uses user profile country or form-entered value
       })
     } catch (error) {
       if (error instanceof z.ZodError) {

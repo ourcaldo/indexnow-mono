@@ -3,7 +3,12 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
+import { z } from 'zod'
+
+const extendSubscriptionSchema = z.object({
+  days: z.number().int().positive().default(30),
+})
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
@@ -15,7 +20,15 @@ export const POST = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
   const body = await request.json()
-  const { days = 30 } = body
+  const parseResult = extendSubscriptionSchema.safeParse(body)
+  if (!parseResult.success) {
+    return formatError(await createStandardError(
+      ErrorType.VALIDATION,
+      parseResult.error.errors[0]?.message || 'Invalid request body',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
+    ))
+  }
+  const { days } = parseResult.data
 
   const currentUserResult = await SecureServiceRoleWrapper.executeSecureOperation(
     {
@@ -29,7 +42,7 @@ export const POST = adminApiWrapper(async (
         endpoint: '/api/v1/admin/users/[id]/extend-subscription',
         method: 'POST'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     {
@@ -40,7 +53,7 @@ export const POST = adminApiWrapper(async (
     },
     async () => {
       const { data, error } = await (supabaseAdmin
-        .from('indb_auth_user_profiles') as any)
+        .from('indb_auth_user_profiles') as unknown)
         .select('full_name, expires_at, package:indb_payment_packages(name, slug)')
         .eq('user_id', userId)
         .single()
@@ -77,7 +90,7 @@ export const POST = adminApiWrapper(async (
         endpoint: '/api/v1/admin/users/[id]/extend-subscription',
         method: 'POST'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     {

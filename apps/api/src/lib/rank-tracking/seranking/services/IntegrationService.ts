@@ -19,7 +19,7 @@ import {
 } from '@indexnow/shared';
 import { IIntegrationService, ISeRankingApiClient } from '../types/ServiceTypes';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { logger } from '../../../monitoring/error-handling';
+import { logger } from '@/lib/monitoring/error-handling';
 
 // Configuration interface for the service
 export interface IntegrationServiceConfig {
@@ -800,7 +800,8 @@ export class IntegrationService implements IIntegrationService {
               .eq('integration_id', 'seranking_keyword_export')
               .gte('timestamp', startDate.toISOString())
               .lte('timestamp', endDate.toISOString())
-              .order('timestamp', { ascending: true });
+              .order('timestamp', { ascending: true })
+              .limit(10000);
 
             if (error) {
               throw ErrorHandlingService.createError({ message: `Usage logs table not accessible: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
@@ -1109,7 +1110,8 @@ export class IntegrationService implements IIntegrationService {
           const { data, error } = await supabaseAdmin
             .from('indb_site_integration')
             .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
-            .eq('service_name', 'seranking_keyword_export');
+            .eq('service_name', 'seranking_keyword_export')
+            .limit(1);
 
           if (error) {
             throw error;

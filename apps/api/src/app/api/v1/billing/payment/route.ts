@@ -18,11 +18,11 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
     }
 
     const error = await ErrorHandlingService.createError(
-        ErrorType.VALIDATION,
-        'Payment processing is currently unavailable. Paddle integration pending.',
+        ErrorType.BUSINESS_LOGIC,
+        'Payment processing is not implemented. Paddle integration pending.',
         {
             severity: ErrorSeverity.MEDIUM,
-            statusCode: 503,
+            statusCode: 501,
             userId: auth.userId,
             userMessageKey: 'default',
             metadata: {

@@ -27,7 +27,8 @@ class Logger {
     const ctx = typeof context === 'string' ? {} : context;
     const msg = typeof context === 'string' ? context : message || '';
 
-    if (this.isProductionEnv) return;
+    // In production, only allow warn/error/fatal through (suppress debug/info noise)
+    if (this.isProductionEnv && (level === 'debug' || level === 'info')) return;
 
     const formattedMsg = this.formatMessage(level, ctx, msg);
 
@@ -105,7 +106,11 @@ export const ErrorHandlingService = {
       ...config,
     };
     logger.error(logContext, config.message || 'Created error');
-    return new Error(config.message);
+    // Return a structured error that preserves type/severity metadata (#13)
+    const error = new Error(config.message);
+    (error as Error & { type?: ErrorType; severity?: ErrorSeverity }).type = config.type;
+    (error as Error & { type?: ErrorType; severity?: ErrorSeverity }).severity = config.severity;
+    return error;
   }
 };
 

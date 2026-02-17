@@ -7,9 +7,10 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
@@ -45,6 +46,17 @@ interface CreatePackageRequest {
     sort_order?: number;
 }
 
+const createPackageSchema = z.object({
+    name: z.string().min(1).max(255),
+    slug: z.string().min(1).max(100),
+    description: z.string().max(2000).optional(),
+    price: z.number().nonnegative(),
+    daily_quota: z.number().int().nonnegative(),
+    billing_period: z.string().max(50).optional(),
+    is_active: z.boolean().optional(),
+    sort_order: z.number().int().optional(),
+}).strict();
+
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     try {
         const packagesContext = {
@@ -55,7 +67,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
             metadata: {
                 endpoint: '/api/v1/admin/settings/packages'
             },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') || undefined
         };
 
@@ -70,7 +82,9 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 const { data, error } = await supabaseAdmin
                     .from('indb_payment_packages')
                     .select('*')
-                    .order('sort_order', { ascending: true });
+                    .is('deleted_at', null)
+                    .order('sort_order', { ascending: true })
+                    .limit(50);
 
                 if (error) {
                     throw new Error(`Failed to fetch packages: ${error.message}`);
@@ -93,17 +107,20 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
 
 export const POST = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     try {
-        const body = await request.json() as CreatePackageRequest;
+        const rawBody = await request.json();
 
-        // Validate required fields
-        if (!body.name || !body.slug || body.price === undefined || body.daily_quota === undefined) {
+        // Validate with Zod schema
+        const validation = createPackageSchema.safeParse(rawBody);
+        if (!validation.success) {
             const validationError = await ErrorHandlingService.createError(
                 ErrorType.VALIDATION,
-                'Package name, slug, price, and daily_quota are required',
-                { severity: ErrorSeverity.LOW, statusCode: 400, userMessageKey: 'default' }
+                validation.error.issues[0]?.message || 'Invalid request body',
+                { severity: ErrorSeverity.LOW, statusCode: 400 }
             );
             return formatError(validationError);
         }
+
+        const body = validation.data;
 
         const createContext = {
             userId: adminUser.id,
@@ -115,7 +132,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
                 slug: body.slug,
                 endpoint: '/api/v1/admin/settings/packages'
             },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') || undefined
         };
 

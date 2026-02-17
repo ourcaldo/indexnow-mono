@@ -8,6 +8,73 @@ export function Skeleton({ className = '' }: SkeletonProps) {
   )
 }
 
+/**
+ * (#110) Generic table skeleton for data table loading states.
+ * @param rows Number of placeholder rows (default 5)
+ * @param columns Number of columns (default 4)
+ */
+export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
+  return (
+    <div className="bg-background rounded-lg border border-border overflow-hidden">
+      {/* Header */}
+      <div className="border-b border-border bg-secondary px-6 py-3 flex gap-4">
+        {Array.from({ length: columns }).map((_, i) => (
+          <Skeleton key={i} className="h-4 flex-1" />
+        ))}
+      </div>
+      {/* Rows */}
+      {Array.from({ length: rows }).map((_, row) => (
+        <div key={row} className="px-6 py-4 border-b border-border last:border-0 flex gap-4 items-center">
+          {Array.from({ length: columns }).map((_, col) => (
+            <Skeleton key={col} className={`h-4 flex-1 ${col === 0 ? 'max-w-[200px]' : ''}`} />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * (#110) Stat card grid skeleton for admin dashboards.
+ * @param count Number of stat cards (default 4)
+ */
+export function StatsCardsSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(count, 4)} gap-6`}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-background rounded-lg border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="w-12 h-12 rounded-lg" />
+          </div>
+          <Skeleton className="h-7 w-16 mb-2" />
+          <Skeleton className="h-4 w-24 mb-1" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * (#110) Full admin page loading skeleton with header, stats, and content area.
+ */
+export function AdminPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Skeleton className="h-7 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-10 w-28 rounded-lg" />
+      </div>
+      <StatsCardsSkeleton count={4} />
+      <TableSkeleton rows={6} columns={5} />
+    </div>
+  )
+}
+
 export function ProfileSkeleton() {
   return (
     <div className="grid lg:grid-cols-2 gap-8 items-stretch">

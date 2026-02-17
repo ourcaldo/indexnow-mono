@@ -10,8 +10,14 @@ export default defineConfig({
     splitting: false,
     sourcemap: true,
     clean: true,
-    external: ['next/headers', 'next/server', 'react'],
-    banner: {
-        js: '"use client";'
-    }
+    external: [
+        'react',
+        'next/headers',
+        'next/server',
+        'server-only',
+        '@indexnow/shared',
+        '@supabase/supabase-js',
+        '@supabase/ssr',
+        '@tanstack/react-query',
+    ],
 })

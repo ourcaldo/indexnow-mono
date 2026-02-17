@@ -15,7 +15,7 @@ import {
 import { RateLimiter } from './RateLimiter';
 import { ApiRequestBuilder } from './ApiRequestBuilder';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { logger } from '../../../monitoring/error-handling';
+import { logger } from '@/lib/monitoring/error-handling';
 
 export class SeRankingApiClient {
   private config: SeRankingClientConfig;
@@ -265,7 +265,7 @@ export class SeRankingApiClient {
       );
     }
     
-    return data.map((item: any) => ({
+    return data.map((item: Record<string, unknown>) => ({
       is_data_found: Boolean(item.is_data_found),
       keyword: String(item.keyword || ''),
       volume: item.volume ? Number(item.volume) : null,

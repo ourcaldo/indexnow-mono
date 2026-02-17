@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
@@ -49,7 +49,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 endpoint: '/api/v1/admin/dashboard',
                 adminEmail: adminUser.email || 'unknown'
             },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') || undefined
         };
 
@@ -67,78 +67,50 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
                 const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-                // User stats
-                const { count: totalUsers } = await supabaseAdmin
-                    .from('indb_auth_user_profiles')
-                    .select('*', { count: 'exact', head: true });
-
-                const { count: newUsersThisWeek } = await supabaseAdmin
-                    .from('indb_auth_user_profiles')
-                    .select('*', { count: 'exact', head: true })
-                    .gte('created_at', weekAgo);
-
-                // Error stats
-                const { count: criticalErrors } = await supabaseAdmin
-                    .from('indb_system_error_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('severity', 'CRITICAL')
-                    .is('resolved_at', null);
-
-                const { count: unresolvedErrors } = await supabaseAdmin
-                    .from('indb_system_error_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .is('resolved_at', null);
-
-                const { count: errorsLast24h } = await supabaseAdmin
-                    .from('indb_system_error_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .gte('created_at', yesterday);
-
-                // Transaction stats
-                const { count: totalTransactions } = await supabaseAdmin
-                    .from('indb_payment_transactions')
-                    .select('*', { count: 'exact', head: true });
-
-                const { count: completedThisMonth } = await supabaseAdmin
-                    .from('indb_payment_transactions')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('status', 'completed')
-                    .gte('created_at', monthAgo);
-
-                const { count: pendingTransactions } = await supabaseAdmin
-                    .from('indb_payment_transactions')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('status', 'pending');
-
-                // Keyword stats
-                const { count: totalKeywords } = await supabaseAdmin
-                    .from('indb_seranking_keywords')
-                    .select('*', { count: 'exact', head: true });
-
-                const { count: checkedToday } = await supabaseAdmin
-                    .from('indb_seranking_keyword_results')
-                    .select('*', { count: 'exact', head: true })
-                    .gte('created_at', today);
+                // (#69) Run all count queries in parallel instead of sequentially
+                const [
+                    totalUsersResult,
+                    newUsersThisWeekResult,
+                    criticalErrorsResult,
+                    unresolvedErrorsResult,
+                    errorsLast24hResult,
+                    totalTransactionsResult,
+                    completedThisMonthResult,
+                    pendingTransactionsResult,
+                    totalKeywordsResult,
+                    checkedTodayResult
+                ] = await Promise.all([
+                    supabaseAdmin.from('indb_auth_user_profiles').select('*', { count: 'exact', head: true }),
+                    supabaseAdmin.from('indb_auth_user_profiles').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
+                    supabaseAdmin.from('indb_system_error_logs').select('*', { count: 'exact', head: true }).eq('severity', 'CRITICAL').is('resolved_at', null),
+                    supabaseAdmin.from('indb_system_error_logs').select('*', { count: 'exact', head: true }).is('resolved_at', null),
+                    supabaseAdmin.from('indb_system_error_logs').select('*', { count: 'exact', head: true }).gte('created_at', yesterday),
+                    supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }),
+                    supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'completed').gte('created_at', monthAgo),
+                    supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+                    supabaseAdmin.from('indb_rank_keywords').select('*', { count: 'exact', head: true }),
+                    supabaseAdmin.from('indb_keyword_rankings').select('*', { count: 'exact', head: true }).gte('created_at', today),
+                ]);
 
                 return {
                     users: {
-                        total: totalUsers || 0,
+                        total: totalUsersResult.count || 0,
                         activeToday: 0, // Would need activity log query
-                        newThisWeek: newUsersThisWeek || 0
+                        newThisWeek: newUsersThisWeekResult.count || 0
                     },
                     errors: {
-                        critical: criticalErrors || 0,
-                        unresolved: unresolvedErrors || 0,
-                        last24h: errorsLast24h || 0
+                        critical: criticalErrorsResult.count || 0,
+                        unresolved: unresolvedErrorsResult.count || 0,
+                        last24h: errorsLast24hResult.count || 0
                     },
                     transactions: {
-                        total: totalTransactions || 0,
-                        completedThisMonth: completedThisMonth || 0,
-                        pendingCount: pendingTransactions || 0
+                        total: totalTransactionsResult.count || 0,
+                        completedThisMonth: completedThisMonthResult.count || 0,
+                        pendingCount: pendingTransactionsResult.count || 0
                     },
                     keywords: {
-                        total: totalKeywords || 0,
-                        checkedToday: checkedToday || 0
+                        total: totalKeywordsResult.count || 0,
+                        checkedToday: checkedTodayResult.count || 0
                     }
                 };
             }

@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
@@ -24,7 +24,7 @@ export const POST = adminApiWrapper(async (
       targetUserId: userId,
       endpoint: '/api/v1/admin/users/[id]/reset-quota'
     },
-    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+    ipAddress: getClientIP(request) ?? 'unknown',
     userAgent: request.headers.get('user-agent') || undefined || 'unknown'
   }
 
@@ -70,7 +70,7 @@ export const POST = adminApiWrapper(async (
 
   if (!result) {
     return formatError(await createStandardError(
-      ErrorType.AUTHORIZATION,
+      ErrorType.NOT_FOUND,
       'User not found',
       { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
     ))

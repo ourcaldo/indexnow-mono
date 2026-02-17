@@ -1,17 +1,19 @@
 import type { AnalyticsConfig, Subdomain } from './types';
+import { AppConfig } from '../core/config/AppConfig';
 
 export function getAnalyticsConfig(): AnalyticsConfig {
-  const ga4MeasurementId = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+  // Use centralized AppConfig for validated values (sentry, posthog, ga4)
+  const { sentry, posthog, ga4 } = AppConfig.monitoring;
+
+  // GTM and Customer.io are not in AppConfig — read from env directly
   const gtmContainerId = process.env.NEXT_PUBLIC_GTM_CONTAINER_ID;
   const customerioSiteId = process.env.NEXT_PUBLIC_CUSTOMERIO_SITE_ID;
-  const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-  const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const isDebug = process.env.NEXT_PUBLIC_ANALYTICS_DEBUG === 'true';
 
   return {
     ga4: {
-      enabled: Boolean(ga4MeasurementId),
-      measurementId: ga4MeasurementId,
+      enabled: Boolean(ga4.measurementId),
+      measurementId: ga4.measurementId,
     },
     gtm: {
       enabled: Boolean(gtmContainerId),
@@ -22,17 +24,17 @@ export function getAnalyticsConfig(): AnalyticsConfig {
       siteId: customerioSiteId,
     },
     sentry: {
-      enabled: Boolean(sentryDsn),
-      dsn: sentryDsn,
-      environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'production',
-      traceSampleRate: parseFloat(process.env.NEXT_PUBLIC_SENTRY_TRACE_SAMPLE_RATE || '0.1'),
-      replaysSessionSampleRate: parseFloat(process.env.NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_RATE || '0.1'),
-      replaysOnErrorSampleRate: parseFloat(process.env.NEXT_PUBLIC_SENTRY_REPLAYS_ERROR_RATE || '1.0'),
+      enabled: Boolean(sentry.dsn),
+      dsn: sentry.dsn,
+      environment: sentry.environment,
+      traceSampleRate: sentry.traceSampleRate,
+      replaysSessionSampleRate: sentry.replaysSessionRate,
+      replaysOnErrorSampleRate: sentry.replaysErrorRate,
     },
     posthog: {
-      enabled: Boolean(posthogKey),
-      apiKey: posthogKey,
-      apiHost: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+      enabled: Boolean(posthog.key),
+      apiKey: posthog.key,
+      apiHost: posthog.host,
     },
     debug: isDebug,
   };

@@ -258,8 +258,8 @@ export const BillingHistory = ({
                           }`}
                         >
                           {column.render 
-                            ? column.render((transaction as Record<string, any>)[column.key], transaction) 
-                            : (transaction as Record<string, any>)[column.key] as React.ReactNode}
+                            ? column.render((transaction as unknown as Record<string, unknown>)[column.key] as string | number | null | undefined, transaction) 
+                            : (transaction as unknown as Record<string, unknown>)[column.key] as React.ReactNode}
                         </td>
                       ))}
                     </tr>

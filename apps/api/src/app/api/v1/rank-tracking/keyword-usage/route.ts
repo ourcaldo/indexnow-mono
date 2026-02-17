@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -32,7 +32,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/keyword-usage',
                 reason: 'User checking keyword usage against quota',
                 metadata: { endpoint: '/api/v1/rank-tracking/keyword-usage' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'select' },

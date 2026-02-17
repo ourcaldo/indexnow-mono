@@ -12,6 +12,8 @@ import {
 } from '@indexnow/shared'
 
 // Create Supabase client with Database type - direct usage avoids SSR wrapper type issues
+// NOTE (#20): Uses anon key intentionally — all operations in this service go through RLS.
+// For admin/service-role operations, use SecureServiceRoleHelpers from this package.
 const supabase = createClient<Database>(
   AppConfig.supabase.url,
   AppConfig.supabase.anonKey
@@ -121,6 +123,7 @@ export class DatabaseService {
       .select('id, user_id, type, title, message, is_read, action_url, metadata, expires_at, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
+      .limit(100)
 
     if (unreadOnly) {
       query = query.eq('is_read', false)

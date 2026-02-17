@@ -4,7 +4,8 @@ import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/ap
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
 import { logger } from '@/lib/monitoring/error-handling'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
+import { z } from 'zod'
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
@@ -26,7 +27,7 @@ export const GET = adminApiWrapper(async (
       includePackageInfo: true,
       endpoint: '/api/v1/admin/users/[id]'
     },
-    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+    ipAddress: getClientIP(request) ?? 'unknown',
     userAgent: request.headers.get('user-agent') || undefined || 'unknown'
   }
 
@@ -73,7 +74,7 @@ export const GET = adminApiWrapper(async (
     }, 'Admin user lookup - Profile not found for user')
 
     return formatError(await createStandardError(
-      ErrorType.AUTHORIZATION,
+      ErrorType.NOT_FOUND,
       'User not found',
       { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
     ))
@@ -148,6 +149,14 @@ export const GET = adminApiWrapper(async (
   return formatSuccess({ user: userWithAuthData })
 })
 
+const updateUserSchema = z.object({
+  full_name: z.string().optional(),
+  role: z.enum(['user', 'admin', 'super_admin']).optional(),
+  email_notifications: z.boolean().optional(),
+  phone_number: z.string().optional(),
+  status: z.enum(['active', 'suspended']).optional(),
+})
+
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
@@ -158,7 +167,15 @@ export const PATCH = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
   const body = await request.json()
-  const { full_name, role, email_notifications, phone_number, status } = body
+  const parseResult = updateUserSchema.safeParse(body)
+  if (!parseResult.success) {
+    return formatError(await createStandardError(
+      ErrorType.VALIDATION,
+      parseResult.error.errors[0]?.message || 'Invalid request body',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
+    ))
+  }
+  const { full_name, role, email_notifications, phone_number, status } = parseResult.data
 
   if (status === 'suspended' || status === 'active') {
     const isSuspending = status === 'suspended'
@@ -176,7 +193,7 @@ export const PATCH = adminApiWrapper(async (
         banDuration,
         endpoint: '/api/v1/admin/users/[id]'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+      ipAddress: getClientIP(request) ?? 'unknown',
       userAgent: request.headers.get('user-agent') || undefined || 'unknown'
     }
 
@@ -234,7 +251,7 @@ export const PATCH = adminApiWrapper(async (
       roleChanged: currentProfile.length > 0 ? currentProfile[0].role !== role : false,
       endpoint: '/api/v1/admin/users/[id]'
     },
-    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+    ipAddress: getClientIP(request) ?? 'unknown',
     userAgent: request.headers.get('user-agent') || undefined || 'unknown'
   }
 

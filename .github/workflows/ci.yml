@@ -1,0 +1,188 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  install:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexnow-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: indexnow-dev/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache node_modules
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            indexnow-dev/node_modules
+            indexnow-dev/apps/*/node_modules
+            indexnow-dev/packages/*/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('indexnow-dev/pnpm-lock.yaml') }}
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: install
+    defaults:
+      run:
+        working-directory: indexnow-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            indexnow-dev/node_modules
+            indexnow-dev/apps/*/node_modules
+            indexnow-dev/packages/*/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('indexnow-dev/pnpm-lock.yaml') }}
+
+      - name: Lint
+        run: pnpm lint
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    needs: install
+    defaults:
+      run:
+        working-directory: indexnow-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            indexnow-dev/node_modules
+            indexnow-dev/apps/*/node_modules
+            indexnow-dev/packages/*/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('indexnow-dev/pnpm-lock.yaml') }}
+
+      - name: Build packages first (needed for type resolution)
+        run: pnpm turbo build --filter='./packages/*'
+
+      - name: Type check
+        run: pnpm type-check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: install
+    defaults:
+      run:
+        working-directory: indexnow-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            indexnow-dev/node_modules
+            indexnow-dev/apps/*/node_modules
+            indexnow-dev/packages/*/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('indexnow-dev/pnpm-lock.yaml') }}
+
+      - name: Build packages first
+        run: pnpm turbo build --filter='./packages/*'
+
+      - name: Run tests
+        run: pnpm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, test]
+    defaults:
+      run:
+        working-directory: indexnow-dev
+    env:
+      # Minimal env vars required for Next.js build (non-secret placeholders)
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+      NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: placeholder-paddle-token
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            indexnow-dev/node_modules
+            indexnow-dev/apps/*/node_modules
+            indexnow-dev/packages/*/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('indexnow-dev/pnpm-lock.yaml') }}
+
+      - name: Build all
+        run: pnpm build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            indexnow-dev/apps/*/.next
+            indexnow-dev/packages/*/dist
+          retention-days: 7

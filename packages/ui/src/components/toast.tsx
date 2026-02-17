@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +17,8 @@ interface Toast {
   description?: string
   type?: 'success' | 'error' | 'warning' | 'info'
   duration?: number
+  /** (#115) If true, toast persists across route navigation */
+  persistent?: boolean
   action?: {
     label: string
     onClick: () => void
@@ -40,6 +43,12 @@ export function ToastContainer({ children }: { children: React.ReactNode }) {
   const removeToast = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
+
+  // (#115) Dismiss all non-persistent toasts on route navigation
+  const pathname = usePathname()
+  React.useEffect(() => {
+    setToasts((prev) => prev.filter((t) => t.persistent))
+  }, [pathname])
 
   const contextValue = React.useMemo(() => ({
     toasts,

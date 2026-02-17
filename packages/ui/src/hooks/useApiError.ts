@@ -1,5 +1,16 @@
 import { useToast } from '../components/toast'
-import { ApiError } from '@indexnow/shared'
+import type { ApiError } from '@indexnow/shared'
+
+// Type guard for ApiError interface
+function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    'code' in error &&
+    'statusCode' in error
+  )
+}
 
 /**
  * Hook for consistent API error handling with toast notifications
@@ -20,10 +31,10 @@ export function useApiError() {
     let errorId: string | undefined
     let severity: string | undefined
 
-    if (error instanceof ApiError) {
+    if (isApiError(error)) {
       message = error.message
-      errorId = error.id
-      severity = error.severity
+      errorId = error.code
+      severity = undefined
     } else if (error instanceof Error) {
       message = error.message
     } else if (typeof error === 'string') {

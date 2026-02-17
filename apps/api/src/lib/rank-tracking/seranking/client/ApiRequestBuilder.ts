@@ -7,7 +7,7 @@ import {
   SeRankingKeywordExportRequest,
   ApiRequestConfig
 } from '../types/SeRankingTypes';
-import { logger } from '../../../monitoring/error-handling';
+import { logger } from '@/lib/monitoring/error-handling';
 
 export class ApiRequestBuilder {
   private baseUrl: string;

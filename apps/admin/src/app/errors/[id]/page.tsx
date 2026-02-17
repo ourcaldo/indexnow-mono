@@ -14,9 +14,8 @@ import {
   Globe,
   Activity
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Separator, useToast } from '@indexnow/ui';
-import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS, type ErrorDetailResponse } from '@indexnow/shared';
-import { supabaseBrowser } from '@indexnow/auth';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Separator, useToast, ErrorState } from '@indexnow/ui';
+import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS, authenticatedFetch, type ErrorDetailResponse } from '@indexnow/shared';
 
 export default function AdminErrorDetailPage() {
   const [errorData, setErrorData] = useState<ErrorDetailResponse | null>(null);
@@ -40,17 +39,7 @@ export default function AdminErrorDetailPage() {
       setLoading(true);
       setError(null);
 
-      const session = await supabaseBrowser.auth.getSession();
-      if (!session.data.session?.access_token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId), {
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`
-        },
-        credentials: 'include'
-      });
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId));
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -83,19 +72,9 @@ export default function AdminErrorDetailPage() {
     try {
       setUpdating(true);
 
-      const session = await supabaseBrowser.auth.getSession();
-      if (!session.data.session?.access_token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId), {
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId), {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ action }),
-        credentials: 'include'
       });
 
       const data = await response.json();
@@ -157,20 +136,12 @@ export default function AdminErrorDetailPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Details</h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <div className="space-x-2">
-            <Button onClick={() => router.back()} variant="outline" className="border-border">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-            <Button onClick={loadErrorDetail} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Try Again
-            </Button>
-          </div>
-        </div>
+        <ErrorState
+          title="Error Loading Details"
+          message={error}
+          onRetry={loadErrorDetail}
+          showHomeButton
+        />
       </div>
     );
   }
@@ -246,7 +217,7 @@ export default function AdminErrorDetailPage() {
                 </pre>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {errorDetail.status_code && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Status Code</label>
@@ -268,7 +239,7 @@ export default function AdminErrorDetailPage() {
               {errorDetail.endpoint && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Endpoint</label>
-                  <code className="block text-xs bg-muted px-2 py-1 rounded mt-1" data-testid="text-endpoint">
+                  <code className="block text-xs bg-muted px-2 py-1 rounded mt-1 break-all" data-testid="text-endpoint">
                     {errorDetail.endpoint}
                   </code>
                 </div>
@@ -418,7 +389,7 @@ export default function AdminErrorDetailPage() {
                     <div 
                       key={relError.id} 
                       className="p-3 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/backend/admin/errors/${relError.id}`)}
+                      onClick={() => router.push(`/errors/${relError.id}`)}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <code className="text-xs font-medium text-foreground">{relError.error_type}</code>

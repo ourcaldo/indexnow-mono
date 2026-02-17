@@ -2,7 +2,12 @@ import nodemailer from 'nodemailer';
 import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { AppConfig, logger } from '@indexnow/shared';
+
+// Resolve template directory relative to this file (works after ESM bundling)
+const __filename = fileURLToPath(import.meta.url);
+const __templatesDir = path.join(path.dirname(__filename), 'templates');
 
 export interface EmailOptions {
   to: string;
@@ -13,15 +18,17 @@ export interface EmailOptions {
 
 export class EmailService {
   private transporter: nodemailer.Transporter;
+  // Template cache to avoid recompiling on every send (#49)
+  private templateCache = new Map<string, handlebars.TemplateDelegate>();
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: AppConfig.smtp.host,
-      port: Number(AppConfig.smtp.port),
-      secure: AppConfig.smtp.secure,
+      host: AppConfig.email.smtp.host,
+      port: Number(AppConfig.email.smtp.port),
+      secure: Number(AppConfig.email.smtp.port) === 465,
       auth: {
-        user: AppConfig.smtp.user,
-        pass: AppConfig.smtp.pass,
+        user: AppConfig.email.smtp.user,
+        pass: AppConfig.email.smtp.pass,
       },
     });
   }
@@ -29,23 +36,32 @@ export class EmailService {
   async sendEmail(options: EmailOptions): Promise<void> {
     const { to, subject, template, context } = options;
 
-    // In a real environment, we would load the template from the filesystem or a database
-    // For this implementation, we'll assume they are in the src/templates directory
-    const templatePath = path.join(__dirname, 'templates', `${template}.html`);
-    
-    let html: string;
-    try {
-      const templateSource = fs.readFileSync(templatePath, 'utf8');
-      const compiledTemplate = handlebars.compile(templateSource);
-      html = compiledTemplate(context);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      logger.error({ error: err, template }, `Failed to load email template: ${template}`);
-      throw new Error(`Email template not found: ${template}`);
+    // (#51) Sanitize template name to prevent path traversal
+    const safeName = path.basename(template).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!safeName || safeName !== template) {
+      throw new Error(`Invalid template name: ${template}`);
     }
 
+    // Check cache first (#49)
+    let compiledTemplate = this.templateCache.get(safeName);
+    if (!compiledTemplate) {
+      const templatePath = path.join(__templatesDir, `${safeName}.html`);
+      
+      try {
+        const templateSource = fs.readFileSync(templatePath, 'utf8');
+        compiledTemplate = handlebars.compile(templateSource);
+        this.templateCache.set(safeName, compiledTemplate);
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logger.error({ error: err, template: safeName }, `Failed to load email template: ${safeName}`);
+        throw new Error(`Email template not found: ${safeName}`);
+      }
+    }
+
+    const html = compiledTemplate(context);
+
     await this.transporter.sendMail({
-      from: `"${AppConfig.smtp.fromName}" <${AppConfig.smtp.fromEmail}>`,
+      from: `"${AppConfig.email.smtp.fromName}" <${AppConfig.email.smtp.fromEmail}>`,
       to,
       subject,
       html,
@@ -53,4 +69,20 @@ export class EmailService {
   }
 }
 
-export const emailService = new EmailService();
+let _emailService: EmailService | null = null;
+
+export function getEmailService(): EmailService {
+  if (!_emailService) {
+    _emailService = new EmailService();
+  }
+  return _emailService;
+}
+
+/** @deprecated Use `getEmailService()` for lazy initialization (#48).
+ * This proxy is kept for backward compatibility but may have context binding issues.
+ * TODO: Remove in next major version and update all consumers to use getEmailService(). */
+export const emailService = new Proxy({} as EmailService, {
+  get(_target, prop) {
+    return Reflect.get(getEmailService(), prop);
+  },
+});

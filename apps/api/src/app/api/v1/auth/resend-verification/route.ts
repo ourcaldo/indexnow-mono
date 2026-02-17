@@ -1,13 +1,13 @@
-﻿import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper, createAnonServerClient } from '@indexnow/database';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     publicApiWrapper,
     formatSuccess,
     formatError
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { z } from 'zod';
 
 // In-memory rate limit store for verification resend requests
 const rateLimitStore = new Map<string, { count: number; resetTime: number; lastRequest: number }>();
@@ -82,6 +82,10 @@ interface ResendResult {
     error: { message?: string } | null;
 }
 
+const resendVerificationSchema = z.object({
+    email: z.string().email(),
+});
+
 /**
  * POST /api/v1/auth/resend-verification
  * Resend verification email to user
@@ -89,32 +93,19 @@ interface ResendResult {
 export const POST = publicApiWrapper(async (request: NextRequest) => {
     try {
         const body = await request.json();
-        const { email } = body;
-
-        // Validate email is present
-        if (!email || typeof email !== 'string') {
+        const parseResult = resendVerificationSchema.safeParse(body);
+        if (!parseResult.success) {
             const validationError = await ErrorHandlingService.createError(
                 ErrorType.VALIDATION,
-                'Email address is required',
+                parseResult.error.errors[0]?.message || 'Invalid request body',
                 { severity: ErrorSeverity.LOW, statusCode: 400 }
             );
             return formatError(validationError);
         }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email.trim())) {
-            const validationError = await ErrorHandlingService.createError(
-                ErrorType.VALIDATION,
-                'Please enter a valid email address',
-                { severity: ErrorSeverity.LOW, statusCode: 400 }
-            );
-            return formatError(validationError);
-        }
+        const { email } = parseResult.data;
 
         const normalizedEmail = email.trim().toLowerCase();
-        const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-            || request.headers.get('x-real-ip')
+        const clientIP = getClientIP(request)
             || request.headers.get('cf-connecting-ip')
             || '127.0.0.1';
 
@@ -134,10 +125,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         }
 
         // Create Supabase client
-        const supabase = createClient(
-            AppConfig.supabase.url,
-            AppConfig.supabase.anonKey
-        );
+        const supabase = createAnonServerClient();
 
         const resendResult = await SecureServiceRoleWrapper.executeWithUserSession<ResendResult>(
             supabase,

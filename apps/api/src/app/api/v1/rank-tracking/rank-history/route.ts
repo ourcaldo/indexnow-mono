@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -34,6 +34,10 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     try {
         const searchParams = request.nextUrl.searchParams;
         const keywordIdsParam = searchParams.get('keywordIds');
+        const parsedDays = parseInt(searchParams.get('days') || '30');
+        const days = Number.isNaN(parsedDays) ? 30 : Math.min(90, Math.max(1, parsedDays));
+        const parsedMaxResults = parseInt(searchParams.get('maxResults') || '5000');
+        const maxResults = Number.isNaN(parsedMaxResults) ? 5000 : Math.min(10000, Math.max(100, parsedMaxResults));
 
         if (!keywordIdsParam) {
             const validationError = await ErrorHandlingService.createError(
@@ -45,6 +49,16 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         }
 
         const keywordIds = keywordIdsParam.split(',').filter(id => id.trim().length > 0);
+
+        // Cap at 100 IDs to prevent unbounded queries
+        if (keywordIds.length > 100) {
+            const validationError = await ErrorHandlingService.createError(
+                ErrorType.VALIDATION,
+                'Maximum 100 keyword IDs per request',
+                { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400 }
+            );
+            return formatError(validationError);
+        }
 
         if (keywordIds.length === 0) {
             return formatSuccess([]);
@@ -58,7 +72,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/rank-history',
                 reason: 'User fetching ranking history for keywords',
                 metadata: { keywordCount: keywordIds.length },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_keyword_rankings', operationType: 'select' },
@@ -68,23 +82,24 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     .from('indb_rank_keywords')
                     .select('id, keyword, domain, country, device')
                     .in('id', keywordIds)
-                    .eq('user_id', auth.userId);
+                    .eq('user_id', auth.userId)
+                    .limit(100);
 
                 if (kwError) throw new Error(`Failed to fetch keywords: ${kwError.message}`);
                 if (!keywords || keywords.length === 0) return [];
 
                 // 2. Fetch history for these keywords
-                // 30 days history limit
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+                const daysAgo = new Date();
+                daysAgo.setDate(daysAgo.getDate() - days);
+                const dateStr = daysAgo.toISOString().split('T')[0];
 
                 const { data: history, error: historyError } = await db
                     .from('indb_keyword_rankings')
                     .select('keyword_id, position, check_date, url')
                     .in('keyword_id', keywordIds)
                     .gte('check_date', dateStr)
-                    .order('check_date', { ascending: true });
+                    .order('check_date', { ascending: true })
+                    .limit(maxResults);
 
                 if (historyError) throw new Error(`Failed to fetch history: ${historyError.message}`);
 

@@ -30,13 +30,17 @@ interface CriticalErrorResult {
 /**
  * GET /api/v1/admin/errors/critical
  * Query Parameters:
+ * - page: Page number (default: 1)
  * - limit: Maximum number of critical errors to return (default: 50, max: 200)
  */
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     const { searchParams } = new URL(request.url);
     const endpoint = new URL(request.url).pathname;
     const parsedLimit = parseInt(searchParams.get('limit') || '50');
+    const parsedPage = parseInt(searchParams.get('page') || '1');
     const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(200, Math.max(1, parsedLimit));
+    const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage);
+    const offset = (page - 1) * limit;
 
     const result = await SecureServiceRoleWrapper.executeSecureOperation<CriticalErrorResult>(
         {
@@ -44,7 +48,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
             operation: 'fetch_critical_errors',
             reason: 'Admin viewing unresolved critical errors',
             source: endpoint,
-            metadata: { limit }
+            metadata: { limit, page }
         },
         {
             table: 'indb_system_error_logs',
@@ -56,20 +60,29 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
             }
         },
         async () => {
-            const { data: criticalErrors, error } = await supabaseAdmin
+            const { data: criticalErrors, error, count } = await supabaseAdmin
                 .from('indb_system_error_logs')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .eq('severity', 'CRITICAL')
                 .is('resolved_at', null) // Only unresolved critical errors
                 .order('created_at', { ascending: false })
-                .limit(limit);
+                .range(offset, offset + limit - 1);
 
             if (error) throw error;
 
+            const total = count || 0;
             return {
                 criticalErrors: (criticalErrors || []) as CriticalError[],
-                count: criticalErrors?.length || 0,
-                hasAlerts: (criticalErrors?.length || 0) > 0
+                count: total,
+                hasAlerts: total > 0,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit),
+                    hasNextPage: total > offset + limit,
+                    hasPrevPage: page > 1
+                }
             };
         }
     );

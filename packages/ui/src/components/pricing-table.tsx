@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { Check, Clock } from 'lucide-react'
-import { type PackageData } from '@indexnow/shared'
-import { usePricingData } from '@indexnow/database'
+import { type PackageData } from '../hooks/business/usePricingData'
+import { usePricingData } from '../hooks/business/usePricingData'
 
 interface PricingTableProps {
   showTrialButton?: boolean

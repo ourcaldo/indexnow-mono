@@ -1,9 +1,6 @@
 import { Json } from '../types/database';
 import { TrackEventProperties, UserTraits } from './types';
 
-interface PostHogWithDebug {
-  debug: (enabled?: boolean) => void;
-}
 import posthog from 'posthog-js';
 import { getAnalyticsConfig, getSubdomainContext } from './config';
 
@@ -20,8 +17,7 @@ export function initializePosthog() {
     api_host: config.posthog.apiHost,
     loaded: (ph) => {
       if (config.debug) {
-        // Safe cast to access debug method if not in type definition
-        (ph as PostHogWithDebug).debug();
+        ph.debug();
       }
     },
     capture_pageview: false,

@@ -1,18 +1,1 @@
 @import "@indexnow/ui/styles.css";
-
-/* App-specific animations */
-@keyframes scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.animate-scroll {
-  animation: scroll 25s linear infinite;
-}
-
-/* App-specific radial gradient */
-@layer utilities {
-  .bg-gradient-radial {
-    background: radial-gradient(var(--tw-gradient-stops));
-  }
-}

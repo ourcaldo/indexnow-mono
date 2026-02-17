@@ -1,7 +1,6 @@
 // Main exports
 export { 
-  type ApiResponse as SchemaApiResponse, 
-  type PaginatedResponse,
+  type PaginatedResponse as SchemaPaginatedResponse,
   loginSchema,
   registerSchema,
   forgotPasswordSchema,
@@ -49,16 +48,12 @@ export * from './utils/ip-device-utils'
 export * from './utils/countries'
 export * from './utils/rate-limiter'
 export * from './utils/pii-sanitizer'
+export * from './utils/sql-utils'
 export * from './utils/supabase-browser'
-export { ApiErrorHandler, ApplicationError } from './core/api/ApiErrorHandler'
+export * from './utils/authenticated-fetch'
 export * from './core/api/ApiMiddleware'
 export { formatSuccess, formatError, type ApiResponse, type ApiSuccessResponse, type ApiErrorResponse } from './core/api-response'
 export * from './core/auth/AuthService'
 export * from './core/activity/ActivityLogger'
-export * from './contexts/DomainContext'
-export * from './contexts/DeviceCountryFilterContext'
 export * from './core/config/AppConfig'
-export * from './providers/PaddleProvider'
 export * from './analytics'
-export { AnalyticsProvider } from './analytics/AnalyticsProvider';
-

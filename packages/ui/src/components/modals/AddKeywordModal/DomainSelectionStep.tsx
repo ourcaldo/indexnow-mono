@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS, apiRequest, type Domain } from '@indexnow/shared'
+import { RANK_TRACKING_ENDPOINTS, type Domain } from '@indexnow/shared'
+import { apiRequest } from '@indexnow/database'
 import { useApiError } from '../../../hooks'
 import { 
   Plus, 

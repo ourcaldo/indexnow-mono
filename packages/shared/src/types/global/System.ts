@@ -175,8 +175,8 @@ export interface SystemJob {
   type: 'cron' | 'queue' | 'immediate';
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   priority: 'low' | 'normal' | 'high' | 'critical';
-  payload?: Record<string, any>;
-  result?: Record<string, any>;
+  payload?: Record<string, unknown>;
+  result?: Record<string, unknown>;
   error?: string;
   createdAt: Date;
   startedAt?: Date;
@@ -207,7 +207,7 @@ export interface BackupJob {
   createdAt: Date;
   completedAt?: Date;
   error?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MaintenanceWindow {
@@ -230,8 +230,8 @@ export interface ExternalService {
   status: 'connected' | 'disconnected' | 'error';
   lastCheck: Date;
   responseTime?: number;
-  credentials?: Record<string, any>;
-  configuration?: Record<string, any>;
+  credentials?: Record<string, unknown>;
+  configuration?: Record<string, unknown>;
 }
 
 export interface WebhookEndpoint {
@@ -252,7 +252,7 @@ export interface SystemLog {
   id: string;
   level: 'debug' | 'info' | 'warn' | 'error' | 'fatal';
   message: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   timestamp: Date;
   source: string;
   userId?: string;
@@ -269,7 +269,7 @@ export interface AuditEvent {
   userRole?: string;
   ipAddress: string;
   userAgent: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }

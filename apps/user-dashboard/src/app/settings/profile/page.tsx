@@ -1,29 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { usePageViewLogger, useAccountSettings } from '@indexnow/ui'
 import {
-  authService,
-  ApiEndpoints as AUTH_ENDPOINTS,
-  logger
-} from '@indexnow/shared'
-import { supabaseBrowser as supabase, usePageViewLogger, useActivityLogger } from '@indexnow/database'
-import { useAuth } from '@indexnow/auth'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Button,
   Input,
   Label,
-  Badge,
-  Skeleton,
   SettingCard,
   SettingInput,
-  useToast
 } from '@indexnow/ui'
 import {
-  User as UserIcon,
   RefreshCw,
   Eye,
   EyeOff,
@@ -31,217 +17,22 @@ import {
   KeyRound
 } from 'lucide-react'
 
-interface UserProfile {
-  full_name: string | null
-  phone_number: string | null
-  email_notifications: boolean
-}
-
 export default function ProfileSettingsPage() {
-  const { addToast } = useToast()
-  const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
+  const {
+    loading,
+    savingProfile,
+    savingPassword,
+    profileForm,
+    passwordForm,
+    userEmail,
+    setProfileForm,
+    setPasswordForm,
+    handleSaveProfile,
+    handleChangePassword,
+  } = useAccountSettings()
 
-  // Log page view and settings activities
   usePageViewLogger('/dashboard/settings/profile', 'Profile Settings', { section: 'profile_settings' })
-  const { logDashboardActivity } = useActivityLogger()
-  const [savingProfile, setSavingProfile] = useState(false)
-  const [savingPassword, setSavingPassword] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  // Real data states
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-
-  // Form states
-  const [profileForm, setProfileForm] = useState({
-    full_name: '',
-    phone_number: '',
-    email_notifications: false
-  })
-
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  })
-
-  // Load data on component mount
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    try {
-      setLoading(true)
-      // Use centralized authService instead of raw supabase
-      const token = await authService.getAccessToken()
-      if (!token) return
-
-      // Load user profile
-      const profileResponse = await fetch(AUTH_ENDPOINTS.AUTH.PROFILE, {
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include'
-      })
-
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json() as { profile: UserProfile }
-        setUserProfile(profileData.profile)
-        setProfileForm({
-          full_name: profileData.profile.full_name || '',
-          phone_number: profileData.profile.phone_number || '',
-          email_notifications: profileData.profile.email_notifications || false
-        })
-      } else if (profileResponse.status === 404) {
-        // Profile doesn't exist, create default values
-        setProfileForm({
-          full_name: user?.email?.split('@')[0] || '',
-          phone_number: '',
-          email_notifications: false
-        })
-      }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading data')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSaveProfile = async () => {
-    try {
-      setSavingProfile(true)
-      const token = await authService.getAccessToken()
-      if (!token) throw new Error('No access token')
-
-      const response = await fetch(AUTH_ENDPOINTS.AUTH.PROFILE, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        credentials: 'include',
-        body: JSON.stringify(profileForm)
-      })
-
-      if (response.ok) {
-        addToast({
-          title: 'Success',
-          description: 'Profile updated successfully',
-          type: 'success'
-        })
-        await logDashboardActivity('profile_update', 'Profile information updated')
-        loadData() // Refresh data
-      } else {
-        const error = await response.json() as { error?: string }
-        addToast({
-          title: 'Failed to update profile',
-          description: error.error || 'Something went wrong',
-          type: 'error'
-        })
-      }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error saving profile')
-      addToast({
-        title: 'Error',
-        description: 'Failed to update profile',
-        type: 'error'
-      })
-    } finally {
-      setSavingProfile(false)
-    }
-  }
-
-  const handleChangePassword = async () => {
-    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      addToast({
-        title: 'Validation Error',
-        description: 'Please fill in all password fields',
-        type: 'error'
-      })
-      return
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      addToast({
-        title: 'Validation Error',
-        description: 'New passwords do not match',
-        type: 'error'
-      })
-      return
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      addToast({
-        title: 'Validation Error',
-        description: 'Password must be at least 6 characters long',
-        type: 'error'
-      })
-      return
-    }
-
-    try {
-      setSavingPassword(true)
-
-      // First verify current password by attempting to sign in
-      if (!user?.email) {
-        addToast({
-          title: 'Error',
-          description: 'User email not found',
-          type: 'error'
-        })
-        return
-      }
-
-      try {
-        await authService.signIn(user.email, passwordForm.currentPassword)
-      } catch (signInError) {
-        addToast({
-          title: 'Authentication Error',
-          description: 'Current password is incorrect',
-          type: 'error'
-        })
-        return
-      }
-
-      // Update password
-      try {
-        await authService.updateUser({
-          password: passwordForm.newPassword
-        })
-      } catch (updateError: unknown) {
-        const errorMessage = updateError instanceof Error ? updateError.message : 'Failed to update password'
-        addToast({
-          title: 'Update Error',
-          description: errorMessage,
-          type: 'error'
-        })
-        return
-      }
-
-      addToast({
-        title: 'Success',
-        description: 'Password updated successfully',
-        type: 'success'
-      })
-
-      await logDashboardActivity('password_change', 'Password updated successfully')
-
-      // Clear password form
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      })
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error changing password')
-      addToast({
-        title: 'Error',
-        description: 'Failed to change password',
-        type: 'error'
-      })
-    } finally {
-      setSavingPassword(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -293,7 +84,7 @@ export default function ProfileSettingsPage() {
               id="email"
               label="Email Address"
               type="email"
-              value={user?.email || ''}
+              value={userEmail || ''}
               readOnly
               description="Email cannot be changed directly. Contact support if needed."
               className="bg-muted"

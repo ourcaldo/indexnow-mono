@@ -4,9 +4,8 @@
  * 
  * Provides comprehensive health status of SeRanking integration
  * 
- * Note: The indb_seranking_integration table doesn't exist in the current schema.
- * This endpoint returns a stub response indicating the integration is not configured.
- * TODO: Create database migration for seranking integration table.
+ * @stub Returns hardcoded 'unconfigured' status. The indb_seranking_integration table
+ * does not exist in the current schema. Create database migration before enabling.
  */
 
 import { NextRequest } from 'next/server';
@@ -116,8 +115,8 @@ function generateRecommendations(components: ComponentHealth): string[] {
 export const GET = publicApiWrapper(async (request: NextRequest) => {
     const checkTime = new Date().toISOString();
 
-    // TODO: Check integration settings from database once indb_seranking_integration table is created
-    // For now, return unconfigured status
+    // Integration settings check - requires indb_seranking_integration table
+    // Returns unconfigured status until table migration is applied
     const isConfigured = false;
 
     const settingsHealth = {

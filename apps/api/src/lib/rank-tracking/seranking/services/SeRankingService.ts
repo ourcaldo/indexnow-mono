@@ -39,11 +39,11 @@ import { JobProcessor } from './JobProcessor';
 import { ApiMetricsCollector } from './ApiMetricsCollector';
 import { QuotaMonitor } from './QuotaMonitor';
 import { HealthChecker } from './HealthChecker';
-import { ErrorHandlingService } from './ErrorHandlingService';
+import { SeRankingErrorHandler } from './ErrorHandlingService';
 import { ValidationService } from './ValidationService';
 import { KeywordBankService } from './KeywordBankService';
 import { SeRankingApiClient } from '../client/SeRankingApiClient';
-import { logger } from '../../../monitoring/error-handling';
+import { logger } from '@/lib/monitoring/error-handling';
 
 // Configuration interfaces
 export interface SeRankingServiceConfig {
@@ -200,7 +200,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   private healthChecker!: IHealthChecker;
   
   // Support Services
-  private errorHandler!: ErrorHandlingService;
+  private errorHandler!: SeRankingErrorHandler;
   private validationService = ValidationService;
   
   // Facade interface properties (required by ISeRankingService)
@@ -285,7 +285,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
     this.log('debug', 'Initializing core services...');
     
     // Initialize support services first
-    this.errorHandler = new ErrorHandlingService({
+    this.errorHandler = new SeRankingErrorHandler({
       maxRetryAttempts: this.config.errorHandling.maxRetryAttempts,
       baseRetryDelay: this.config.errorHandling.baseRetryDelay,
       enableGracefulDegradation: this.config.errorHandling.enableGracefulDegradation,

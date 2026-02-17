@@ -12,8 +12,8 @@
     },
     "aliases": {
       "components": "@/components",
-      "utils": "@/lib/utils",
-      "ui": "@/components/ui",
+      "utils": "@indexnow/ui/utils",
+      "ui": "@indexnow/ui/components",
       "lib": "@/lib",
       "hooks": "@/hooks"
     }

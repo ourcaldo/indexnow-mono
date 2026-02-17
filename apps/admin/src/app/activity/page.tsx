@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input } from '@indexnow/ui'
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input, ErrorState } from '@indexnow/ui'
 import { 
   Activity,
   Clock,
@@ -10,24 +10,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Monitor,
-  MapPin,
-  Smartphone,
-  Tablet,
-  Globe,
   CheckCircle,
-  XCircle,
-  LogIn,
-  LogOut,
-  Settings,
-  FileText,
-  Server,
-  Shield,
-  Zap,
-  Key
+  XCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { ADMIN_ENDPOINTS, type Json, formatDate, type EnrichedActivityLog } from '@indexnow/shared'
+import { getEventTypeBadge, getDeviceInfo } from './utils/activity-helpers'
 
 export default function ActivityLogsPage() {
   const [logs, setLogs] = useState<EnrichedActivityLog[]>([])
@@ -88,139 +76,7 @@ export default function ActivityLogsPage() {
     return matchesSearch && matchesType
   })
 
-  const getEventTypeBadge = (eventType: string, success: boolean) => {
-    const eventConfig = {
-      login: { 
-        color: success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive',
-        icon: LogIn,
-        label: 'Sign In'
-      },
-      logout: { 
-        color: 'bg-muted/10 text-muted-foreground',
-        icon: LogOut,
-        label: 'Sign Out'
-      },
-      register: { 
-        color: success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive',
-        icon: User,
-        label: 'Registration'
-      },
-      job_create: { 
-        color: 'bg-accent/10 text-accent',
-        icon: Zap,
-        label: 'Job Created'
-      },
-      job_update: { 
-        color: 'bg-warning/10 text-warning',
-        icon: Settings,
-        label: 'Job Updated'
-      },
-      job_delete: { 
-        color: 'bg-destructive/10 text-destructive',
-        icon: XCircle,
-        label: 'Job Deleted'
-      },
-      job_start: { 
-        color: 'bg-success/10 text-success',
-        icon: CheckCircle,
-        label: 'Job Started'
-      },
-      service_account_add: { 
-        color: 'bg-success/10 text-success',
-        icon: Shield,
-        label: 'Service Added'
-      },
-      service_account_delete: { 
-        color: 'bg-destructive/10 text-destructive',
-        icon: XCircle,
-        label: 'Service Removed'
-      },
-      profile_update: { 
-        color: 'bg-accent/10 text-accent',
-        icon: User,
-        label: 'Profile Updated'
-      },
-      admin_login: { 
-        color: 'bg-warning/10 text-warning',
-        icon: Shield,
-        label: 'Admin Access'
-      },
-      user_management: { 
-        color: 'bg-accent/10 text-accent',
-        icon: Settings,
-        label: 'User Management'
-      },
-      api_call: { 
-        color: 'bg-muted/10 text-muted-foreground',
-        icon: Server,
-        label: 'API Call'
-      },
-      settings_change: { 
-        color: 'bg-warning/10 text-warning',
-        icon: Settings,
-        label: 'Settings Changed'
-      },
-      user_password_reset: {
-        color: 'bg-destructive/10 text-destructive',
-        icon: Key,
-        label: 'Password Reset'
-      },
-      user_profile_update: {
-        color: 'bg-accent/10 text-accent',
-        icon: User,
-        label: 'Profile Updated'
-      },
-      user_role_change: {
-        color: 'bg-warning/10 text-warning',
-        icon: Shield,
-        label: 'Role Changed'
-      },
-      user_security_view: {
-        color: 'bg-muted/10 text-muted-foreground',
-        icon: Shield,
-        label: 'Security Analysis'
-      },
-      user_activity_view: {
-        color: 'bg-muted/10 text-muted-foreground',
-        icon: Activity,
-        label: 'Activity Review'
-      },
-      page_view: {
-        color: 'bg-accent/10 text-accent',
-        icon: Globe,
-        label: 'Page Visit'
-      },
-      dashboard_view: {
-        color: 'bg-accent/10 text-accent',
-        icon: Monitor,
-        label: 'Dashboard'
-      }
-    }
-    
-    return eventConfig[eventType as keyof typeof eventConfig] || {
-      color: 'bg-muted/10 text-muted-foreground',
-      icon: Activity,
-      label: eventType.replace('_', ' ').toUpperCase()
-    }
-  }
 
-  const getDeviceInfo = (userAgent?: string) => {
-    if (!userAgent) return { icon: Monitor, text: 'Desktop' }
-    
-    const ua = userAgent.toLowerCase()
-    
-    if (ua.includes('mobile') || ua.includes('iphone')) {
-      return { icon: Smartphone, text: 'Mobile' }
-    }
-    if (ua.includes('tablet') || ua.includes('ipad')) {
-      return { icon: Tablet, text: 'Tablet' }
-    }
-    if (ua.includes('android')) {
-      return ua.includes('mobile') ? { icon: Smartphone, text: 'Mobile' } : { icon: Tablet, text: 'Tablet' }
-    }
-    
-    return { icon: Monitor, text: 'Desktop' }
-  }
 
   if (loading) {
     return (
@@ -241,17 +97,14 @@ export default function ActivityLogsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl font-semibold text-foreground">Activity Logs</h1>
-            <Card className="mt-4">
-              <CardContent className="p-6">
-                <p className="text-destructive">Error: {error}</p>
-                <Button 
-                  onClick={fetchActivityLogs}
-                  className="mt-4 bg-primary hover:bg-primary/90 text-white"
-                >
-                  Retry
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="mt-4">
+              <ErrorState
+                title="Failed to load activity logs"
+                message={error}
+                onRetry={fetchActivityLogs}
+                variant="inline"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -395,7 +248,7 @@ export default function ActivityLogsPage() {
                 <p className="text-muted-foreground">No user activities match your current filters</p>
               </div>
             ) : (
-              <div className="border border-border rounded-lg overflow-hidden">
+              <div className="border border-border rounded-lg overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary hover:bg-secondary">
@@ -441,7 +294,7 @@ export default function ActivityLogsPage() {
                               <div className="text-foreground font-medium text-sm">
                                 {log.user_name}
                               </div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-muted-foreground text-xs truncate max-w-[180px]">
                                 {log.user_email}
                               </div>
                             </Link>

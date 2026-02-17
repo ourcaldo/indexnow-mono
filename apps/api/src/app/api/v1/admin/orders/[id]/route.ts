@@ -10,16 +10,49 @@ import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/ap
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
 import { logger } from '@/lib/monitoring/error-handling'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
 import {
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
   type AdminTransactionHistory,
   type AdminOrderActivityLog
-} from '@indexnow/shared'
+, getClientIP} from '@indexnow/shared'
 
-// Use any since TransactionRow/PackageRow are not exported from @indexnow/database
-type OrderWithRelations = any;
+/** Supabase join result for payment transaction with package and gateway relations */
+interface OrderWithRelations {
+  id: string;
+  user_id: string;
+  package_id: string | null;
+  gateway_id: string | null;
+  status: string;
+  amount: number;
+  currency: string;
+  payment_method: string | null;
+  proof_url: string | null;
+  transaction_id: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  package: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    pricing_tiers: Json;
+    currency: string | null;
+    billing_period: string | null;
+    features: Json;
+  } | null;
+  gateway: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    pricing_tiers: Json;
+    configuration: Json;
+  } | null;
+}
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
@@ -41,7 +74,7 @@ export const GET = adminApiWrapper(async (
       orderId,
       endpoint: '/api/v1/admin/orders/[id]'
     },
-    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown',
+    ipAddress: getClientIP(request) ?? 'unknown',
     userAgent: request.headers.get('user-agent') || undefined || 'unknown'
   }
 
@@ -226,7 +259,7 @@ export const GET = adminApiWrapper(async (
     verified_at: (order.metadata?.verified_at as string) || null,
     processed_at: (order.metadata?.processed_at as string) || null,
     notes: order.notes,
-    metadata: order.metadata || {},
+    metadata: (order.metadata || {}) as Record<string, Json>,
     created_at: order.created_at,
     updated_at: order.updated_at,
     package: order.package ? {
@@ -387,6 +420,7 @@ export const GET = adminApiWrapper(async (
             `)
           .eq('transaction_id', orderId)
           .order('created_at', { ascending: false })
+          .limit(50);
 
         if (error) {
           throw new Error(`Failed to fetch transaction history: ${error.message}`)

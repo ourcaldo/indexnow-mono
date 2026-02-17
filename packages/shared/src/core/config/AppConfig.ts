@@ -7,7 +7,7 @@ import { z } from 'zod';
 const AppSchema = z.object({
   name: z.string().default('IndexNow Studio'),
   version: z.string().default('1.0.0'),
-  environment: z.enum(['development', 'staging', 'production']).default('development'),
+  environment: z.enum(['development', 'staging', 'production']).default('production'),
   baseUrl: z.string().url().default('http://localhost:3000'),
   port: z.coerce.number().default(3000),
   allowedOrigins: z.array(z.string()).default([
@@ -111,7 +111,10 @@ export const ConfigSchema = z.object({
 export type AppConfigType = z.infer<typeof ConfigSchema>;
 
 /**
- * Creates an AppConfig instance based on environment variables
+ * Creates an AppConfig instance based on environment variables.
+ * NOTE (#6): This throws on invalid config — intentional fail-fast design.
+ * The application should not boot with missing critical secrets.
+ * If lazy/graceful init is needed, wrap the import in a try-catch.
  */
 export const createAppConfig = (): AppConfigType => {
   const rawConfig = {
@@ -209,10 +212,48 @@ export const createAppConfig = (): AppConfigType => {
     throw new Error(errorMsg);
   }
 
+  // Production environment validation — critical secrets must be present
+  if (parsed.data.app.environment === 'production') {
+    const missing: string[] = [];
+    const warnings: string[] = [];
+
+    // ── Critical: will throw if missing ──
+    if (!parsed.data.security.encryptionKey) missing.push('ENCRYPTION_KEY');
+    if (!parsed.data.security.encryptionMasterKey) missing.push('ENCRYPTION_MASTER_KEY');
+    if (!parsed.data.security.jwtSecret) missing.push('JWT_SECRET');
+    if (!parsed.data.security.systemApiKey) missing.push('SYSTEM_API_KEY');
+    if (!parsed.data.supabase.serviceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (!parsed.data.supabase.jwtSecret) missing.push('SUPABASE_JWT_SECRET');
+
+    // ── Service-level: required for full functionality ──
+    if (!parsed.data.redis.host && !parsed.data.redis.url) missing.push('REDIS_HOST or REDIS_URL');
+    if (!parsed.data.email.smtp.host) missing.push('SMTP_HOST');
+    if (!parsed.data.email.smtp.user) missing.push('SMTP_USER');
+    if (!parsed.data.email.smtp.pass) missing.push('SMTP_PASS');
+
+    // ── Warnings: recommended but not fatal ──
+    if (!parsed.data.paddle.apiKey) warnings.push('PADDLE_API_KEY (payments will be unavailable)');
+    if (!parsed.data.paddle.webhookSecret) warnings.push('PADDLE_WEBHOOK_SECRET (webhook verification disabled)');
+    if (!parsed.data.monitoring.sentry.dsn) warnings.push('NEXT_PUBLIC_SENTRY_DSN (error tracking disabled)');
+
+    if (warnings.length > 0) {
+      console.warn(`⚠️  Missing recommended production variables:\n  - ${warnings.join('\n  - ')}`);
+    }
+
+    if (missing.length > 0) {
+      const errorMsg = `❌ Missing required production environment variables: ${missing.join(', ')}`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+  }
+
   return parsed.data;
 };
 
 // Singleton instance
+// NOTE (#5/#59): This singleton caches build-time env vars. In serverless environments,
+// env vars are typically set at build time and don't change at runtime, so this is safe.
+// If runtime env var changes are needed, expose a `refreshConfig()` function.
 export const AppConfig = createAppConfig();
 
 // Helper functions

@@ -35,6 +35,7 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
           .select('id, user_email, customer_name, order_id, package_name, billing_period, gross_amount')
           .eq('transaction_status', 'pending')
           .lt('created_at', twentyFourHoursAgo.toISOString())
+          .limit(500)
 
         if (error) throw error
         return data
@@ -85,7 +86,7 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
             amount: transaction.gross_amount,
             status: 'expired',
             expiredDate: new Date().toISOString(),
-            subscribeUrl: process.env.NEXT_PUBLIC_BASE_URL || 'https://indexnow.studio'
+            subscribeUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
           },
         })
 

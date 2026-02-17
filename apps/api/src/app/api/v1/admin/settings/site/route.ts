@@ -7,15 +7,29 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
     formatError
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+
+const siteSettingsUpdateSchema = z.object({
+    id: z.string().min(1, 'Settings ID is required'),
+    site_name: z.string().max(255).optional(),
+    site_description: z.string().max(1000).nullable().optional(),
+    site_logo_url: z.string().url().nullable().optional(),
+    site_icon_url: z.string().url().nullable().optional(),
+    site_favicon_url: z.string().url().nullable().optional(),
+    contact_email: z.string().email().nullable().optional(),
+    support_email: z.string().email().nullable().optional(),
+    maintenance_mode: z.boolean().optional(),
+    registration_enabled: z.boolean().optional(),
+}).strict();
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     try {
@@ -29,7 +43,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                     endpoint: '/api/v1/admin/settings/site',
                     method: 'GET'
                 },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_site_settings', operationType: 'select' },
@@ -68,6 +82,17 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
     try {
         const body = await request.json();
 
+        // Validate with Zod schema — rejects unknown fields
+        const validation = siteSettingsUpdateSchema.safeParse(body);
+        if (!validation.success) {
+            const validationError = await ErrorHandlingService.createError(
+                ErrorType.VALIDATION,
+                validation.error.issues[0]?.message || 'Invalid request body',
+                { severity: ErrorSeverity.LOW, userId: adminUser.id, statusCode: 400 }
+            );
+            return formatError(validationError);
+        }
+
         const {
             id,
             site_name,
@@ -79,27 +104,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
             support_email,
             maintenance_mode,
             registration_enabled
-        } = body as {
-            id: string;
-            site_name?: string;
-            site_description?: string | null;
-            site_logo_url?: string | null;
-            site_icon_url?: string | null;
-            site_favicon_url?: string | null;
-            contact_email?: string | null;
-            support_email?: string | null;
-            maintenance_mode?: boolean;
-            registration_enabled?: boolean;
-        };
-
-        if (!id) {
-            const validationError = await ErrorHandlingService.createError(
-                ErrorType.VALIDATION,
-                'Settings ID is required',
-                { severity: ErrorSeverity.LOW, userId: adminUser.id, statusCode: 400 }
-            );
-            return formatError(validationError);
-        }
+        } = validation.data;
 
         // Build update object with only provided fields
         const updatePayload: Record<string, unknown> = {
@@ -127,7 +132,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
                     endpoint: '/api/v1/admin/settings/site',
                     method: 'PATCH'
                 },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_site_settings', operationType: 'update' },

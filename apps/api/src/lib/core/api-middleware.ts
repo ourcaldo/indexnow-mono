@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@indexnow/database';
+import { createTokenClient, type Database } from '@indexnow/database';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { 
   ErrorHandlingService, 
   ErrorType, 
@@ -11,12 +10,18 @@ import {
   isTransientError 
 } from '../monitoring/error-handling';
 import { formatSuccess, formatError } from './api-response-formatter';
-import { AppConfig, StructuredError } from '@indexnow/shared';
+import { StructuredError } from '@indexnow/shared';
 
 // Re-export formatting functions for use in API routes
 export { formatSuccess, formatError } from './api-response-formatter';
 export type { ApiResponse, ApiSuccessResponse, ApiErrorResponse } from './api-response-formatter';
 
+/**
+ * API-specific authenticated request — extends the shared base definition
+ * with a Supabase client instance for database operations.
+ * The shared AuthenticatedRequest (in @indexnow/shared) is a generic type
+ * for use across packages; this one is specific to the API runtime.
+ */
 export interface AuthenticatedRequest {
   user: {
     id: string;
@@ -45,21 +50,7 @@ export async function authenticateRequest(
     const token = authHeader.substring(7);
     
     // Create user-authenticated Supabase client
-    const supabase = createServerClient<Database>(
-      AppConfig.supabase.url,
-      AppConfig.supabase.anonKey,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        },
-        cookies: {
-          getAll() { return []; },
-          setAll() {},
-        },
-      }
-    );
+    const supabase = createTokenClient(token);
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     

@@ -1,5 +1,6 @@
 import { SecureServiceRoleHelpers, SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
+import crypto from 'crypto';
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
@@ -43,20 +44,39 @@ export const POST = adminApiWrapper(async (
 
   const currentUser = users[0]
 
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
-    let password = ''
+  const generatePassword = (): string => {
+    const upperChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowerChars = 'abcdefghijklmnopqrstuvwxyz';
+    const digitChars = '0123456789';
+    const specialChars = '!@#$%^&*';
+    const allChars = upperChars + lowerChars + digitChars + specialChars;
 
-    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
-    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
-    password += '0123456789'[Math.floor(Math.random() * 10)]
-    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
+    // Use cryptographically secure random bytes
+    const randomBytes = crypto.randomBytes(16);
+    const pick = (charset: string, byteIndex: number): string =>
+      charset[randomBytes[byteIndex] % charset.length];
 
+    // Guarantee at least one of each category
+    const chars: string[] = [
+      pick(upperChars, 0),
+      pick(lowerChars, 1),
+      pick(digitChars, 2),
+      pick(specialChars, 3),
+    ];
+
+    // Fill remaining 8 characters from full charset
     for (let i = 4; i < 12; i++) {
-      password += chars[Math.floor(Math.random() * chars.length)]
+      chars.push(pick(allChars, i));
     }
 
-    return password.split('').sort(() => Math.random() - 0.5).join('')
+    // Fisher-Yates shuffle using crypto-safe randomness
+    const shuffleBytes = crypto.randomBytes(chars.length);
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = shuffleBytes[i] % (i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+
+    return chars.join('');
   }
 
   const newPassword = generatePassword()
@@ -120,6 +140,7 @@ export const POST = adminApiWrapper(async (
 
   return formatSuccess({
     newPassword: newPassword,
-    message: 'Password reset successfully'
+    message: 'Password reset successfully. User must change this password on next login.',
+    mustChangeOnLogin: true
   }, undefined, 201)
 })

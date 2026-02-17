@@ -1,3 +1,4 @@
 export * from './RankTrackingService';
 export * from './UserManagementService';
-export * from './payments';
+// Note: Payment services (./payments) are not re-exported — they are unused.
+// The Paddle integration in apps/api uses direct DB operations instead.

@@ -25,7 +25,7 @@ export interface User {
   updatedAt: Date;
   lastLoginAt?: Date;
   lastLoginIp?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UserProfile {
@@ -277,7 +277,7 @@ export interface UserManagementAction {
   userId: string;
   action: 'suspend' | 'activate' | 'reset_password' | 'reset_quota' | 'extend_subscription' | 'change_package' | 'delete';
   reason: string;
-  additionalData?: Record<string, any>;
+  additionalData?: Record<string, unknown>;
   performedBy: string;
   performedAt: Date;
 }
@@ -288,7 +288,7 @@ export interface UserActivity {
   action: string;
   resource: string;
   resourceId?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   ipAddress: string;
   userAgent: string;
   timestamp: Date;

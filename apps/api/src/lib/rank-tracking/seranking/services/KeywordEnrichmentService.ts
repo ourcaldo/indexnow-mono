@@ -27,7 +27,7 @@ import {
 } from '../types/ServiceTypes';
 
 import { ValidationService } from './ValidationService';
-import { ErrorHandlingService } from './ErrorHandlingService';
+import { SeRankingErrorHandler } from './ErrorHandlingService';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 
 // Configuration interface
@@ -58,7 +58,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   private config: KeywordEnrichmentConfig;
   private keywordBankService: IKeywordBankService;
   private apiClient: ISeRankingApiClient;
-  private errorHandler: ErrorHandlingService;
+  private errorHandler: SeRankingErrorHandler;
   private validationService: ValidationService;
   private metrics: ApiMetrics;
   private activeJobs: Map<string, BulkProcessingJob> = new Map();
@@ -66,7 +66,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   constructor(
     keywordBankService: IKeywordBankService,
     apiClient: ISeRankingApiClient,
-    errorHandler?: ErrorHandlingService,
+    errorHandler?: SeRankingErrorHandler,
     config: Partial<KeywordEnrichmentConfig> = {}
   ) {
     this.config = {
@@ -85,7 +85,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
 
     this.keywordBankService = keywordBankService;
     this.apiClient = apiClient;
-    this.errorHandler = errorHandler || new ErrorHandlingService();
+    this.errorHandler = errorHandler || new SeRankingErrorHandler();
     this.validationService = new ValidationService();
 
     this.metrics = {

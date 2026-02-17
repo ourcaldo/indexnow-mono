@@ -6,7 +6,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -46,7 +46,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'paddle/subscription/refund-window-info',
                 reason: 'User checking refund eligibility for subscription',
                 metadata: { subscriptionId: validationResult.data.subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/refund-window-info' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_payment_subscriptions', operationType: 'select' },

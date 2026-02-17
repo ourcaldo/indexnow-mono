@@ -17,7 +17,7 @@ import { PackageSubscriptionCard } from './components/PackageSubscriptionCard'
 import { UserActivityCard } from './components/UserActivityCard'
 import { UserSecurityCard } from './components/UserSecurityCard'
 import { PackageChangeModal } from './components/PackageChangeModal'
-import { ConfirmationDialog } from '@indexnow/ui'
+import { ConfirmationDialog, AdminUserDetailSkeleton, ErrorState } from '@indexnow/ui'
 
 
 // Import custom hooks
@@ -94,26 +94,18 @@ export default function UserDetail() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-border border-t-primary"></div>
-      </div>
-    )
+    return <AdminUserDetailSkeleton />
   }
 
   // User not found state
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-96">
-        <XCircle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-xl font-bold text-foreground mb-2">User Not Found</h2>
-        <p className="text-muted-foreground mb-4">The user you're looking for doesn't exist.</p>
-        <button
-          onClick={() => router.back()}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          Go Back
-        </button>
+        <ErrorState
+          title="User Not Found"
+          message="The user you're looking for doesn't exist."
+          showHomeButton
+        />
       </div>
     )
   }

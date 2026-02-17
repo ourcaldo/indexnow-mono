@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
-import { useGlobalQuotaManager } from '@indexnow/database'
+import { useGlobalQuotaManager } from '../hooks/useGlobalQuotaManager'
 
 export function QuotaNotification() {
   const { quotaInfo, refreshQuota } = useGlobalQuotaManager()

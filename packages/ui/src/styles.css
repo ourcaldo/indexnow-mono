@@ -156,4 +156,18 @@
   .badge-warning { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--warning)); color: hsl(var(--warning-foreground)); }
   .badge-error { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--error)); color: hsl(var(--error-foreground)); }
   .badge-info { @apply px-2 py-1 rounded text-xs font-medium; background: hsl(var(--info)); color: hsl(var(--info-foreground)); }
+
+  .bg-gradient-radial {
+    background: radial-gradient(var(--tw-gradient-stops));
+  }
+}
+
+/* Shared animations */
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-scroll {
+  animation: scroll 25s linear infinite;
 }

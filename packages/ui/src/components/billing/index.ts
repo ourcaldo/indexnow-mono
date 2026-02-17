@@ -1,5 +1,6 @@
 export * from './BillingHistory'
 export * from './BillingStats'
+export * from './billing-utils'
 export * from './CancelSubscriptionDialog'
 export * from './PackageComparison'
 export * from './PricingCards'

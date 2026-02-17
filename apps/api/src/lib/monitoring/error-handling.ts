@@ -5,9 +5,14 @@ import { trackServerError } from '@indexnow/shared';
 import { ErrorType, ErrorSeverity, type StructuredError, type Json } from '@indexnow/shared';
 import { formatError } from '../core/api-response-formatter';
 
-// Configure Pino logger
+// Re-export shared types that consumers expect from this module
+export { ErrorType, ErrorSeverity } from '@indexnow/shared';
+export type { StructuredError } from '@indexnow/shared';
+
+// Configure Pino logger — read level from AppConfig
+const logLevel = process.env.LOG_LEVEL || 'info';
 export const logger = pino({
-  level: 'debug',
+  level: logLevel,
   formatters: {
     level: (label) => {
       return { level: label.toUpperCase() };

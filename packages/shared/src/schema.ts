@@ -3,6 +3,13 @@ import { type Json } from "./types/common/Json";
 import { VALIDATION_PATTERNS, FIELD_LIMITS, NUMERIC_LIMITS } from "./constants/ValidationRules";
 
 
+// Password complexity: at least 8 chars, 1 uppercase, 1 lowercase, 1 digit (#12)
+const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number");
+
 // Auth schemas for Supabase integration
 export const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -13,7 +20,7 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema,
   confirmPassword: z.string().min(8, "Please confirm your password"),
   phoneNumber: z.string().min(3, "Please enter a valid phone number").regex(/^\+?[0-9\s\-\(\)]+$/, "Phone number can only contain numbers, spaces, +, -, ( and )"),
   country: z.string().min(2, "Please select a country"),
@@ -27,7 +34,7 @@ export const forgotPasswordSchema = z.object({
 });
 
 export const resetPasswordSchema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: passwordSchema,
   confirmPassword: z.string().min(8, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -63,7 +70,7 @@ export const createJobSchema = z.object({
 export const createServiceAccountSchema = z.object({
   name: z.string().min(1, "Service account name is required"),
   email: z.string().email("Valid email is required"),
-  credentials: z.object({}).passthrough(), // JSON credentials
+  credentials: z.record(z.string(), z.unknown()), // Typed JSON credentials (no arbitrary passthrough #8)
 });
 
 // User profile schemas
@@ -309,6 +316,7 @@ export const apiRequestSchemas = {
   }),
 };
 // API Response types
+/** @deprecated Use ApiResponse from core/api-response instead */
 export interface ApiResponse<T = Json> {
   data?: T;
   error?: string;

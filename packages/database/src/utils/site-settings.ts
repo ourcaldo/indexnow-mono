@@ -5,6 +5,12 @@
 
 import { PUBLIC_ENDPOINTS, logger } from '@indexnow/shared'
 
+/**
+ * Site Settings type definition.
+ * ⚠ SECURITY NOTE (#22): This type includes SMTP credentials (smtp_host, smtp_user, smtp_pass).
+ * These are stored in the admin DB and fetched server-side. The public API endpoint should
+ * strip SMTP fields before sending to the browser. Only admin routes should return full settings.
+ */
 export interface SiteSettings {
   id: string
   site_name: string
@@ -37,7 +43,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
   site_tagline: 'Rank Tracking Made Simple for Smarter SEO Decisions',
   site_description: 'Professional URL indexing automation platform',
   site_logo_url: null,
-  white_logo: 'https://bwkasvyrzbzhcdtvsbyg.supabase.co/storage/v1/object/public/indexnow-bucket/logo/IndexNow.png',
+  white_logo: process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/indexnow-bucket/logo/IndexNow.png`
+    : null, // (#21) Removed hardcoded Supabase project URL fallback — require env var
   site_icon_url: null,
   site_favicon_url: null,
   contact_email: null,

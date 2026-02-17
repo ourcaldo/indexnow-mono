@@ -807,6 +807,7 @@ export type Database = {
                     configuration: Json | null
                     created_at: string
                     updated_at: string
+                    deleted_at: string | null
                 }
                 Insert: {
                     id?: string
@@ -818,6 +819,7 @@ export type Database = {
                     configuration?: PaymentGatewayConfiguration | null
                     created_at?: string
                     updated_at?: string
+                    deleted_at?: string | null
                 }
                 Update: {
                     id?: string
@@ -829,6 +831,7 @@ export type Database = {
                     configuration?: Json | null
                     created_at?: string
                     updated_at?: string
+                    deleted_at?: string | null
                 }
                 Relationships: never[]
             }
@@ -854,6 +857,7 @@ export type Database = {
                     stripe_price_id: string | null
                     created_at: string
                     updated_at: string
+                    deleted_at: string | null
                 }
                 Insert: {
                     id?: string
@@ -876,6 +880,7 @@ export type Database = {
                     stripe_price_id?: string | null
                     created_at?: string
                     updated_at?: string
+                    deleted_at?: string | null
                 }
                 Update: {
                     id?: string
@@ -898,6 +903,7 @@ export type Database = {
                     stripe_price_id?: string | null
                     created_at?: string
                     updated_at?: string
+                    deleted_at?: string | null
                 }
                 Relationships: never[]
             }

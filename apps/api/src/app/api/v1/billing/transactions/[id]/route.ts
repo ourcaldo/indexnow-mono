@@ -7,7 +7,7 @@ import { SecureServiceRoleWrapper, TransactionRow } from '@indexnow/database'
 interface TransactionDetail extends TransactionRow {
   package: Record<string, unknown> | null;
   gateway: Record<string, unknown> | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export const GET = authenticatedApiWrapper(async (request, auth, context) => {
@@ -38,7 +38,7 @@ export const GET = authenticatedApiWrapper(async (request, auth, context) => {
         source: 'billing/transactions/[id]',
         reason: 'User fetching transaction details',
         metadata: { transactionId, endpoint: '/api/v1/billing/transactions/[id]' },
-        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+        ipAddress: getClientIP(request),
         userAgent: request.headers.get('user-agent') || undefined
       },
       { table: 'indb_payment_transactions', operationType: 'select' },
@@ -75,7 +75,7 @@ export const GET = authenticatedApiWrapper(async (request, auth, context) => {
     }
 
     // Parse customer info from metadata
-    const customerInfo = (transaction.metadata as Record<string, any>)?.customer_info || {}
+    const customerInfo = (transaction.metadata as Record<string, unknown>)?.customer_info || {}
 
     return formatSuccess({
       transaction: {

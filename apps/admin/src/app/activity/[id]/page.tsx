@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Separator } from '@indexnow/ui'
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Separator, ErrorState } from '@indexnow/ui'
 import { ADMIN_ENDPOINTS, type ActivityDetail } from '@indexnow/shared'
 import { 
   ArrowLeft,
@@ -154,15 +154,11 @@ export default function ActivityDetailPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Activity Logs
             </Button>
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <AlertCircle className="h-12 w-12 text-error mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">Activity Not Found</h3>
-                  <p className="text-muted-foreground">{error || 'The requested activity log could not be found.'}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ErrorState
+              title="Activity Not Found"
+              message={error || 'The requested activity log could not be found.'}
+              showHomeButton
+            />
           </div>
         </div>
       </div>
@@ -315,7 +311,7 @@ export default function ActivityDetailPage() {
                 </div>
                 
                 <Link 
-                  href={`/backend/admin/users/${activity.user_id}`}
+                  href={`/users/${activity.user_id}`}
                   className="block"
                 >
                   <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -390,7 +386,7 @@ export default function ActivityDetailPage() {
                       return (
                         <Link 
                           key={relatedActivity.id}
-                          href={`/backend/admin/activity/${relatedActivity.id}`}
+                          href={`/activity/${relatedActivity.id}`}
                           className="block hover:bg-secondary p-2 rounded transition-colors"
                         >
                           <div className="flex items-start gap-2">

@@ -32,7 +32,8 @@ export interface ErrorResponse extends BaseResponse {
   };
 }
 
-export interface ApiResponse<T> {
+/** @deprecated Use ApiResponse from core/api-response for standardized responses */
+export interface SimpleApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
@@ -40,7 +41,10 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+/** @deprecated - Alias for backward compat. Use ApiResponse from core/api-response */
+export type ApiResponse<T> = SimpleApiResponse<T>;
+
+export interface PaginatedResponse<T> extends SimpleApiResponse<T[]> {
   pagination: {
     page: number;
     limit: number;

@@ -9,7 +9,7 @@ import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
 import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
-import { ErrorHandlingService } from '../rank-tracking/seranking/services/ErrorHandlingService';
+import { SeRankingErrorHandler } from '../rank-tracking/seranking/services/ErrorHandlingService';
 import { IntegrationService } from '../rank-tracking/seranking/services/IntegrationService';
 import { logger } from '@/lib/monitoring/error-handling';
 
@@ -29,13 +29,13 @@ export class KeywordEnrichmentWorker {
 
   private keywordBankService!: KeywordBankService;
   private enrichmentService!: KeywordEnrichmentService;
-  private errorHandler!: ErrorHandlingService;
+  private errorHandler!: SeRankingErrorHandler;
   private integrationService!: IntegrationService;
 
   private async initialize() {
     // Initialize services
     this.keywordBankService = new KeywordBankService();
-    this.errorHandler = new ErrorHandlingService();
+    this.errorHandler = new SeRankingErrorHandler();
 
     // Initialize integration service to get API key from database
     this.integrationService = new IntegrationService({

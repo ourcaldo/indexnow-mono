@@ -1,6 +1,10 @@
 /**
- * Error Handling Service
+ * SE Ranking Error Handling Service
  * Centralized error management, recovery strategies, and graceful degradation
+ * for SE Ranking API integration.
+ * 
+ * Renamed from ErrorHandlingService to SeRankingErrorHandler to avoid
+ * naming collision with the main API ErrorHandlingService in /lib/monitoring/.
  */
 
 import {
@@ -88,7 +92,7 @@ export interface ErrorStats {
   };
 }
 
-export class ErrorHandlingService {
+export class SeRankingErrorHandler {
   private config: ErrorHandlingConfig;
   private circuitBreakerStates: Map<string, CircuitBreakerState> = new Map();
   private errorStats: ErrorStats;

@@ -11,7 +11,8 @@ import {
   Badge, 
   Skeleton,
   PricingTable,
-  SharedDomainSelector
+  SharedDomainSelector,
+  ErrorState
 } from '@indexnow/ui'
 import {
   TrendingUpIcon,
@@ -32,11 +33,8 @@ import {
   Activity
 } from 'lucide-react'
 
-import { usePageViewLogger, 
-  useActivityLogger,
-  useDashboardData,
-  useDomain,
-  type Json, logger } from '@indexnow/shared'
+import { type Json, logger } from '@indexnow/shared'
+import { usePageViewLogger, useActivityLogger, useDashboardData, useDomain } from '@indexnow/ui'
 import { 
   useToast,
   LegacyRankingDistribution as RankingDistribution,
@@ -346,30 +344,13 @@ function DashboardContent() {
     <div className="space-y-6">
       {/* Dashboard Error State */}
       {dashboardError && !isDataLoading ? (
-        <Card className="border-destructive/20 bg-destructive/10">
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
-            <h3 className="text-xl font-semibold mb-2 text-destructive">
-              Failed to Load Dashboard Data
-            </h3>
-            <p className="text-destructive/80 mb-6 max-w-md mx-auto">
-              We encountered an error while loading your dashboard. Please try again.
-            </p>
-            <div className="space-y-3">
-              <Button
-                onClick={() => window.location.reload()}
-                className="bg-destructive text-destructive-foreground btn-hover"
-                data-testid="button-retry-dashboard"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Retry Loading
-              </Button>
-              <div className="text-xs text-destructive/80">
-                Error: {dashboardError.message}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ErrorState
+          title="Failed to Load Dashboard Data"
+          message={dashboardError.message || 'We encountered an error while loading your dashboard. Please try again.'}
+          onRetry={() => window.location.reload()}
+          retryLabel="Retry Loading"
+          variant="inline"
+        />
       ) : null}
 
       {/* No Active Package State */}

@@ -119,12 +119,15 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
 
     // Get location data using multiple methods
     if (ipAddress && ipAddress !== '127.0.0.1' && ipAddress !== '::1' && !ipAddress.startsWith('192.168.') && !ipAddress.startsWith('10.')) {
-      // Use IP-API service
+      // Use IP geolocation service
+      // NOTE: Using HTTPS endpoint. For ip-api.com, HTTPS requires a paid plan.
+      // If using the free tier, switch to an alternative like ipapi.co or ip-api.com with HTTP.
+      // SECURITY: HTTP sends IP data unencrypted — always prefer HTTPS in production.
       try {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
 
-        const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,country,regionName,city,timezone,lat,lon,isp`, {
+        const response = await fetch(`https://ipapi.co/${ipAddress}/json/`, {
           signal: controller.signal,
           headers: {
             'User-Agent': 'IndexNow-Pro/1.0'
@@ -135,21 +138,22 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
 
         if (response.ok) {
           const ipApiData = await response.json()
-          if (ipApiData && typeof ipApiData === 'object' && ipApiData.status === 'success') {
+          // ipapi.co returns { error: true } on failure, otherwise flat object with country_name, region, city, etc.
+          if (ipApiData && typeof ipApiData === 'object' && !ipApiData.error) {
             locationData = {
-              country: ipApiData.country,
-              region: ipApiData.regionName,
+              country: ipApiData.country_name || ipApiData.country,
+              region: ipApiData.region || ipApiData.regionName,
               city: ipApiData.city,
               timezone: ipApiData.timezone,
-              latitude: ipApiData.lat,
-              longitude: ipApiData.lon,
-              isp: ipApiData.isp
+              latitude: ipApiData.latitude || ipApiData.lat,
+              longitude: ipApiData.longitude || ipApiData.lon,
+              isp: ipApiData.org || ipApiData.isp
             }
           }
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        logger.warn({ ipAddress }, `IP-API lookup failed: ${message}`)
+        logger.warn({ ipAddress }, `IP geolocation lookup failed: ${message}`)
       }
     }
 

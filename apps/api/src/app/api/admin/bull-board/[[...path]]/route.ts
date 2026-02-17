@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createBullBoard } from '@bull-board/api'
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'
+import type { Queue } from 'bullmq'
 import { queueManager } from '@/lib/queues/QueueManager'
 import { logger } from '@/lib/monitoring/error-handling'
 import { 
@@ -9,7 +8,7 @@ import {
   formatSuccess, 
   formatError 
 } from '@/lib/core/api-response-middleware'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity, type Json } from '@indexnow/shared'
 import { z } from 'zod'
 
 const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME
@@ -68,42 +67,37 @@ function createUnauthorizedResponse(): NextResponse {
   })
 }
 
-let bullBoard: ReturnType<typeof createBullBoard> | null = null
+const QUEUE_NAMES = [
+  'rank-check',
+  'rank-schedule',
+  'email',
+  'payments',
+  'trial-monitor',
+  'keyword-enrichment',
+  'quota-reset',
+  'indexing-monitor',
+  'auto-cancel',
+] as const
 
-async function initializeBullBoard() {
-  if (bullBoard) {
-    return bullBoard
-  }
+let cachedQueues: { name: string; queue: Queue }[] | null = null
+
+async function getQueues(): Promise<{ name: string; queue: Queue }[]> {
+  if (cachedQueues) return cachedQueues
 
   try {
-    const queues = [
-      'rank-check',
-      'rank-schedule',
-      'email',
-      'payments',
-      'trial-monitor',
-      'keyword-enrichment',
-      'quota-reset',
-      'indexing-monitor',
-      'auto-cancel',
-    ]
+    cachedQueues = await Promise.all(
+      QUEUE_NAMES.map(async (name) => ({
+        name,
+        queue: await queueManager.getQueue(name),
+      }))
+    )
 
-    const queueAdapters = await Promise.all(queues.map(async queueName => 
-      new BullMQAdapter(await queueManager.getQueue(queueName))
-    ))
-
-    bullBoard = createBullBoard({
-      queues: queueAdapters,
-      serverAdapter: {} as any, // Bull Board requires a server adapter, but we're using it as an API
-    })
-
-    logger.info({ queueCount: queues.length }, 'Bull Board initialized')
-    
-    return bullBoard
+    logger.info({ queueCount: QUEUE_NAMES.length }, 'Bull Board queues initialized')
+    return cachedQueues
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : 'Unknown error' },
-      'Failed to initialize Bull Board'
+      'Failed to initialize Bull Board queues'
     )
     throw error
   }
@@ -127,21 +121,20 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
   }
 
   try {
-    const board = await initializeBullBoard()
+    const queues = await getQueues()
     
     const queuesData = await Promise.all(
-      board.queues.map(async (queue: any) => {
-        const queueInstance = queue.queue
+      queues.map(async ({ name, queue }) => {
         const [waiting, active, completed, failed, delayed] = await Promise.all([
-          queueInstance.getWaitingCount(),
-          queueInstance.getActiveCount(),
-          queueInstance.getCompletedCount(),
-          queueInstance.getFailedCount(),
-          queueInstance.getDelayedCount(),
+          queue.getWaitingCount(),
+          queue.getActiveCount(),
+          queue.getCompletedCount(),
+          queue.getFailedCount(),
+          queue.getDelayedCount(),
         ])
 
         return {
-          name: queue.name,
+          name,
           counts: {
             waiting,
             active,
@@ -199,7 +192,7 @@ export const POST = adminApiWrapper(async (request: NextRequest) => {
         { 
           statusCode: 400, 
           severity: ErrorSeverity.LOW,
-          metadata: { issues: validation.error.issues }
+          metadata: { issues: validation.error.issues as unknown as Json[] }
         }
       )
       return formatError(error)

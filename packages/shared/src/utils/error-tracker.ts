@@ -4,7 +4,7 @@
  */
 
 import { RankCheckError, ErrorStats, SystemErrorStats } from '../types/monitoring/ErrorTrackingTypes';
-import { trackError, trackEvent } from './analytics';
+import { trackError, trackEvent } from '../analytics';
 import { logger } from './logger';
 
 export class ErrorTracker {

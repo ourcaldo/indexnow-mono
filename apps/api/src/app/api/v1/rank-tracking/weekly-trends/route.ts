@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -36,7 +36,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/weekly-trends',
                 reason: 'User viewing weekly keyword performance',
                 metadata: { endpoint: '/api/v1/rank-tracking/weekly-trends' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'select' },
@@ -46,7 +46,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     .from('indb_rank_keywords')
                     .select('id, keyword, domain, position, last_checked')
                     .eq('user_id', auth.userId)
-                    .eq('is_active', true);
+                    .eq('is_active', true)
+                    .limit(500);
 
                 if (kwError) throw new Error(`Failed to fetch keywords: ${kwError.message}`);
                 if (!keywords || keywords.length === 0) return [];
@@ -64,7 +65,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     .select('keyword_id, position, check_date')
                     .in('keyword_id', keywordIds)
                     .gte('check_date', dateStr)
-                    .order('check_date', { ascending: false }); // Newest first
+                    .order('check_date', { ascending: false })
+                    .limit(5000); // Newest first
 
                 if (historyError) throw new Error(`Failed to fetch history: ${historyError.message}`);
 

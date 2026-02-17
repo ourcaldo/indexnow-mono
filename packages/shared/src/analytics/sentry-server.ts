@@ -45,7 +45,7 @@ export function initializeServerSentry() {
 /**
  * Track server-side error
  */
-export function trackServerError(error: Error, context?: Record<string, any>) {
+export function trackServerError(error: Error, context?: Record<string, unknown>) {
   const config = getAnalyticsConfig();
   if (!config.sentry.enabled) return;
 
@@ -61,7 +61,7 @@ export function trackServerError(error: Error, context?: Record<string, any>) {
 /**
  * Track server-side message
  */
-export function trackServerMessage(message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, any>) {
+export function trackServerMessage(message: string, level: Sentry.SeverityLevel = 'info', context?: Record<string, unknown>) {
   const config = getAnalyticsConfig();
   if (!config.sentry.enabled) return;
 

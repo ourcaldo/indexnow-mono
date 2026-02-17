@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { authService, countries, findCountryByCode, logger } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
-import { Eye, EyeOff } from 'lucide-react'
 import { registerSchema } from '@indexnow/shared/schema'
 // We'll use a simple fetch to our detect-location API instead
 
@@ -16,7 +15,10 @@ import {
   Button,
   Input,
   Label,
-  DashboardPreview
+  DashboardPreview,
+  PasswordInput,
+  AuthErrorAlert,
+  AuthLoadingButton
 } from '@indexnow/ui'
 import { AUTH_ENDPOINTS } from '@indexnow/shared'
 
@@ -36,10 +38,11 @@ export default function Register() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [country, setCountry] = useState("")
   const [isDetectingCountry, setIsDetectingCountry] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  // (#113) Per-field validation errors from Zod schema
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -90,8 +93,9 @@ export default function Register() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+    setFieldErrors({})
 
-    // Client-side validation using Zod schema
+    // (#113) Client-side validation using Zod schema with per-field errors
     try {
       const validationData = {
         name: fullName,
@@ -105,9 +109,16 @@ export default function Register() {
       const result = registerSchema.safeParse(validationData)
 
       if (!result.success) {
-        // Extract the first validation error
-        const firstError = result.error.errors[0]
-        setError(firstError.message)
+        // Build per-field error map
+        const errors: Record<string, string> = {}
+        for (const err of result.error.errors) {
+          const field = err.path[0]?.toString()
+          if (field && !errors[field]) {
+            errors[field] = err.message
+          }
+        }
+        setFieldErrors(errors)
+        setError("Please fix the errors below")
         setIsLoading(false)
         return
       }
@@ -188,10 +199,11 @@ export default function Register() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="form-field-default form-field-focus w-full px-4 py-3 text-base"
+                className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${fieldErrors.name ? 'border-destructive' : ''}`}
                 placeholder="Enter your full name"
                 required
               />
+              {fieldErrors.name && <p className="text-sm text-destructive mt-1">{fieldErrors.name}</p>}
             </div>
 
             {/* Email Field */}
@@ -203,10 +215,11 @@ export default function Register() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="form-field-default form-field-focus w-full px-4 py-3 text-base"
+                className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${fieldErrors.email ? 'border-destructive' : ''}`}
                 placeholder="you@company.com"
                 required
               />
+              {fieldErrors.email && <p className="text-sm text-destructive mt-1">{fieldErrors.email}</p>}
             </div>
 
             {/* Phone Number Field */}
@@ -222,10 +235,11 @@ export default function Register() {
                   const value = e.target.value.replace(/[^+\-0-9\s\(\)]/g, '')
                   setPhoneNumber(value)
                 }}
-                className="form-field-default form-field-focus w-full px-4 py-3 text-base"
+                className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${fieldErrors.phoneNumber ? 'border-destructive' : ''}`}
                 placeholder="+1 (555) 123-4567"
                 required
               />
+              {fieldErrors.phoneNumber && <p className="text-sm text-destructive mt-1">{fieldErrors.phoneNumber}</p>}
             </div>
 
             {/* Country Field */}
@@ -237,7 +251,7 @@ export default function Register() {
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 disabled={isDetectingCountry}
-                className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${isDetectingCountry ? 'bg-muted cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${isDetectingCountry ? 'bg-muted cursor-not-allowed' : 'cursor-pointer'} ${fieldErrors.country ? 'border-destructive' : ''}`}
                 required
               >
                 <option value="">Select your country</option>
@@ -247,76 +261,42 @@ export default function Register() {
                   </option>
                 ))}
               </select>
+              {fieldErrors.country && <p className="text-sm text-destructive mt-1">{fieldErrors.country}</p>}
             </div>
 
             {/* Password Field */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="form-field-default form-field-focus w-full px-4 py-3 pr-12 text-base"
-                  placeholder="Create a password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-0 text-muted-foreground cursor-pointer p-1 flex items-center justify-center hover:text-foreground transition-colors"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
+            <PasswordInput
+              value={password}
+              onChange={setPassword}
+              placeholder="Create a password"
+              variant="native"
+              className="mb-6"
+            />
+            {fieldErrors.password && <p className="text-sm text-destructive -mt-4 mb-6">{fieldErrors.password}</p>}
 
             {/* Confirm Password Field */}
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="form-field-default form-field-focus w-full px-4 py-3 pr-12 text-base"
-                  placeholder="Confirm your password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-0 text-muted-foreground cursor-pointer p-1 flex items-center justify-center hover:text-foreground transition-colors"
-                >
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
+            <PasswordInput
+              id="confirmPassword"
+              label="Confirm Password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              placeholder="Confirm your password"
+              variant="native"
+              className="mb-8"
+            />
+            {fieldErrors.confirmPassword && <p className="text-sm text-destructive -mt-6 mb-8">{fieldErrors.confirmPassword}</p>}
 
             {/* Error Message */}
-            {error && (
-              <div className="badge-error p-3 mb-6 rounded-lg">
-                <p className="text-sm m-0">
-                  {error}
-                </p>
-              </div>
-            )}
+            <AuthErrorAlert error={error || null} className="mb-6" />
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`w-full py-[14px] px-5 text-base font-semibold text-white border-0 rounded-lg transition-colors ${isLoading
-                ? 'bg-muted-foreground cursor-not-allowed'
-                : 'bg-brand-primary cursor-pointer hover:bg-brand-secondary'
-                }`}
+            <AuthLoadingButton
+              isLoading={isLoading}
+              loadingText="Creating Account..."
+              variant="native"
             >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </button>
+              Create Account
+            </AuthLoadingButton>
 
             {/* Sign In Link */}
             <div className="text-center mt-6">

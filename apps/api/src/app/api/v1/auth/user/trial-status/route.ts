@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
@@ -39,7 +39,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'auth/user/trial-status',
                 reason: 'User fetching their own trial status information',
                 metadata: { endpoint: '/api/v1/auth/user/trial-status', method: 'GET' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -84,7 +84,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                         source: 'auth/user/trial-status',
                         reason: 'User fetching trial package information for their account',
                         metadata: { packageId: userProfile.package_id },
-                        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                        ipAddress: getClientIP(request),
                         userAgent: request.headers.get('user-agent') ?? undefined
                     },
                     { table: 'indb_payment_packages', operationType: 'select' },
@@ -93,6 +93,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                             .from('indb_payment_packages')
                             .select('*')
                             .eq('id', userProfile.package_id!)
+                            .is('deleted_at', null)
                             .single();
                         if (error && error.code !== 'PGRST116') throw error;
                         return data;
@@ -114,7 +115,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     source: 'auth/user/trial-status',
                     reason: 'User fetching active subscription information for trial status details',
                     metadata: {},
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_payment_subscriptions', operationType: 'select' },

@@ -15,7 +15,7 @@ export * from './queues/QueueTypes';
 
 // Export unique types from RankTrackingTypes to avoid conflicts (e.g. Location)
 export type {
-  Device, SearchEngine, CountryCode,
+  Device, SearchEngine, CountryCode, Domain,
   RankKeyword, RankHistory, SerchResult, SearchFeature, RankTrackingDomain,
   CreateKeywordRequest, UpdateKeywordRequest, BulkKeywordRequest, RankCheckRequest, RankCheckResult,
   DashboardRecentKeyword, KeywordAnalytics, DomainAnalytics,
@@ -27,6 +27,7 @@ export type {
 
 // Export unique types from UserTypes to avoid conflicts with global/User
 export type {
+  UserRole,
   UserManagementAction,
   UserStats,
   TeamInvitation,
@@ -36,12 +37,8 @@ export type {
   PhoneVerification
 } from './business/UserTypes';
 
-// Export unique types from PaymentTypes to avoid conflicts with services/Payments
-export type {
-  SavedPaymentMethod,
-  Dispute,
-  PaymentWebhook
-} from './business/PaymentTypes';
+// Note: PaymentTypes.ts (business layer, camelCase) overlaps with services/Payments.ts (DB layer, snake_case).
+// User.ts depends on PaymentTypes.Package. The remaining unique types are unused.
 
 // Explicitly export all types from database with aliases where appropriate
 export type {

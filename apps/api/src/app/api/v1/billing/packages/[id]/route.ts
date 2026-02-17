@@ -1,9 +1,8 @@
-import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin, createServerClient } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 
@@ -27,23 +26,7 @@ export const GET = publicApiWrapper(async (request, context) => {
 
   // Get user context for optional audit tracking (public endpoint, no auth required)
   const cookieStore = await cookies()
-  const userSupabaseClient = createServerClient(
-    AppConfig.supabase.url,
-    AppConfig.supabase.anonKey,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set(name, value, options)
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set(name, '', { ...options, maxAge: 0 })
-        }
-      }
-    }
-  )
+  const userSupabaseClient = createServerClient(cookieStore)
 
   const { data: { user } } = await userSupabaseClient.auth.getUser()
 
@@ -61,7 +44,7 @@ export const GET = publicApiWrapper(async (request, context) => {
         method: 'GET',
         requestingUserId: user?.id || 'anonymous'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     { table: 'indb_payment_packages', operationType: 'select' },
@@ -71,6 +54,7 @@ export const GET = publicApiWrapper(async (request, context) => {
         .select('*')
         .eq('id', packageId)
         .eq('is_active', true)
+        .is('deleted_at', null)
         .single()
 
       if (error && error.code !== 'PGRST116') {

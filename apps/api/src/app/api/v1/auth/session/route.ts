@@ -1,8 +1,7 @@
-﻿import { createServerClient } from '@supabase/ssr';
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
+import { AppConfig, ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
   publicApiWrapper,
   formatSuccess,
@@ -10,8 +9,9 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { getRequestInfo } from '@indexnow/shared';
+import { getRequestInfo , getClientIP} from '@indexnow/shared';
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
+import { z } from 'zod';
 
 // Types for session operations
 interface SessionData {
@@ -39,29 +39,13 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         endpoint: '/api/v1/auth/session',
         method: 'GET'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     { table: 'auth.sessions', operationType: 'select' },
     async () => {
       const cookieStore = await cookies();
-
-      const supabase = createServerClient(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              });
-            },
-          },
-        }
-      );
+      const supabase = createServerClient(cookieStore);
 
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -78,18 +62,23 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
   return formatSuccess(sessionData);
 });
 
+const sessionSchema = z.object({
+  access_token: z.string().min(1),
+  refresh_token: z.string().min(1),
+});
+
 /**
  * POST /api/v1/auth/session
  * Create/restore session from tokens (public - creates auth)
  */
 export const POST = publicApiWrapper(async (request: NextRequest) => {
   try {
-    const { access_token, refresh_token } = await request.json();
-
-    if (!access_token || !refresh_token) {
+    const body = await request.json();
+    const parseResult = sessionSchema.safeParse(body);
+    if (!parseResult.success) {
       const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
-        'Missing required tokens',
+        parseResult.error.errors[0]?.message || 'Invalid request body',
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 400,
@@ -98,6 +87,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       );
       return formatError(error);
     }
+    const { access_token, refresh_token } = parseResult.data;
 
     const cookieStore = await cookies();
 
@@ -113,25 +103,8 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     const baseDomain = getBaseDomain();
 
     const supabase = createServerClient(
-      AppConfig.supabase.url,
-      AppConfig.supabase.anonKey,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              // Add cross-subdomain support to Supabase cookies
-              const cookieOptions = {
-                ...options,
-                ...(baseDomain && { domain: `.${baseDomain}` })
-              };
-              cookieStore.set(name, value, cookieOptions);
-            });
-          },
-        },
-      }
+      cookieStore,
+      baseDomain ? { domain: `.${baseDomain}` } : undefined
     );
 
     // Set session using secure wrapper (system operation - no existing session required)
@@ -145,7 +118,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           endpoint: '/api/v1/auth/session',
           hasTokens: !!(access_token && refresh_token)
         },
-        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+        ipAddress: getClientIP(request) ?? 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       },
       { table: 'auth.sessions', operationType: 'insert' },
@@ -257,26 +230,8 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
 
   // Create Supabase client for logout
   const supabase = createServerClient(
-    AppConfig.supabase.url,
-    AppConfig.supabase.anonKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            // Add cross-subdomain support for cookie clearing
-            const cookieOptions = {
-              ...options,
-              maxAge: 0,
-              ...(baseDomain && { domain: `.${baseDomain}` })
-            };
-            cookieStore.set(name, value, cookieOptions);
-          });
-        },
-      },
-    }
+    cookieStore,
+    { maxAge: 0, ...(baseDomain && { domain: `.${baseDomain}` }) }
   );
 
   // Sign out from Supabase using secure wrapper (system operation)
@@ -289,7 +244,7 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
       metadata: {
         endpoint: '/api/v1/auth/session'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+      ipAddress: getClientIP(request) ?? 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown'
     },
     { table: 'auth.sessions', operationType: 'delete' },

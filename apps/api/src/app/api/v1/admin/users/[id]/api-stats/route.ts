@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+import { getClientIP } from '@indexnow/shared'
 
 interface UsageLog {
   operation: string;
@@ -20,7 +21,14 @@ export const GET = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
 
-  const usageLogs = await SecureServiceRoleWrapper.executeSecureOperation<UsageLog[]>(
+  const { searchParams } = new URL(request.url)
+  const parsedPage = parseInt(searchParams.get('page') || '1')
+  const parsedLimit = parseInt(searchParams.get('limit') || '100')
+  const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
+  const limit = Number.isNaN(parsedLimit) ? 100 : Math.min(500, Math.max(1, parsedLimit))
+  const offset = (page - 1) * limit
+
+  const result = await SecureServiceRoleWrapper.executeSecureOperation(
     {
       userId: adminUser.id,
       operation: 'admin_get_user_api_stats',
@@ -28,9 +36,11 @@ export const GET = adminApiWrapper(async (
       source: 'admin/users/[id]/api-stats',
       metadata: {
         targetUserId: userId,
-        endpoint: '/api/v1/admin/users/[id]/api-stats'
+        endpoint: '/api/v1/admin/users/[id]/api-stats',
+        page,
+        limit
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     {
@@ -40,28 +50,37 @@ export const GET = adminApiWrapper(async (
       whereConditions: { user_id: userId }
     },
     async () => {
-      const { data, error } = await (supabaseAdmin
+      const { data, error, count } = await (supabaseAdmin
         .from('indb_seranking_usage_logs') as ReturnType<typeof supabaseAdmin.from>)
-        .select('operation, quota_used, status, created_at')
+        .select('operation, quota_used, status, created_at', { count: 'exact' })
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(100)
+        .range(offset, offset + limit - 1)
 
       if (error) {
         throw new Error(`Failed to fetch API stats: ${error.message}`)
       }
 
-      return (data || []) as UsageLog[]
+      const usageLogs = (data || []) as UsageLog[]
+      const total = count || 0
+
+      return {
+        totalRequests: total,
+        totalQuotaUsed: usageLogs.reduce((acc, log) => acc + (log.quota_used || 0), 0),
+        successCount: usageLogs.filter(log => log.status === 'success').length,
+        errorCount: usageLogs.filter(log => log.status === 'error').length,
+        recentLogs: usageLogs,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: total > offset + limit,
+          hasPrevPage: page > 1
+        }
+      }
     }
   )
 
-  const stats = {
-    totalRequests: usageLogs.length,
-    totalQuotaUsed: usageLogs.reduce((acc, log) => acc + (log.quota_used || 0), 0),
-    successCount: usageLogs.filter(log => log.status === 'success').length,
-    errorCount: usageLogs.filter(log => log.status === 'error').length,
-    recentLogs: usageLogs
-  }
-
-  return formatSuccess(stats)
+  return formatSuccess(result)
 })

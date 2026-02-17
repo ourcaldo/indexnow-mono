@@ -2,14 +2,14 @@
  * Admin API - Manual Rank Check Trigger
  * Allows admin to manually trigger the daily rank check process
  * 
- * Note: workerStartup and dailyRankCheckJob need restoration.
- * This provides a stub that logs the trigger request.
+ * @stub POST handler logs trigger but does not invoke workerStartup (pending restoration).
+ * @stub GET handler returns hardcoded worker status.
  */
 
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
@@ -35,19 +35,19 @@ async function getRankCheckStats(requesterId: string): Promise<RankCheckStats> {
                 source: 'admin/rank-tracker/trigger-manual-check',
             },
             {
-                table: 'indb_seranking_keywords',
+                table: 'indb_rank_keywords',
                 operationType: 'select',
                 columns: ['*'],
             },
             async () => {
                 const { count: totalKeywords } = await supabaseAdmin
-                    .from('indb_seranking_keywords')
+                    .from('indb_rank_keywords')
                     .select('*', { count: 'exact', head: true });
 
                 const today = new Date().toISOString().split('T')[0];
 
                 const { count: checkedToday } = await supabaseAdmin
-                    .from('indb_seranking_keyword_results')
+                    .from('indb_keyword_rankings')
                     .select('*', { count: 'exact', head: true })
                     .gte('created_at', today);
 
@@ -78,8 +78,8 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
     // Get current stats before starting
     const beforeStats = await getRankCheckStats(adminUser.id);
 
-    // TODO: Integrate with workerStartup.triggerManualRankCheck when restored
-    // For now, log the trigger and return accepted
+    // STUB(M-13): Integrate with workerStartup.triggerManualRankCheck when restored
+    logger.warn('STUB: Manual rank check trigger endpoint hit — worker integration pending');
     logger.info({
         triggeredBy: adminUser.id,
         timestamp: new Date().toISOString(),
@@ -97,7 +97,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
                 beforeStats,
                 endpoint: '/api/v1/admin/rank-tracker/trigger-manual-check'
             },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') || undefined
         },
         {
@@ -136,7 +136,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     // Get current stats
     const stats = await getRankCheckStats(adminUser.id);
 
-    // TODO: Get actual worker status when workerStartup is restored
+    // STUB(M-13): Get actual worker status when workerStartup is restored
+    logger.warn('STUB: Rank check worker status endpoint hit — returning hardcoded status');
     const workerStatus = {
         isInitialized: true,
         actuallyReady: true,

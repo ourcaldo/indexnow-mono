@@ -14,12 +14,13 @@ import {
   supabaseAdmin,
   type Json
 } from '@indexnow/database';
+import { batchGetUserEmails } from '@/lib/core/batch-user-emails';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Parse query parameters
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const limit = parseInt(searchParams.get('limit') || '25', 10);
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '25', 10) || 25));
   const status = searchParams.get('status') || undefined;
   const customer = searchParams.get('customer') || undefined;
   const packageId = searchParams.get('package_id') || undefined;
@@ -76,6 +77,41 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       columns: ['*', 'package', 'gateway']
     },
     async () => {
+      // Pre-filter user IDs when customer search is active (pushes filter into SQL)
+      let customerUserIds: string[] | null = null;
+      if (customer) {
+        const customerLower = customer.toLowerCase();
+        // Search profiles by name
+        const { data: matchingProfiles } = await supabaseAdmin
+          .from('indb_auth_user_profiles')
+          .select('user_id')
+          .ilike('full_name', `%${customerLower}%`)
+          .limit(200);
+        const profileMatches = new Set((matchingProfiles || []).map(p => p.user_id));
+
+        // Search emails via batch RPC
+        // For email search we need all user IDs — get them from profiles table
+        const { data: allProfiles } = await supabaseAdmin
+          .from('indb_auth_user_profiles')
+          .select('user_id')
+          .limit(10000);
+        if (allProfiles && allProfiles.length > 0) {
+          const allUserIds = allProfiles.map(p => p.user_id);
+          const emailMap = await batchGetUserEmails(allUserIds);
+          emailMap.forEach((email, uid) => {
+            if (email.toLowerCase().includes(customerLower)) {
+              profileMatches.add(uid);
+            }
+          });
+        }
+
+        customerUserIds = [...profileMatches];
+        if (customerUserIds.length === 0) {
+          // No matching users — return empty immediately
+          return { orders: [], count: 0 };
+        }
+      }
+
       // Build base query
       let query = supabaseAdmin
         .from('indb_payment_transactions')
@@ -98,6 +134,11 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       slug
     )
       `, { count: 'exact' });
+
+      // Apply customer filter at SQL level
+      if (customerUserIds) {
+        query = query.in('user_id', customerUserIds);
+      }
 
       // Apply filters
       if (status) {
@@ -134,7 +175,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     }
   );
 
-  const { orders, count } = ordersResult as { orders: any[], count: number }; // Casting as 'any' briefly to handle joins which are not in strict Row type
+  const { orders, count } = ordersResult as { orders: Record<string, unknown>[], count: number }; // Casting briefly to handle joins which are not in strict Row type
 
   if (!orders) {
     return formatSuccess({
@@ -172,7 +213,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   });
 
   const allProfileIds = [...new Set([...userIds, ...verifierIds])];
-  const profileMap = new Map<string, any>();
+  const profileMap = new Map<string, Record<string, unknown>>();
   const emailMap = new Map<string, string>();
 
   // 2. Bulk fetch profiles
@@ -189,7 +230,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           const { data } = await supabaseAdmin
             .from('indb_auth_user_profiles')
             .select('user_id, full_name, role, created_at')
-            .in('user_id', allProfileIds);
+            .in('user_id', allProfileIds)
+            .limit(200);
           return data;
         }
       );
@@ -199,28 +241,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     }
   }
 
-  // 3. Parallel fetch emails
-  if (userIds.size > 0) {
-    await Promise.all([...userIds].map(async (uid) => {
-      try {
-        const email = await SecureServiceRoleWrapper.executeSecureOperation(
-          { ...ordersContext, operation: 'admin_enrich_orders_email' },
-          {
-            table: 'auth.users',
-            operationType: 'select',
-            columns: ['email'],
-            whereConditions: { id: uid }
-          },
-          async () => {
-            const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
-            return data?.user?.email || null;
-          }
-        );
-        if (email) {
-          emailMap.set(uid, email);
-        }
-      } catch (e) { /* ignore */ }
-    }));
+  // 3. Batch fetch emails (single RPC call instead of N individual lookups)
+  if (allProfileIds.length > 0) {
+    const emails = await batchGetUserEmails(allProfileIds);
+    emails.forEach((email, uid) => emailMap.set(uid, email));
   }
 
   // 4. Build enriched orders
@@ -250,55 +274,41 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       gateway: order.gateway
     };
 
-    // Client-side filtering for customer name/email
-    if (customer) {
-      const customerLower = customer.toLowerCase();
-      const fullName = enrichedOrder.user.full_name.toLowerCase();
-      const email = enrichedOrder.user.email.toLowerCase();
-
-      if (fullName.includes(customerLower) || email.includes(customerLower)) {
-        enrichedOrders.push(enrichedOrder);
-      }
-    } else {
-      enrichedOrders.push(enrichedOrder);
-    }
+    enrichedOrders.push(enrichedOrder);
   }
 
-  // Calculate summary (separate query for performance, or aggregate)
-  // For now, simplified summary based on current page or separate count query
-  // Real implementation should run a separate aggregation query.
-
-  // Running aggregation query
+  // Calculate summary using database-level aggregation (not full-table scan)
   const summaryContext = { ...ordersContext, operation: 'admin_get_orders_summary' };
   const summaryResult = await SecureServiceRoleWrapper.executeSecureOperation(
     summaryContext,
     { table: 'indb_payment_transactions', operationType: 'select', columns: ['status', 'amount'] },
     async () => {
-      // This might be heavy, in production use materialized view or specific stats table
-      const { data, error } = await supabaseAdmin
-        .from('indb_payment_transactions')
-        .select('status, amount, created_at');
-      if (error) throw error;
-      return data || [];
+      // Fetch counts per status using separate filtered count queries
+      const [pending, proofUploaded, completed, failed, revenueResult, recentResult] = await Promise.all([
+        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'proof_uploaded'),
+        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'failed'),
+        // Revenue total via RPC (avoids fetching all completed transactions)
+        (supabaseAdmin.rpc as Function)('get_total_revenue'),
+        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      ]);
+
+      const totalRevenue = typeof revenueResult.data === 'number' ? revenueResult.data : Number(revenueResult.data) || 0;
+
+      return {
+        total_orders: (pending.count || 0) + (proofUploaded.count || 0) + (completed.count || 0) + (failed.count || 0),
+        pending_orders: pending.count || 0,
+        proof_uploaded_orders: proofUploaded.count || 0,
+        completed_orders: completed.count || 0,
+        failed_orders: failed.count || 0,
+        total_revenue: totalRevenue,
+        recent_activity: recentResult.count || 0,
+      };
     }
   );
 
-  const summaryData = summaryResult as any[];
-
-  const summary: AdminOrderSummary = {
-    total_orders: summaryData.length,
-    pending_orders: summaryData.filter(t => t.status === 'pending').length,
-    proof_uploaded_orders: summaryData.filter(t => t.status === 'proof_uploaded').length,
-    completed_orders: summaryData.filter(t => t.status === 'completed').length,
-    failed_orders: summaryData.filter(t => t.status === 'failed').length,
-    total_revenue: summaryData.filter(t => t.status === 'completed').reduce((sum, t) => sum + Number(t.amount), 0),
-    recent_activity: summaryData.filter(t => {
-      const d = new Date(t.created_at);
-      const sevenDays = new Date();
-      sevenDays.setDate(sevenDays.getDate() - 7);
-      return d >= sevenDays;
-    }).length
-  };
+  const summary = summaryResult as AdminOrderSummary;
 
   const response: AdminOrdersResponse = {
     orders: enrichedOrders,

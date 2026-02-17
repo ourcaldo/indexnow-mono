@@ -1,6 +1,25 @@
 import type { Queue, Worker, QueueEvents, Job, JobsOptions } from 'bullmq'
 import { logger } from '../monitoring/error-handling'
 
+/**
+ * QueueManager — Singleton BullMQ queue manager.
+ *
+ * Workers run in the same process as the API server by default.
+ * For production deployments, use WORKER_MODE to separate concerns:
+ *
+ *   - API server (WORKER_MODE=none): Only enqueues jobs, no workers.
+ *   - Worker process (WORKER_MODE=all): Runs all workers, no API routes.
+ *
+ * Example:
+ *   # API server (handles HTTP requests only)
+ *   ENABLE_BULLMQ=true WORKER_MODE=none next start
+ *
+ *   # Worker process (processes background jobs only)
+ *   ENABLE_BULLMQ=true WORKER_MODE=all node -e "require('./src/lib/queues/workers').initializeAllWorkers()"
+ *
+ * If WORKER_MODE is not set, workers run in-process (default, fine for single-instance).
+ */
+
 export class QueueManager {
   private static instance: QueueManager
   private queues: Map<string, Queue> = new Map()

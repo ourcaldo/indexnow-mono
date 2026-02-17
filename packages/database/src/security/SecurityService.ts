@@ -105,10 +105,13 @@ export class SecurityViolationError extends Error {
 }
 
 /**
- * Internal structural client for audit operations.
- * This cast is safe because supabaseAdmin implements this interface.
+ * Centralized adapter to obtain a structurally-typed audit client.
+ * This cast is safe because supabaseAdmin structurally satisfies SimpleAuditClient.
+ * Encapsulating it here avoids scattering `as unknown as` throughout the codebase.
  */
-const auditClient = supabaseAdmin as unknown as SimpleAuditClient
+function asAuditClient(): SimpleAuditClient {
+  return supabaseAdmin as unknown as SimpleAuditClient
+}
 
 export class SecurityService {
   /**
@@ -132,7 +135,7 @@ export class SecurityService {
     }
 
     if (context.userId !== 'system' && context.userId !== 'anonymous') {
-      const { data: authUser, error } = await auditClient.auth.admin.getUserById(context.userId)
+      const { data: authUser, error } = await asAuditClient().auth.admin.getUserById(context.userId)
       if (error || !authUser?.user) {
         throw new SecurityViolationError(
           'Service role operation requested by invalid or non-existent user',
@@ -195,6 +198,7 @@ export class SecurityService {
 
   /**
    * Generic sanitizer for data objects.
+   * Recursively sanitizes nested objects instead of stringifying them.
    */
   static sanitizeDataObject(data: Record<string, Json | undefined>): Record<string, Json | undefined> {
     const sanitized: Record<string, Json | undefined> = {}
@@ -209,8 +213,15 @@ export class SecurityService {
         sanitized[cleanKey] = isNaN(value) ? 0 : value
       } else if (typeof value === 'boolean' || value === null) {
         sanitized[cleanKey] = value
+      } else if (Array.isArray(value)) {
+        sanitized[cleanKey] = value.map(item => {
+          if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+            return this.sanitizeDataObject(item as Record<string, Json | undefined>) as unknown as Json
+          }
+          return item
+        })
       } else if (typeof value === 'object') {
-        sanitized[cleanKey] = JSON.stringify(value).substring(0, 5000)
+        sanitized[cleanKey] = this.sanitizeDataObject(value as Record<string, Json | undefined>) as unknown as Json
       } else {
         sanitized[cleanKey] = String(value).substring(0, 1000)
       }
@@ -240,7 +251,7 @@ export class SecurityService {
         userAgent: context.userAgent ?? null
       }
 
-      const { data, error } = await auditClient
+      const { data, error } = await asAuditClient()
         .from(AUDIT_TABLE)
         .insert({
           user_id: context.userId === 'system' ? null : context.userId,
@@ -313,7 +324,7 @@ export class SecurityService {
         completedAt: new Date().toISOString()
       }
 
-      const { error } = await auditClient
+      const { error } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: true,
@@ -346,7 +357,7 @@ export class SecurityService {
         failedAt: new Date().toISOString()
       }
 
-      const { error: updateError } = await auditClient
+      const { error: updateError } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: false,
@@ -384,7 +395,7 @@ export class SecurityService {
         userAgent: context.userAgent ?? null
       }
 
-      const { data, error } = await auditClient
+      const { data, error } = await asAuditClient()
         .from(AUDIT_TABLE)
         .insert({
           user_id: context.userId,
@@ -427,7 +438,7 @@ export class SecurityService {
         completedAt: new Date().toISOString()
       }
 
-      const { error } = await auditClient
+      const { error } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: true,
@@ -460,7 +471,7 @@ export class SecurityService {
         failedAt: new Date().toISOString()
       }
 
-      const { error: updateError } = await auditClient
+      const { error: updateError } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: false,

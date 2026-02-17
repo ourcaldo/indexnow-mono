@@ -3,16 +3,46 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "pnpm -r --parallel dev",
-        "build": "pnpm -r build",
-        "lint": "pnpm -r lint",
-        "clean": "pnpm -r exec rm -rf .next dist .turbo node_modules"
+        "dev": "turbo dev",
+        "build": "turbo build",
+        "lint": "turbo lint",
+        "type-check": "turbo type-check",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "clean": "turbo clean && node -e \"const fs=require('fs');['.next','dist','.turbo','node_modules'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch{}})\"",
+        "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+        "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+        "prepare": "husky",
+        "changeset": "changeset",
+        "version-packages": "changeset version"
     },
     "engines": {
         "node": ">=18.0.0",
         "pnpm": ">=8.0.0"
     },
-    "dependencies": {
-        "@paddle/paddle-node-sdk": "^3.5.0"
+    "devDependencies": {
+        "turbo": "^2.5.0",
+        "prettier": "^3.5.0",
+        "prettier-plugin-tailwindcss": "^0.6.12",
+        "husky": "^9.1.0",
+        "lint-staged": "^15.4.0",
+        "@changesets/cli": "^2.29.0",
+        "vitest": "^3.2.4",
+        "@vitest/coverage-v8": "^3.2.4"
+    },
+    "lint-staged": {
+        "*.{ts,tsx}": [
+            "prettier --write",
+            "eslint --fix"
+        ],
+        "*.{js,jsx,json,md,yml,yaml}": [
+            "prettier --write"
+        ]
+    },
+    "pnpm": {
+        "overrides": {
+            "zod": "^3.25.76"
+        }
     }
 }

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { type Json } from '../../types/common/Json';
 import { AppConfig, isDevelopment } from '../config/AppConfig';
 import { logger } from '../../utils/logger';
+import { getClientIP } from '../../utils/ip-device-utils';
 
 export interface MiddlewareContext {
   req: NextRequest;
@@ -34,7 +35,7 @@ export const requestLogger: MiddlewareFunction = async (context, next) => {
     status: response.status,
     duration: `${duration}ms`,
     userAgent: req.headers.get('user-agent'),
-    ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+    ip: getClientIP(req),
   };
 
   // Log all requests
@@ -57,7 +58,8 @@ export const corsMiddleware: MiddlewareFunction = async (context, next) => {
       preflightResponse.headers.set('Access-Control-Allow-Origin', origin);
     } else if (!origin && isDevelopment()) {
       // Allow local development without origin header (e.g. Postman)
-      preflightResponse.headers.set('Access-Control-Allow-Origin', '*');
+      // NOTE (#9): Use first allowed origin instead of '*' to avoid CORS+credentials conflict
+      preflightResponse.headers.set('Access-Control-Allow-Origin', allowedOrigins[0] || 'http://localhost:3000');
     }
 
     preflightResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -74,7 +76,8 @@ export const corsMiddleware: MiddlewareFunction = async (context, next) => {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
   } else if (!origin && isDevelopment()) {
-    response.headers.set('Access-Control-Allow-Origin', '*');
+    // NOTE (#9): Use first allowed origin instead of '*' to avoid CORS+credentials conflict
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigins[0] || 'http://localhost:3000');
   }
 
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -94,21 +97,53 @@ export const securityHeaders: MiddlewareFunction = async (context, next) => {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+  // HSTS: enforce HTTPS for 1 year, include subdomains
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload'
+  );
+
+  // CSP: restrict resource loading to same origin + known CDNs
+  response.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.paddle.com https://*.googletagmanager.com https://*.google-analytics.com https://*.posthog.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.supabase.co",
+      "font-src 'self'",
+      "connect-src 'self' https://*.supabase.co https://*.paddle.com https://*.google-analytics.com https://*.posthog.com https://*.sentry.io",
+      "frame-src 'self' https://*.paddle.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join('; ')
+  );
+
   return response;
 };
 
-// Rate limiting middleware (basic implementation)
+// Rate limiting middleware (basic in-memory implementation)
+// ⚠ SERVERLESS WARNING (#2/#3/#15): In serverless/edge deployments, this per-isolate Map is ephemeral.
+// For production-grade rate limiting, use a distributed store (Redis/Upstash).
+// MIGRATION PATH: Use the Redis cacheService at apps/api/src/lib/cache/redis-cache.ts
+// to back the rate limit counters for multi-instance deployments.
+const MAX_API_RATE_LIMIT_STORE = 10_000;
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 export const rateLimit = (maxRequests: number, windowMs: number): MiddlewareFunction => {
   return async (context, next) => {
     const { req } = context;
-    const clientId = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anonymous';
+    const clientId = getClientIP(req) ?? 'anonymous';
     const now = Date.now();
 
     const current = rateLimitStore.get(clientId);
 
     if (!current || now > current.resetTime) {
+      // Evict if over max store size (#4)
+      if (rateLimitStore.size >= MAX_API_RATE_LIMIT_STORE) {
+        const firstKey = rateLimitStore.keys().next().value;
+        if (firstKey) rateLimitStore.delete(firstKey);
+      }
       rateLimitStore.set(clientId, { count: 1, resetTime: now + windowMs });
       return next();
     }

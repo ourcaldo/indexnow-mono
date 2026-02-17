@@ -73,6 +73,7 @@ export function useModal(): UseModalReturn {
   })
   
   const [modalActions, setModalActions] = useState<ModalActions>({})
+  const modalActionsRef = useRef<ModalActions>({})
   
   // Open modal with configuration
   const openModal = useCallback((config: Partial<ModalState & ModalActions>) => {
@@ -92,23 +93,32 @@ export function useModal(): UseModalReturn {
       cancelText,
       confirmLoading
     })
+    modalActionsRef.current = {
+      onConfirm,
+      onCancel,
+      onClose,
+      confirmText,
+      cancelText,
+      confirmLoading
+    }
   }, [])
 
-  // Close modal
+  // Close modal — uses ref to avoid stale closure over modalActions
   const closeModal = useCallback(() => {
     setModal(prev => ({
       ...prev,
       isOpen: false
     }))
     
-    // Call onClose callback if provided
-    if (modalActions.onClose) {
-      modalActions.onClose()
+    // Call onClose callback if provided (via ref to avoid stale closure)
+    if (modalActionsRef.current.onClose) {
+      modalActionsRef.current.onClose()
     }
     
     // Clear actions
     setModalActions({})
-  }, [modalActions.onClose])
+    modalActionsRef.current = {}
+  }, [])
 
   // Update modal state
   const updateModal = useCallback((updates: Partial<ModalState>) => {

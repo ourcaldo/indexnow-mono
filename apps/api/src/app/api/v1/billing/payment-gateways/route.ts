@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row'];
@@ -25,7 +25,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'billing/payment-gateways',
                 reason: 'User fetching available payment gateways',
                 metadata: { endpoint: '/api/v1/billing/payment-gateways' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_payment_gateways', operationType: 'select' },
@@ -35,7 +35,9 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     .from('indb_payment_gateways')
                     .select('id, name, slug, is_active, is_default')
                     .eq('is_active', true)
-                    .order('is_default', { ascending: false });
+                    .is('deleted_at', null)
+                    .order('is_default', { ascending: false })
+                    .limit(20);
 
                 if (error) throw error;
                 return data ?? [];

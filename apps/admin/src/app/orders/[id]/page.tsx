@@ -17,23 +17,23 @@ import {
   Mail,
   Phone,
   ExternalLink,
-  CalendarDays,
-  Activity,
   ImageIcon
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge, Separator, Textarea, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, useToast } from '@indexnow/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge, Separator, Textarea, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, useToast, ErrorState } from '@indexnow/ui'
 import {
   formatCurrency,
   formatDate,
   formatRelativeTime,
   ADMIN_ENDPOINTS,
+  authenticatedFetch,
   logger,
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
   type AdminTransactionHistory,
-  type AdminOrderActivityLog
+  type AdminOrderActivityLog,
+  type Json
 } from '@indexnow/shared'
-import { supabaseBrowser, type Json } from '@indexnow/auth'
+import { OrderActivityTimeline } from './components/OrderActivityTimeline'
 
 interface OrderMetadata {
   customer_info?: {
@@ -71,17 +71,7 @@ export default function AdminOrderDetailPage() {
       setLoading(true)
       setError(null)
 
-      const session = await supabaseBrowser.auth.getSession()
-      if (!session.data.session?.access_token) {
-        throw new Error('Not authenticated')
-      }
-
-      const response = await fetch(ADMIN_ENDPOINTS.ORDER_BY_ID(orderId), {
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`
-        },
-        credentials: 'include'
-      })
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ORDER_BY_ID(orderId))
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -117,22 +107,12 @@ export default function AdminOrderDetailPage() {
     try {
       setUpdating(true)
 
-      const session = await supabaseBrowser.auth.getSession()
-      if (!session.data.session?.access_token) {
-        throw new Error('Not authenticated')
-      }
-
-      const response = await fetch(ADMIN_ENDPOINTS.ORDER_STATUS(orderId), {
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ORDER_STATUS(orderId), {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           status: statusAction,
           notes: statusNotes.trim() || undefined
         }),
-        credentials: 'include'
       })
 
       const data = await response.json()
@@ -226,20 +206,12 @@ export default function AdminOrderDetailPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Order</h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <div className="space-x-2">
-            <Button onClick={() => router.back()} variant="outline" className="border-border">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-            <Button onClick={loadOrderDetail} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Try Again
-            </Button>
-          </div>
-        </div>
+        <ErrorState
+          title="Error Loading Order"
+          message={error}
+          onRetry={loadOrderDetail}
+          showHomeButton
+        />
       </div>
     )
   }
@@ -289,10 +261,10 @@ export default function AdminOrderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Order ID</label>
-                  <p className="font-mono text-sm text-foreground">{order.id}</p>
+                  <p className="font-mono text-sm text-foreground break-all">{order.id}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Amount</label>
@@ -435,105 +407,10 @@ export default function AdminOrderDetailPage() {
           </Card>
 
           {/* Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center text-foreground">
-                <Activity className="w-5 h-5 mr-2" />
-                Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {(() => {
-                  // Combine and sort all activity data
-                  const allActivity = [
-                    // Transaction history from dedicated table
-                    ...(transaction_history || []).map(th => {
-                      const thMetadata = (th.metadata as Record<string, Json>) || {}
-                      return {
-                        id: th.id,
-                        type: 'transaction',
-                        event_type: th.action_type,
-                        action_description: th.action_description,
-                        created_at: th.created_at,
-                        user: th.user || { full_name: th.changed_by_type === 'admin' ? 'Admin User' : 'System', role: th.changed_by_type },
-                        metadata: {
-                          old_status: th.old_status,
-                          new_status: th.new_status,
-                          notes: th.notes,
-                          ...thMetadata
-                        }
-                      }
-                    }),
-                    // General activity history
-                    ...(activity_history || []).map(ah => {
-                      const ahMetadata = (ah.metadata as Record<string, Json>) || {}
-                      return {
-                        id: ah.id,
-                        type: 'activity',
-                        event_type: ah.action_type, // Using action_type from shared type
-                        action_description: ah.action_description,
-                        created_at: ah.created_at,
-                        user: ah.user || { full_name: 'System', role: 'system' },
-                        metadata: ahMetadata
-                      }
-                    })
-                  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-                  return allActivity.length > 0 ? (
-                    <div className="relative">
-                      {/* Timeline line */}
-                      <div className="absolute left-2 top-0 bottom-0 w-px bg-border"></div>
-
-                      {allActivity.map((activity, index) => (
-                        <div key={activity.id} className="relative flex items-start space-x-3 pb-4">
-                          {/* Timeline dot */}
-                          <div className="flex-shrink-0 w-4 h-4 bg-brand-accent rounded-full border-2 border-background relative z-10"></div>
-
-                          {/* Activity content */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">{activity.action_description}</p>
-
-                            {/* Enhanced display for transaction history */}
-                            {activity.type === 'transaction' && activity.metadata?.old_status && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Status: {activity.metadata.old_status as string} → {activity.metadata.new_status as string}
-                              </p>
-                            )}
-
-                            {activity.metadata?.notes && (
-                              <p className="text-xs text-muted-foreground mt-1 italic">
-                                "{activity.metadata.notes as string}"
-                              </p>
-                            )}
-
-                            <div className="flex items-center space-x-1 text-xs text-muted-foreground mt-1">
-                              <CalendarDays className="w-3 h-3" />
-                              <span>{formatRelativeTime(activity.created_at)}</span>
-                              {activity.user?.full_name && (
-                                <>
-                                  <span>•</span>
-                                  <span>{activity.user.full_name}</span>
-                                  {activity.user.role && (
-                                    <span className="text-brand-accent">({activity.user.role})</span>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No activity yet</p>
-                    </div>
-                  )
-                })()}
-              </div>
-            </CardContent>
-          </Card>
+          <OrderActivityTimeline
+            transactionHistory={transaction_history}
+            activityHistory={activity_history}
+          />
         </div>
 
         {/* COLUMN 2 */}
@@ -580,7 +457,7 @@ export default function AdminOrderDetailPage() {
                 <Button
                   variant="outline"
                   className="w-full border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  onClick={() => router.push(`/backend/admin/users?search=${order.user.email}`)}
+                  onClick={() => router.push(`/users?search=${order.user.email}`)}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View User Profile
@@ -613,7 +490,7 @@ export default function AdminOrderDetailPage() {
               {order.gateway_transaction_id && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Gateway Transaction ID</label>
-                  <p className="font-mono text-sm text-foreground">{order.gateway_transaction_id}</p>
+                  <p className="font-mono text-sm text-foreground break-all">{order.gateway_transaction_id}</p>
                 </div>
               )}
               {order.package && (

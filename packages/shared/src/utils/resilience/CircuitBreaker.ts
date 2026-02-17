@@ -217,9 +217,11 @@ export class CircuitBreaker {
 /**
  * Circuit Breaker Manager
  * Manages circuit breakers for different services
+ * Max size capped to prevent unbounded growth (#10/#11)
  */
 export class CircuitBreakerManager {
   private static breakers = new Map<string, CircuitBreaker>();
+  private static readonly MAX_BREAKERS = 100;
 
   /**
    * Get or create a circuit breaker for a service
@@ -229,6 +231,12 @@ export class CircuitBreakerManager {
     config?: Partial<CircuitBreakerConfig>
   ): CircuitBreaker {
     if (!this.breakers.has(serviceName)) {
+      // Evict oldest breakers if at capacity
+      if (this.breakers.size >= this.MAX_BREAKERS) {
+        const firstKey = this.breakers.keys().next().value;
+        if (firstKey) this.breakers.delete(firstKey);
+      }
+
       const defaultConfig: CircuitBreakerConfig = {
         failureThreshold: 5,
         successThreshold: 2,
@@ -268,6 +276,20 @@ export class CircuitBreakerManager {
     if (breaker) {
       breaker.reset();
     }
+  }
+
+  /**
+   * Remove a circuit breaker entirely (#10)
+   */
+  static removeBreaker(serviceName: string): boolean {
+    return this.breakers.delete(serviceName);
+  }
+
+  /**
+   * Get current number of tracked breakers
+   */
+  static get size(): number {
+    return this.breakers.size;
   }
 }
 

@@ -1,6 +1,10 @@
-import { supabaseBrowser as supabase } from '@indexnow/database';
-import { type RankTrackingDomain, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { typedSupabaseBrowser } from '@indexnow/database';
+import { type RankTrackingDomain, type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { QuotaService } from './monitoring/QuotaService';
+
+// Use typed client that preserves the Database generic through the re-export chain
+const supabase = typedSupabaseBrowser;
 
 export class RankTrackingService {
   /**
@@ -39,7 +43,7 @@ export class RankTrackingService {
     device?: 'desktop' | 'mobile';
     targetUrl?: string;
     tags?: string[];
-  }): Promise<any> {
+  }): Promise<Record<string, unknown>> {
     // 1. Check & Consume Quota
     const quotaConsumed = await QuotaService.consumeQuota(userId, 1);
     if (!quotaConsumed) {
@@ -91,14 +95,14 @@ export class RankTrackingService {
   /**
    * Get user keywords with filtering
    */
-  async getUserKeywords(userId: string, options: any = {}): Promise<{ keywords: any[]; total: number }> {
+  async getUserKeywords(userId: string, options: { domain?: string; limit?: number } = {}): Promise<{ keywords: Record<string, unknown>[]; total: number }> {
     let query = supabase
       .from('indb_rank_keywords')
       .select('*', { count: 'exact' })
       .eq('user_id', userId);
 
     if (options.domain) query = query.eq('domain', options.domain);
-    if (options.limit) query = query.limit(options.limit);
+    query = query.limit(options.limit || 500);
 
     const { data, count, error } = await query;
 
@@ -168,7 +172,8 @@ export class RankTrackingService {
         .from('indb_rank_keywords')
         .select('id, tags')
         .in('id', keywordIds)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .limit(500);
 
       if (fetchError || !keywords || keywords.length === 0) return 0;
 

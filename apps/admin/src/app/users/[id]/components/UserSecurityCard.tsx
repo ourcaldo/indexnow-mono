@@ -128,7 +128,7 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
           {/* Login Attempts */}
           <div>
             <h4 className="font-medium text-foreground mb-3">Login Attempts</h4>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-3 bg-secondary rounded-lg">
                 <p className="text-2xl font-bold text-foreground">{securityData.loginAttempts.total}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>

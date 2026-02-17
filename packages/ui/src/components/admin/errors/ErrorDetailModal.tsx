@@ -14,7 +14,7 @@ import {
 } from '../../..';
 import { CheckCircle2, AlertCircle, Clock, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { SystemErrorLog } from '@indexnow/shared';
+import { DbSystemErrorLog as SystemErrorLog } from '@indexnow/shared';
 import { useToast } from '../../..';
 
 interface ErrorDetailModalProps {

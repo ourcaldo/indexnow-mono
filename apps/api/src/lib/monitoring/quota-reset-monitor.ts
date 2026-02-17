@@ -90,6 +90,7 @@ export class QuotaResetMonitor {
             .from('indb_google_service_accounts')
             .select('id, name, email, user_id')
             .eq('is_active', false)
+            .limit(500)
 
           if (error) {
             logger.error({ error }, 'Error fetching inactive service accounts')
@@ -157,6 +158,7 @@ export class QuotaResetMonitor {
             .select('id, user_id, name, error_message')
             .eq('status', 'paused')
             .ilike('error_message', '%quota exhausted%')
+            .limit(500)
 
           if (error) {
             logger.error({ error }, 'Error fetching paused jobs')
@@ -176,6 +178,7 @@ export class QuotaResetMonitor {
               .select('id')
               .eq('user_id', job.user_id)
               .eq('is_active', true)
+              .limit(1)
 
             if (activeAccounts && activeAccounts.length > 0) {
               // Resume the job

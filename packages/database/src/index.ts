@@ -41,10 +41,23 @@ export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_err
 // Client exports
 export { createBrowserClient, getBrowserClient, supabaseBrowser, supabase } from '@indexnow/shared';
 
+// Typed Supabase client accessors — these preserve the Database generic
+// through the re-export chain (unlike direct re-exports which lose it in DTS generation)
+import { supabaseBrowser as _supabaseBrowser } from '@indexnow/shared';
+import { supabaseAdmin as _supabaseAdmin } from './server';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+/** Browser Supabase client with Database generic preserved */
+export const typedSupabaseBrowser = _supabaseBrowser as unknown as SupabaseClient<Database>;
+/** Admin (service role) Supabase client with Database generic preserved */
+export const typedSupabaseAdmin = _supabaseAdmin as unknown as SupabaseClient<Database>;
+
 // Server exports
 export { 
     createServerClient, 
-    createAdminClient, 
+    createAdminClient,
+    createTokenClient,
+    createAnonServerClient,
     supabaseAdmin, 
     type CookieStore, 
     createMiddlewareClient,
@@ -69,8 +82,7 @@ export { DatabaseService, db } from './DatabaseService'
 export { 
     ApiClient, 
     apiClient, 
-    ApiError as ClientApiError, 
-    apiRequest 
+    ApiError as ClientApiError
 } from './utils/ApiClient'
 export * from './utils/site-settings'
 export * from './utils/queryClient'

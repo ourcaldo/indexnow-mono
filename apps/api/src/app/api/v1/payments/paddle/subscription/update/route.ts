@@ -1,12 +1,14 @@
 /**
  * Paddle Subscription Update API
  * Allows authenticated users to update their subscription (e.g., change plan)
+ *
+ * @stub Only updates local DB. Does NOT call Paddle API to actually change the subscription.
  */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -47,7 +49,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/update',
             reason: 'User attempting to update subscription - ownership verification',
             metadata: { subscriptionId, newPriceId, endpoint: '/api/v1/payments/paddle/subscription/update' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'select' },
@@ -82,7 +84,8 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     }
 
     // Update the subscription with new price ID
-    // TODO: Integrate PaddleSubscriptionService.updateSubscription when restored
+    // STUB(M-13): Integrate PaddleSubscriptionService.updateSubscription when restored
+    ErrorHandlingService.logError(new Error('STUB: Subscription update only updates local DB — Paddle API call pending'), 'paddle-subscription-update');
     const updatedAt = new Date().toISOString();
     const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<PaymentSubscriptionRow>(
         auth.supabase,
@@ -92,7 +95,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/update',
             reason: 'User updating their subscription plan',
             metadata: { subscriptionId, newPriceId, endpoint: '/api/v1/payments/paddle/subscription/update' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'update' },

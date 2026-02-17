@@ -15,40 +15,12 @@ import {
   Clock
 } from 'lucide-react'
 import { authService, 
+  authenticatedFetch,
   formatCurrency, 
   type ApiResponse,
   AUTH_ENDPOINTS, 
   BILLING_ENDPOINTS, logger } from '@indexnow/shared'
-import { LoadingSpinner, useApiError } from '@indexnow/ui'
-
-interface PricingTier {
-  period: string
-  period_label?: string
-  regular_price: number
-  promo_price?: number
-  discount_percentage?: number
-}
-
-interface PackageQuotaLimits {
-  rank_tracking_limit?: number
-  concurrent_jobs_limit?: number
-}
-
-interface PaymentPackage {
-  id: string
-  name: string
-  slug: string
-  description: string
-  price: number
-  currency: string
-  billing_period: string
-  features: string[]
-  quota_limits: PackageQuotaLimits
-  is_popular: boolean
-  is_current: boolean
-  free_trial_enabled?: boolean
-  pricing_tiers: Array<PricingTier> | Record<string, PricingTier>
-}
+import { LoadingSpinner, useApiError, getBillingPeriodPrice, buildCheckoutUrl, isTrialEligiblePackage, type PaymentPackage } from '@indexnow/ui'
 
 interface PackagesData {
   packages: PaymentPackage[]
@@ -96,18 +68,7 @@ export default function PlansTab() {
         throw new Error('User not authenticated')
       }
 
-      const token = await authService.getToken()
-      if (!token) {
-        throw new Error('No authentication token')
-      }
-
-      const response = await fetch(BILLING_ENDPOINTS.PACKAGES, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
+      const response = await authenticatedFetch(BILLING_ENDPOINTS.PACKAGES)
 
       if (!response.ok) {
         throw new Error('Failed to load packages')
@@ -128,70 +89,10 @@ export default function PlansTab() {
     }
   }
 
-  const getBillingPeriodPrice = (pkg: PaymentPackage, period: string): { price: number, originalPrice?: number, discount?: number } => {
-    // Handle pricing_tiers as array format from database
-    if (Array.isArray(pkg.pricing_tiers)) {
-      const tier = pkg.pricing_tiers.find(t => t.period === period)
-      if (tier) {
-        return {
-          price: tier.promo_price || tier.regular_price,
-          originalPrice: tier.promo_price ? tier.regular_price : undefined,
-          discount: tier.promo_price ? Math.round(((tier.regular_price - tier.promo_price) / tier.regular_price) * 100) : undefined
-        }
-      }
-    }
-    // Handle pricing_tiers as object format (fallback)
-    else if (pkg.pricing_tiers && typeof pkg.pricing_tiers === 'object') {
-      const tiers = pkg.pricing_tiers as Record<string, PricingTier>
-      const tier = tiers[period]
-      if (tier) {
-        return {
-          price: tier.promo_price || tier.regular_price,
-          originalPrice: tier.promo_price ? tier.regular_price : undefined,
-          discount: tier.discount_percentage
-        }
-      }
-    }
-    return { price: pkg.price }
-  }
-
-  const checkTrialEligibility = async () => {
-    try {
-      const token = await authService.getToken()
-      if (!token) return
-
-      const response = await fetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
-
-      if (response.ok) {
-        const result = await response.json() as ApiResponse<TrialEligibilityData>
-        // API now returns: { success: true, data: {...}, timestamp: "..." }
-        if (result.success === true && result.data) {
-          setTrialEligible(result.data.eligible)
-        } else {
-          setTrialEligible(false)
-        }
-      } else {
-        setTrialEligible(false)
-      }
-    } catch (error) {
-      setTrialEligible(false)
-    }
-  }
-
   const handleSubscribe = async (packageId: string) => {
     try {
       setSubscribing(packageId)
-
-      // Redirect to checkout page with package and billing period
-      const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=${selectedBillingPeriod}`
-      window.location.href = checkoutUrl
-
+      window.location.href = buildCheckoutUrl(packageId, selectedBillingPeriod)
     } catch (error) {
       handleApiError(error, { context: 'PlansTab.handleSubscribe', toastTitle: 'Subscription Error' })
     } finally {
@@ -202,11 +103,7 @@ export default function PlansTab() {
   const handleStartTrial = async (packageId: string) => {
     try {
       setStartingTrial(packageId)
-
-      // Redirect to checkout page with trial parameter
-      const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`
-      window.location.href = checkoutUrl
-
+      window.location.href = buildCheckoutUrl(packageId, 'monthly', true)
     } catch (error) {
       handleApiError(error, { context: 'PlansTab.handleStartTrial', toastTitle: 'Trial Error' })
     } finally {
@@ -214,9 +111,22 @@ export default function PlansTab() {
     }
   }
 
-  // Check if package is eligible for trial (based on database configuration)
-  const isTrialEligiblePackage = (pkg: PaymentPackage) => {
-    return pkg.free_trial_enabled === true
+  const checkTrialEligibility = async () => {
+    try {
+      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY)
+      if (response.ok) {
+        const result = await response.json() as ApiResponse<TrialEligibilityData>
+        if (result.success === true && result.data) {
+          setTrialEligible(result.data.eligible)
+        } else {
+          setTrialEligible(false)
+        }
+      } else {
+        setTrialEligible(false)
+      }
+    } catch {
+      setTrialEligible(false)
+    }
   }
 
   if (loading) {

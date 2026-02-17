@@ -6,8 +6,7 @@ import { Button } from '../button'
 import { Badge } from '../badge'
 import { Clock, Calendar, CreditCard, AlertCircle } from 'lucide-react'
 import { useToast } from '../toast'
-import { AUTH_ENDPOINTS, BILLING_ENDPOINTS, type Json, logger } from '@indexnow/shared'
-import { supabaseBrowser } from '@indexnow/database'
+import { AUTH_ENDPOINTS, BILLING_ENDPOINTS, type Json, logger, authenticatedFetch } from '@indexnow/shared'
 
 interface TrialStatusData {
   has_trial: boolean;
@@ -33,16 +32,7 @@ export function TrialStatusCard() {
 
   const fetchTrialStatus = async () => {
     try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession()
-      if (!session?.access_token) return
-
-      const response = await fetch(AUTH_ENDPOINTS.TRIAL_STATUS, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Essential for cross-subdomain authentication
-      })
+      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_STATUS)
 
       if (response.ok) {
         const result = await response.json()
@@ -57,16 +47,8 @@ export function TrialStatusCard() {
 
   const handleCancelTrial = async () => {
     try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession()
-      if (!session?.access_token) return
-
-      const response = await fetch(BILLING_ENDPOINTS.CANCEL_TRIAL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Essential for cross-subdomain authentication
+      const response = await authenticatedFetch(BILLING_ENDPOINTS.CANCEL_TRIAL, {
+        method: 'POST'
       })
 
       if (response.ok) {
@@ -142,10 +124,10 @@ export function TrialStatusCard() {
               <Clock className="h-5 w-5 text-info" />
               <div>
                 <p className="font-medium text-foreground">
-                  {trialData.days_remaining || 0} days remaining
+                  {Math.max(0, trialData.days_remaining || 0)} days remaining
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {trialData.hours_remaining || 0} hours left in your trial
+                  {Math.max(0, trialData.hours_remaining || 0)} hours left in your trial
                 </p>
               </div>
             </div>

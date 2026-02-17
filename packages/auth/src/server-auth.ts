@@ -13,13 +13,18 @@ import { AppConfig, logger } from '@indexnow/shared'
 export interface ServerAdminUser {
   id: string
   email: string
+  name?: string
   role: string
   isAdmin: boolean
   isSuperAdmin: boolean
 }
 
+/** @deprecated Use `ServerAdminUser` — kept as alias for backward compatibility */
+export type AdminUser = ServerAdminUser
+
 interface UserProfileRole {
   role: string
+  full_name: string | null
 }
 
 /**
@@ -50,13 +55,22 @@ export async function getServerAdminUser(
             if (forceHeader) return undefined;
             const cookieHeader = request.headers.get('cookie')
             if (!cookieHeader) return undefined
-            const cookies = Object.fromEntries(
-              cookieHeader.split(';').map(cookie => {
-                const [key, value] = cookie.trim().split('=')
-                return [key, decodeURIComponent(value || '')]
-              })
-            )
-            return cookies[name]
+            try {
+              const cookies = Object.fromEntries(
+                cookieHeader.split(';').map(cookie => {
+                  const [key, ...rest] = cookie.trim().split('=')
+                  const value = rest.join('=')
+                  try {
+                    return [key, decodeURIComponent(value || '')]
+                  } catch {
+                    return [key, value || ''] // (#32) Fallback for malformed URI components
+                  }
+                })
+              )
+              return cookies[name]
+            } catch {
+              return undefined
+            }
           },
           set() { },
           remove() { },
@@ -94,15 +108,15 @@ export async function getServerAdminUser(
       source: '@indexnow/auth.getServerAdminUser',
       metadata: {
         authMethod: hasBearer ? 'bearer_token' : 'server_cookie',
-        userEmail: user.email,
+        userEmail: user.email || null,
         operation_type: 'admin_role_verification'
       }
     }
 
-    const profiles = await SecureServiceRoleHelpers.secureSelect<UserProfileRole>(
+    const profiles = await SecureServiceRoleHelpers.secureSelect(
       authContext,
       'indb_auth_user_profiles',
-      ['role'],
+      ['role', 'full_name'],
       { user_id: user.id }
     )
 
@@ -115,6 +129,7 @@ export async function getServerAdminUser(
     return {
       id: user.id,
       email: user.email || '',
+      name: userProfile?.full_name || undefined,
       role,
       isAdmin,
       isSuperAdmin
@@ -181,14 +196,22 @@ export async function getServerAuthUser(
             const cookieHeader = request.headers.get('cookie')
             if (!cookieHeader) return undefined
 
-            const cookies = Object.fromEntries(
-              cookieHeader.split(';').map(cookie => {
-                const [key, value] = cookie.trim().split('=')
-                return [key, decodeURIComponent(value || '')]
-              })
-            )
-
-            return cookies[name]
+            try {
+              const cookies = Object.fromEntries(
+                cookieHeader.split(';').map(cookie => {
+                  const [key, ...rest] = cookie.trim().split('=')
+                  const value = rest.join('=')
+                  try {
+                    return [key, decodeURIComponent(value || '')]
+                  } catch {
+                    return [key, value || ''] // (#32) Fallback for malformed URI components
+                  }
+                })
+              )
+              return cookies[name]
+            } catch {
+              return undefined
+            }
           },
           set() { },
           remove() { },
@@ -226,14 +249,14 @@ export async function getServerAuthUser(
       source: '@indexnow/auth.getServerAuthUser',
       metadata: {
         authMethod: hasBearer ? 'bearer_token' : 'server_cookie',
-        userEmail: user.email
+        userEmail: user.email || null
       }
     }
 
-    const profiles = await SecureServiceRoleHelpers.secureSelect<UserProfileRole>(
+    const profiles = await SecureServiceRoleHelpers.secureSelect(
       authContext,
       'indb_auth_user_profiles',
-      ['role'],
+      ['role', 'full_name'],
       { user_id: user.id }
     )
 
@@ -246,6 +269,7 @@ export async function getServerAuthUser(
     return {
       id: user.id,
       email: user.email || '',
+      name: userProfile?.full_name || undefined,
       role,
       isAdmin,
       isSuperAdmin
@@ -256,3 +280,9 @@ export async function getServerAuthUser(
     return null
   }
 }
+
+// -- Backward-compatible aliases --
+/** @deprecated Use `requireServerAdminAuth` */
+export const requireAdminAuth = requireServerAdminAuth
+/** @deprecated Use `requireServerSuperAdminAuth` */
+export const requireSuperAdminAuth = requireServerSuperAdminAuth

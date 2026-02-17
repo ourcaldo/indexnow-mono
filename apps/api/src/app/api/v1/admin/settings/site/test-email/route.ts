@@ -4,29 +4,41 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { type AdminUser } from '@indexnow/auth';
 import * as nodemailer from 'nodemailer';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
+    formatError,
     createStandardError
 } from '@/lib/core/api-response-middleware';
 import { logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 
-interface SmtpTestRequest {
-    smtp_host: string;
-    smtp_port: string | number;
-    smtp_user: string;
-    smtp_pass: string;
-    smtp_from_name?: string;
-    smtp_from_email: string;
-    smtp_secure?: boolean;
-}
+const smtpTestSchema = z.object({
+    smtp_host: z.string().min(1, 'SMTP host is required'),
+    smtp_port: z.coerce.number().int().min(1).max(65535).default(465),
+    smtp_user: z.string().min(1, 'SMTP user is required'),
+    smtp_pass: z.string().min(1, 'SMTP password is required'),
+    smtp_from_name: z.string().max(100).optional(),
+    smtp_from_email: z.string().email('Invalid from email address'),
+    smtp_secure: z.boolean().optional().default(true),
+}).strict();
 
 export const POST = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
-    const body = await request.json() as SmtpTestRequest;
+    const rawBody = await request.json();
+
+    const validation = smtpTestSchema.safeParse(rawBody);
+    if (!validation.success) {
+        return formatError(await createStandardError(
+            ErrorType.VALIDATION,
+            validation.error.issues[0]?.message || 'Invalid SMTP configuration',
+            { statusCode: 400, severity: ErrorSeverity.LOW }
+        ));
+    }
+
     const {
         smtp_host,
         smtp_port,
@@ -35,28 +47,19 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
         smtp_from_name,
         smtp_from_email,
         smtp_secure
-    } = body;
-
-    // Validate required fields
-    if (!smtp_host || !smtp_user || !smtp_pass || !smtp_from_email) {
-        return await createStandardError(
-            ErrorType.VALIDATION,
-            'All SMTP fields are required for testing',
-            { statusCode: 400, severity: ErrorSeverity.LOW }
-        );
-    }
+    } = validation.data;
 
     // Create transporter with provided settings
     const transporter = nodemailer.createTransport({
         host: smtp_host,
-        port: parseInt(String(smtp_port)) || 465,
-        secure: smtp_secure !== false,
+        port: smtp_port,
+        secure: smtp_secure,
         auth: {
             user: smtp_user,
             pass: smtp_pass
         },
         tls: {
-            rejectUnauthorized: false
+            rejectUnauthorized: true
         }
     });
 
@@ -65,11 +68,11 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
         await transporter.verify();
     } catch (verifyError) {
         logger.error({ error: verifyError instanceof Error ? verifyError.message : String(verifyError) }, 'SMTP verification failed:');
-        return await createStandardError(
+        return formatError(await createStandardError(
             ErrorType.EXTERNAL_API,
             `SMTP connection failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`,
             { statusCode: 400, severity: ErrorSeverity.MEDIUM }
-        );
+        ));
     }
 
     const emailColors = {
@@ -131,11 +134,11 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
         await transporter.sendMail(testEmailOptions);
     } catch (sendError) {
         logger.error({ error: sendError instanceof Error ? sendError.message : String(sendError) }, 'Failed to send test email:');
-        return await createStandardError(
+        return formatError(await createStandardError(
             ErrorType.EXTERNAL_API,
             `Failed to send test email: ${sendError instanceof Error ? sendError.message : 'Unknown error'}`,
             { statusCode: 400, severity: ErrorSeverity.MEDIUM }
-        );
+        ));
     }
 
     // Log email test activity

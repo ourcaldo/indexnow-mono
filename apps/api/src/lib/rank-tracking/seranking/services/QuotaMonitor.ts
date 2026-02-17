@@ -611,7 +611,8 @@ export class QuotaMonitor implements IQuotaMonitor {
             .select('id, timestamp, quota_consumed, cost_per_request')
             .gte('timestamp', start.toISOString())
             .lte('timestamp', end.toISOString())
-            .order('timestamp', { ascending: true });
+            .order('timestamp', { ascending: true })
+            .limit(10000);
 
           if (error) {
             throw new Error(`Failed to get quota usage history: ${error.message}`);

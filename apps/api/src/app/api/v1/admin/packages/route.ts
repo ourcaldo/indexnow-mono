@@ -48,7 +48,9 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                     .from('indb_payment_packages')
                     .select('*')
                     .eq('is_active', true)
-                    .order('sort_order', { ascending: true });
+                    .is('deleted_at', null)
+                    .order('sort_order', { ascending: true })
+                    .limit(50);
 
                 if (error) {
                     throw new Error(`Failed to fetch packages: ${error.message}`);

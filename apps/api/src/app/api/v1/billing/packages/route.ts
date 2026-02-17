@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, type PackageFeatures, type PackageQuotaLimits, type PackagePricingTiers } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database, type PackageFeatures, type PackageQuotaLimits, type PackagePricingTiers , getClientIP} from '@indexnow/shared';
 
 // Derived types from Database schema
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
@@ -44,7 +44,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'billing/packages',
                 reason: 'User fetching available billing packages for subscription selection',
                 metadata: { endpoint: '/api/v1/billing/packages', packageFilter: 'active_only' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_payment_packages', operationType: 'select' },
@@ -53,7 +53,9 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     .from('indb_payment_packages')
                     .select('*')
                     .eq('is_active', true)
-                    .order('sort_order', { ascending: true });
+                    .is('deleted_at', null)
+                    .order('sort_order', { ascending: true })
+                    .limit(50);
 
                 if (error) throw error;
                 return data ?? [];
@@ -85,7 +87,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                     source: 'billing/packages',
                     reason: 'User fetching their billing profile information for package display',
                     metadata: { endpoint: '/api/v1/billing/packages', profileFields: 'package_id, subscription_end_date, country' },
-                    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                    ipAddress: getClientIP(request),
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_auth_user_profiles', operationType: 'select' },

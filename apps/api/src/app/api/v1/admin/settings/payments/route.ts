@@ -7,8 +7,9 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Json } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Json , getClientIP} from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
@@ -38,6 +39,14 @@ interface CreateGatewayRequest {
     configuration?: Record<string, unknown>;
 }
 
+const createGatewaySchema = z.object({
+    name: z.string().min(1).max(255),
+    slug: z.string().min(1).max(100),
+    is_active: z.boolean().optional(),
+    is_default: z.boolean().optional(),
+    configuration: z.record(z.string(), z.unknown()).optional(),
+}).strict();
+
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
     try {
         // Log access
@@ -66,7 +75,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
             metadata: {
                 endpoint: '/api/v1/admin/settings/payments'
             },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') || undefined
         };
 
@@ -81,7 +90,9 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
                 const { data, error } = await supabaseAdmin
                     .from('indb_payment_gateways')
                     .select('*')
-                    .order('created_at', { ascending: false });
+                    .is('deleted_at', null)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
 
                 if (error) {
                     throw new Error(`Failed to fetch gateways: ${error.message}`);
@@ -104,17 +115,20 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
 
 export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
     try {
-        const body = await request.json() as CreateGatewayRequest;
+        const rawBody = await request.json();
 
-        // Validate required fields
-        if (!body.name || !body.slug) {
+        // Validate with Zod schema
+        const validation = createGatewaySchema.safeParse(rawBody);
+        if (!validation.success) {
             const validationError = await ErrorHandlingService.createError(
                 ErrorType.VALIDATION,
-                'Gateway name and slug are required',
-                { severity: ErrorSeverity.LOW, statusCode: 400, userMessageKey: 'default' }
+                validation.error.issues[0]?.message || 'Invalid request body',
+                { severity: ErrorSeverity.LOW, statusCode: 400 }
             );
             return formatError(validationError);
         }
+
+        const body = validation.data;
 
         const createContext = {
             userId: adminUser.id,
@@ -127,7 +141,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
                 isDefault: body.is_default || false,
                 endpoint: '/api/v1/admin/settings/payments'
             },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') || undefined
         };
 
@@ -139,6 +153,9 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
             },
             async () => {
                 // If setting as default, unset other defaults first
+                // Note: Both writes are in the same callback but are separate PostgREST requests.
+                // If the insert below fails, defaults will have been cleared. This is acceptable
+                // because admin can re-set a default via PATCH, and the window is tiny.
                 if (body.is_default) {
                     await supabaseAdmin
                         .from('indb_payment_gateways')
@@ -147,7 +164,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
                 }
 
                 const { data, error } = await (supabaseAdmin
-                    .from('indb_payment_gateways') as any)
+                    .from('indb_payment_gateways') as unknown)
                     .insert({
                         name: body.name,
                         slug: body.slug,

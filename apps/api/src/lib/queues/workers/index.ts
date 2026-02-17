@@ -17,6 +17,14 @@ export async function initializeAllWorkers(): Promise<void> {
     return
   }
 
+  // WORKER_MODE=none means this process should only enqueue jobs, not process them.
+  // Use WORKER_MODE=all in a dedicated worker process to handle jobs separately.
+  const workerMode = process.env.WORKER_MODE || 'inline'
+  if (workerMode === 'none') {
+    logger.info({}, 'WORKER_MODE=none — skipping worker initialization (enqueue-only mode)')
+    return
+  }
+
   try {
     logger.info({}, 'Initializing BullMQ workers...')
 

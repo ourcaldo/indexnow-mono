@@ -1,11 +1,13 @@
 /**
  * Paddle Customer Portal API
  * Provides customer portal URL for authenticated users to manage their subscription
+ *
+ * @stub Returns a placeholder portal URL. Full Paddle customer portal integration requires PaddleCustomerService restoration.
  */
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
@@ -23,7 +25,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             source: 'paddle/customer-portal',
             reason: 'User requesting Paddle customer portal URL',
             metadata: { endpoint: '/api/v1/payments/paddle/customer-portal' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'select' },
@@ -56,11 +58,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         return formatError(structuredError);
     }
 
-    // TODO: Restore PaddleCustomerService and integrate here
+    // STUB(M-13): Restore PaddleCustomerService and integrate here
     // When PaddleCustomerService is restored, use:
     // const portalUrl = await PaddleCustomerService.getCustomerPortalUrl(customerId);
+    ErrorHandlingService.logError(new Error('STUB: Customer portal endpoint hit — returning placeholder URL'), 'paddle-customer-portal');
 
-    // For now, construct a placeholder portal URL using subscription ID
     const portalUrl = `https://checkout.paddle.com/subscription/manage?subscription=${subscription.paddle_subscription_id}`;
 
     return formatSuccess({

@@ -5,8 +5,16 @@
 import { z } from 'zod';
 import { 
   LoginRequest, RegisterRequest, ChangePasswordRequest, UpdateUserSettingsRequest, ResetPasswordRequest,
-  loginSchema, registerSchema, changePasswordSchema, updateUserSettingsSchema, createJobSchema as createApiKeySchema
+  loginSchema, registerSchema, changePasswordSchema, updateUserSettingsSchema
 } from '../../../schema';
+
+// Proper API key creation schema (distinct from job creation)
+export const createApiKeySchema = z.object({
+  name: z.string().min(1, 'API key name is required').max(100, 'Name must be less than 100 characters'),
+  description: z.string().max(500, 'Description must be less than 500 characters').optional(),
+  scopes: z.array(z.string()).min(1, 'At least one scope is required'),
+  expiresAt: z.date().optional(),
+});
 
 // Authentication requests
 export type { LoginRequest, RegisterRequest, ChangePasswordRequest, UpdateUserSettingsRequest, ResetPasswordRequest };

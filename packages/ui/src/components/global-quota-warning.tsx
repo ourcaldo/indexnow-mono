@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { AlertTriangle, Package } from 'lucide-react'
-import { DASHBOARD_ENDPOINTS, logger } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/database'
+import { DASHBOARD_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
 
 interface QuotaInfo {
   daily_quota_used: number
@@ -17,26 +16,9 @@ export function GlobalQuotaWarning() {
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchQuotaInfo()
-    
-    // Check quota every 10 seconds
-    const interval = setInterval(fetchQuotaInfo, 10000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  const fetchQuotaInfo = async () => {
+  const fetchQuotaInfo = useCallback(async () => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      if (error || !session) return
-
-      const response = await fetch(DASHBOARD_ENDPOINTS.MAIN, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        credentials: 'include' // Essential for cross-subdomain authentication
-      })
+      const response = await authenticatedFetch(DASHBOARD_ENDPOINTS.MAIN)
 
       if (response.ok) {
         const result = await response.json()
@@ -49,7 +31,16 @@ export function GlobalQuotaWarning() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchQuotaInfo()
+    
+    // Check quota every 60 seconds (reduced from 10s — warning banner doesn't need aggressive polling)
+    const interval = setInterval(fetchQuotaInfo, 60000)
+    
+    return () => clearInterval(interval)
+  }, [fetchQuotaInfo])
 
   // Only show if quota is exhausted and not unlimited
   if (loading || !quotaInfo || quotaInfo.is_unlimited || !quotaInfo.quota_exhausted) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { authService, logger } from '@indexnow/shared'
+import { authService, logger, loginSchema, forgotPasswordSchema } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 
 import { 
@@ -13,12 +13,15 @@ import {
   Button, 
   Input, 
   Label,
-  DashboardPreview
+  DashboardPreview,
+  PasswordInput,
+  AuthErrorAlert,
+  AuthLoadingButton,
+  AuthCheckingSpinner
 } from '@indexnow/ui'
 
 export default function Login() {
   const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
@@ -27,6 +30,8 @@ export default function Login() {
   const [isMagicLinkMode, setIsMagicLinkMode] = useState(false)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  // (#113) Per-field validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   
   // Check if user is already authenticated and redirect to dashboard
   useEffect(() => {
@@ -125,24 +130,45 @@ export default function Login() {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+    setFieldErrors({})
     
     try {
       if (isMagicLinkMode) {
-        // Handle magic link submission
-        if (!email) {
-          setError("Please enter your email address first.")
+        // (#113) Validate email for magic link mode
+        const result = forgotPasswordSchema.safeParse({ email })
+        if (!result.success) {
+          const errors: Record<string, string> = {}
+          for (const err of result.error.errors) {
+            const field = err.path[0]?.toString()
+            if (field && !errors[field]) errors[field] = err.message
+          }
+          setFieldErrors(errors)
+          setIsLoading(false)
           return
         }
         await authService.createMagicLink(email, `${window.location.origin}/auth/callback?next=/dashboard`)
         setMagicLinkSent(true)
         setError("")
       } else {
+        // (#113) Validate login fields with Zod
+        const result = loginSchema.safeParse({ email, password })
+        if (!result.success) {
+          const errors: Record<string, string> = {}
+          for (const err of result.error.errors) {
+            const field = err.path[0]?.toString()
+            if (field && !errors[field]) errors[field] = err.message
+          }
+          setFieldErrors(errors)
+          setIsLoading(false)
+          return
+        }
+        
         // Handle password login
-        const result = await authService.signIn(email, password)
+        const authResult = await authService.signIn(email, password)
         
         // Get user role and redirect to appropriate subdomain
-        if (result.user) {
-          const userRole = await authService.getUserRole(result.user)
+        if (authResult.user) {
+          const userRole = await authService.getUserRole(authResult.user)
           const redirectUrl = authService.getSubdomainRedirectUrl(userRole)
           
           // If it's a subdomain URL, use window.location for cross-subdomain redirect
@@ -163,8 +189,10 @@ export default function Login() {
   }
 
   const handleForgotPassword = async () => {
-    if (!email) {
-      setError("Please enter your email address first.")
+    setFieldErrors({})
+    const result = forgotPasswordSchema.safeParse({ email })
+    if (!result.success) {
+      setFieldErrors({ email: result.error.errors[0]?.message || 'Please enter a valid email' })
       return
     }
     
@@ -195,14 +223,7 @@ export default function Login() {
 
   // Show loading spinner instead of white screen while checking auth
   if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
-          <p className="text-muted-foreground text-sm">Loading...</p>
-        </div>
-      </div>
-    )
+    return <AuthCheckingSpinner />
   }
 
   return (
@@ -270,47 +291,24 @@ export default function Login() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="form-field-default form-field-focus w-full px-4 py-3 text-base"
+                    className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${fieldErrors.email ? 'border-destructive' : ''}`}
                     placeholder="your@email.com"
                     required
                   />
+                  {fieldErrors.email && <p className="text-sm text-destructive mt-1">{fieldErrors.email}</p>}
                 </div>
 
                 {/* Password Field - Hidden in magic link mode */}
                 {!isMagicLinkMode && (
                   <>
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-muted-foreground mb-2">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="form-field-default form-field-focus w-full px-4 py-3 pr-12 text-base"
-                          placeholder="Your password"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-0 text-muted-foreground cursor-pointer text-sm p-1 flex items-center justify-center hover:text-foreground transition-colors"
-                        >
-                          {showPassword ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                    <PasswordInput
+                      value={password}
+                      onChange={setPassword}
+                      disabled={isLoading}
+                      variant="native"
+                      className="mb-6"
+                    />
+                    {fieldErrors.password && <p className="text-sm text-destructive -mt-4 mb-6">{fieldErrors.password}</p>}
 
                     {/* Remember Me & Forgot Password */}
                     <div className="flex justify-between items-center mb-8">
@@ -337,30 +335,18 @@ export default function Login() {
                 )}
 
                 {/* Login/Magic Link Button */}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-[14px] px-6 bg-brand-primary text-white border-0 rounded-lg text-base font-semibold cursor-pointer mb-6 disabled:opacity-70 disabled:cursor-not-allowed hover:bg-brand-secondary transition-colors flex items-center justify-center"
+                <AuthLoadingButton
+                  isLoading={isLoading}
+                  loadingText={isMagicLinkMode ? "Sending..." : "Signing In..."}
+                  variant="native"
+                  className="mb-6"
                 >
                   {isMagicLinkMode && <span style={{ marginRight: '8px' }}>✨</span>}
-                  {isLoading ? 
-                    (isMagicLinkMode ? "Sending..." : "Signing In...") : 
-                    (isMagicLinkMode ? "Send Magic Link" : "Sign In")
-                  }
-                </button>
+                  {isMagicLinkMode ? "Send Magic Link" : "Sign In"}
+                </AuthLoadingButton>
 
                 {/* Error/Success Message */}
-                {error && (
-                  <div className={`${error.startsWith('SUCCESS:') ? 'bg-success/10 text-success border border-success/20' : 'badge-error'} p-3 mb-6 text-center rounded-lg`}>
-                    {/* Transform email confirmation error to be more descriptive */}
-                    {error.startsWith('SUCCESS:') 
-                      ? error.replace('SUCCESS: ', '')
-                      : error.toLowerCase().includes('email not confirmed') 
-                      ? 'Please verify your email before accessing your account.'
-                      : error
-                    }
-                  </div>
-                )}
+                <AuthErrorAlert error={error || null} allowSuccessPrefix className="mb-6" />
 
                 {/* Toggle Magic Link Mode */}
                 <div className="text-center mb-6">

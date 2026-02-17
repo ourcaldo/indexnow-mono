@@ -196,7 +196,8 @@ export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceN
   return function (
     target: Object,
     propertyKey: string,
-    descriptor: TypedPropertyDescriptor<(...args: any[]) => Promise<T>>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Required by TypeScript decorator API: decorated methods have unknown parameter signatures
+    descriptor: TypedPropertyDescriptor<(...args: unknown[]) => Promise<T>>
   ) {
     const originalMethod = descriptor.value;
 
@@ -204,7 +205,8 @@ export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceN
       return descriptor;
     }
 
-    descriptor.value = async function (this: any, ...args: any[]): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Decorator must bind to unknown class context
+    descriptor.value = async function (this: unknown, ...args: unknown[]): Promise<T> {
       return ResilientOperationExecutor.execute(
         () => originalMethod.apply(this, args),
         {

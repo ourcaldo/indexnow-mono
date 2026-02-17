@@ -16,12 +16,27 @@ import {
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { type AuthenticatedRequest } from '@/lib/core/api-middleware';
+import { z } from 'zod';
+
+const createKeywordSchema = z.object({
+  keyword: z.string().min(1),
+  domain: z.string().min(1),
+  country: z.string().min(1),
+  device: z.string().optional(),
+  searchEngine: z.string().optional(),
+  targetUrl: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const deleteKeywordsSchema = z.object({
+  keywordIds: z.array(z.string()).min(1),
+});
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth: AuthenticatedRequest) => {
   const searchParams = request.nextUrl.searchParams;
   const options = {
-    page: parseInt(searchParams.get('page') || '1'),
-    limit: parseInt(searchParams.get('limit') || '10'),
+    page: Math.max(1, parseInt(searchParams.get('page') || '1') || 1),
+    limit: Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10') || 10)),
     domain: searchParams.get('domain') || undefined,
     country: searchParams.get('country') || undefined,
     device: searchParams.get('device') || undefined,
@@ -37,16 +52,16 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth: Au
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth: AuthenticatedRequest) => {
   const body = await request.json();
-  const { keyword, domain, country, device, searchEngine, targetUrl, tags } = body;
-
-  if (!keyword || !domain || !country) {
+  const parseResult = createKeywordSchema.safeParse(body);
+  if (!parseResult.success) {
     const validationError = await ErrorHandlingService.createError(
       ErrorType.VALIDATION,
-      'Missing required fields: keyword, domain, and country are required',
+      parseResult.error.errors[0]?.message || 'Invalid request body',
       { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400 }
     );
     return formatError(validationError);
   }
+  const { keyword, domain, country, device, searchEngine, targetUrl, tags } = parseResult.data;
 
   const result = await rankTrackingService.createKeyword(auth.userId, {
     keyword,
@@ -58,21 +73,21 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth: A
     tags,
   });
 
-  return formatSuccess(result);
+  return formatSuccess(result, 201);
 });
 
 export const DELETE = authenticatedApiWrapper(async (request: NextRequest, auth: AuthenticatedRequest) => {
   const body = await request.json();
-  const { keywordIds } = body;
-
-  if (!keywordIds || !Array.isArray(keywordIds)) {
+  const parseResult = deleteKeywordsSchema.safeParse(body);
+  if (!parseResult.success) {
     const validationError = await ErrorHandlingService.createError(
       ErrorType.VALIDATION,
-      'Invalid keywordIds: must be an array of keyword IDs',
+      parseResult.error.errors[0]?.message || 'Invalid request body',
       { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400 }
     );
     return formatError(validationError);
   }
+  const { keywordIds } = parseResult.data;
 
   const count = await rankTrackingService.deleteKeywords(keywordIds, auth.userId);
   return formatSuccess({ count });

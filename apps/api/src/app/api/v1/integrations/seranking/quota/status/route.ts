@@ -4,9 +4,8 @@
  * 
  * Provides current quota usage status and limits
  * 
- * Note: The indb_seranking_integration table doesn't exist in the current schema.
- * This endpoint returns a stub response indicating the integration is not configured.
- * TODO: Create database migration for seranking integration table.
+ * @stub Returns zeroed-out quota data. The indb_seranking_integration table
+ * does not exist in the current schema. Create database migration before enabling.
  */
 
 import { NextRequest } from 'next/server';
@@ -32,30 +31,24 @@ interface QuotaStatusData {
 }
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-    // TODO: Replace this stub with actual database query once indb_seranking_integration table is created
-    // For now, return unconfigured status
+    // STUB(M-13): Replace with actual database query once indb_seranking_integration table is created
+    ErrorHandlingService.logError(new Error('STUB: Quota status endpoint hit — integration not configured'), 'seranking-quota-status');
 
     const isConfigured = false;
 
     if (!isConfigured) {
-        // Return a stub response indicating integration is not configured
-        const stubResponse: QuotaStatusData = {
-            current_usage: 0,
-            quota_limit: 0,
-            quota_remaining: 0,
-            usage_percentage: 0,
-            reset_date: new Date().toISOString(),
-            is_approaching_limit: false,
-            is_quota_exceeded: false,
-            reset_interval: 'monthly',
-            days_until_reset: 30,
-            is_configured: false
-        };
-
-        return formatSuccess({
-            ...stubResponse,
-            message: 'SeRanking integration is not configured. Please set up the integration first.'
-        });
+        // Return 501 indicating integration is not implemented yet
+        const stubError = await ErrorHandlingService.createError(
+            ErrorType.BUSINESS_LOGIC,
+            'SeRanking integration is not configured. Please set up the integration first.',
+            {
+                severity: ErrorSeverity.LOW,
+                statusCode: 501,
+                userId: auth.userId,
+                endpoint: '/api/v1/integrations/seranking/quota/status'
+            }
+        );
+        return formatError(stubError);
     }
 
     // This code path is not reachable until integration table is created

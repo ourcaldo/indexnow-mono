@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminApiWrapper } from '@/lib/core/api-response-middleware';
+import { type AdminUser } from '@indexnow/auth';
+import { adminApiWrapper, createStandardError } from '@/lib/core/api-response-middleware';
 import {
   formatSuccess,
   formatError,
   apiRequestSchemas,
+  escapeLikePattern,
   type EnrichedActivityLog,
-  type GetActivityLogsResponse
+  type GetActivityLogsResponse,
+  type DbSecurityActivityLog,
+  ErrorType,
+  ErrorSeverity,
 } from '@indexnow/shared';
 import {
   SecureServiceRoleWrapper,
   SecureServiceRoleHelpers,
   supabaseAdmin,
-  type SecurityActivityLog
 } from '@indexnow/database';
+import { logger } from '@/lib/monitoring/error-handling';
+import { batchGetUserEmails } from '@/lib/core/batch-user-emails';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Validate query params
@@ -20,7 +26,12 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const validationResult = apiRequestSchemas.adminActivityQuery.safeParse(searchParams);
 
   if (!validationResult.success) {
-    return formatError('Invalid query parameters', 400, validationResult.error.format());
+    const error = await createStandardError(
+      ErrorType.VALIDATION,
+      'Invalid query parameters',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
+    );
+    return formatError(error);
   }
 
   const {
@@ -43,7 +54,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     operation: 'admin_get_activity_logs',
     reason: 'Admin fetching activity logs',
     source: 'admin/activity',
-    metadata: { days, limit, page, userId, searchTerm, eventType }
+    metadata: { days, limit, page, userId: userId ?? null, searchTerm: searchTerm ?? null, eventType }
   };
 
   // Fetch logs with count
@@ -71,9 +82,9 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       }
 
       if (searchTerm) {
-        // Search in event_type and user_agent
-        // Note: searching inside JSONB 'details' for description is possible but complex with simple OR
-        query = query.or(`event_type.ilike.%${searchTerm}%,user_agent.ilike.%${searchTerm}%`);
+        // Search in event_type and user_agent (escaped to prevent filter injection)
+        const escaped = escapeLikePattern(searchTerm);
+        query = query.or(`event_type.ilike.%${escaped}%,user_agent.ilike.%${escaped}%`);
       }
 
       const { data, error, count } = await query;
@@ -82,12 +93,12 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     }
   );
 
-  const logs = (logsResult.data || []) as SecurityActivityLog[];
+  const logs = (logsResult.data || []) as DbSecurityActivityLog[];
   const count = logsResult.count || 0;
 
   // Enrich logs with user data
   const userIds = Array.from(new Set(logs.map(l => l.user_id).filter(Boolean))) as string[];
-  const profileMap = new Map<string, any>();
+  const profileMap = new Map<string, { user_id: string; full_name: string | null }>();
   const emailMap = new Map<string, string>();
 
   if (userIds.length > 0) {
@@ -103,34 +114,20 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           const { data } = await supabaseAdmin
             .from('indb_auth_user_profiles')
             .select('user_id, full_name')
-            .in('user_id', userIds);
+            .in('user_id', userIds)
+            .limit(200);
           return data;
         }
       );
 
       profiles?.forEach(p => profileMap.set(p.user_id, p));
 
-      await Promise.all(userIds.map(async (uid) => {
-        try {
-          const email = await SecureServiceRoleWrapper.executeSecureOperation(
-            { ...operationContext, operation: 'admin_enrich_activity_email' },
-            {
-              table: 'auth.users',
-              operationType: 'select',
-              columns: ['email'],
-              whereConditions: { id: uid }
-            },
-            async () => {
-              const { data } = await supabaseAdmin.auth.admin.getUserById(uid);
-              return data?.user?.email || null;
-            }
-          );
-          if (email) {
-            emailMap.set(uid, email);
-          }
-        } catch (e) { /* ignore */ }
-      }));
-    } catch (e) { /* ignore */ }
+      // Batch fetch emails (single RPC call instead of N individual lookups)
+      const emails = await batchGetUserEmails(userIds);
+      emails.forEach((email, uid) => emailMap.set(uid, email));
+    } catch (e) {
+      logger.warn({ error: e instanceof Error ? e.message : String(e) }, 'Failed to enrich activity logs with user data');
+    }
   }
 
   const enrichedLogs: EnrichedActivityLog[] = logs.map(log => {
@@ -146,7 +143,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     }
 
     // Safely cast details (which replaces metadata/description)
-    const details = (log.details as Record<string, any>) || {};
+    const details = (log.details as Record<string, unknown>) || {};
 
     return {
       id: log.id,
@@ -160,19 +157,23 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       ip_address: log.ip_address,
       user_agent: log.user_agent,
       metadata: log.details, // Use details as metadata
-      success: details.success ?? true,
+      success: (details.success as boolean) ?? true,
       error_message: (details.errorMessage as string) || (details.error_message as string),
       created_at: log.created_at
     };
   });
 
+  const totalPages = Math.ceil(count / limit);
   const response: GetActivityLogsResponse = {
     logs: enrichedLogs,
     pagination: {
       page,
       limit,
       total: count,
-      totalPages: Math.ceil(count / limit)
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+      offset,
     }
   };
 

@@ -6,7 +6,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -47,7 +47,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/pause',
             reason: 'User attempting to pause subscription - ownership verification',
             metadata: { subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/pause' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'select' },
@@ -91,7 +91,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             source: 'paddle/subscription/pause',
             reason: 'User pausing their subscription',
             metadata: { subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/pause' },
-            ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+            ipAddress: getClientIP(request),
             userAgent: request.headers.get('user-agent') ?? undefined
         },
         { table: 'indb_payment_subscriptions', operationType: 'update' },

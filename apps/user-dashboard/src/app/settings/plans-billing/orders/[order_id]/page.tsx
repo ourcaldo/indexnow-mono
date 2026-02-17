@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { BILLING_ENDPOINTS, type Json, logger } from '@indexnow/shared'
-import { usePageViewLogger, supabaseBrowser } from '@indexnow/database'
+import { BILLING_ENDPOINTS, type Json, authenticatedFetch, logger } from '@indexnow/shared'
+import { usePageViewLogger } from '@indexnow/ui'
 import {
   Check,
   Copy,
@@ -72,23 +72,8 @@ export default function OrderSuccessPage() {
   useEffect(() => {
     const fetchOrderData = async () => {
       try {
-        const token =
-          (await supabaseBrowser.auth.getSession()).data.session
-            ?.access_token
-        if (!token) {
-          router.push('/auth/login')
-          return
-        }
-
-        const response = await fetch(
+        const response = await authenticatedFetch(
           BILLING_ENDPOINTS.TRANSACTION_BY_ID(order_id),
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include' // Essential for cross-subdomain authentication
-          }
         )
 
         if (!response.ok) {
@@ -210,7 +195,7 @@ export default function OrderSuccessPage() {
                   <h4 className="font-semibold text-foreground">Customer</h4>
                 </div>
 
-                <div className="border border-border rounded-xl p-4 grid grid-cols-2 gap-4">
+                <div className="border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Left column */}
                   <div>
                     <p className="text-foreground font-medium">

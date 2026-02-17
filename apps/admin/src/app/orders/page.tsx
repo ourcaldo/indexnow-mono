@@ -16,14 +16,15 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Checkbox } from '@indexnow/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Checkbox, ErrorState } from '@indexnow/ui'
 import { useToast } from '@indexnow/ui'
-import { supabaseBrowser } from '@indexnow/auth'
+
 import { 
   formatCurrency, 
   formatDate, 
   formatRelativeTime, 
   ADMIN_ENDPOINTS,
+  authenticatedFetch,
   type AdminOrdersResponse,
   type AdminOrderTransaction,
   type AdminOrderSummary
@@ -69,11 +70,6 @@ export default function AdminOrdersPage() {
       setLoading(true)
       setError(null)
 
-      const session = await supabaseBrowser.auth.getSession()
-      if (!session.data.session?.access_token) {
-        throw new Error('Not authenticated')
-      }
-
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '25'
@@ -83,12 +79,7 @@ export default function AdminOrdersPage() {
       if (customerSearch) params.append('customer', customerSearch)
       if (packageFilter && packageFilter !== 'all') params.append('package_id', packageFilter)
 
-      const response = await fetch(`${ADMIN_ENDPOINTS.ORDERS}?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${session.data.session.access_token}`
-        },
-        credentials: 'include' // Essential for cross-subdomain authentication
-      })
+      const response = await authenticatedFetch(`${ADMIN_ENDPOINTS.ORDERS}?${params}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch orders')
@@ -163,14 +154,12 @@ export default function AdminOrdersPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Orders</h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={loadOrders} className="bg-primary hover:bg-primary/90 text-white">
-            Try Again
-          </Button>
-        </div>
+        <ErrorState
+          title="Error Loading Orders"
+          message={error}
+          onRetry={loadOrders}
+          showHomeButton
+        />
       </div>
     )
   }
@@ -309,6 +298,7 @@ export default function AdminOrdersPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -347,7 +337,7 @@ export default function AdminOrdersPage() {
                   <TableCell>
                     <div>
                       <div className="font-medium text-foreground">{order.user.full_name}</div>
-                      <div className="text-sm text-muted-foreground">{order.user.email || getSafeMetadata(order.metadata).customer_info?.email || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground truncate max-w-[200px]">{order.user.email || getSafeMetadata(order.metadata).customer_info?.email || 'N/A'}</div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -389,6 +379,7 @@ export default function AdminOrdersPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           {/* Pagination */}
           {ordersData?.pagination && ordersData.pagination.total_pages > 1 && (

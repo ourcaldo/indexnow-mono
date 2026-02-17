@@ -108,7 +108,8 @@ export class KeywordBankService implements IKeywordBankService {
             .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
             .in('keyword', normalizedKeywords)
             .eq('country_id', countryCode.toLowerCase())
-            .eq('language_code', languageCode.toLowerCase());
+            .eq('language_code', languageCode.toLowerCase())
+            .limit(1000);
 
           if (error) {
             logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching keyword data batch');
@@ -318,7 +319,8 @@ export class KeywordBankService implements IKeywordBankService {
             .upsert(insertData, {
               onConflict: 'keyword,country_id,language_code'
             })
-            .select();
+            .select()
+            .limit(1000);
 
           return { data, error };
         }
@@ -699,7 +701,8 @@ export class KeywordBankService implements IKeywordBankService {
           const { data: staleRecords, error: selectError } = await supabaseAdmin
             .from('indb_keyword_bank')
             .select('keyword')
-            .lt('data_updated_at', cutoffDate.toISOString());
+            .lt('data_updated_at', cutoffDate.toISOString())
+            .limit(5000);
 
           if (selectError) {
             throw ErrorHandlingService.createError({ message: `Error selecting stale records: ${selectError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
@@ -889,7 +892,8 @@ export class KeywordBankService implements IKeywordBankService {
             .upsert(insertData, {
               onConflict: 'keyword,country_id,language_code'
             })
-            .select();
+            .select()
+            .limit(1000);
 
           return { data: upsertResult, error: upsertError };
         }
@@ -976,6 +980,8 @@ export class KeywordBankService implements IKeywordBankService {
 
           if (limit) {
             query = query.limit(limit);
+          } else {
+            query = query.limit(1000);
           }
 
           const { data: rows, error } = await query;

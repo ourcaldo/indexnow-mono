@@ -1,6 +1,6 @@
 import { SecureServiceRoleWrapper, UpdateDashboardNotification, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { ErrorType, type StructuredError } from '@indexnow/shared';
+import { ErrorType, type StructuredError , getClientIP} from '@indexnow/shared';
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
@@ -30,7 +30,7 @@ export const POST = authenticatedApiWrapper(async (
           endpoint: '/api/v1/notifications/dismiss/[id]',
           method: 'POST'
         },
-        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+        ipAddress: getClientIP(request) ?? undefined,
         userAgent: request.headers.get('user-agent') || undefined
       },
       { table: 'indb_notifications_dashboard', operationType: 'update' },

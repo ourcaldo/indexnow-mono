@@ -12,8 +12,9 @@ import {
   XCircle,
   type LucideIcon
 } from 'lucide-react'
-import { ADMIN_ENDPOINTS, authService, logger } from '@indexnow/shared'
-import { useAdminDashboardLogger } from '@indexnow/database'
+import Link from 'next/link'
+import { ADMIN_ENDPOINTS, authenticatedFetch, logger } from '@indexnow/shared'
+import { useAdminDashboardLogger, AdminPageSkeleton } from '@indexnow/ui'
 
 interface DashboardStats {
   total_users: number
@@ -34,22 +35,7 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Get current session token from centralized authService
-      const session = await authService.getSession()
-      const token = session?.access_token
-
-      if (!token) {
-        logger.error('No authentication session found')
-        return
-      }
-
-      const response = await fetch(ADMIN_ENDPOINTS.DASHBOARD, {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.DASHBOARD)
 
       if (response.ok) {
         const data = await response.json()
@@ -71,11 +57,7 @@ export default function AdminDashboard() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-border border-t-primary"></div>
-      </div>
-    )
+    return <AdminPageSkeleton />
   }
 
   const statCards = [
@@ -145,27 +127,27 @@ export default function AdminDashboard() {
       <div className="bg-background rounded-lg border border-border p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a
+          <Link
             href="/users"
             className="flex items-center p-4 rounded-lg border border-border hover:bg-secondary transition-colors"
           >
             <Users className="h-5 w-5 text-accent mr-3" />
             <span className="text-sm font-medium text-foreground">Manage Users</span>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/activity"
             className="flex items-center p-4 rounded-lg border border-border hover:bg-secondary transition-colors"
           >
             <Activity className="h-5 w-5 text-success mr-3" />
             <span className="text-sm font-medium text-foreground">View Logs</span>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/settings/site"
             className="flex items-center p-4 rounded-lg border border-border hover:bg-secondary transition-colors"
           >
             <Server className="h-5 w-5 text-warning mr-3" />
             <span className="text-sm font-medium text-foreground">Site Settings</span>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

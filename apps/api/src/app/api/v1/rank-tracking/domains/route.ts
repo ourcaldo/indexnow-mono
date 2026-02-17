@@ -8,8 +8,8 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -28,58 +28,67 @@ interface DomainCounts {
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
     try {
-        const domains = await SecureServiceRoleWrapper.executeWithUserSession(
+        const { searchParams } = new URL(request.url);
+        const parsedPage = parseInt(searchParams.get('page') || '1');
+        const parsedLimit = parseInt(searchParams.get('limit') || '50');
+        const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage);
+        const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(200, Math.max(1, parsedLimit));
+        const offset = (page - 1) * limit;
+
+        const result = await SecureServiceRoleWrapper.executeWithUserSession(
             auth.supabase,
             {
                 userId: auth.userId,
                 operation: 'get_user_domains',
                 source: 'rank-tracking/domains',
                 reason: 'User fetching their domains with keyword counts',
-                metadata: { endpoint: '/api/v1/rank-tracking/domains', method: 'GET' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                metadata: { endpoint: '/api/v1/rank-tracking/domains', method: 'GET', page, limit },
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_keyword_domains', operationType: 'select' },
             async (db) => {
-                // 1. Fetch domains
-                const { data: domainList, error: domainError } = await db
+                // 1. Fetch domains with pagination
+                const { data: domainList, error: domainError, count } = await db
                     .from('indb_keyword_domains')
-                    .select('*')
+                    .select('*', { count: 'exact' })
                     .eq('user_id', auth.userId)
                     .eq('is_active', true)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false })
+                    .range(offset, offset + limit - 1);
 
                 if (domainError) throw new Error(`Failed to fetch domains: ${domainError.message}`);
 
-                // 2. Fetch keyword counts by domain (denormalized string match)
-                // Since we can't join, we fetch all keywords for user and count in memory
-                // (assuming user doesn't have 100k+ keywords, which quota usually limits)
-                const { data: keywords, error: kwError } = await db
-                    .from('indb_rank_keywords')
-                    .select('domain')
-                    .eq('user_id', auth.userId)
-                    .eq('is_active', true);
+                // 2. Fetch keyword counts by domain via RPC (SQL GROUP BY instead of loading all rows)
+                const { data: keywordCounts, error: kwError } = await (supabaseAdmin.rpc as Function)(
+                    'get_domain_keyword_counts', { p_user_id: auth.userId }
+                );
 
                 if (kwError) throw new Error(`Failed to fetch keyword counts: ${kwError.message}`);
 
-                const counts: DomainCounts = {};
-                if (keywords) {
-                    keywords.forEach(kw => {
-                        if (kw.domain) {
-                            counts[kw.domain] = (counts[kw.domain] || 0) + 1;
-                        }
-                    });
-                }
+                const counts: DomainCounts = keywordCounts || {};
+
+                const total = count || 0;
 
                 // 3. Merge counts
-                return (domainList || []).map(d => ({
-                    ...d,
-                    keyword_count: [{ count: counts[d.domain_name] || 0 }] // Match expected format for compatibility
-                }));
+                return {
+                    domains: (domainList || []).map(d => ({
+                        ...d,
+                        keyword_count: [{ count: counts[d.domain_name] || 0 }]
+                    })),
+                    pagination: {
+                        page,
+                        limit,
+                        total,
+                        totalPages: Math.ceil(total / limit),
+                        hasNextPage: total > offset + limit,
+                        hasPrevPage: page > 1
+                    }
+                };
             }
         );
 
-        return formatSuccess({ data: domains || [] });
+        return formatSuccess({ data: result.domains, pagination: result.pagination });
     } catch (error) {
         const structuredError = await ErrorHandlingService.createError(
             ErrorType.DATABASE,
@@ -115,7 +124,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/domains',
                 reason: 'Checking user subscription before domain creation',
                 metadata: { endpoint: '/api/v1/rank-tracking/domains', operation: 'create_domain' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -154,7 +163,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/domains',
                 reason: 'User creating a new domain for rank tracking',
                 metadata: { domainName: cleanDomain, displayName: display_name || cleanDomain },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_keyword_domains', operationType: 'insert' },

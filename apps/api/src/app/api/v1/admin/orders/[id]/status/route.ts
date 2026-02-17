@@ -6,12 +6,79 @@ import { ActivityLogger } from '@/lib/monitoring/activity-logger'
 import { logger } from '@/lib/monitoring/error-handling'
 import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 import { type Json, type AdminOrderTransaction } from '@indexnow/shared'
+import { z } from 'zod'
 
-// Type aliases for types not exported from @indexnow/database
-type TransactionRow = any;
-type TransactionMetadata = any;
-type UpdateTransaction = any;
-type UpdateUserProfile = any;
+/**
+ * TODO (#65): This route performs multi-step writes across separate executeSecureOperation calls:
+ *   1. Update transaction status (indb_payment_transactions)
+ *   2. Activate user plan (indb_auth_user_profiles) — only on 'completed'
+ *   3. Manual rollback of step 1 on step 2 failure (fragile, best-effort)
+ * These should be wrapped in a single Postgres RPC for atomicity.
+ * Blocked by schema discrepancies:
+ *   - Route uses 'transaction_status' column but schema has 'status'
+ *   - Route uses verified_by/verified_at/processed_at columns not in schema
+ *   - Route uses subscribed_at/expires_at but schema has subscription_start_date/subscription_end_date
+ * Resolve schema alignment first, then create activate_order_plan_service RPC.
+ */
+
+/** Supabase join result for payment transaction with package relation */
+interface TransactionRow {
+  id: string;
+  user_id: string;
+  package_id: string | null;
+  gateway_id: string | null;
+  transaction_status: string;
+  amount: number;
+  currency: string;
+  payment_method: string | null;
+  proof_url: string | null;
+  transaction_id: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  processed_at: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  package: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    pricing_tiers: Json;
+    currency: string | null;
+    billing_period: string | null;
+    features: Json;
+  } | null;
+  gateway: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+}
+
+interface TransactionMetadata {
+  billing_period?: string;
+  [key: string]: unknown;
+}
+
+interface UpdateTransaction {
+  transaction_status?: string;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  processed_at?: string | null;
+  notes?: string | null;
+  updated_at?: string;
+}
+
+interface UpdateUserProfile {
+  package_id?: string | null;
+  subscribed_at?: string;
+  expires_at?: string;
+  daily_quota_used?: number;
+  daily_quota_reset_date?: string;
+  updated_at?: string;
+}
 
 // Helper function to calculate expiry date based on billing period
 function calculateExpiryDate(billingPeriod: string): Date {
@@ -68,7 +135,7 @@ async function activateUserPlan(transaction: TransactionRow, adminUserId: string
       operationType: 'update',
       columns: Object.keys(updateData),
       whereConditions: { user_id: transaction.user_id },
-      data: updateData
+      data: updateData as unknown as Json
     },
     async () => {
       const { error } = await supabaseAdmin
@@ -105,6 +172,11 @@ async function activateUserPlan(transaction: TransactionRow, adminUserId: string
   }
 }
 
+const orderStatusSchema = z.object({
+  status: z.enum(['completed', 'failed']),
+  notes: z.string().optional(),
+})
+
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
@@ -117,17 +189,15 @@ export const PATCH = adminApiWrapper(async (
 
   // Parse request body
   const body = await request.json()
-  const { status, notes } = body
-
-  // Validate status
-  const validStatuses = ['completed', 'failed']
-  if (!validStatuses.includes(status)) {
+  const parseResult = orderStatusSchema.safeParse(body)
+  if (!parseResult.success) {
     return formatError(await createStandardError(
       ErrorType.VALIDATION,
-      'Invalid status. Must be "completed" or "failed"',
-      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { status, validStatuses } }
+      parseResult.error.errors[0]?.message || 'Invalid request body',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
     ))
   }
+  const { status, notes } = parseResult.data
 
   // Get the current transaction to check current status using secure wrapper
   const transactionContext = {
@@ -240,7 +310,7 @@ export const PATCH = adminApiWrapper(async (
     throw new Error('Failed to retrieve updated transaction')
   }
 
-  const updatedTransaction = updateResult as any // We know it has joined props, will map manually
+  const updatedTransaction = updateResult as Record<string, unknown> // We know it has joined props, will map manually
 
   // Get updated user profile using secure wrapper
   const updatedUserProfileContext = {
@@ -358,8 +428,8 @@ export const PATCH = adminApiWrapper(async (
       email: 'N/A', // Email not available in profile join
       created_at: updatedUserProfile.created_at || new Date().toISOString(),
       package_id: updatedUserProfile.package_id,
-      subscribed_at: (updatedUserProfile as any).subscription_start_date || (updatedUserProfile as any).subscribed_at,
-      expires_at: (updatedUserProfile as any).subscription_end_date || (updatedUserProfile as any).expires_at,
+      subscribed_at: (updatedUserProfile as Record<string, unknown>).subscription_start_date || (updatedUserProfile as Record<string, unknown>).subscribed_at,
+      expires_at: (updatedUserProfile as Record<string, unknown>).subscription_end_date || (updatedUserProfile as Record<string, unknown>).expires_at,
       phone_number: updatedUserProfile.phone_number
     },
     verifier: verifierProfile ? {
@@ -400,7 +470,7 @@ export const PATCH = adminApiWrapper(async (
           const { error } = await supabaseAdmin
             .from('indb_payment_transactions')
             .update({
-              transaction_status: 'proof_uploaded',
+              transaction_status: currentTransaction.transaction_status,
               verified_by: null,
               verified_at: null,
               processed_at: null,

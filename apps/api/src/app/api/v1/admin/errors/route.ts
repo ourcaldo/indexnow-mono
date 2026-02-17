@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { escapeLikePattern } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface ErrorLog {
@@ -83,10 +84,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 page,
                 limit,
                 filters: {
-                    severity,
-                    errorType,
-                    userId,
-                    status,
+                    severity: severity ?? null,
+                    errorType: errorType ?? null,
+                    userId: userId ?? null,
+                    status: status ?? null,
                     hasSearch: !!search
                 }
             }
@@ -117,7 +118,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
             }
 
             if (endpointFilter) {
-                query = query.ilike('endpoint', `%${endpointFilter}%`);
+                query = query.ilike('endpoint', `%${escapeLikePattern(endpointFilter)}%`);
             }
 
             if (dateFrom) {
@@ -137,9 +138,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
                 query = query.is('acknowledged_at', null).is('resolved_at', null);
             }
 
-            // Full-text search in message fields
+            // Full-text search in message fields (escaped to prevent filter injection)
             if (search) {
-                query = query.or(`message.ilike.%${search}%,user_message.ilike.%${search}%`);
+                const escaped = escapeLikePattern(search);
+                query = query.or(`message.ilike.%${escaped}%,user_message.ilike.%${escaped}%`);
             }
 
             // Apply sorting

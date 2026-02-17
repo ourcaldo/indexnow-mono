@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from '@indexnow/ui'
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, ErrorState } from '@indexnow/ui'
 import { 
   ArrowLeft,
   Activity,
@@ -27,11 +27,11 @@ interface ActivityLog {
   target_id?: string
   ip_address?: string
   user_agent?: string
-  device_info?: any
-  location_data?: any
+  device_info?: DeviceInfo
+  location_data?: LocationData
   success: boolean
   error_message?: string
-  metadata?: any
+  metadata?: ActivityMetadata
   created_at: string
 }
 
@@ -154,7 +154,7 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4">
-              <Link href="/backend/admin/users">
+              <Link href="/users">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Users
@@ -175,7 +175,7 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4">
-              <Link href="/backend/admin/users">
+              <Link href="/users">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Users
@@ -183,17 +183,14 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
               </Link>
             </div>
             <h1 className="text-2xl font-semibold text-foreground">User Activity History</h1>
-            <Card className="mt-4">
-              <CardContent className="p-6">
-                <p className="text-destructive">Error: {error}</p>
-                <Button 
-                  onClick={fetchUserActivity}
-                  className="mt-4 bg-primary hover:bg-primary/90 text-white"
-                >
-                  Retry
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="mt-4">
+              <ErrorState
+                title="Failed to load user activity"
+                message={error}
+                onRetry={fetchUserActivity}
+                variant="inline"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -206,14 +203,14 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <Link href="/backend/admin/users">
+            <Link href="/users">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Users
               </Button>
             </Link>
             {resolvedParams?.id && (
-              <Link href={`/backend/admin/users/${resolvedParams.id}`}>
+              <Link href={`/users/${resolvedParams.id}`}>
                 <Button variant="outline" size="sm">
                   <User className="h-4 w-4 mr-2" />
                   View User Profile
@@ -315,7 +312,7 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
                         {/* Timestamp */}
-                        <div className="flex items-center gap-2 min-w-[140px]">
+                        <div className="flex items-center gap-2 sm:min-w-[140px]">
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           <span className="text-foreground text-sm font-medium">
                             {formatDate(log.created_at)}
@@ -345,7 +342,7 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
                         </div>
 
                         {/* IP and Device */}
-                        <div className="flex items-center gap-4 min-w-[180px] text-muted-foreground text-xs">
+                        <div className="flex items-center gap-4 sm:min-w-[180px] text-muted-foreground text-xs">
                           {log.ip_address && (
                             <div className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
@@ -359,7 +356,7 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
                       </div>
 
                       {/* Link to Activity Detail */}
-                      <Link href={`/backend/admin/activity/${log.id}`}>
+                      <Link href={`/activity/${log.id}`}>
                         <Button 
                           variant="ghost" 
                           size="sm"

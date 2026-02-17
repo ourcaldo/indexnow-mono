@@ -1,9 +1,17 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
+
+const changePackageSchema = z.object({
+  packageId: z.string().uuid('Invalid package ID format'),
+  reason: z.string().max(500).optional(),
+  effectiveDate: z.string().datetime({ message: 'Invalid date format' }).optional(),
+  notifyUser: z.boolean().optional().default(false),
+}).strict();
 
 export const POST = adminApiWrapper(async (
   request: NextRequest,
@@ -15,15 +23,17 @@ export const POST = adminApiWrapper(async (
   }
   const { id: userId } = await context.params
   const body = await request.json()
-  const { packageId, reason, effectiveDate, notifyUser } = body
 
-  if (!packageId) {
+  const validation = changePackageSchema.safeParse(body);
+  if (!validation.success) {
     return formatError(await createStandardError(
       ErrorType.VALIDATION,
-      'Package ID is required',
-      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { field: 'packageId' } }
+      validation.error.issues[0]?.message || 'Invalid request body',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
     ))
   }
+
+  const { packageId, reason, effectiveDate, notifyUser } = validation.data;
 
   const packageResult = await SecureServiceRoleWrapper.executeSecureOperation(
     {
@@ -36,7 +46,7 @@ export const POST = adminApiWrapper(async (
         packageId: packageId,
         endpoint: '/api/v1/admin/users/[id]/change-package'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     {
@@ -51,6 +61,7 @@ export const POST = adminApiWrapper(async (
         .select('id, name, slug')
         .eq('id', packageId)
         .eq('is_active', true)
+        .is('deleted_at', null)
         .single()
       return { data, error }
     }
@@ -77,7 +88,7 @@ export const POST = adminApiWrapper(async (
         newPackageId: packageId,
         endpoint: '/api/v1/admin/users/[id]/change-package'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     {
@@ -108,9 +119,18 @@ export const POST = adminApiWrapper(async (
 
   if (userError || !currentUser) {
     return formatError(await createStandardError(
-      ErrorType.AUTHORIZATION,
+      ErrorType.NOT_FOUND,
       'User not found',
       { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
+    ))
+  }
+
+  // Guard: prevent assigning the same package the user already has
+  if (currentUser.package_id === packageId) {
+    return formatError(await createStandardError(
+      ErrorType.VALIDATION,
+      'User already has this package assigned',
+      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { userId, packageId } }
     ))
   }
 
@@ -130,7 +150,7 @@ export const POST = adminApiWrapper(async (
         resetQuota: true,
         endpoint: '/api/v1/admin/users/[id]/change-package'
       },
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+      ipAddress: getClientIP(request),
       userAgent: request.headers.get('user-agent') || undefined
     },
     {

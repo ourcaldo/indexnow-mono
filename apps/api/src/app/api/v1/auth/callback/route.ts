@@ -1,6 +1,6 @@
-﻿import { createServerClient } from '@supabase/ssr';
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createServerClient } from '@indexnow/database';
 import { AppConfig } from '@indexnow/shared';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import { logger } from '@/lib/monitoring/error-handling';
@@ -52,25 +52,8 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         const baseDomain = getBaseDomain();
 
         const supabase = createServerClient(
-            AppConfig.supabase.url,
-            AppConfig.supabase.anonKey,
-            {
-                cookies: {
-                    getAll() {
-                        return cookieStore.getAll();
-                    },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            // Add cross-subdomain support to Supabase cookies
-                            const cookieOptions = {
-                                ...options,
-                                ...(baseDomain && { domain: `.${baseDomain}` })
-                            };
-                            cookieStore.set(name, value, cookieOptions);
-                        });
-                    },
-                },
-            }
+            cookieStore,
+            baseDomain ? { domain: `.${baseDomain}` } : undefined
         );
 
         try {

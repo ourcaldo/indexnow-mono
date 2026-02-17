@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type DbRankKeywordRow } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type DbRankKeywordRow , getClientIP} from '@indexnow/shared';
 import {
     authenticatedApiWrapper,
     formatSuccess,
@@ -48,7 +48,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/check-rank',
                 reason: 'Fetching keyword details to perform manual rank check',
                 metadata: { keywordId: keyword_id },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'select' },
@@ -83,7 +83,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/check-rank',
                 reason: 'Checking user daily quota before rank check',
                 metadata: { keywordId: keyword_id },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -135,7 +135,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             deviceType
         );
 
-        // Save result to database (Two steps: Update current, Insert history)
+        // Save result to database atomically (update keyword + insert history + increment quota)
         await SecureServiceRoleWrapper.executeSecureOperation(
             {
                 userId: auth.userId,
@@ -143,7 +143,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/check-rank',
                 reason: 'Saving rank check result after manual check',
                 metadata: { keywordId: keyword_id, position: rankResult.position },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'update' },
@@ -151,46 +151,19 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 const now = new Date().toISOString();
                 const checkDate = now.split('T')[0];
 
-                // 1. Update latest status in indb_rank_keywords
-                const { error: updateError } = await supabaseAdmin
-                    .from('indb_rank_keywords')
-                    .update({
-                        last_checked: now,
-                        position: rankResult.position,
-                        // previous_position is manually managed or handled by DB trigger? 
-                        // For now we just update position. Ideally we'd read old position first.
-                        // But avoiding extra read for speed.
-                    })
-                    .eq('id', keyword_id);
-
-                if (updateError) throw new Error(`Failed to update ranking: ${updateError.message}`);
-
-                // 2. Insert into history table (indb_keyword_rankings)
-                await supabaseAdmin
-                    .from('indb_keyword_rankings')
-                    .insert({
-                        keyword_id: keyword_id,
-                        position: rankResult.position,
-                        url: rankResult.url,
-                        check_date: checkDate,
-                        device_type: keywordData.device,
-                        country_id: keywordData.country // store ISO code string if column supports it, or null?
-                        // Note: indb_keyword_rankings.country_id might expect UUID of country table?
-                        // Schema says: country_id: string | null. 
-                        // If it expects UUID, we have a problem because we only have ISO code.
-                        // However, indb_rank_keywords uses ISO code. 
-                        // Let's assume for history we can store null or ISO if it accepts string.
-                        // If it's a FK, we might fail here.
-                        // Safe bet: Leave country_id null for now to avoid FK error, 
-                        // or try to find ID from ISO code? Too expensive.
+                // Atomic RPC: updates keyword position + inserts ranking + increments quota
+                const { error: rpcError } = await (supabaseAdmin.rpc as Function)(
+                    'save_rank_check_result_service', {
+                        p_keyword_id: keyword_id,
+                        p_user_id: auth.userId,
+                        p_position: rankResult.position,
+                        p_url: rankResult.url,
+                        p_check_date: checkDate,
+                        p_device_type: keywordData.device,
+                        p_country_iso: keywordData.country || null
                     });
 
-                // 3. Increment quota usage
-                await supabaseAdmin
-                    .from('indb_auth_user_profiles')
-                    .update({ daily_quota_used: (quotaInfo?.daily_quota_used || 0) + 1 })
-                    .eq('user_id', auth.userId);
-
+                if (rpcError) throw new Error(`Failed to save rank result: ${rpcError.message}`);
                 return null;
             }
         );
@@ -233,7 +206,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/check-rank',
                 reason: 'User checking if rank tracker API is configured and quota availability',
                 metadata: { serviceName: 'custom_tracker' },
-                ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim(),
+                ipAddress: getClientIP(request),
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_site_integration', operationType: 'select' },

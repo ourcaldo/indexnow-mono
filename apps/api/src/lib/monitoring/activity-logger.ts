@@ -1,13 +1,19 @@
 /**
- * Comprehensive Activity Logging Service
- * Tracks all user activities across the application
+ * Server-Side Activity Logging Service
+ * Writes directly to database via Supabase service role.
+ * For client-side logging, use `useActivityLogger` hook from `@indexnow/ui`.
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { InsertSecurityActivityLog, Json } from '@indexnow/shared';
+import { InsertSecurityActivityLog, Json, ActivityEventTypes } from '@indexnow/shared';
 import { logger } from './error-handling';
 import { getRequestInfo, formatDeviceInfo, formatLocationData, DeviceInfo, LocationData } from '@indexnow/shared';
 import { NextRequest } from 'next/server';
+
+export { ActivityEventTypes };
+
+/** @deprecated Use `ActivityEventTypes` from `@indexnow/shared` directly */
+export const ServerActivityEventTypes = ActivityEventTypes;
 
 export interface ActivityLogData {
   userId: string;
@@ -42,34 +48,7 @@ export interface ActivityLogEntry {
   created_at: string;
 }
 
-export const ActivityEventTypes = {
-  LOGIN: 'login',
-  LOGOUT: 'logout',
-  REGISTER: 'register',
-  PASSWORD_RESET: 'password_reset',
-  PASSWORD_CHANGE: 'password_change',
-  PROFILE_UPDATE: 'profile_update',
-  SETTINGS_CHANGE: 'settings_change',
-  JOB_CREATE: 'job_create',
-  JOB_UPDATE: 'job_update',
-  JOB_DELETE: 'job_delete',
-  API_CALL: 'api_call',
-  DASHBOARD_VIEW: 'dashboard_view',
-  PAGE_VIEW: 'page_view',
-  USER_MANAGEMENT: 'user_management',
-  USER_SUSPEND: 'user_suspend',
-  USER_UNSUSPEND: 'user_unsuspend',
-  USER_PASSWORD_RESET: 'user_password_reset',
-  USER_PROFILE_UPDATE: 'user_profile_update',
-  USER_ROLE_CHANGE: 'user_role_change',
-  USER_QUOTA_RESET: 'user_quota_reset',
-  USER_PACKAGE_CHANGE: 'user_package_change',
-  USER_SUBSCRIPTION_EXTEND: 'user_subscription_extend',
-  USER_SECURITY_VIEW: 'user_security_view',
-  USER_ACTIVITY_VIEW: 'user_activity_view'
-} as const;
-
-export class ActivityLogger {
+export class ServerActivityLogger {
   static async logActivity(data: ActivityLogData): Promise<string | null> {
     try {
       let { ipAddress, userAgent, deviceInfo, locationData } = data;
@@ -172,3 +151,9 @@ export class ActivityLogger {
     });
   }
 }
+
+/**
+ * Backward-compatible alias. All API-internal imports use ActivityLogger,
+ * which is now the ServerActivityLogger (direct DB writes).
+ */
+export const ActivityLogger = ServerActivityLogger

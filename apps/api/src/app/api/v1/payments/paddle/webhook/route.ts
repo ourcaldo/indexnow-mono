@@ -13,6 +13,7 @@ import crypto from 'crypto';
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import {
     processSubscriptionCreated,
     processSubscriptionUpdated,
@@ -58,6 +59,7 @@ async function getWebhookSecretFromDatabase(): Promise<string> {
                 .select('api_credentials')
                 .eq('slug', 'paddle')
                 .eq('is_active', true)
+                .is('deleted_at', null)
                 .single();
 
             if (error && error.code !== 'PGRST116') throw error;
@@ -79,7 +81,7 @@ async function getWebhookSecretFromDatabase(): Promise<string> {
     return webhookSecret;
 }
 
-export const POST = async (request: NextRequest) => {
+export const POST = publicApiWrapper(async (request: NextRequest) => {
     try {
         const rawBody = await request.text();
         const signature = request.headers.get('paddle-signature');
@@ -224,7 +226,7 @@ export const POST = async (request: NextRequest) => {
             { status: 500 }
         );
     }
-};
+});
 
 async function verifyPaddleSignature(rawBody: string, signature: string): Promise<SignatureVerificationResult> {
     // CRITICAL: Load webhook secret from DATABASE (not environment variables)

@@ -1,7 +1,8 @@
 import { SecureServiceRoleWrapper, supabaseAdmin, type Database } from '@indexnow/database';
 import { NextRequest } from 'next/server';
-import { adminApiWrapper } from '@/lib/core/api-response-middleware';
-import { formatSuccess } from '@indexnow/shared';
+import { z } from 'zod';
+import { adminApiWrapper, formatError, createStandardError } from '@/lib/core/api-response-middleware';
+import { formatSuccess, ErrorType, ErrorSeverity } from '@indexnow/shared';
 
 type SystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Row'];
 type SystemErrorLogUpdate = Database['public']['Tables']['indb_system_error_logs']['Update'];
@@ -81,6 +82,10 @@ export const GET = adminApiWrapper(async (
   return formatSuccess(result);
 });
 
+const errorActionSchema = z.object({
+  action: z.enum(['resolve', 'acknowledge']),
+});
+
 /**
  * PATCH /api/v1/admin/errors/[id]
  * Mark error as resolved or acknowledged
@@ -96,11 +101,15 @@ export const PATCH = adminApiWrapper(async (
   const { id: errorId } = await context.params;
   const endpoint = new URL(request.url).pathname;
   const body = await request.json();
-  const { action } = body; // 'resolve' or 'acknowledge'
-
-  if (!action || !['resolve', 'acknowledge'].includes(action)) {
-    throw new Error('Invalid action. Must be "resolve" or "acknowledge"');
+  const parseResult = errorActionSchema.safeParse(body);
+  if (!parseResult.success) {
+    return formatError(await createStandardError(
+      ErrorType.VALIDATION,
+      parseResult.error.errors[0]?.message || 'Invalid request body',
+      { statusCode: 400, severity: ErrorSeverity.LOW }
+    ));
   }
+  const { action } = parseResult.data;
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation(
     {
