@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireServerSuperAdminAuth, type AdminUser } from '@indexnow/auth';
+import { requireServerSuperAdminAuth } from '@indexnow/auth/server';
+import { type AdminUser } from '@indexnow/auth';
 import { ErrorHandlingService, logger } from '../monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Json , getClientIP} from '@indexnow/shared';
 import { formatSuccess, formatError, type ApiSuccessResponse, type ApiErrorResponse } from './api-response-formatter';

@@ -12,8 +12,8 @@ import {
   SeRankingError,
   QuotaStatus,
   HealthCheckResult,
-  logger
-} from '@indexnow/shared';
+} from '../types/SeRankingTypes';
+import { logger } from '@indexnow/shared';
 
 // Error handling configuration
 export interface ErrorHandlingConfig {

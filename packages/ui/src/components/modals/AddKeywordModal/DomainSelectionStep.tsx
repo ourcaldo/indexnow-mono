@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { RANK_TRACKING_ENDPOINTS, type Domain } from '@indexnow/shared'
-import { apiRequest } from '@indexnow/database'
+import { apiRequest } from '@indexnow/database/client'
 import { useApiError } from '../../../hooks'
 import { 
   Plus, 

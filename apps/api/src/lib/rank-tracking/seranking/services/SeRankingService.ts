@@ -14,11 +14,13 @@ import {
   BulkProcessingJob,
   SeRankingError,
   SeRankingErrorType,
+} from '../types/SeRankingTypes';
+import {
   KeywordBankEntity,
   KeywordBankQueryResult,
   CacheStats,
-  QueueStats
-} from '@indexnow/shared';
+} from '../types/KeywordBankTypes';
+import { QueueStats } from '../types/EnrichmentJobTypes';
 
 import {
   ISeRankingService,

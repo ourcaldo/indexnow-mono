@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Download } from 'lucide-react'
 import { AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate, logger } from '@indexnow/shared'
 import { authService, authenticatedFetch } from '@indexnow/supabase-client'
-import { supabaseBrowser as supabase } from '@indexnow/database'
+import { supabaseBrowser as supabase } from '@indexnow/database/client'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import {
   LoadingSpinner,

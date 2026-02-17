@@ -10,13 +10,13 @@ import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/ap
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
 import { logger } from '@/lib/monitoring/error-handling'
-import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
+import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared'
 import {
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
   type AdminTransactionHistory,
   type AdminOrderActivityLog
-, getClientIP} from '@indexnow/shared'
+} from '@indexnow/shared'
 
 /** Supabase join result for payment transaction with package and gateway relations */
 interface OrderWithRelations {

@@ -11,32 +11,14 @@ export interface CookieStore {
     set: (name: string, value: string, options?: CookieOptions) => void
 }
 
-/**
- * Generic request type that works with Next.js and other frameworks
- */
-export interface MiddlewareRequest {
-    cookies: {
-        getAll: () => { name: string; value: string }[]
-        set: (name: string, value: string) => void
-    }
-    headers: Headers
-}
-
-/**
- * Generic response type that works with Next.js and other frameworks
- */
-export interface MiddlewareResponse {
-    cookies: {
-        set: (name: string, value: string, options?: CookieOptions) => void
-    }
-}
-
-/**
- * Factory interface for creating responses in middleware
- */
-export interface MiddlewareResponseFactory {
-    next: (options?: { request?: { headers: Headers } }) => MiddlewareResponse
-}
+// Middleware utilities are extracted to middleware-utils.ts (Edge-compatible, no 'server-only')
+// Re-exported here for backward compatibility
+export {
+    createMiddlewareClient,
+    type MiddlewareRequest,
+    type MiddlewareResponse,
+    type MiddlewareResponseFactory,
+} from './middleware-utils'
 
 /**
  * Internal interface for cookie options during setAll
@@ -247,49 +229,4 @@ export function createRequestAuthClient(
             },
         }
     )
-}
-
-/**
- * Creates a Supabase client for use in middleware
- * Handles cookie refresh for auth sessions
- * 
- * @param request - The middleware request object
- * @param ResponseFactory - The response factory (e.g. NextResponse)
- */
-export function createMiddlewareClient<TRequest extends MiddlewareRequest>(
-    request: TRequest,
-    ResponseFactory: MiddlewareResponseFactory
-) {
-    let response = ResponseFactory.next({
-        request: {
-            headers: request.headers,
-        },
-    })
-
-    const supabase = createSupabaseServerClient<Database>(
-        AppConfig.supabase.url,
-        AppConfig.supabase.anonKey,
-        {
-            cookies: {
-                getAll() {
-                    return request.cookies.getAll()
-                },
-                setAll(cookiesToSet: CookieToSet[]) {
-                    cookiesToSet.forEach(({ name, value }) => {
-                        request.cookies.set(name, value)
-                    })
-                    response = ResponseFactory.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
-                    cookiesToSet.forEach(({ name, value, options }) => {
-                        response.cookies.set(name, value, options)
-                    })
-                },
-            },
-        }
-    )
-
-    return { supabase, response }
 }

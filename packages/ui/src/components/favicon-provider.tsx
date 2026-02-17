@@ -1,6 +1,6 @@
 'use client'
 
-import { useFavicon } from '@indexnow/database'
+import { useFavicon } from '@indexnow/database/client'
 
 /**
  * Client-side component that automatically updates the favicon

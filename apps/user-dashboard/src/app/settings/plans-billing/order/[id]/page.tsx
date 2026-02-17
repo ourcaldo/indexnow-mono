@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Badge, 
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { BILLING_ENDPOINTS, formatCurrency, logger, type Json } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
-import { supabaseBrowser } from '@indexnow/database'
+import { supabaseBrowser } from '@indexnow/database/client'
 
 interface Transaction {
   id: string

@@ -2,7 +2,7 @@ import {
     createMiddlewareClient, 
     type MiddlewareRequest, 
     type MiddlewareResponseFactory 
-} from '@indexnow/database'
+} from '@indexnow/database/client'
 
 /**
  * Helper to get user from middleware client

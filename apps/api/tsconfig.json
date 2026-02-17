@@ -1,6 +1,20 @@
 {
   "extends": "../../packages/tsconfig/nextjs.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@indexnow/shared": ["../../packages/shared/src"],
+      "@indexnow/database": ["../../packages/database/src"],
+      "@indexnow/database/client": ["../../packages/database/src/client"],
+      "@indexnow/auth": ["../../packages/auth/src"],
+      "@indexnow/auth/server": ["../../packages/auth/src/server"],
+      "@indexnow/services": ["../../packages/services/src"],
+      "@indexnow/mail": ["../../packages/mail/src"],
+      "@indexnow/ui": ["../../packages/ui/src"],
+      "@indexnow/analytics": ["../../packages/analytics/src"],
+      "@indexnow/supabase-client": ["../../packages/supabase-client/src"],
+      "@indexnow/api-middleware": ["../../packages/api-middleware/src"]
+    }
   }
 }

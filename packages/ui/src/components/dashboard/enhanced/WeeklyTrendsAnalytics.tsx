@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../..'
 import { TrendingUp, TrendingDown, BarChart, Info } from 'lucide-react'

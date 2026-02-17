@@ -7,7 +7,7 @@ import { PasswordInput, AuthErrorAlert, AuthLoadingButton } from '@indexnow/ui/a
 import { useZodForm } from '@indexnow/ui/hooks'
 import { authService } from '@indexnow/supabase-client'
 import { loginSchema, type LoginRequest } from '@indexnow/shared'
-import { useSiteName, useSiteLogo } from '@indexnow/database'
+import { useSiteName, useSiteLogo } from '@indexnow/database/client'
 import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS, type VerifyRoleResponse } from '@indexnow/shared'
 
 export default function AdminLoginPage() {

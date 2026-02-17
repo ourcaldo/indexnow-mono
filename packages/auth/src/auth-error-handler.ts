@@ -1,5 +1,5 @@
 import { supabaseBrowser as supabase } from '@indexnow/supabase-client'
-import type { AuthChangeEvent, SupabaseSession as Session } from '@indexnow/database'
+import type { AuthChangeEvent, SupabaseSession as Session } from '@indexnow/database/client'
 
 export interface AuthErrorContext {
   error: {

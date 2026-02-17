@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { SharedDomainSelector, DeviceCountryFilter, AddKeywordModal } from '..'
-import { useSiteName, useSiteLogo } from '@indexnow/database'
+import { useSiteName, useSiteLogo } from '@indexnow/database/client'
 
 interface Country {
   id: string

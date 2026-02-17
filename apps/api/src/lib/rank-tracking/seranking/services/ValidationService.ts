@@ -9,7 +9,7 @@ import {
   SeRankingApiResponse,
   SeRankingKeywordExportRequest,
   SeRankingErrorType
-} from '@indexnow/shared';
+} from '../types/SeRankingTypes';
 import {
   KeywordBankEntity,
   KeywordBankInsert,

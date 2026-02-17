@@ -13,12 +13,13 @@ import {
   QuotaStatus,
   ApiMetrics,
   SeRankingErrorType,
+} from '../types/SeRankingTypes';
+import {
   KeywordBankEntity,
   KeywordBankInsert,
   CacheStatus,
-  logger,
-  Database
-} from '@indexnow/shared';
+} from '../types/KeywordBankTypes';
+import { logger, Database } from '@indexnow/shared';
 
 import {
   ISeRankingApiClient,

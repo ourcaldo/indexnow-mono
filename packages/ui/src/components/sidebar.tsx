@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { authService } from '@indexnow/supabase-client'
 import { type Json, logger } from '@indexnow/shared'
-import { useSiteName, useSiteLogo } from '@indexnow/database'
+import { useSiteName, useSiteLogo } from '@indexnow/database/client'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { SharedDomainSelector } from '..'
 

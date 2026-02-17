@@ -200,8 +200,17 @@ export const createAppConfig = (): AppConfigType => {
 
   const parsed = ConfigSchema.safeParse(rawConfig);
 
+  // During Next.js build phase, the build environment may not have all env vars.
+  // Log warnings instead of throwing to allow builds to complete.
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
   if (!parsed.success) {
     const errorMsg = '❌ Invalid configuration: ' + JSON.stringify(parsed.error.format(), null, 2);
+    if (isBuildPhase) {
+      console.warn('[AppConfig] Build-time config validation failed (non-fatal during build):', errorMsg);
+      // Return a minimal config stub for build-time usage
+      return rawConfig as unknown as ReturnType<typeof ConfigSchema.parse>;
+    }
     if (typeof window === 'undefined') {
       console.error(errorMsg);
     } else {
@@ -213,7 +222,8 @@ export const createAppConfig = (): AppConfigType => {
   }
 
   // Production environment validation — critical secrets must be present
-  if (parsed.data.app.environment === 'production') {
+  // Skip during Next.js build phase since build environment may not have all secrets
+  if (parsed.data.app.environment === 'production' && !isBuildPhase) {
     const missing: string[] = [];
     const warnings: string[] = [];
 

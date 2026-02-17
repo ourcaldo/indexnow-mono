@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@indexnow/database';
+import { queryClient, apiRequest } from '@indexnow/database/client';
 import {
   Dialog,
   DialogContent,

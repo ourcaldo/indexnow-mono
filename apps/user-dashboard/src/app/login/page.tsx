@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from '@indexnow/supabase-client'
 import { logger, loginSchema, forgotPasswordSchema } from '@indexnow/shared'
-import { useSiteName, useSiteLogo } from '@indexnow/database'
+import { useSiteName, useSiteLogo } from '@indexnow/database/client'
 
 import { 
   Card, 

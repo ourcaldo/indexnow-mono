@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { RANK_TRACKING_ENDPOINTS, type Domain, type Country } from '@indexnow/shared'
-import { apiRequest } from '@indexnow/database'
+import { apiRequest } from '@indexnow/database/client'
 import { useApiError } from '../../../hooks'
 import { 
   Dialog,

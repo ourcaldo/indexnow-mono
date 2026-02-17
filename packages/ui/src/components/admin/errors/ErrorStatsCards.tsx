@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@indexnow/database';
+import { apiRequest } from '@indexnow/database/client';
 import { Card, CardContent, CardHeader, CardTitle } from '../../..';
 import { AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 

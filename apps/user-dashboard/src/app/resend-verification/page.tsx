@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useSiteName, useSiteLogo } from '@indexnow/database'
+import { useSiteName, useSiteLogo } from '@indexnow/database/client'
 import { ArrowLeft, Send } from "lucide-react"
 import { 
   Card, 

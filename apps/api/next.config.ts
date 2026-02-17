@@ -12,9 +12,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ["@indexnow/shared", "@indexnow/ui", "@indexnow/auth", "@indexnow/database", "@indexnow/services", "@indexnow/mail"],
-  // Empty turbopack config to silence Next.js 16 Turbopack/webpack coexistence error
-  turbopack: {},
+  transpilePackages: ["@indexnow/shared", "@indexnow/ui", "@indexnow/auth", "@indexnow/database", "@indexnow/services", "@indexnow/mail", "@indexnow/analytics", "@indexnow/supabase-client", "@indexnow/api-middleware"],
+  turbopack: {
+    root: '../../',
+  },
   // Skip TypeScript build errors - 318 pre-existing type strictness issues
   // to be resolved incrementally (phantom table names, Record<string,unknown> casts, etc.)
   typescript: {

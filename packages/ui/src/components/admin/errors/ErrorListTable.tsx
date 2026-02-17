@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@indexnow/database';
+import { apiRequest } from '@indexnow/database/client';
 import {
   Table,
   TableBody,

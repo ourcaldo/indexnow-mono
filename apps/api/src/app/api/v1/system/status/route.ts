@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { requireServerSuperAdminAuth } from '@indexnow/auth';
+import { requireServerSuperAdminAuth } from '@indexnow/auth/server';
 import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     publicApiWrapper,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Menu, X } from 'lucide-react'
 
-import type { SupabaseUser as User } from '@indexnow/database'
+import type { SupabaseUser as User } from '@indexnow/database/client'
 
 export interface NavigationItem {
   label: string

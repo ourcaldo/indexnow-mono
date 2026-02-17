@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { authService } from '@indexnow/supabase-client'
 import { UserRole, logger } from '@indexnow/shared'
-import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/database'
+import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/database/client'
 
 interface AdminSidebarUser {
   email?: string;

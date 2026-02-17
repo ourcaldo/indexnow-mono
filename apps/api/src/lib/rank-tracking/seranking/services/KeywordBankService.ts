@@ -16,7 +16,7 @@ import {
   CacheStatus,
   CacheStats,
   BulkKeywordBankOperationResult
-} from '@indexnow/shared';
+} from '../types/KeywordBankTypes';
 import { SeRankingKeywordData } from '../types/SeRankingTypes';
 import { IKeywordBankService } from '../types/ServiceTypes';
 

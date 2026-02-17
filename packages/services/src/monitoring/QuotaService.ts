@@ -9,7 +9,7 @@
  * (useQuotaValidation, useGlobalQuotaManager) or direct DB queries via
  * service-role client in API routes.
  */
-import { supabaseBrowser } from '@indexnow/database';
+import { supabaseBrowser } from '@indexnow/database/client';
 
 import { logger } from '@indexnow/shared'
 

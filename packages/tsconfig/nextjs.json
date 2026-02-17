@@ -22,7 +22,10 @@
       "@indexnow/auth": ["../../packages/auth/src"],
       "@indexnow/services": ["../../packages/services/src"],
       "@indexnow/mail": ["../../packages/mail/src"],
-      "@indexnow/ui": ["../../packages/ui/src"]
+      "@indexnow/ui": ["../../packages/ui/src"],
+      "@indexnow/analytics": ["../../packages/analytics/src"],
+      "@indexnow/supabase-client": ["../../packages/supabase-client/src"],
+      "@indexnow/api-middleware": ["../../packages/api-middleware/src"]
     }
   },
   "include": [

@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, Badge, Progress } from '../../..'
 import { TrendingUp, TrendingDown, Activity, AlertCircle } from 'lucide-react'

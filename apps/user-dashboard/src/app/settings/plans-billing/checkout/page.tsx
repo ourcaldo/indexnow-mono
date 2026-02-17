@@ -24,7 +24,7 @@ import {
 import { ApiEndpoints as API, PaymentSchemas, logger } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
 import { usePaddle } from '@indexnow/ui/providers'
-import { supabaseBrowser } from '@indexnow/database'
+import { supabaseBrowser } from '@indexnow/database/client'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
