@@ -34,9 +34,10 @@ import {
 } from 'lucide-react'
 
 import { type Json, logger } from '@indexnow/shared'
-import { usePageViewLogger, useActivityLogger, useDashboardData, useDomain } from '@indexnow/ui'
+import { usePageViewLogger, useActivityLogger, useDashboardData } from '@indexnow/ui/hooks'
+import { useDomain } from '@indexnow/ui/contexts'
+import { useToast } from '@indexnow/ui'
 import { 
-  useToast,
   LegacyRankingDistribution as RankingDistribution,
   ActivityTimeline,
   type RankingData,
@@ -44,7 +45,7 @@ import {
   StatCard, 
   DataTable, 
   PositionChange
-} from '@indexnow/ui'
+} from '@indexnow/ui/dashboard'
 
 interface UserProfile {
   full_name: string | null;

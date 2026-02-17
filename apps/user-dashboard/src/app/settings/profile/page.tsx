@@ -1,14 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { usePageViewLogger, useAccountSettings } from '@indexnow/ui'
+import { usePageViewLogger, useAccountSettings } from '@indexnow/ui/hooks'
 import {
   Button,
   Input,
   Label,
-  SettingCard,
-  SettingInput,
 } from '@indexnow/ui'
+import { SettingCard, SettingInput } from '@indexnow/ui/settings'
 import {
   RefreshCw,
   Eye,

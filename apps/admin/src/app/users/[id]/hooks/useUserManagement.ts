@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
-import { useNotification } from '@indexnow/ui'
+import { useNotification } from '@indexnow/ui/hooks'
 
 interface UserActions {
   suspend: boolean

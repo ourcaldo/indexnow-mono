@@ -15,6 +15,17 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./admin": "./src/components/admin/index.ts",
+    "./auth": "./src/components/auth/index.ts",
+    "./billing": "./src/components/billing/index.ts",
+    "./checkout": "./src/components/checkout/index.ts",
+    "./dashboard": "./src/components/dashboard/index.ts",
+    "./modals": "./src/components/modals/index.ts",
+    "./settings": "./src/components/settings/index.ts",
+    "./trial": "./src/components/trial/index.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./contexts": "./src/contexts/index.ts",
     "./styles.css": "./src/styles.css",
     "./tailwind.config": {
       "import": "./tailwind.config.ts",

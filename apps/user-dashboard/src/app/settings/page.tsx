@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { usePageViewLogger } from '@indexnow/ui'
+import { usePageViewLogger } from '@indexnow/ui/hooks'
 import GeneralSettingsPage from './general/GeneralSettingsContent'
 import PlansBillingSettingsPage from './plans-billing/PlansBillingContent'
 

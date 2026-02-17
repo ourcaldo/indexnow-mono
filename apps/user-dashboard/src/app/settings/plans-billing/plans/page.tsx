@@ -11,7 +11,8 @@ import {
   Loader2
 } from 'lucide-react'
 import { authService, BILLING_ENDPOINTS, formatCurrency, authenticatedFetch, logger } from '@indexnow/shared'
-import { LoadingSpinner, PricingCards, useApiError, ErrorState, getBillingPeriodPrice, buildCheckoutUrl, type PaymentPackage } from '@indexnow/ui'
+import { LoadingSpinner, useApiError, ErrorState } from '@indexnow/ui'
+import { PricingCards, getBillingPeriodPrice, buildCheckoutUrl, type PaymentPackage } from '@indexnow/ui/billing'
 
 interface PackagesData {
   packages: PaymentPackage[]

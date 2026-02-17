@@ -15,7 +15,8 @@ import { ADMIN_ENDPOINTS,
   PaymentGatewayRow,
   PaymentGatewayConfiguration,
   PaymentGatewayCredentials, logger } from '@indexnow/shared'
-import { ConfirmationDialog, AdminPageSkeleton } from '@indexnow/ui'
+import { AdminPageSkeleton } from '@indexnow/ui'
+import { ConfirmationDialog } from '@indexnow/ui/modals'
 
 // Strict type helper for UI state
 type UI_PaymentGateway = Omit<PaymentGatewayRow, 'configuration' | 'api_credentials'> & {

@@ -1,6 +1,7 @@
 'use client'
 
-import { BaseProviders, PaddleProvider } from '@indexnow/ui'
+import { BaseProviders } from '@indexnow/ui'
+import { PaddleProvider } from '@indexnow/ui/providers'
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (

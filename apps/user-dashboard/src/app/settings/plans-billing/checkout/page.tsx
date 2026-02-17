@@ -9,6 +9,8 @@ import {
   CardHeader,
   CardTitle,
   useToast,
+} from '@indexnow/ui'
+import {
   BillingPeriodSelector,
   OrderSummary,
   PaymentErrorBoundary,
@@ -18,11 +20,11 @@ import {
   PackageNotFound,
   CheckoutSubmitButton,
   PaymentMethodSelector
-} from '@indexnow/ui'
+} from '@indexnow/ui/checkout'
 import { ApiEndpoints as API, PaymentSchemas, authenticatedFetch, logger } from '@indexnow/shared'
-import { usePaddle } from '@indexnow/ui'
+import { usePaddle } from '@indexnow/ui/providers'
 import { supabaseBrowser } from '@indexnow/database'
-import { usePageViewLogger, useActivityLogger } from '@indexnow/ui'
+import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import { Loader2 } from 'lucide-react'
 import { z } from 'zod'
 

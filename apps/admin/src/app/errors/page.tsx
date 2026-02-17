@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@indexnow/ui';
-import { ErrorStatsCards, ErrorFilters, ErrorListTable, ErrorDetailModal } from '@indexnow/ui';
+import { ErrorStatsCards, ErrorFilters, ErrorListTable, ErrorDetailModal } from '@indexnow/ui/admin';
 import { AlertCircle } from 'lucide-react';
 
 export default function ErrorMonitoringPage() {

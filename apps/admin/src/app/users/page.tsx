@@ -18,7 +18,8 @@ import {
   Eye
 } from 'lucide-react'
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
-import { AdminPageSkeleton, ConfirmationDialog } from '@indexnow/ui'
+import { AdminPageSkeleton } from '@indexnow/ui'
+import { ConfirmationDialog } from '@indexnow/ui/modals'
 
 interface UserProfile {
   id: string

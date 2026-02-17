@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { BILLING_ENDPOINTS, type Json, authenticatedFetch, logger } from '@indexnow/shared'
-import { usePageViewLogger } from '@indexnow/ui'
+import { usePageViewLogger } from '@indexnow/ui/hooks'
 import {
   Check,
   Copy,

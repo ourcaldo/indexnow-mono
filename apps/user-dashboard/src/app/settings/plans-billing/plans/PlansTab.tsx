@@ -20,7 +20,8 @@ import { authService,
   type ApiResponse,
   AUTH_ENDPOINTS, 
   BILLING_ENDPOINTS, logger } from '@indexnow/shared'
-import { LoadingSpinner, useApiError, getBillingPeriodPrice, buildCheckoutUrl, isTrialEligiblePackage, type PaymentPackage } from '@indexnow/ui'
+import { LoadingSpinner, useApiError } from '@indexnow/ui'
+import { getBillingPeriodPrice, buildCheckoutUrl, isTrialEligiblePackage, type PaymentPackage } from '@indexnow/ui/billing'
 
 interface PackagesData {
   packages: PaymentPackage[]

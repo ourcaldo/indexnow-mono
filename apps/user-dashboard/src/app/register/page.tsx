@@ -16,10 +16,12 @@ import {
   Input,
   Label,
   DashboardPreview,
+} from '@indexnow/ui'
+import {
   PasswordInput,
   AuthErrorAlert,
   AuthLoadingButton
-} from '@indexnow/ui'
+} from '@indexnow/ui/auth'
 import { AUTH_ENDPOINTS } from '@indexnow/shared'
 
 interface DetectLocationResponse {

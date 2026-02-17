@@ -17,7 +17,8 @@ import { PackageSubscriptionCard } from './components/PackageSubscriptionCard'
 import { UserActivityCard } from './components/UserActivityCard'
 import { UserSecurityCard } from './components/UserSecurityCard'
 import { PackageChangeModal } from './components/PackageChangeModal'
-import { ConfirmationDialog, AdminUserDetailSkeleton, ErrorState } from '@indexnow/ui'
+import { AdminUserDetailSkeleton, ErrorState } from '@indexnow/ui'
+import { ConfirmationDialog } from '@indexnow/ui/modals'
 
 
 // Import custom hooks

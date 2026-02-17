@@ -15,7 +15,8 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { authService, BILLING_ENDPOINTS, formatCurrency, formatDate, authenticatedFetch } from '@indexnow/shared'
-import { LoadingSpinner, BillingHistory, useApiError, ErrorState, getTransactionStatusColors, formatTransactionType, type Transaction, type BillingHistoryData } from '@indexnow/ui'
+import { LoadingSpinner, useApiError, ErrorState } from '@indexnow/ui'
+import { BillingHistory, getTransactionStatusColors, formatTransactionType, type Transaction, type BillingHistoryData } from '@indexnow/ui/billing'
 
 export default function BillingHistoryPage() {
   const { handleApiError } = useApiError()

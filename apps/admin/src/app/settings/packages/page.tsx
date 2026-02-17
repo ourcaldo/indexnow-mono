@@ -17,7 +17,8 @@ import {
   Search
 } from 'lucide-react'
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
-import { ConfirmationDialog, AdminPageSkeleton } from '@indexnow/ui'
+import { AdminPageSkeleton } from '@indexnow/ui'
+import { ConfirmationDialog } from '@indexnow/ui/modals'
 import { PackageForm } from './components/PackageForm'
 
 import { Json } from '@indexnow/shared'

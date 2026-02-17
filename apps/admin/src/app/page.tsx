@@ -14,7 +14,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { ADMIN_ENDPOINTS, authenticatedFetch, logger } from '@indexnow/shared'
-import { useAdminDashboardLogger, AdminPageSkeleton } from '@indexnow/ui'
+import { AdminPageSkeleton } from '@indexnow/ui'
+import { useAdminDashboardLogger } from '@indexnow/ui/hooks'
 
 interface DashboardStats {
   total_users: number

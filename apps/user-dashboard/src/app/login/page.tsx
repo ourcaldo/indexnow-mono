@@ -14,11 +14,13 @@ import {
   Input, 
   Label,
   DashboardPreview,
+} from '@indexnow/ui'
+import {
   PasswordInput,
   AuthErrorAlert,
   AuthLoadingButton,
   AuthCheckingSpinner
-} from '@indexnow/ui'
+} from '@indexnow/ui/auth'
 
 export default function Login() {
   const router = useRouter()

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePageViewLogger, useAccountSettings } from '@indexnow/ui'
-import { useToast, useActivityLogger } from '@indexnow/ui'
+import { usePageViewLogger, useAccountSettings, useActivityLogger } from '@indexnow/ui/hooks'
+import { useToast } from '@indexnow/ui'
 import { AUTH_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
 import { 
   Loader2

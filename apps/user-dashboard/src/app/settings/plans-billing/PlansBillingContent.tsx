@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Download } from 'lucide-react'
 import { authService, authenticatedFetch, AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate, logger } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/database'
-import { usePageViewLogger, useActivityLogger } from '@indexnow/ui'
+import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import {
   LoadingSpinner,
   Button,
@@ -18,12 +18,14 @@ import {
   Progress,
   useToast,
   useApiError,
+  ErrorState,
+} from '@indexnow/ui'
+import {
   CancelSubscriptionDialog,
   SubscriptionStatusBadge,
   BillingStats,
   PricingCards,
   BillingHistory,
-  ErrorState,
   getBillingPeriodPrice,
   buildCheckoutUrl,
   isTrialEligiblePackage,
@@ -32,7 +34,7 @@ import {
   type BillingHistoryData,
   type BillingData,
   type KeywordUsageData
-} from '@indexnow/ui'
+} from '@indexnow/ui/billing'
 
 // Type definitions
 interface SubscriptionData {
