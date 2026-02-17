@@ -23,7 +23,8 @@ import {
   Moon,
   Sun
 } from 'lucide-react'
-import { authService, UserRole, logger } from '@indexnow/shared'
+import { authService } from '@indexnow/supabase-client'
+import { UserRole, logger } from '@indexnow/shared'
 import { useFavicon, useSiteName, useSiteLogo } from '@indexnow/database'
 
 interface AdminSidebarUser {

@@ -7,10 +7,9 @@
  * Phase 3 - Milestone C.7: Integration of resilience mechanisms
  */
 
-import { CircuitBreaker, CircuitBreakerManager } from './CircuitBreaker';
+import { CircuitBreakerManager } from './CircuitBreaker';
 import { ExponentialBackoff, RetryConfig } from './ExponentialBackoff';
 import { FallbackHandler, FallbackStrategy } from './FallbackHandler';
-import { logger } from '../logger';
 
 export interface ResilientOperationConfig<T> {
   serviceName: string;

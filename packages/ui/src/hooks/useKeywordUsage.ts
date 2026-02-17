@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
+import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 export interface KeywordUsageDataExtended {

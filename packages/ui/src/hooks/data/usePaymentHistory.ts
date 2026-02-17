@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { type Json, BILLING_ENDPOINTS, buildEndpoint, logger, authenticatedFetch } from '@indexnow/shared'
+import { type Json, BILLING_ENDPOINTS, buildEndpoint, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 interface PaymentTransaction {

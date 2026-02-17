@@ -17,7 +17,10 @@
     "@indexnow/database": "workspace:*",
     "@indexnow/mail": "workspace:*",
     "@indexnow/services": "workspace:*",
+    "@indexnow/analytics": "workspace:*",
+    "@indexnow/api-middleware": "workspace:*",
     "@indexnow/shared": "workspace:*",
+    "@indexnow/supabase-client": "workspace:*",
     "@paddle/paddle-node-sdk": "^3.5.0",
 
     "@sentry/nextjs": "^8.55.0",

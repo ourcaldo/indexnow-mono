@@ -15,7 +15,8 @@ import {
   Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Separator, useToast, ErrorState } from '@indexnow/ui';
-import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS, authenticatedFetch, type ErrorDetailResponse } from '@indexnow/shared';
+import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS, type ErrorDetailResponse } from '@indexnow/shared';
+import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export default function AdminErrorDetailPage() {
   const [errorData, setErrorData] = useState<ErrorDetailResponse | null>(null);

@@ -39,11 +39,11 @@ export type InsertSystemErrorLog = Database['public']['Tables']['indb_system_err
 export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Update']
 
 // Client exports
-export { createBrowserClient, getBrowserClient, supabaseBrowser, supabase } from '@indexnow/shared';
+export { createBrowserClient, getBrowserClient, supabaseBrowser, supabase } from '@indexnow/supabase-client';
 
 // Typed Supabase client accessors — these preserve the Database generic
 // through the re-export chain (unlike direct re-exports which lose it in DTS generation)
-import { supabaseBrowser as _supabaseBrowser } from '@indexnow/shared';
+import { supabaseBrowser as _supabaseBrowser } from '@indexnow/supabase-client';
 import { supabaseAdmin as _supabaseAdmin } from './server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 

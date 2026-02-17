@@ -7,7 +7,7 @@
  * @see https://docs.sentry.io/platforms/javascript/guides/nextjs/
  */
 
-import { initializeSentry } from '@indexnow/shared'
+import { initializeSentry } from '@indexnow/analytics'
 
 // Delegate to the shared Sentry client initializer which reads
 // NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_SENTRY_ENVIRONMENT, and

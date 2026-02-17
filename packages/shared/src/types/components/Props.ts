@@ -5,7 +5,6 @@
 import React from 'react';
 import { type Json } from '../common/Json';
 import { type AppUserProfile } from '../global/User';
-import type { NavigationItem as GlobalNavigationItem } from '../global/Application';
 
 // Common component props
 export interface BaseComponentProps {

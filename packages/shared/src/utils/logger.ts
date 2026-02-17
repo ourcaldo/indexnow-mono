@@ -18,7 +18,7 @@ interface LogContext extends Record<string, Json | Error | object | undefined> {
 class Logger {
   private isProductionEnv = isProduction();
 
-  private formatMessage(level: LogLevel, context: LogContext, message: string): string {
+  private formatMessage(level: LogLevel, _context: LogContext, message: string): string {
     const timestamp = new Date().toISOString();
     return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
   }

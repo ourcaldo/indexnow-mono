@@ -6,7 +6,8 @@
 "use client";
 
 import { useEffect, useRef } from 'react'
-import { type Json, authService, ACTIVITY_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
+import { type Json, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared'
+import { authService, authenticatedFetch } from '@indexnow/supabase-client'
 
 interface ActivityLogRequest {
   eventType: string

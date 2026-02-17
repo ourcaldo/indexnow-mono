@@ -25,6 +25,7 @@
   "dependencies": {
     "@indexnow/database": "workspace:*",
     "@indexnow/shared": "workspace:*",
+    "@indexnow/supabase-client": "workspace:*",
     "crypto-js": "^4.2.0",
     "server-only": "^0.0.1"
   },

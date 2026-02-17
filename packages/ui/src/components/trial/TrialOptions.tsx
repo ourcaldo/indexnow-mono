@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../card'
 import { Badge } from '../badge'
 import { Clock, CreditCard, CheckCircle, Star } from 'lucide-react'
 import { useToast } from '../toast'
-import { AUTH_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { type PackageData } from '../../hooks/business/usePricingData'
 
 interface TrialEligibility {

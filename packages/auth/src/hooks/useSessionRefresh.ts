@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import { supabase, logger } from '@indexnow/shared'
+import { supabase } from '@indexnow/supabase-client'
+import { logger } from '@indexnow/shared'
 
 /**
  * Configuration for session refresh behavior

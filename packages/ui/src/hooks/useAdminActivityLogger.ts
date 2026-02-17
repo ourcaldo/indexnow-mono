@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { type Json, authService, type AuthUser, ADMIN_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
+import { type Json, ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
+import { authService, type AuthUser, authenticatedFetch } from '@indexnow/supabase-client'
 
 interface AdminActivityMetadata {
   section?: string

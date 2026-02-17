@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { DASHBOARD_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
+import { DASHBOARD_ENDPOINTS } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import type { 
   Json,
   RankTrackingDomain,

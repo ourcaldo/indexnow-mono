@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react'
-import { authService, BILLING_ENDPOINTS, formatCurrency, authenticatedFetch, logger } from '@indexnow/shared'
+import { authService, authenticatedFetch } from '@indexnow/supabase-client'
+import { BILLING_ENDPOINTS, formatCurrency, logger } from '@indexnow/shared'
 import { LoadingSpinner, useApiError, ErrorState } from '@indexnow/ui'
 import { PricingCards, getBillingPeriodPrice, buildCheckoutUrl, type PaymentPackage } from '@indexnow/ui/billing'
 

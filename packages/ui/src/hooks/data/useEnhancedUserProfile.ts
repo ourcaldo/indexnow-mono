@@ -2,7 +2,8 @@
 
 import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { type Json, AUTH_ENDPOINTS, type DbUserProfile, type DbSubscriptionRow, type DbUserSettings, logger, authenticatedFetch } from '@indexnow/shared'
+import { type Json, AUTH_ENDPOINTS, type DbUserProfile, type DbSubscriptionRow, type DbUserSettings, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 interface UserProfile extends DbUserProfile {

@@ -2,7 +2,8 @@
 
 import { useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { DASHBOARD_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
+import { DASHBOARD_ENDPOINTS } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Only consumed internally by useQuotaValidation — not directly used by apps */
 export interface QuotaInfo {

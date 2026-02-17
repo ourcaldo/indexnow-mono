@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { initializeAnalytics, trackPageView } from '@indexnow/shared';
+import { initializeAnalytics, trackPageView } from '@indexnow/analytics';
 
 /**
  * Page View Tracker - Tracks page views on navigation

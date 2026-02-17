@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { BILLING_ENDPOINTS, type Json, authenticatedFetch, logger } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, type Json, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { usePageViewLogger } from '@indexnow/ui/hooks'
 import {
   Check,

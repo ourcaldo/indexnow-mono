@@ -24,11 +24,11 @@ import {
   formatDate, 
   formatRelativeTime, 
   ADMIN_ENDPOINTS,
-  authenticatedFetch,
   type AdminOrdersResponse,
   type AdminOrderTransaction,
   type AdminOrderSummary
 } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 interface OrderMetadata {
   customer_info?: {

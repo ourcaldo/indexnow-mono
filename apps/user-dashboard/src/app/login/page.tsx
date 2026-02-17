@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { authService, logger, loginSchema, forgotPasswordSchema } from '@indexnow/shared'
+import { authService } from '@indexnow/supabase-client'
+import { logger, loginSchema, forgotPasswordSchema } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 
 import { 

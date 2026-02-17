@@ -106,7 +106,7 @@ export class FallbackHandler<T = Json> {
   private async executeFallbackStrategy(
     strategy: FallbackStrategy<T>,
     cacheKey?: string,
-    context?: string
+    _context?: string
   ): Promise<T | Partial<T>> {
     switch (strategy.type) {
       case 'default':

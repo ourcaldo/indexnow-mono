@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ApiEndpoints, authenticatedFetch } from '@indexnow/shared'
+import { ApiEndpoints } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 interface Country {

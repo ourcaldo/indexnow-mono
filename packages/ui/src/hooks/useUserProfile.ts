@@ -1,8 +1,9 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { AUTH_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
-import { supabase } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
+import { supabase } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 export interface UserProfile {

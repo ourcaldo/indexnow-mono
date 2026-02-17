@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { BILLING_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 interface TrialInfo {

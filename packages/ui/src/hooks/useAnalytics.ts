@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback } from 'react';
-import { type Json, trackEvent, identifyUser, resetUser, trackError, AnalyticsTraits, TrackEventProperties } from '@indexnow/shared';
+import { type Json } from '@indexnow/shared';
+import { trackEvent, identifyUser, resetUser, trackError, AnalyticsTraits, TrackEventProperties } from '@indexnow/analytics';
 
 /**
  * Custom hook for using analytics in React components

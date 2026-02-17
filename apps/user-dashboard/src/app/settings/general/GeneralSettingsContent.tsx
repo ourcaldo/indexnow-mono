@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { usePageViewLogger, useAccountSettings, useActivityLogger } from '@indexnow/ui/hooks'
 import { useToast } from '@indexnow/ui'
-import { AUTH_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
+import { AUTH_ENDPOINTS } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { 
   Loader2
 } from 'lucide-react'

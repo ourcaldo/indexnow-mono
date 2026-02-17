@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { authService, countries, findCountryByCode, logger } from '@indexnow/shared'
+import { authService } from '@indexnow/supabase-client'
+import { countries, findCountryByCode, logger } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { registerSchema } from '@indexnow/shared/schema'
 // We'll use a simple fetch to our detect-location API instead

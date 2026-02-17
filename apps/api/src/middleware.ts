@@ -6,7 +6,7 @@ import {
   rateLimit,
   composeMiddleware,
   MiddlewareContext
-} from '@indexnow/shared';
+} from '@indexnow/api-middleware';
 
 // 100 requests per 60 seconds per IP
 const apiRateLimit = rateLimit(100, 60_000);

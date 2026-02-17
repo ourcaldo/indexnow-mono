@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../..'
 import { TrendingUp, TrendingDown, BarChart, Info } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS, authenticatedFetch } from '@indexnow/shared'
+import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 interface WeeklyTrendsData {
   weekNumber: number

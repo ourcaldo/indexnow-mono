@@ -4,7 +4,7 @@ import {
   ErrorSeverity, 
   type Json
 } from '@indexnow/shared'
-import { supabaseBrowser as supabase } from '@indexnow/shared'
+import { supabaseBrowser as supabase } from '@indexnow/supabase-client'
 
 export class ApiError extends Error {
   id: string

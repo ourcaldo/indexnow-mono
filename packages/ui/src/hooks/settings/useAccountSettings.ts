@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { AUTH_ENDPOINTS, authService, authenticatedFetch, logger } from '@indexnow/shared'
+import { AUTH_ENDPOINTS, logger } from '@indexnow/shared'
+import { authService, authenticatedFetch } from '@indexnow/supabase-client'
 import { useAuth } from '@indexnow/auth'
 import { useToast } from '../../components/toast'
-import { useActivityLogger } from '../analytics'
+import { useActivityLogger } from '../useActivityLogger'
 
 export interface ProfileFormData {
   full_name: string

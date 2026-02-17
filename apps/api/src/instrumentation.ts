@@ -3,7 +3,7 @@ import { logger } from '@/lib/monitoring/error-handling'
 export async function register() {
   // Initialize Sentry for server-side error tracking (Node.js + Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs' || process.env.NEXT_RUNTIME === 'edge') {
-    const { initializeServerSentry } = await import('@indexnow/shared')
+    const { initializeServerSentry } = await import('@indexnow/analytics')
     initializeServerSentry()
   }
 

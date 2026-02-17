@@ -4,7 +4,8 @@ import { useEffect } from 'react'
 import { Button } from '@indexnow/ui'
 import { AlertCircle, RefreshCcw, Home } from 'lucide-react'
 import Link from 'next/link'
-import { errorTracker, logger } from '@indexnow/shared'
+import { errorTracker } from '@indexnow/analytics'
+import { logger } from '@indexnow/shared'
 
 export default function AdminError({
   error,

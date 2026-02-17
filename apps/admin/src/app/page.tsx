@@ -13,7 +13,8 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import Link from 'next/link'
-import { ADMIN_ENDPOINTS, authenticatedFetch, logger } from '@indexnow/shared'
+import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { AdminPageSkeleton } from '@indexnow/ui'
 import { useAdminDashboardLogger } from '@indexnow/ui/hooks'
 

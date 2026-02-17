@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Badge, Separator, useToast } from '@indexnow/ui'
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { BILLING_ENDPOINTS, formatCurrency, authenticatedFetch, logger, type Json } from '@indexnow/shared'
+import { BILLING_ENDPOINTS, formatCurrency, logger, type Json } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { supabaseBrowser } from '@indexnow/database'
 
 interface Transaction {

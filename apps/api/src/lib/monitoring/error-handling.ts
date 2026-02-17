@@ -1,7 +1,7 @@
 import pino from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin, SecureServiceRoleHelpers } from '@indexnow/database';
-import { trackServerError } from '@indexnow/shared';
+import { trackServerError } from '@indexnow/analytics';
 import { ErrorType, ErrorSeverity, type StructuredError, type Json } from '@indexnow/shared';
 import { formatError } from '../core/api-response-formatter';
 

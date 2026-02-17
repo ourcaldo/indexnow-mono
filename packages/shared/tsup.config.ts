@@ -13,8 +13,6 @@ export default defineConfig({
         'next', 
         'next/navigation', 
         'lucide-react', 
-        '@supabase/supabase-js',
-        '@supabase/ssr',
         '@tanstack/react-query',
         '@indexnow/ui'
     ],

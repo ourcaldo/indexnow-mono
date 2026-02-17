@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { trackError } from '@indexnow/shared';
+import { trackError } from '@indexnow/analytics';
 import { Button } from '../..';
 
 /**

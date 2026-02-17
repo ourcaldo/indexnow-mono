@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { authService, BILLING_ENDPOINTS, formatCurrency, formatDate, authenticatedFetch } from '@indexnow/shared'
+import { authService, authenticatedFetch } from '@indexnow/supabase-client'
+import { BILLING_ENDPOINTS, formatCurrency, formatDate } from '@indexnow/shared'
 import { LoadingSpinner, useApiError, ErrorState } from '@indexnow/ui'
 import { BillingHistory, getTransactionStatusColors, formatTransactionType, type Transaction, type BillingHistoryData } from '@indexnow/ui/billing'
 

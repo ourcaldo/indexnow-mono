@@ -3,8 +3,6 @@
  * Scrubs sensitive information from objects and strings
  */
 
-import { Json } from '../types/common/Json';
-
 const SENSITIVE_KEYS = [
   'password',
   'token',

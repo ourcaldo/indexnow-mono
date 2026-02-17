@@ -1,0 +1,36 @@
+{
+  "name": "@indexnow/api-middleware",
+  "version": "1.0.0",
+  "private": true,
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@indexnow/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@indexnow/eslint-config": "workspace:*",
+    "next": "16.1.4",
+    "tsup": "^8.0.1",
+    "typescript": "^5.6.3"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0"
+  }
+}

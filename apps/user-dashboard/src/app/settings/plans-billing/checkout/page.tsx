@@ -21,7 +21,8 @@ import {
   CheckoutSubmitButton,
   PaymentMethodSelector
 } from '@indexnow/ui/checkout'
-import { ApiEndpoints as API, PaymentSchemas, authenticatedFetch, logger } from '@indexnow/shared'
+import { ApiEndpoints as API, PaymentSchemas, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { usePaddle } from '@indexnow/ui/providers'
 import { supabaseBrowser } from '@indexnow/database'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'

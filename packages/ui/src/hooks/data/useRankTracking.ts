@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { type Json, RANK_TRACKING_ENDPOINTS, logger, authenticatedFetch } from '@indexnow/shared'
+import { type Json, RANK_TRACKING_ENDPOINTS, logger } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 
 /** @internal Not yet consumed by any app — reserved for future use */
 interface Keyword {

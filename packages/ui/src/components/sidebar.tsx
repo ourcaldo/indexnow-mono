@@ -15,7 +15,8 @@ import {
   Search,
   ChevronDown
 } from 'lucide-react'
-import { authService, type Json, logger } from '@indexnow/shared'
+import { authService } from '@indexnow/supabase-client'
+import { type Json, logger } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { SharedDomainSelector } from '..'

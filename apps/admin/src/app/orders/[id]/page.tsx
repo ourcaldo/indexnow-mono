@@ -25,7 +25,6 @@ import {
   formatDate,
   formatRelativeTime,
   ADMIN_ENDPOINTS,
-  authenticatedFetch,
   logger,
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
@@ -33,6 +32,7 @@ import {
   type AdminOrderActivityLog,
   type Json
 } from '@indexnow/shared'
+import { authenticatedFetch } from '@indexnow/supabase-client'
 import { OrderActivityTimeline } from './components/OrderActivityTimeline'
 
 interface OrderMetadata {

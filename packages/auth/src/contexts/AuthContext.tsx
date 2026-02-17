@@ -1,10 +1,11 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
-import { authService, AuthUser, logger } from '@indexnow/shared'
+import { authService, AuthUser } from '@indexnow/supabase-client'
+import { logger } from '@indexnow/shared'
 import { useRouter } from 'next/navigation'
 import { AuthErrorHandler } from '../auth-error-handler'
-import { supabase } from '@indexnow/shared'
+import { supabase } from '@indexnow/supabase-client'
 import { useSessionRefresh } from '../hooks/useSessionRefresh'
 
 // (#34) Removed unused globalAuthState variable — was declared but never written to

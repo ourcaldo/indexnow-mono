@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, Check, Download } from 'lucide-react'
-import { authService, authenticatedFetch, AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate, logger } from '@indexnow/shared'
+import { AppConfig, BILLING_ENDPOINTS, PUBLIC_ENDPOINTS, type Json, formatCurrency, formatDate, logger } from '@indexnow/shared'
+import { authService, authenticatedFetch } from '@indexnow/supabase-client'
 import { supabaseBrowser as supabase } from '@indexnow/database'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import {

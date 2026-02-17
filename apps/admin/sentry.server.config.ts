@@ -7,6 +7,6 @@
  * @see https://docs.sentry.io/platforms/javascript/guides/nextjs/
  */
 
-import { initializeServerSentry } from '@indexnow/shared'
+import { initializeServerSentry } from '@indexnow/analytics'
 
 initializeServerSentry()

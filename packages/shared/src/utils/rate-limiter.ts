@@ -144,4 +144,54 @@ function getClientIp(request: RequestLike): string {
   );
 }
 
-/**\n * Check if IP is currently rate limited\n */\nexport async function isRateLimited(request: RequestLike): Promise<boolean> {\n  const ip = getClientIp(request);\n  const entry = await activeStore.get(ip);\n  if (!entry) return false;\n  return entry.count > MAX_ATTEMPTS;\n}\n\n/**\n * Record a failed authentication attempt\n */\nexport async function recordFailedAttempt(request: RequestLike): Promise<boolean> {\n  const ip = getClientIp(request);\n  const now = Date.now();\n  const entry = await activeStore.get(ip);\n\n  if (!entry) {\n    await activeStore.set(ip, {\n      count: 1,\n      resetTime: now + WINDOW_MS,\n    });\n    return false;\n  }\n\n  entry.count++;\n  await activeStore.set(ip, entry);\n\n  if (entry.count > MAX_ATTEMPTS) {\n    logger.warn({\n      ipAddress: ip,\n      attemptCount: entry.count,\n      maxAttempts: MAX_ATTEMPTS,\n      userAgent: getHeaderValue(request.headers, 'user-agent') || 'unspecified',\n      endpoint: request.nextUrl?.pathname || 'unspecified',\n    }, 'Rate limit exceeded - potential brute force attack');\n\n    return true;\n  }\n\n  return false;\n}\n\n/**\n * Reset rate limit for an IP\n */\nexport async function resetRateLimit(request: RequestLike): Promise<void> {\n  const ip = getClientIp(request);\n  await activeStore.delete(ip);\n}
+/**
+ * Check if IP is currently rate limited
+ */
+export async function isRateLimited(request: RequestLike): Promise<boolean> {
+  const ip = getClientIp(request);
+  const entry = await activeStore.get(ip);
+  if (!entry) return false;
+  return entry.count > MAX_ATTEMPTS;
+}
+
+/**
+ * Record a failed authentication attempt
+ */
+export async function recordFailedAttempt(request: RequestLike): Promise<boolean> {
+  const ip = getClientIp(request);
+  const now = Date.now();
+  const entry = await activeStore.get(ip);
+
+  if (!entry) {
+    await activeStore.set(ip, {
+      count: 1,
+      resetTime: now + WINDOW_MS,
+    });
+    return false;
+  }
+
+  entry.count++;
+  await activeStore.set(ip, entry);
+
+  if (entry.count > MAX_ATTEMPTS) {
+    logger.warn({
+      ipAddress: ip,
+      attemptCount: entry.count,
+      maxAttempts: MAX_ATTEMPTS,
+      userAgent: getHeaderValue(request.headers, 'user-agent') || 'unspecified',
+      endpoint: request.nextUrl?.pathname || 'unspecified',
+    }, 'Rate limit exceeded - potential brute force attack');
+
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Reset rate limit for an IP
+ */
+export async function resetRateLimit(request: RequestLike): Promise<void> {
+  const ip = getClientIp(request);
+  await activeStore.delete(ip);
+}

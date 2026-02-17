@@ -41,18 +41,10 @@
     },
     "dependencies": {
         "zod": "^3.25.76",
-        "@supabase/supabase-js": "^2.54.0",
-        "@supabase/ssr": "^0.6.1",
         "events": "^3.3.0",
         "uuid": "^11.1.0",
         "@tanstack/react-query": "^5.84.2",
-        "@paddle/paddle-js": "^1.4.2",
-        "analytics": "^0.8.19",
-        "@analytics/google-analytics": "^1.1.0",
-        "@analytics/google-tag-manager": "^0.6.0",
-        "@analytics/customerio": "^0.2.2",
-        "@sentry/nextjs": "^8.55.0",
-        "posthog-js": "^1.335.2"
+        "@paddle/paddle-js": "^1.4.2"
     },
     "devDependencies": {
         "@indexnow/eslint-config": "workspace:*",
