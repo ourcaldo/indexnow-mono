@@ -13,7 +13,7 @@ import { logger } from '@indexnow/shared'
 
 const PUBLIC_ROUTES = ['/login']
 const ROLE_CACHE_COOKIE = 'admin_role_verified'
-const ROLE_CACHE_TTL_SECONDS = 300 // 5 minutes
+const ROLE_CACHE_TTL_SECONDS = 60 // 1 minute — short TTL balances performance vs. security
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname

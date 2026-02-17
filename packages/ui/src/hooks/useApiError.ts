@@ -1,3 +1,5 @@
+'use client'
+
 import { useToast } from '../components/toast'
 import type { ApiError } from '@indexnow/shared'
 

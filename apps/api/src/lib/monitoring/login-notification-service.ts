@@ -227,7 +227,7 @@ export class LoginNotificationService {
           pass: config.pass
         },
         tls: {
-          rejectUnauthorized: false
+          rejectUnauthorized: true
         }
       });
 

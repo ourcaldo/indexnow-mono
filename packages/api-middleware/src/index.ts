@@ -32,7 +32,7 @@ export const requestLogger: MiddlewareFunction = async (context, next) => {
     status: response.status,
     duration: `${duration}ms`,
     userAgent: req.headers.get('user-agent'),
-    ip: getClientIP(req as any),
+    ip: getClientIP(req as any), // NextRequest type mismatch between package resolutions
   };
 
   // Log all requests
@@ -130,7 +130,7 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 export const rateLimit = (maxRequests: number, windowMs: number): MiddlewareFunction => {
   return async (context, next) => {
     const { req } = context;
-    const clientId = getClientIP(req as any) ?? 'anonymous';
+    const clientId = getClientIP(req as any) ?? 'anonymous'; // NextRequest type mismatch between package resolutions
     const now = Date.now();
 
     const current = rateLimitStore.get(clientId);

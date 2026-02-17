@@ -10,11 +10,7 @@ const AppSchema = z.object({
   environment: z.enum(['development', 'staging', 'production']).default('production'),
   baseUrl: z.string().url().default('http://localhost:3000'),
   port: z.coerce.number().default(3000),
-  allowedOrigins: z.array(z.string()).default([
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002'
-  ]),
+  allowedOrigins: z.array(z.string()).default([]),
 });
 
 const SupabaseSchema = z.object({

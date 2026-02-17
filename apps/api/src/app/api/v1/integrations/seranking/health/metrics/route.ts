@@ -6,15 +6,17 @@
  * are not yet implemented. Create the metrics handler before enabling.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { adminApiWrapper } from '@/lib/core/api-response-middleware';
+import { formatError, createStandardError } from '@/lib/core/api-response-middleware';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 
-export async function GET(_request: NextRequest) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: 'SeRanking health metrics endpoint is not yet implemented',
-      code: 'NOT_IMPLEMENTED',
-    },
-    { status: 501 }
-  );
-}
+export const GET = adminApiWrapper(async (
+  _request: NextRequest,
+) => {
+  return formatError(await createStandardError(
+    ErrorType.VALIDATION,
+    'SeRanking health metrics endpoint is not yet implemented',
+    { statusCode: 501, severity: ErrorSeverity.LOW }
+  ));
+});

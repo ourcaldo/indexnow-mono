@@ -4,7 +4,7 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity, escapeLikePattern } from '@indexnow/shared';
 import {
   KeywordBankEntity,
   KeywordBankInsert,
@@ -511,7 +511,7 @@ export class KeywordBankService implements IKeywordBankService {
             .select('*', { count: 'exact' });
 
           if (query.keyword) {
-            dbQuery = dbQuery.ilike('keyword', `%${query.keyword}%`);
+            dbQuery = dbQuery.ilike('keyword', `%${escapeLikePattern(query.keyword)}%`);
           }
           if (query.country_code) {
             dbQuery = dbQuery.eq('country_id', query.country_code.toLowerCase());

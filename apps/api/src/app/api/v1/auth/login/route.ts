@@ -165,7 +165,30 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     const user = authData.user;
 
-    // 5. Log successful login activity
+    // 5. Check if user must change password (set by admin password reset)
+    try {
+      const { data: profile } = await supabase
+        .from('indb_auth_user_profiles')
+        .select('must_change_password')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile?.must_change_password) {
+        return formatSuccess({
+          user: { id: user.id, email: user.email },
+          mustChangePassword: true,
+          session: {
+            access_token: authData.session.access_token,
+            refresh_token: authData.session.refresh_token,
+            expires_at: authData.session.expires_at
+          }
+        });
+      }
+    } catch {
+      // Column may not exist yet — skip gracefully
+    }
+
+    // 6. Log successful login activity
     const requestInfo = await getRequestInfo(request);
     await ActivityLogger.logAuth(
       user.id,
@@ -174,7 +197,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       request
     );
 
-    // 6. Send login notification email (async)
+    // 7. Send login notification email (async)
     loginNotificationService.sendLoginNotification({
       userId: user.id,
       userEmail: user.email!,
@@ -188,7 +211,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       logger.error({ error: emailError instanceof Error ? emailError : undefined }, 'Failed to send login notification email');
     });
 
-    // 7. Return success response with session data
+    // 8. Return success response with session data
     return formatSuccess({
       user: {
         id: user.id,

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { ActivityLogger } from '@/lib/monitoring/activity-logger'
+import { logger } from '@/lib/monitoring/error-handling'
 import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const POST = adminApiWrapper(async (
@@ -138,9 +139,59 @@ export const POST = adminApiWrapper(async (
     }
   )
 
+  // Mark user as requiring password change on next login
+  const flagContext = {
+    userId: adminUser.id,
+    operation: 'admin_set_force_password_change',
+    reason: 'Flag user to change password after admin reset',
+    source: 'admin/users/[id]/reset-password',
+    metadata: { targetUserId: userId }
+  }
+  await SecureServiceRoleHelpers.secureUpdate(
+    flagContext,
+    'indb_auth_user_profiles',
+    { must_change_password: true },
+    { user_id: userId }
+  ).catch((err: unknown) => {
+    // Non-fatal: flag may not exist yet in schema
+    logger.warn({ error: err instanceof Error ? err : undefined }, 'Could not set must_change_password flag')
+  })
+
+  // SECURITY: Never return the plaintext password in the HTTP response.
+  // The password is sent to the user's email address via out-of-band delivery.
+  try {
+    const { data: profileData } = await supabaseAdmin
+      .from('indb_auth_user_profiles')
+      .select('user_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (profileData) {
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId)
+      const userEmail = authData?.user?.email
+      if (userEmail) {
+        const { getEmailService } = await import('@indexnow/mail')
+        await getEmailService().sendEmail({
+          to: userEmail,
+          subject: 'Your password has been reset',
+          template: 'password-reset-notification',
+          context: {
+            newPassword,
+            userName: currentUser.full_name || 'User',
+            adminName: adminUser.email || 'Administrator',
+          }
+        }).catch((emailErr: unknown) => {
+          logger.warn({ error: emailErr instanceof Error ? emailErr : undefined }, 'Failed to send password reset email — password was still reset successfully')
+        })
+      }
+    }
+  } catch (emailError: unknown) {
+    logger.warn({ error: emailError instanceof Error ? emailError : undefined }, 'Email delivery failed for password reset')
+  }
+
   return formatSuccess({
-    newPassword: newPassword,
-    message: 'Password reset successfully. User must change this password on next login.',
-    mustChangeOnLogin: true
+    message: 'Password reset successfully. The new password has been sent to the user\'s email. User must change this password on next login.',
+    mustChangeOnLogin: true,
+    passwordLength: newPassword.length
   }, undefined, 201)
 })

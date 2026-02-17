@@ -22,6 +22,14 @@ const defaultAnonClient = createClient<Database>(
 // Type aliases for table names - ensures type safety without SDK generic resolution issues
 type Tables = Database['public']['Tables']
 
+/**
+ * DatabaseService — Supabase-backed data access layer.
+ *
+ * DESIGN NOTE: Methods return null/false/[] on error (errors are logged but swallowed).
+ * Callers cannot distinguish "not found" from "database error". This is a known
+ * limitation; consider migrating to a discriminated result type like
+ * `{ data: T | null; error: Error | null }` for better error propagation.
+ */
 export class DatabaseService {
   private readonly supabase: SupabaseClient<Database>
 

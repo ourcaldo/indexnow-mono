@@ -13,8 +13,7 @@ export type { ApiSuccessResponse, ApiErrorResponse } from './api-response-format
 export { validateUuidParam } from './validate-params';
 
 /** Route context type compatible with Next.js 16 (supports dynamic, catch-all & optional catch-all params) */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RouteContext = { params: Promise<Record<string, any>> };
+type RouteContext = { params: Promise<Record<string, string | string[]>> };
 
 /**
  * UUID regex for validating route param IDs

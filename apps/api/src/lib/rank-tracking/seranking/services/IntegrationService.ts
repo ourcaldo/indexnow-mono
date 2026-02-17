@@ -77,6 +77,7 @@ export class IntegrationService implements IIntegrationService {
   private activeAlerts: Map<string, Date> = new Map();
   private lastHealthCheck?: HealthCheckResult;
   private metrics: ApiMetrics;
+  private periodicTimers: ReturnType<typeof setInterval>[] = [];
 
   constructor(
     config: Partial<IntegrationServiceConfig> = {},
@@ -291,6 +292,12 @@ export class IntegrationService implements IIntegrationService {
 
   /**
    * Record API usage
+   * 
+   * NOTE: This uses a read-then-write pattern which has a minor TOCTOU race
+   * under concurrent requests. For accurate quota tracking, create an
+   * `increment_integration_quota(service_name TEXT, amount INT)` RPC in
+   * PostgreSQL using `FOR UPDATE` row-level locking. The current approach
+   * is acceptable since SeRanking quota is a soft monitoring limit.
    */
   async recordApiUsage(
     requestCount: number = 1,
@@ -1068,27 +1075,40 @@ export class IntegrationService implements IIntegrationService {
   }
 
   private initializePeriodicTasks(): void {
+    // Clear any existing timers first
+    this.destroyPeriodicTasks();
+
     if (this.config.enableAutoQuotaReset) {
       // Check for quota resets every hour
-      setInterval(async () => {
+      this.periodicTimers.push(setInterval(async () => {
         try {
           await this.checkAutoQuotaReset();
         } catch (error) {
           this.log('error', 'Auto quota reset check failed:', error);
         }
-      }, 60 * 60 * 1000); // 1 hour
+      }, 60 * 60 * 1000)); // 1 hour
     }
 
     // Health check interval
     if (this.config.healthCheckInterval > 0) {
-      setInterval(async () => {
+      this.periodicTimers.push(setInterval(async () => {
         try {
           await this.testIntegration();
         } catch (error) {
           this.log('error', 'Periodic health check failed:', error);
         }
-      }, this.config.healthCheckInterval * 60 * 1000);
+      }, this.config.healthCheckInterval * 60 * 1000));
     }
+  }
+
+  /**
+   * Clean up periodic tasks to prevent timer leaks
+   */
+  destroyPeriodicTasks(): void {
+    for (const timer of this.periodicTimers) {
+      clearInterval(timer);
+    }
+    this.periodicTimers = [];
   }
 
   private async checkAutoQuotaReset(): Promise<void> {

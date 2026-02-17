@@ -24,7 +24,7 @@ export class PaymentErrorBoundary extends Component<Props, State> {
     super(props)
     this.state = { 
       hasError: false,
-      errorId: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      errorId: `err_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
     }
   }
 
@@ -32,7 +32,7 @@ export class PaymentErrorBoundary extends Component<Props, State> {
     return { 
       hasError: true, 
       error,
-      errorId: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      errorId: `err_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
     }
   }
 
@@ -64,7 +64,7 @@ export class PaymentErrorBoundary extends Component<Props, State> {
     this.setState({ 
       hasError: false, 
       error: undefined,
-      errorId: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      errorId: `err_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
     })
   }
 
@@ -155,7 +155,7 @@ export class PaymentErrorBoundary extends Component<Props, State> {
 export function usePaymentErrorHandler() {
   const handleError = React.useCallback((error: Error, errorInfo?: React.ErrorInfo) => {
     const errorDetails = {
-      errorId: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      errorId: `err_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       error: {
         name: error.name,
         message: error.message,

@@ -20,7 +20,7 @@ export const GET = adminApiWrapper(async (
   const parsedPage = parseInt(searchParams.get('page') || '1')
   const parsedLimit = parseInt(searchParams.get('limit') || '100')
   const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
-  const limit = Number.isNaN(parsedLimit) ? 100 : Math.min(500, Math.max(1, parsedLimit))
+  const limit = Number.isNaN(parsedLimit) ? 100 : Math.min(200, Math.max(1, parsedLimit))
   const offset = (page - 1) * limit
 
   const securityContext = {

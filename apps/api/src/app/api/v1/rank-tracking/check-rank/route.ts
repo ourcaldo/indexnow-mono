@@ -74,46 +74,23 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             return formatError(notFoundError);
         }
 
-        // Check user daily quota
-        const quotaInfo = await SecureServiceRoleWrapper.executeWithUserSession(
-            auth.supabase,
-            {
-                userId: auth.userId,
-                operation: 'check_user_rank_quota',
-                source: 'rank-tracking/check-rank',
-                reason: 'Checking user daily quota before rank check',
-                metadata: { keywordId: keyword_id },
-                ipAddress: getClientIP(request),
-                userAgent: request.headers.get('user-agent') || undefined
-            },
-            { table: 'indb_auth_user_profiles', operationType: 'select' },
-            async (db) => {
-                const { data, error } = await db
-                    .from('indb_auth_user_profiles')
-                    .select('daily_quota_limit, daily_quota_used')
-                    .eq('user_id', auth.userId)
-                    .single();
-
-                if (error) throw new Error('Failed to check quota');
-                return data;
-            }
+        // Check and consume user daily quota atomically (prevents TOCTOU race)
+        const { data: quotaConsumed, error: quotaError } = await (supabaseAdmin.rpc as Function)(
+            'consume_user_quota',
+            { target_user_id: auth.userId, quota_amount: 1 }
         );
 
-        if (quotaInfo) {
-            const availableQuota = quotaInfo.daily_quota_limit - quotaInfo.daily_quota_used;
-            if (availableQuota <= 0) {
-                const quotaError = await ErrorHandlingService.createError(
-                    ErrorType.RATE_LIMIT,
-                    `Daily quota exceeded: ${quotaInfo.daily_quota_used}/${quotaInfo.daily_quota_limit} used. Quota resets daily.`,
-                    {
-                        severity: ErrorSeverity.MEDIUM,
-                        userId: auth.userId,
-                        statusCode: 429,
-                        metadata: { used: quotaInfo.daily_quota_used, limit: quotaInfo.daily_quota_limit }
-                    }
-                );
-                return formatError(quotaError);
-            }
+        if (quotaError || !quotaConsumed) {
+            const quotaErr = await ErrorHandlingService.createError(
+                ErrorType.RATE_LIMIT,
+                'Daily quota exceeded. Quota resets daily.',
+                {
+                    severity: ErrorSeverity.MEDIUM,
+                    userId: auth.userId,
+                    statusCode: 429
+                }
+            );
+            return formatError(quotaErr);
         }
 
         // Perform rank check via Firecrawl
@@ -135,7 +112,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
             deviceType
         );
 
-        // Save result to database atomically (update keyword + insert history + increment quota)
+        // Save result to database (quota already consumed atomically above)
         await SecureServiceRoleWrapper.executeSecureOperation(
             {
                 userId: auth.userId,
@@ -151,19 +128,39 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 const now = new Date().toISOString();
                 const checkDate = now.split('T')[0];
 
-                // Atomic RPC: updates keyword position + inserts ranking + increments quota
-                const { error: rpcError } = await (supabaseAdmin.rpc as Function)(
-                    'save_rank_check_result_service', {
-                        p_keyword_id: keyword_id,
-                        p_user_id: auth.userId,
-                        p_position: rankResult.position,
-                        p_url: rankResult.url,
-                        p_check_date: checkDate,
-                        p_device_type: keywordData.device,
-                        p_country_iso: keywordData.country || null
+                // Update keyword position
+                const { error: updateError } = await supabaseAdmin
+                    .from('indb_rank_keywords')
+                    .update({ position: rankResult.position, last_checked: now })
+                    .eq('id', keyword_id);
+
+                if (updateError) throw new Error(`Failed to update keyword: ${updateError.message}`);
+
+                // Resolve country code to FK
+                let countryId: string | null = null;
+                if (keywordData.country) {
+                    const { data: countryData } = await supabaseAdmin
+                        .from('indb_keyword_countries')
+                        .select('id')
+                        .eq('iso2_code', keywordData.country.toLowerCase())
+                        .limit(1)
+                        .single();
+                    countryId = countryData?.id ?? null;
+                }
+
+                // Insert ranking history
+                const { error: insertError } = await supabaseAdmin
+                    .from('indb_keyword_rankings')
+                    .insert({
+                        keyword_id: keyword_id,
+                        position: rankResult.position,
+                        url: rankResult.url,
+                        check_date: checkDate,
+                        device_type: keywordData.device,
+                        country_id: countryId
                     });
 
-                if (rpcError) throw new Error(`Failed to save rank result: ${rpcError.message}`);
+                if (insertError) throw new Error(`Failed to insert ranking: ${insertError.message}`);
                 return null;
             }
         );

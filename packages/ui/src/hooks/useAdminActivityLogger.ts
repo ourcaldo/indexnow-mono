@@ -15,15 +15,17 @@ export function useAdminActivityLogger() {
   const [user, setUser] = useState<AuthUser | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     const getCurrentUser = async () => {
       try {
         const currentUser = await authService.getCurrentUser()
-        setUser(currentUser)
+        if (!cancelled) setUser(currentUser)
       } catch (error) {
         logger.error({ error: error instanceof Error ? error : undefined }, 'Error getting current user')
       }
     }
     getCurrentUser()
+    return () => { cancelled = true }
   }, [])
 
   const logAdminActivity = useCallback(async (
@@ -68,10 +70,13 @@ export function useAdminPageViewLogger(
 ) {
   const { logAdminActivity } = useAdminActivityLogger()
   const hasLogged = useRef(false)
+  // Stabilize metadata reference to prevent infinite re-renders from object identity changes
+  const metadataKey = JSON.stringify(metadata ?? {})
 
   useEffect(() => {
     if (!hasLogged.current) {
       hasLogged.current = true // Set immediately to prevent double-fire
+      const parsedMetadata = JSON.parse(metadataKey) as AdminActivityMetadata
       logAdminActivity(
         'admin_page_view',
         `Accessed admin ${pageName} page`,
@@ -79,14 +84,15 @@ export function useAdminPageViewLogger(
           section: pageSection,
           action: 'page_view',
           pageName,
-          ...metadata
+          ...parsedMetadata
         }
       ).catch(() => {
         // (#132) Reset flag on failure so next effect run retries
         hasLogged.current = false
       })
     }
-  }, [logAdminActivity, pageSection, pageName, metadata])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- metadataKey is a stable serialized version of metadata
+  }, [logAdminActivity, pageSection, pageName, metadataKey])
 
   return { logAdminActivity }
 }

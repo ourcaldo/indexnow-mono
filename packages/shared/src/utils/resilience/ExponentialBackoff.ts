@@ -8,6 +8,7 @@
  */
 
 import { logger } from '../logger';
+import { sleep } from '../async-utils';
 
 export interface RetryConfig {
   maxAttempts: number;          // Maximum number of retry attempts
@@ -116,7 +117,7 @@ export class ExponentialBackoff {
         this.config.onRetry(attempt, delay, lastError);
 
         // Wait before retry
-        await this.sleep(delay);
+        await sleep(delay);
       }
     }
 
@@ -149,13 +150,6 @@ export class ExponentialBackoff {
   private isRetryableError(error: Error): boolean {
     const errorMessage = error.message || '';
     return this.config.retryableErrors.some(pattern => pattern.test(errorMessage));
-  }
-
-  /**
-   * Sleep for specified duration
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 

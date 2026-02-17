@@ -137,56 +137,48 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
             );
         }
 
-        // Check for duplicate event using SecureServiceRoleWrapper
-        const existingEvent = await SecureServiceRoleWrapper.executeSecureOperation<Pick<WebhookEventRow, 'id' | 'processed'> | null>(
+        // Idempotency: upsert event record (UNIQUE on event_id prevents duplicates atomically)
+        const upsertResult = await SecureServiceRoleWrapper.executeSecureOperation<{ alreadyProcessed: boolean }>(
             {
                 userId: 'system',
-                operation: 'check_duplicate_webhook_event',
+                operation: 'upsert_webhook_event',
                 source: 'paddle/webhook',
-                reason: 'Checking for duplicate Paddle webhook event',
+                reason: 'Atomically inserting or checking Paddle webhook event for idempotency',
                 metadata: { event_id, event_type }
             },
-            { table: 'indb_paddle_webhook_events', operationType: 'select' },
+            { table: 'indb_paddle_webhook_events', operationType: 'insert' },
             async () => {
-                const { data, error } = await supabaseAdmin
+                // First check if already processed
+                const { data: existing } = await supabaseAdmin
                     .from('indb_paddle_webhook_events')
                     .select('id, processed')
                     .eq('event_id', event_id)
                     .single();
 
-                if (error && error.code !== 'PGRST116') throw error;
-                return data;
-            }
-        );
+                if (existing?.processed) {
+                    return { alreadyProcessed: true };
+                }
 
-        if (existingEvent) {
-            if (existingEvent.processed) {
-                return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
-            }
-        } else {
-            // Insert new webhook event using SecureServiceRoleWrapper
-            await SecureServiceRoleWrapper.executeSecureOperation<void>(
-                {
-                    userId: 'system',
-                    operation: 'log_webhook_event',
-                    source: 'paddle/webhook',
-                    reason: 'Logging new Paddle webhook event for processing',
-                    metadata: { event_id, event_type }
-                },
-                { table: 'indb_paddle_webhook_events', operationType: 'insert' },
-                async () => {
+                if (!existing) {
+                    // Insert with onConflict to handle race condition atomically
                     const { error } = await supabaseAdmin
                         .from('indb_paddle_webhook_events')
-                        .insert({
+                        .upsert({
                             event_id,
                             event_type,
                             payload: eventData as unknown as Json,
                             processed: false,
-                        });
+                        }, { onConflict: 'event_id', ignoreDuplicates: true });
 
                     if (error) throw new Error(`Failed to log webhook event: ${error.message}`);
                 }
-            );
+
+                return { alreadyProcessed: false };
+            }
+        );
+
+        if (upsertResult.alreadyProcessed) {
+            return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
         }
 
         await routeWebhookEvent(event_type, data, event_id);

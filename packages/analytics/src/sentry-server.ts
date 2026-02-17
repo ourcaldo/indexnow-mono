@@ -38,7 +38,7 @@ export function initializeServerSentry() {
 
     isInitialized = true;
   } catch (error) {
-    // Silent fail
+    console.error('[Sentry] Server-side initialization failed:', error instanceof Error ? error.message : String(error));
   }
 }
 

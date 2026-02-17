@@ -8,7 +8,10 @@
       "@indexnow/auth": ["packages/auth/src"],
       "@indexnow/database": ["packages/database/src"],
       "@indexnow/services": ["packages/services/src"],
-      "@indexnow/mail": ["packages/mail/src"]
+      "@indexnow/mail": ["packages/mail/src"],
+      "@indexnow/analytics": ["packages/analytics/src"],
+      "@indexnow/api-middleware": ["packages/api-middleware/src"],
+      "@indexnow/supabase-client": ["packages/supabase-client/src"]
     },
     "declaration": true,
     "declarationMap": true,

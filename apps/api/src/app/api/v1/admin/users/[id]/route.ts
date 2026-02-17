@@ -150,12 +150,12 @@ export const GET = adminApiWrapper(async (
 })
 
 const updateUserSchema = z.object({
-  full_name: z.string().optional(),
+  full_name: z.string().max(200).optional(),
   role: z.enum(['user', 'admin', 'super_admin']).optional(),
   email_notifications: z.boolean().optional(),
-  phone_number: z.string().optional(),
+  phone_number: z.string().max(20).regex(/^[+\d\s()-]*$/, 'Invalid phone number format').optional(),
   status: z.enum(['active', 'suspended']).optional(),
-})
+}).strict()
 
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,

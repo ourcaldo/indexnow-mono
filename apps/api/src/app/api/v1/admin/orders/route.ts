@@ -7,7 +7,8 @@ import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import {
   type AdminOrdersResponse,
   type AdminOrderTransaction,
-  type AdminOrderSummary
+  type AdminOrderSummary,
+  escapeLikePattern
 } from '@indexnow/shared';
 import {
   SecureServiceRoleWrapper,
@@ -81,20 +82,20 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       let customerUserIds: string[] | null = null;
       if (customer) {
         const customerLower = customer.toLowerCase();
+        const escapedCustomer = escapeLikePattern(customerLower);
         // Search profiles by name
         const { data: matchingProfiles } = await supabaseAdmin
           .from('indb_auth_user_profiles')
           .select('user_id')
-          .ilike('full_name', `%${customerLower}%`)
+          .ilike('full_name', `%${escapedCustomer}%`)
           .limit(200);
         const profileMatches = new Set((matchingProfiles || []).map(p => p.user_id));
 
-        // Search emails via batch RPC
-        // For email search we need all user IDs — get them from profiles table
+        // Search emails via batch RPC — limit to reasonable subset
         const { data: allProfiles } = await supabaseAdmin
           .from('indb_auth_user_profiles')
           .select('user_id')
-          .limit(10000);
+          .limit(500);
         if (allProfiles && allProfiles.length > 0) {
           const allUserIds = allProfiles.map(p => p.user_id);
           const emailMap = await batchGetUserEmails(allUserIds);

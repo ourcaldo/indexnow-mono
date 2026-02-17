@@ -21,6 +21,7 @@ export class FirecrawlRateLimiter {
   
   // Sliding window tracking for each API key
   private windows: Map<string, RateLimitWindow> = new Map()
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null
   
   // Rate limit configuration
   private readonly REQUESTS_PER_MINUTE = 30
@@ -178,6 +179,18 @@ export class FirecrawlRateLimiter {
   }
 
   /**
+   * Destroy instance and clean up timers
+   */
+  public destroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer)
+      this.cleanupTimer = null
+    }
+    this.windows.clear()
+    FirecrawlRateLimiter.instance = null
+  }
+
+  /**
    * Get or create rate limit window for API key
    */
   private getOrCreateWindow(keyHash: string): RateLimitWindow {
@@ -223,7 +236,7 @@ export class FirecrawlRateLimiter {
    * Periodic cleanup of all windows
    */
   private startPeriodicCleanup(): void {
-    setInterval(() => {
+    this.cleanupTimer = setInterval(() => {
       const now = Date.now()
       
       for (const [keyHash, window] of Array.from(this.windows.entries())) {

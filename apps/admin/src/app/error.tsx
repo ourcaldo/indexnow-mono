@@ -28,7 +28,6 @@ export default function AdminError({
       severity: 'high',
       context: {
         digest: error.digest,
-        stack: error.stack,
         url: window.location.href
       }
     }).catch((err) => logger.error({ error: err instanceof Error ? err : undefined }, 'Caught error'))

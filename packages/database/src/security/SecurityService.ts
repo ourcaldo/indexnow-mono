@@ -208,7 +208,9 @@ export class SecurityService {
       if (value === undefined) {
         sanitized[cleanKey] = undefined
       } else if (typeof value === 'string') {
-        sanitized[cleanKey] = value.replace(/['"`;]/g, '').substring(0, 1000)
+        // Only truncate strings — do NOT strip quotes/apostrophes.
+        // Supabase uses parameterized queries so SQL injection via values is not possible.
+        sanitized[cleanKey] = value.substring(0, 5000)
       } else if (typeof value === 'number') {
         sanitized[cleanKey] = isNaN(value) ? 0 : value
       } else if (typeof value === 'boolean' || value === null) {
