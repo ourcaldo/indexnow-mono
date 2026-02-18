@@ -5,7 +5,13 @@
  */
 
 import { Database, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
-import { supabaseAdmin, SecureServiceRoleWrapper, toJson, fromJson, fromJsonOr } from '@indexnow/database';
+import {
+  supabaseAdmin,
+  SecureServiceRoleWrapper,
+  toJson,
+  fromJson,
+  fromJsonOr,
+} from '@indexnow/database';
 import {
   EnrichmentJob,
   EnrichmentJobType,
@@ -26,11 +32,11 @@ import {
   DEFAULT_JOB_CONFIG,
   EnrichmentJobInsert,
   EnrichmentJobUpdate,
-  EnrichmentJobRecord
+  EnrichmentJobRecord,
 } from '../types/EnrichmentJobTypes';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@indexnow/shared';
+import { logger } from '@/lib/monitoring/error-handling';
 
 // Queue configuration
 export interface QueueConfig {
@@ -56,7 +62,7 @@ const DEFAULT_QUEUE_CONFIG: QueueConfig = {
   heartbeatInterval: 30000, // 30 seconds
   enableMetrics: true,
   enableEvents: true,
-  deadLetterThreshold: 5
+  deadLetterThreshold: 5,
 };
 
 export class EnrichmentQueue extends EventEmitter {
@@ -79,7 +85,7 @@ export class EnrichmentQueue extends EventEmitter {
       jobsEnqueued: 0,
       jobsProcessed: 0,
       jobsFailed: 0,
-      totalProcessingTime: 0
+      totalProcessingTime: 0,
     };
 
     this.initialize();
@@ -101,7 +107,10 @@ export class EnrichmentQueue extends EventEmitter {
 
       logger.info({}, 'EnrichmentQueue initialized successfully');
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to initialize EnrichmentQueue');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Failed to initialize EnrichmentQueue'
+      );
       throw error;
     }
   }
@@ -120,7 +129,7 @@ export class EnrichmentQueue extends EventEmitter {
       if (queueSize >= this.config.maxQueueSize) {
         return {
           success: false,
-          error: 'Queue is at maximum capacity'
+          error: 'Queue is at maximum capacity',
         };
       }
 
@@ -129,14 +138,14 @@ export class EnrichmentQueue extends EventEmitter {
       if (!validation.isValid) {
         return {
           success: false,
-          error: `Invalid job data: ${validation.errors.join(', ')}`
+          error: `Invalid job data: ${validation.errors.join(', ')}`,
         };
       }
 
       // Create job configuration
       const jobConfig: EnrichmentJobConfig = {
         ...DEFAULT_JOB_CONFIG,
-        ...jobRequest.config
+        ...jobRequest.config,
       };
 
       // Create initial progress
@@ -147,7 +156,7 @@ export class EnrichmentQueue extends EventEmitter {
         successful: 0,
         failed: 0,
         skipped: 0,
-        startedAt: new Date()
+        startedAt: new Date(),
       };
 
       // Create job record
@@ -166,7 +175,7 @@ export class EnrichmentQueue extends EventEmitter {
         metadata: toJson(jobRequest.metadata),
         next_retry_at: scheduledFor?.toISOString(),
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       // Insert job into database
@@ -181,12 +190,12 @@ export class EnrichmentQueue extends EventEmitter {
             user_id: userId,
             total_keywords: totalKeywords,
             priority: jobRequest.priority || JobPriority.NORMAL,
-            operation_type: 'job_enqueue'
-          }
+            operation_type: 'job_enqueue',
+          },
         },
         {
           table: 'indb_enrichment_jobs',
-          operationType: 'insert'
+          operationType: 'insert',
         },
         async () => {
           const { data, error } = await supabaseAdmin
@@ -196,7 +205,11 @@ export class EnrichmentQueue extends EventEmitter {
             .single();
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Failed to insert job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to insert job: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return data;
@@ -207,7 +220,7 @@ export class EnrichmentQueue extends EventEmitter {
         logger.error({}, 'Failed to insert job: No data returned');
         return {
           success: false,
-          error: 'Failed to create job'
+          error: 'Failed to create job',
         };
       }
 
@@ -226,13 +239,16 @@ export class EnrichmentQueue extends EventEmitter {
         success: true,
         jobId,
         queuePosition,
-        estimatedCompletion
+        estimatedCompletion,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error enqueuing job');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error enqueuing job'
+      );
       return {
         success: false,
-        error: 'Internal error occurred'
+        error: 'Internal error occurred',
       };
     }
   }
@@ -251,18 +267,21 @@ export class EnrichmentQueue extends EventEmitter {
       for (const jobRequest of batchRequest.jobs) {
         const mergedConfig = {
           ...batchRequest.globalConfig,
-          ...jobRequest.config
+          ...jobRequest.config,
         };
 
         const result = await this.enqueueJob(userId, {
           ...jobRequest,
-          config: mergedConfig
+          config: mergedConfig,
         });
 
         results.push(result);
       }
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in batch enqueue');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in batch enqueue'
+      );
     }
 
     return results;
@@ -281,12 +300,12 @@ export class EnrichmentQueue extends EventEmitter {
           source: 'EnrichmentQueue',
           metadata: {
             worker_id: workerId,
-            operation_type: 'job_dequeue'
-          }
+            operation_type: 'job_dequeue',
+          },
         },
         {
           table: 'indb_enrichment_jobs',
-          operationType: 'select'
+          operationType: 'select',
         },
         async () => {
           const { data: jobs, error } = await supabaseAdmin
@@ -300,7 +319,11 @@ export class EnrichmentQueue extends EventEmitter {
             .limit(1);
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Failed to get next job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to get next job: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return jobs || [];
@@ -317,17 +340,18 @@ export class EnrichmentQueue extends EventEmitter {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
           operation: 'lock_job_for_processing',
-          reason: 'Locking enrichment job for exclusive worker processing to prevent race conditions',
+          reason:
+            'Locking enrichment job for exclusive worker processing to prevent race conditions',
           source: 'EnrichmentQueue',
           metadata: {
             job_id: jobRecord.id,
             worker_id: workerId,
-            operation_type: 'job_lock'
-          }
+            operation_type: 'job_lock',
+          },
         },
         {
           table: 'indb_enrichment_jobs',
-          operationType: 'update'
+          operationType: 'update',
         },
         async () => {
           const { error: lockError } = await supabaseAdmin
@@ -337,13 +361,17 @@ export class EnrichmentQueue extends EventEmitter {
               worker_id: workerId,
               locked_at: new Date().toISOString(),
               started_at: jobRecord.started_at || new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             })
             .eq('id', jobRecord.id)
             .is('locked_at', null); // Ensure no race condition
 
           if (lockError) {
-            throw ErrorHandlingService.createError({ message: `Failed to lock job: ${lockError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to lock job: ${lockError.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return { success: true };
@@ -360,7 +388,10 @@ export class EnrichmentQueue extends EventEmitter {
 
       return job;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error dequeuing job');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error dequeuing job'
+      );
       return null;
     }
   }
@@ -368,10 +399,7 @@ export class EnrichmentQueue extends EventEmitter {
   /**
    * Update job progress
    */
-  async updateJobProgress(
-    jobId: string,
-    progress: Partial<JobProgress>
-  ): Promise<boolean> {
+  async updateJobProgress(jobId: string, progress: Partial<JobProgress>): Promise<boolean> {
     try {
       const success = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -379,7 +407,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'update_enrichment_job_progress',
           reason: 'Updating enrichment job progress during processing',
           source: 'EnrichmentQueue.updateJobProgress',
-          metadata: { jobId }
+          metadata: { jobId },
         },
         { table: 'indb_enrichment_jobs', operationType: 'update' },
         async () => {
@@ -391,21 +419,29 @@ export class EnrichmentQueue extends EventEmitter {
             .single();
 
           if (fetchError || !job) {
-            throw ErrorHandlingService.createError({ message: 'Job not found for progress update', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
+            throw ErrorHandlingService.createError({
+              message: 'Job not found for progress update',
+              type: ErrorType.NOT_FOUND,
+              severity: ErrorSeverity.MEDIUM,
+            });
           }
 
           // Merge progress data
           const updatedProgress: JobProgress = {
             ...job.progress_data,
-            ...progress
+            ...progress,
           };
 
           // Calculate estimated completion
           if (updatedProgress.processed > 0 && updatedProgress.total > 0) {
-            const averageTime = (Date.now() - new Date(updatedProgress.startedAt).getTime()) / updatedProgress.processed;
+            const averageTime =
+              (Date.now() - new Date(updatedProgress.startedAt).getTime()) /
+              updatedProgress.processed;
             const remainingItems = updatedProgress.total - updatedProgress.processed;
             updatedProgress.remainingTime = remainingItems * averageTime;
-            updatedProgress.estimatedCompletionAt = new Date(Date.now() + updatedProgress.remainingTime);
+            updatedProgress.estimatedCompletionAt = new Date(
+              Date.now() + updatedProgress.remainingTime
+            );
             updatedProgress.averageProcessingTime = averageTime;
           }
 
@@ -414,12 +450,16 @@ export class EnrichmentQueue extends EventEmitter {
             .from('indb_enrichment_jobs')
             .update({
               progress_data: toJson(updatedProgress),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             })
             .eq('id', jobId);
 
           if (updateError) {
-            throw ErrorHandlingService.createError({ message: `Failed to update job progress: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to update job progress: ${updateError.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return updatedProgress;
@@ -433,7 +473,10 @@ export class EnrichmentQueue extends EventEmitter {
 
       return true;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating job progress');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error updating job progress'
+      );
       return false;
     }
   }
@@ -453,7 +496,7 @@ export class EnrichmentQueue extends EventEmitter {
         completed_at: new Date().toISOString(),
         locked_at: null,
         worker_id: null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       await SecureServiceRoleWrapper.executeSecureOperation(
@@ -462,7 +505,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'complete_enrichment_job',
           reason: 'Marking enrichment job as completed',
           source: 'EnrichmentQueue.completeJob',
-          metadata: { jobId, status }
+          metadata: { jobId, status },
         },
         { table: 'indb_enrichment_jobs', operationType: 'update' },
         async () => {
@@ -472,7 +515,11 @@ export class EnrichmentQueue extends EventEmitter {
             .eq('id', jobId);
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Failed to complete job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to complete job: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return null;
@@ -484,15 +531,19 @@ export class EnrichmentQueue extends EventEmitter {
 
       // Emit completion event
       if (this.config.enableEvents) {
-        const eventType = status === EnrichmentJobStatus.COMPLETED
-          ? JobEventType.JOB_COMPLETED
-          : JobEventType.JOB_FAILED;
+        const eventType =
+          status === EnrichmentJobStatus.COMPLETED
+            ? JobEventType.JOB_COMPLETED
+            : JobEventType.JOB_FAILED;
         this.emitJobEvent(eventType, jobId, undefined, { result });
       }
 
       return true;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error completing job');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error completing job'
+      );
       return false;
     }
   }
@@ -500,11 +551,7 @@ export class EnrichmentQueue extends EventEmitter {
   /**
    * Fail a job and handle retry logic
    */
-  async failJob(
-    jobId: string,
-    error: JobError,
-    shouldRetry: boolean = true
-  ): Promise<boolean> {
+  async failJob(jobId: string, error: JobError, shouldRetry: boolean = true): Promise<boolean> {
     try {
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -512,7 +559,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'handle_enrichment_job_failure',
           reason: 'Handling enrichment job failure with retry logic',
           source: 'EnrichmentQueue.failJob',
-          metadata: { jobId, shouldRetry, errorMessage: error.message }
+          metadata: { jobId, shouldRetry, errorMessage: error.message },
         },
         { table: 'indb_enrichment_jobs', operationType: 'update' },
         async () => {
@@ -524,7 +571,11 @@ export class EnrichmentQueue extends EventEmitter {
             .single();
 
           if (fetchError || !job) {
-            throw ErrorHandlingService.createError({ message: 'Job not found for failure handling', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
+            throw ErrorHandlingService.createError({
+              message: 'Job not found for failure handling',
+              type: ErrorType.NOT_FOUND,
+              severity: ErrorSeverity.MEDIUM,
+            });
           }
 
           const retryCount = job.retry_count + 1;
@@ -535,7 +586,8 @@ export class EnrichmentQueue extends EventEmitter {
           let willRetry = false;
 
           if (shouldRetry && retryCount <= maxRetries) {
-            const retryDelay = config.retryDelayMs * Math.pow(this.config.retryDelayMultiplier, retryCount - 1);
+            const retryDelay =
+              config.retryDelayMs * Math.pow(this.config.retryDelayMultiplier, retryCount - 1);
             const nextRetryAt = new Date(Date.now() + retryDelay);
 
             updates = {
@@ -546,7 +598,7 @@ export class EnrichmentQueue extends EventEmitter {
               error_message: error.message,
               locked_at: null,
               worker_id: null,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             };
             willRetry = true;
           } else {
@@ -557,7 +609,7 @@ export class EnrichmentQueue extends EventEmitter {
               completed_at: new Date().toISOString(),
               locked_at: null,
               worker_id: null,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             };
           }
 
@@ -567,7 +619,11 @@ export class EnrichmentQueue extends EventEmitter {
             .eq('id', jobId);
 
           if (updateError) {
-            throw ErrorHandlingService.createError({ message: `Failed to update failed job: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to update failed job: ${updateError.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return { willRetry, retryCount };
@@ -577,7 +633,10 @@ export class EnrichmentQueue extends EventEmitter {
       // Emit events based on result
       if (this.config.enableEvents) {
         if (result.willRetry) {
-          this.emitJobEvent(JobEventType.JOB_RETRYING, jobId, undefined, { retryCount: result.retryCount, error });
+          this.emitJobEvent(JobEventType.JOB_RETRYING, jobId, undefined, {
+            retryCount: result.retryCount,
+            error,
+          });
         } else {
           this.metrics.jobsFailed++;
           this.emitJobEvent(JobEventType.JOB_FAILED, jobId, undefined, { error });
@@ -588,7 +647,10 @@ export class EnrichmentQueue extends EventEmitter {
 
       return true;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error handling job failure');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error handling job failure'
+      );
       return false;
     }
   }
@@ -604,7 +666,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'cancel_enrichment_job',
           reason: 'Cancelling enrichment job by user or system request',
           source: 'EnrichmentQueue.cancelJob',
-          metadata: { jobId, userId }
+          metadata: { jobId, userId },
         },
         { table: 'indb_enrichment_jobs', operationType: 'update' },
         async () => {
@@ -615,7 +677,7 @@ export class EnrichmentQueue extends EventEmitter {
               cancelled_at: new Date().toISOString(),
               locked_at: null,
               worker_id: null,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             })
             .eq('id', jobId)
             .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING]);
@@ -627,7 +689,11 @@ export class EnrichmentQueue extends EventEmitter {
           const { error, count } = await query;
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Failed to cancel job: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Failed to cancel job: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return { count: count || 0 };
@@ -643,13 +709,16 @@ export class EnrichmentQueue extends EventEmitter {
       return {
         success,
         affectedJobs: cancelResult.count,
-        message: success ? 'Job cancelled successfully' : 'Job not found or already processed'
+        message: success ? 'Job cancelled successfully' : 'Job not found or already processed',
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error cancelling job');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error cancelling job'
+      );
       return {
         success: false,
-        error: 'Internal error occurred'
+        error: 'Internal error occurred',
       };
     }
   }
@@ -665,7 +734,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'get_enrichment_job_status',
           reason: 'Fetching enrichment job status and details',
           source: 'EnrichmentQueue.getJobStatus',
-          metadata: { jobId, userId }
+          metadata: { jobId, userId },
         },
         { table: 'indb_enrichment_jobs', operationType: 'select' },
         async () => {
@@ -691,7 +760,7 @@ export class EnrichmentQueue extends EventEmitter {
       if (!data) {
         return {
           success: false,
-          error: 'Job not found'
+          error: 'Job not found',
         };
       }
 
@@ -701,13 +770,16 @@ export class EnrichmentQueue extends EventEmitter {
         success: true,
         job,
         progress: job.progress,
-        result: job.result
+        result: job.result,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting job status');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error getting job status'
+      );
       return {
         success: false,
-        error: 'Internal error occurred'
+        error: 'Internal error occurred',
       };
     }
   }
@@ -730,8 +802,8 @@ export class EnrichmentQueue extends EventEmitter {
       workerStatus: {
         activeWorkers: 0,
         idleWorkers: 0,
-        totalWorkers: 0
-      }
+        totalWorkers: 0,
+      },
     };
   }
 
@@ -746,13 +818,16 @@ export class EnrichmentQueue extends EventEmitter {
 
       return {
         success: true,
-        message: 'Queue paused successfully'
+        message: 'Queue paused successfully',
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error pausing queue');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error pausing queue'
+      );
       return {
         success: false,
-        error: 'Failed to pause queue'
+        error: 'Failed to pause queue',
       };
     }
   }
@@ -768,13 +843,16 @@ export class EnrichmentQueue extends EventEmitter {
 
       return {
         success: true,
-        message: 'Queue resumed successfully'
+        message: 'Queue resumed successfully',
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error resuming queue');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error resuming queue'
+      );
       return {
         success: false,
-        error: 'Failed to resume queue'
+        error: 'Failed to resume queue',
       };
     }
   }
@@ -792,7 +870,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'cleanup_completed_enrichment_jobs',
           reason: `Cleaning up completed/cancelled enrichment jobs older than ${olderThanDays} days`,
           source: 'EnrichmentQueue.cleanupCompletedJobs',
-          metadata: { olderThanDays, cutoffDate: cutoffDate.toISOString() }
+          metadata: { olderThanDays, cutoffDate: cutoffDate.toISOString() },
         },
         { table: 'indb_enrichment_jobs', operationType: 'delete' },
         async () => {
@@ -803,7 +881,11 @@ export class EnrichmentQueue extends EventEmitter {
             .lt('completed_at', cutoffDate.toISOString());
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Error cleaning up jobs: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error cleaning up jobs: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return { count: count || 0 };
@@ -813,13 +895,16 @@ export class EnrichmentQueue extends EventEmitter {
       return {
         success: true,
         affectedJobs: result.count,
-        message: `Cleaned up ${result.count} old jobs`
+        message: `Cleaned up ${result.count} old jobs`,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in job cleanup');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in job cleanup'
+      );
       return {
         success: false,
-        error: 'Internal error occurred'
+        error: 'Internal error occurred',
       };
     }
   }
@@ -835,17 +920,25 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'get_enrichment_queue_size',
           reason: 'Checking enrichment queue size for capacity validation',
           source: 'EnrichmentQueue.getQueueSize',
-          metadata: {}
+          metadata: {},
         },
         { table: 'indb_enrichment_jobs', operationType: 'select' },
         async () => {
           const { count, error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
             .select('*', { count: 'exact', head: true })
-            .in('status', [EnrichmentJobStatus.QUEUED, EnrichmentJobStatus.PROCESSING, EnrichmentJobStatus.RETRYING]);
+            .in('status', [
+              EnrichmentJobStatus.QUEUED,
+              EnrichmentJobStatus.PROCESSING,
+              EnrichmentJobStatus.RETRYING,
+            ]);
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Error getting queue size: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error getting queue size: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return count || 0;
@@ -854,7 +947,10 @@ export class EnrichmentQueue extends EventEmitter {
 
       return result;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting queue size');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error getting queue size'
+      );
       return 0;
     }
   }
@@ -885,7 +981,11 @@ export class EnrichmentQueue extends EventEmitter {
 
       case EnrichmentJobType.BULK_ENRICHMENT: {
         const bulkData = jobRequest.data as { keywords?: string[] };
-        if (!bulkData.keywords || !Array.isArray(bulkData.keywords) || bulkData.keywords.length === 0) {
+        if (
+          !bulkData.keywords ||
+          !Array.isArray(bulkData.keywords) ||
+          bulkData.keywords.length === 0
+        ) {
           errors.push('Keywords array is required for bulk enrichment jobs');
         }
         break;
@@ -902,7 +1002,7 @@ export class EnrichmentQueue extends EventEmitter {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -956,7 +1056,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'get_enrichment_job_queue_position',
           reason: 'Calculating queue position for enrichment job',
           source: 'EnrichmentQueue.getJobQueuePosition',
-          metadata: { jobId }
+          metadata: { jobId },
         },
         { table: 'indb_enrichment_jobs', operationType: 'select' },
         async () => {
@@ -972,7 +1072,9 @@ export class EnrichmentQueue extends EventEmitter {
             .from('indb_enrichment_jobs')
             .select('*', { count: 'exact', head: true })
             .eq('status', EnrichmentJobStatus.QUEUED)
-            .or(`priority.gt.${job.priority},and(priority.eq.${job.priority},created_at.lt.${job.created_at})`);
+            .or(
+              `priority.gt.${job.priority},and(priority.eq.${job.priority},created_at.lt.${job.created_at})`
+            );
 
           return (count || 0) + 1;
         }
@@ -980,7 +1082,10 @@ export class EnrichmentQueue extends EventEmitter {
 
       return position;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error getting job queue position');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error getting job queue position'
+      );
       return 0;
     }
   }
@@ -989,9 +1094,10 @@ export class EnrichmentQueue extends EventEmitter {
    * Calculate estimated completion time
    */
   private calculateEstimatedCompletion(totalKeywords: number, queuePosition: number): Date {
-    const averageProcessingTime = this.metrics.jobsProcessed > 0
-      ? this.metrics.totalProcessingTime / this.metrics.jobsProcessed
-      : 60000; // Default 1 minute per keyword
+    const averageProcessingTime =
+      this.metrics.jobsProcessed > 0
+        ? this.metrics.totalProcessingTime / this.metrics.jobsProcessed
+        : 60000; // Default 1 minute per keyword
 
     const estimatedWaitTime = queuePosition * averageProcessingTime;
     const estimatedProcessingTime = totalKeywords * (averageProcessingTime / 10); // Assume 10 keywords per job average
@@ -1011,7 +1117,14 @@ export class EnrichmentQueue extends EventEmitter {
       priority: (record.priority as JobPriority) || JobPriority.NORMAL,
       config: fromJsonOr<EnrichmentJobConfig>(record.config, DEFAULT_JOB_CONFIG),
       data: fromJson<EnrichmentJobData>(record.source_data),
-      progress: fromJsonOr<JobProgress>(record.progress_data, { total: 0, processed: 0, successful: 0, failed: 0, skipped: 0, startedAt: new Date() }),
+      progress: fromJsonOr<JobProgress>(record.progress_data, {
+        total: 0,
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        skipped: 0,
+        startedAt: new Date(),
+      }),
       result: record.result_data ? fromJson<JobResult>(record.result_data) : undefined,
       retryCount: record.retry_count || 0,
       lastRetryAt: record.last_retry_at ? new Date(record.last_retry_at) : undefined,
@@ -1024,7 +1137,7 @@ export class EnrichmentQueue extends EventEmitter {
       error: record.error_message || undefined,
       metadata: record.metadata ? fromJson<Record<string, unknown>>(record.metadata) : undefined,
       workerId: record.worker_id || undefined,
-      lockedAt: record.locked_at ? new Date(record.locked_at) : undefined
+      lockedAt: record.locked_at ? new Date(record.locked_at) : undefined,
     };
   }
 
@@ -1039,7 +1152,7 @@ export class EnrichmentQueue extends EventEmitter {
       jobId,
       userId,
       timestamp: new Date(),
-      data
+      data,
     };
 
     this.emit('job:event', event);
@@ -1060,7 +1173,10 @@ export class EnrichmentQueue extends EventEmitter {
       try {
         await this.cleanupCompletedJobs();
       } catch (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in scheduled cleanup');
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Error in scheduled cleanup'
+        );
       }
     }, this.config.cleanupInterval);
   }
@@ -1074,7 +1190,7 @@ export class EnrichmentQueue extends EventEmitter {
         this.emit('queue:heartbeat', {
           timestamp: new Date(),
           metrics: this.metrics,
-          isRunning: this.isRunning
+          isRunning: this.isRunning,
         });
       }
     }, this.config.heartbeatInterval);

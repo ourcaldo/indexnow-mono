@@ -2,7 +2,7 @@
  * SE Ranking Error Handling Service
  * Centralized error management, recovery strategies, and graceful degradation
  * for SE Ranking API integration.
- * 
+ *
  * Renamed from ErrorHandlingService to SeRankingErrorHandler to avoid
  * naming collision with the main API ErrorHandlingService in /lib/monitoring/.
  */
@@ -13,7 +13,7 @@ import {
   QuotaStatus,
   HealthCheckResult,
 } from '../types/SeRankingTypes';
-import { logger } from '@indexnow/shared';
+import { logger } from '@/lib/monitoring/error-handling';
 
 // Error handling configuration
 export interface ErrorHandlingConfig {
@@ -41,7 +41,7 @@ export interface ErrorContext {
 }
 
 // Recovery strategy types
-export type RecoveryStrategy = 
+export type RecoveryStrategy =
   | 'retry'
   | 'fallback'
   | 'circuit_breaker'
@@ -53,7 +53,7 @@ export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 // Recovery result
@@ -96,7 +96,8 @@ export class SeRankingErrorHandler {
   private config: ErrorHandlingConfig;
   private circuitBreakerStates: Map<string, CircuitBreakerState> = new Map();
   private errorStats: ErrorStats;
-  private errorHistory: Array<{error: SeRankingError; context: ErrorContext; timestamp: Date}> = [];
+  private errorHistory: Array<{ error: SeRankingError; context: ErrorContext; timestamp: Date }> =
+    [];
 
   constructor(config: Partial<ErrorHandlingConfig> = {}) {
     this.config = {
@@ -108,7 +109,7 @@ export class SeRankingErrorHandler {
       circuitBreakerTimeout: 60000,
       enableGracefulDegradation: true,
       logLevel: 'error',
-      ...config
+      ...config,
     };
 
     this.errorStats = {
@@ -118,7 +119,7 @@ export class SeRankingErrorHandler {
       averageRecoveryTime: 0,
       successfulRecoveries: 0,
       failedRecoveries: 0,
-      circuitBreakerTrips: 0
+      circuitBreakerTrips: 0,
     };
   }
 
@@ -135,26 +136,46 @@ export class SeRankingErrorHandler {
   ): Promise<RecoveryResult<T>> {
     const startTime = Date.now();
     const seRankingError = this.normalizeError(error, context);
-    
+
     this.recordError(seRankingError, context);
     this.logError(seRankingError, context);
 
     const strategy = this.determineRecoveryStrategy(seRankingError, context);
-    
+
     try {
       switch (strategy) {
         case 'retry':
-          return await this.retryWithBackoff(options?.recoveryFunction, seRankingError, context, startTime);
-          
+          return await this.retryWithBackoff(
+            options?.recoveryFunction,
+            seRankingError,
+            context,
+            startTime
+          );
+
         case 'circuit_breaker':
-          return await this.handleCircuitBreaker(options?.recoveryFunction, seRankingError, context, startTime);
-          
+          return await this.handleCircuitBreaker(
+            options?.recoveryFunction,
+            seRankingError,
+            context,
+            startTime
+          );
+
         case 'fallback':
-          return await this.handleFallback(seRankingError, context, startTime, options?.fallbackValue);
-          
+          return await this.handleFallback(
+            seRankingError,
+            context,
+            startTime,
+            options?.fallbackValue
+          );
+
         case 'graceful_degradation':
-          return await this.handleGracefulDegradation(seRankingError, context, startTime, options?.fallbackValue);
-          
+          return await this.handleGracefulDegradation(
+            seRankingError,
+            context,
+            startTime,
+            options?.fallbackValue
+          );
+
         case 'fail_fast':
         default:
           return {
@@ -163,7 +184,7 @@ export class SeRankingErrorHandler {
             strategy,
             attempts: 1,
             totalTime: Date.now() - startTime,
-            fallbackUsed: false
+            fallbackUsed: false,
           };
       }
     } catch (recoveryError) {
@@ -173,7 +194,7 @@ export class SeRankingErrorHandler {
         strategy,
         attempts: 1,
         totalTime: Date.now() - startTime,
-        fallbackUsed: false
+        fallbackUsed: false,
       };
     }
   }
@@ -194,7 +215,7 @@ export class SeRankingErrorHandler {
         strategy: 'retry',
         attempts: 0,
         totalTime: Date.now() - startTime,
-        fallbackUsed: false
+        fallbackUsed: false,
       };
     }
 
@@ -203,7 +224,7 @@ export class SeRankingErrorHandler {
 
     for (let i = 0; i < this.config.maxRetryAttempts; i++) {
       attempts = i + 1;
-      
+
       if (i > 0) {
         const delay = this.calculateBackoffDelay(i);
         await this.sleep(delay);
@@ -212,36 +233,36 @@ export class SeRankingErrorHandler {
       try {
         const result = await operation();
         this.recordSuccessfulRecovery(attempts, Date.now() - startTime);
-        
+
         return {
           success: true,
           data: result,
           strategy: 'retry',
           attempts,
           totalTime: Date.now() - startTime,
-          fallbackUsed: false
+          fallbackUsed: false,
         };
       } catch (error) {
         lastError = this.normalizeError(error, context);
-        
+
         // Don't retry non-retryable errors
         if (!this.isRetryableError(lastError)) {
           break;
         }
-        
+
         this.logError(lastError, context, `Retry attempt ${attempts} failed`);
       }
     }
 
     this.recordFailedRecovery(attempts, Date.now() - startTime);
-    
+
     return {
       success: false,
       error: lastError,
       strategy: 'retry',
       attempts,
       totalTime: Date.now() - startTime,
-      fallbackUsed: false
+      fallbackUsed: false,
     };
   }
 
@@ -256,7 +277,7 @@ export class SeRankingErrorHandler {
   ): Promise<RecoveryResult<T>> {
     const breakerKey = this.getCircuitBreakerKey(context);
     const breaker = this.getCircuitBreakerState(breakerKey);
-    
+
     // Check if circuit is open
     if (breaker.isOpen) {
       const now = Date.now();
@@ -267,7 +288,7 @@ export class SeRankingErrorHandler {
           strategy: 'circuit_breaker',
           attempts: 0,
           totalTime: Date.now() - startTime,
-          fallbackUsed: false
+          fallbackUsed: false,
         };
       } else {
         // Try to reset circuit breaker
@@ -280,43 +301,43 @@ export class SeRankingErrorHandler {
     if (operation) {
       try {
         const result = await operation();
-        
+
         // Success - reset circuit breaker
         breaker.failureCount = 0;
         breaker.lastFailureTime = undefined;
         breaker.nextAttemptTime = undefined;
-        
+
         return {
           success: true,
           data: result,
           strategy: 'circuit_breaker',
           attempts: 1,
           totalTime: Date.now() - startTime,
-          fallbackUsed: false
+          fallbackUsed: false,
         };
       } catch (operationError) {
         const normalizedError = this.normalizeError(operationError, context);
-        
+
         // Increment failure count
         breaker.failureCount++;
         breaker.lastFailureTime = new Date();
-        
+
         // Open circuit if threshold reached
         if (breaker.failureCount >= this.config.circuitBreakerThreshold) {
           breaker.isOpen = true;
           breaker.nextAttemptTime = new Date(Date.now() + this.config.circuitBreakerTimeout);
           this.errorStats.circuitBreakerTrips++;
-          
+
           this.logError(normalizedError, context, 'Circuit breaker opened');
         }
-        
+
         return {
           success: false,
           error: normalizedError,
           strategy: 'circuit_breaker',
           attempts: 1,
           totalTime: Date.now() - startTime,
-          fallbackUsed: false
+          fallbackUsed: false,
         };
       }
     }
@@ -327,7 +348,7 @@ export class SeRankingErrorHandler {
       strategy: 'circuit_breaker',
       attempts: 0,
       totalTime: Date.now() - startTime,
-      fallbackUsed: false
+      fallbackUsed: false,
     };
   }
 
@@ -342,28 +363,28 @@ export class SeRankingErrorHandler {
   ): Promise<RecoveryResult<T>> {
     // Implement fallback data based on operation type
     let fallbackData: T | undefined = fallbackValue;
-    
+
     try {
       if (fallbackData === undefined) {
         fallbackData = await this.generateFallbackData<T>(context);
       }
-      
+
       if (fallbackData !== undefined) {
         this.logError(error, context, 'Using fallback data');
-        
+
         return {
           success: true,
           data: fallbackData,
           strategy: 'fallback',
           attempts: 1,
           totalTime: Date.now() - startTime,
-          fallbackUsed: true
+          fallbackUsed: true,
         };
       }
     } catch (fallbackError) {
       this.logError(
-        this.normalizeError(fallbackError, context), 
-        context, 
+        this.normalizeError(fallbackError, context),
+        context,
         'Fallback generation failed'
       );
     }
@@ -374,7 +395,7 @@ export class SeRankingErrorHandler {
       strategy: 'fallback',
       attempts: 1,
       totalTime: Date.now() - startTime,
-      fallbackUsed: false
+      fallbackUsed: false,
     };
   }
 
@@ -394,27 +415,27 @@ export class SeRankingErrorHandler {
         strategy: 'graceful_degradation',
         attempts: 1,
         totalTime: Date.now() - startTime,
-        fallbackUsed: false
+        fallbackUsed: false,
       };
     }
 
     // Provide minimal service with degraded functionality
     let degradedData: T | undefined = fallbackValue;
-    
+
     if (degradedData === undefined) {
       degradedData = this.generateDegradedResponse<T>(context);
     }
-    
+
     if (degradedData !== undefined) {
       this.logError(error, context, 'Using degraded service response');
-      
+
       return {
         success: true,
         data: degradedData,
         strategy: 'graceful_degradation',
         attempts: 1,
         totalTime: Date.now() - startTime,
-        fallbackUsed: true
+        fallbackUsed: true,
       };
     }
 
@@ -424,7 +445,7 @@ export class SeRankingErrorHandler {
       strategy: 'graceful_degradation',
       attempts: 1,
       totalTime: Date.now() - startTime,
-      fallbackUsed: false
+      fallbackUsed: false,
     };
   }
 
@@ -438,7 +459,9 @@ export class SeRankingErrorHandler {
   /**
    * Get recent error history
    */
-  getErrorHistory(limit: number = 100): Array<{error: SeRankingError; context: ErrorContext; timestamp: Date}> {
+  getErrorHistory(
+    limit: number = 100
+  ): Array<{ error: SeRankingError; context: ErrorContext; timestamp: Date }> {
     return this.errorHistory.slice(-limit);
   }
 
@@ -453,7 +476,7 @@ export class SeRankingErrorHandler {
       averageRecoveryTime: 0,
       successfulRecoveries: 0,
       failedRecoveries: 0,
-      circuitBreakerTrips: 0
+      circuitBreakerTrips: 0,
     };
     this.errorHistory = [];
   }
@@ -464,14 +487,15 @@ export class SeRankingErrorHandler {
   getHealthStatus(): HealthCheckResult {
     const recentErrors = this.getRecentErrors(300000); // Last 5 minutes
     const errorRate = recentErrors.length;
-    const circuitBreakersOpen = Array.from(this.circuitBreakerStates.values())
-      .filter(cb => cb.isOpen).length;
+    const circuitBreakersOpen = Array.from(this.circuitBreakerStates.values()).filter(
+      (cb) => cb.isOpen
+    ).length;
 
     if (circuitBreakersOpen > 0 || errorRate > 20) {
       return {
         status: 'unhealthy',
         last_check: new Date(),
-        error_message: `High error rate (${errorRate}) or circuit breakers open (${circuitBreakersOpen})`
+        error_message: `High error rate (${errorRate}) or circuit breakers open (${circuitBreakersOpen})`,
       };
     }
 
@@ -479,13 +503,13 @@ export class SeRankingErrorHandler {
       return {
         status: 'degraded',
         last_check: new Date(),
-        warning: `Elevated error rate: ${errorRate} errors in last 5 minutes`
+        warning: `Elevated error rate: ${errorRate} errors in last 5 minutes`,
       };
     }
 
     return {
       status: 'healthy',
-      last_check: new Date()
+      last_check: new Date(),
     };
   }
 
@@ -517,27 +541,30 @@ export class SeRankingErrorHandler {
   /**
    * Determine appropriate recovery strategy based on error type
    */
-  private determineRecoveryStrategy(error: SeRankingError, context: ErrorContext): RecoveryStrategy {
+  private determineRecoveryStrategy(
+    error: SeRankingError,
+    context: ErrorContext
+  ): RecoveryStrategy {
     switch (error.type) {
       case SeRankingErrorType.RATE_LIMIT_ERROR:
         return 'retry';
-      
+
       case SeRankingErrorType.NETWORK_ERROR:
       case SeRankingErrorType.TIMEOUT_ERROR:
         return 'circuit_breaker';
-      
+
       case SeRankingErrorType.QUOTA_EXCEEDED_ERROR:
         return 'graceful_degradation';
-      
+
       case SeRankingErrorType.AUTHENTICATION_ERROR:
         return 'fail_fast';
-      
+
       case SeRankingErrorType.PARSING_ERROR:
         return 'fallback';
-      
+
       case SeRankingErrorType.INVALID_REQUEST_ERROR:
         return 'fail_fast';
-      
+
       default:
         return 'retry';
     }
@@ -550,15 +577,12 @@ export class SeRankingErrorHandler {
     const baseDelay = this.config.baseRetryDelay;
     const multiplier = this.config.retryMultiplier;
     const maxDelay = this.config.maxRetryDelay;
-    
+
     // Add jitter to prevent thundering herd
     const jitter = Math.random() * 0.3 + 0.85; // 85-115% of calculated delay
-    
-    const delay = Math.min(
-      baseDelay * Math.pow(multiplier, attemptNumber) * jitter,
-      maxDelay
-    );
-    
+
+    const delay = Math.min(baseDelay * Math.pow(multiplier, attemptNumber) * jitter, maxDelay);
+
     return Math.round(delay);
   }
 
@@ -566,12 +590,15 @@ export class SeRankingErrorHandler {
    * Check if error is retryable
    */
   private isRetryableError(error: SeRankingError): boolean {
-    return error.retryable !== false && [
-      SeRankingErrorType.NETWORK_ERROR,
-      SeRankingErrorType.TIMEOUT_ERROR,
-      SeRankingErrorType.RATE_LIMIT_ERROR,
-      SeRankingErrorType.UNKNOWN_ERROR
-    ].includes(error.type);
+    return (
+      error.retryable !== false &&
+      [
+        SeRankingErrorType.NETWORK_ERROR,
+        SeRankingErrorType.TIMEOUT_ERROR,
+        SeRankingErrorType.RATE_LIMIT_ERROR,
+        SeRankingErrorType.UNKNOWN_ERROR,
+      ].includes(error.type)
+    );
   }
 
   /**
@@ -587,31 +614,31 @@ export class SeRankingErrorHandler {
   private categorizeError(error: unknown): SeRankingErrorType {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
-      
+
       if (message.includes('network') || message.includes('fetch')) {
         return SeRankingErrorType.NETWORK_ERROR;
       }
-      
+
       if (message.includes('timeout') || message.includes('aborted')) {
         return SeRankingErrorType.TIMEOUT_ERROR;
       }
-      
+
       if (message.includes('rate limit') || message.includes('429')) {
         return SeRankingErrorType.RATE_LIMIT_ERROR;
       }
-      
+
       if (message.includes('auth') || message.includes('401') || message.includes('403')) {
         return SeRankingErrorType.AUTHENTICATION_ERROR;
       }
-      
+
       if (message.includes('quota') || message.includes('limit exceeded')) {
         return SeRankingErrorType.QUOTA_EXCEEDED_ERROR;
       }
-      
+
       if (message.includes('parse') || message.includes('json') || message.includes('format')) {
         return SeRankingErrorType.PARSING_ERROR;
       }
-      
+
       if (message.includes('invalid') || message.includes('400')) {
         return SeRankingErrorType.INVALID_REQUEST_ERROR;
       }
@@ -626,20 +653,20 @@ export class SeRankingErrorHandler {
   private recordError(error: SeRankingError, context: ErrorContext): void {
     this.errorStats.totalErrors++;
     this.errorStats.errorsByType[error.type] = (this.errorStats.errorsByType[error.type] || 0) + 1;
-    this.errorStats.errorsByOperations[context.operation] = 
+    this.errorStats.errorsByOperations[context.operation] =
       (this.errorStats.errorsByOperations[context.operation] || 0) + 1;
-    
+
     this.errorStats.lastError = {
       type: error.type,
       message: error.message,
       timestamp: new Date(),
-      context
+      context,
     };
 
     this.errorHistory.push({
       error,
       context,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // Keep only recent history
@@ -653,11 +680,12 @@ export class SeRankingErrorHandler {
    */
   private recordSuccessfulRecovery(attempts: number, recoveryTime: number): void {
     this.errorStats.successfulRecoveries++;
-    
+
     // Update average recovery time
     const totalRecoveries = this.errorStats.successfulRecoveries + this.errorStats.failedRecoveries;
-    this.errorStats.averageRecoveryTime = 
-      (this.errorStats.averageRecoveryTime * (totalRecoveries - 1) + recoveryTime) / totalRecoveries;
+    this.errorStats.averageRecoveryTime =
+      (this.errorStats.averageRecoveryTime * (totalRecoveries - 1) + recoveryTime) /
+      totalRecoveries;
   }
 
   /**
@@ -665,11 +693,12 @@ export class SeRankingErrorHandler {
    */
   private recordFailedRecovery(attempts: number, recoveryTime: number): void {
     this.errorStats.failedRecoveries++;
-    
+
     // Update average recovery time
     const totalRecoveries = this.errorStats.successfulRecoveries + this.errorStats.failedRecoveries;
-    this.errorStats.averageRecoveryTime = 
-      (this.errorStats.averageRecoveryTime * (totalRecoveries - 1) + recoveryTime) / totalRecoveries;
+    this.errorStats.averageRecoveryTime =
+      (this.errorStats.averageRecoveryTime * (totalRecoveries - 1) + recoveryTime) /
+      totalRecoveries;
   }
 
   /**
@@ -686,7 +715,7 @@ export class SeRankingErrorHandler {
     if (!this.circuitBreakerStates.has(key)) {
       this.circuitBreakerStates.set(key, {
         isOpen: false,
-        failureCount: 0
+        failureCount: 0,
       });
     }
     return this.circuitBreakerStates.get(key)!;
@@ -695,12 +724,16 @@ export class SeRankingErrorHandler {
   /**
    * Create circuit breaker error
    */
-  private createCircuitBreakerError(breaker: CircuitBreakerState, context?: ErrorContext): SeRankingError {
+  private createCircuitBreakerError(
+    breaker: CircuitBreakerState,
+    context?: ErrorContext
+  ): SeRankingError {
     const error = new Error('Circuit breaker is open') as SeRankingError;
     error.type = SeRankingErrorType.NETWORK_ERROR;
     error.retryable = false;
     error.context = context;
-    (error as SeRankingError & { circuitBreakerState: CircuitBreakerState }).circuitBreakerState = breaker;
+    (error as SeRankingError & { circuitBreakerState: CircuitBreakerState }).circuitBreakerState =
+      breaker;
     return error;
   }
 
@@ -732,9 +765,11 @@ export class SeRankingErrorHandler {
   /**
    * Get recent errors within time window
    */
-  private getRecentErrors(timeWindowMs: number): Array<{error: SeRankingError; context: ErrorContext; timestamp: Date}> {
+  private getRecentErrors(
+    timeWindowMs: number
+  ): Array<{ error: SeRankingError; context: ErrorContext; timestamp: Date }> {
     const cutoff = new Date(Date.now() - timeWindowMs);
-    return this.errorHistory.filter(entry => entry.timestamp >= cutoff);
+    return this.errorHistory.filter((entry) => entry.timestamp >= cutoff);
   }
 
   /**
@@ -749,12 +784,14 @@ export class SeRankingErrorHandler {
       `[${error.type}]`,
       error.message,
       context ? `(${context.operation})` : '',
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(' ');
 
-    const metadata = { 
-      error: error.message, 
-      context, 
-      severity: severity.toUpperCase() 
+    const metadata = {
+      error: error.message,
+      context,
+      severity: severity.toUpperCase(),
     };
 
     switch (severity) {
@@ -763,19 +800,19 @@ export class SeRankingErrorHandler {
           logger.error(metadata, `🔥 CRITICAL: ${logMessage}`);
         }
         break;
-      
+
       case ErrorSeverity.HIGH:
         if (['debug', 'info', 'warn', 'error'].includes(this.config.logLevel)) {
           logger.error(metadata, `❌ ERROR: ${logMessage}`);
         }
         break;
-      
+
       case ErrorSeverity.MEDIUM:
         if (['debug', 'info', 'warn'].includes(this.config.logLevel)) {
           logger.warn(metadata, `⚠️  WARNING: ${logMessage}`);
         }
         break;
-      
+
       case ErrorSeverity.LOW:
         if (['debug', 'info'].includes(this.config.logLevel)) {
           logger.info(metadata, `ℹ️  INFO: ${logMessage}`);
@@ -791,18 +828,18 @@ export class SeRankingErrorHandler {
     switch (error.type) {
       case SeRankingErrorType.AUTHENTICATION_ERROR:
         return ErrorSeverity.CRITICAL;
-      
+
       case SeRankingErrorType.QUOTA_EXCEEDED_ERROR:
         return ErrorSeverity.HIGH;
-      
+
       case SeRankingErrorType.RATE_LIMIT_ERROR:
       case SeRankingErrorType.NETWORK_ERROR:
         return ErrorSeverity.MEDIUM;
-      
+
       case SeRankingErrorType.TIMEOUT_ERROR:
       case SeRankingErrorType.PARSING_ERROR:
         return ErrorSeverity.LOW;
-      
+
       default:
         return ErrorSeverity.MEDIUM;
     }
@@ -812,7 +849,7 @@ export class SeRankingErrorHandler {
    * Sleep utility
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -827,7 +864,7 @@ export class SeRankingErrorHandler {
       circuitBreakerThreshold: 5,
       circuitBreakerTimeout: 60000,
       enableGracefulDegradation: true,
-      logLevel: 'error'
+      logLevel: 'error',
     };
   }
 
@@ -843,7 +880,7 @@ export class SeRankingErrorHandler {
       circuitBreakerThreshold: 10,
       circuitBreakerTimeout: 300000, // 5 minutes
       enableGracefulDegradation: true,
-      logLevel: 'warn'
+      logLevel: 'warn',
     };
   }
 
@@ -859,7 +896,7 @@ export class SeRankingErrorHandler {
       circuitBreakerThreshold: 3,
       circuitBreakerTimeout: 30000,
       enableGracefulDegradation: false,
-      logLevel: 'debug'
+      logLevel: 'debug',
     };
   }
 }

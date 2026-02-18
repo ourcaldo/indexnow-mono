@@ -4,7 +4,14 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity, escapeLikePattern } from '@indexnow/shared';
+import {
+  type Database,
+  ErrorHandlingService,
+  ErrorType,
+  ErrorSeverity,
+  escapeLikePattern,
+} from '@indexnow/shared';
+import { logger } from '@/lib/monitoring/error-handling';
 import {
   KeywordBankEntity,
   KeywordBankInsert,
@@ -15,7 +22,7 @@ import {
   KeywordBankBatchResult,
   CacheStatus,
   CacheStats,
-  BulkKeywordBankOperationResult
+  BulkKeywordBankOperationResult,
 } from '../types/KeywordBankTypes';
 import { SeRankingKeywordData } from '../types/SeRankingTypes';
 import { IKeywordBankService } from '../types/ServiceTypes';
@@ -44,14 +51,16 @@ export class KeywordBankService implements IKeywordBankService {
           metadata: {
             keyword: keyword.trim().toLowerCase(),
             countryCode: countryCode.toLowerCase(),
-            languageCode: languageCode.toLowerCase()
-          }
+            languageCode: languageCode.toLowerCase(),
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
-            .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
+            .select(
+              'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
+            )
             .eq('keyword', keyword.trim().toLowerCase())
             .eq('country_id', countryCode.toLowerCase())
             .eq('language_code', languageCode.toLowerCase())
@@ -59,7 +68,10 @@ export class KeywordBankService implements IKeywordBankService {
 
           if (error) {
             if (error.code !== 'PGRST116') {
-              logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching keyword data');
+              logger.error(
+                { error: error instanceof Error ? error.message : String(error) },
+                'Error fetching keyword data'
+              );
             }
             return null;
           }
@@ -70,7 +82,10 @@ export class KeywordBankService implements IKeywordBankService {
 
       return result;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in getKeywordData'
+      );
       return null;
     }
   }
@@ -86,7 +101,7 @@ export class KeywordBankService implements IKeywordBankService {
     try {
       if (keywords.length === 0) return [];
 
-      const normalizedKeywords = keywords.map(k => k.trim().toLowerCase());
+      const normalizedKeywords = keywords.map((k) => k.trim().toLowerCase());
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -98,31 +113,39 @@ export class KeywordBankService implements IKeywordBankService {
             keywordCount: keywords.length,
             keywords: normalizedKeywords.slice(0, 10), // Log first 10 keywords only
             countryCode: countryCode.toLowerCase(),
-            languageCode: languageCode.toLowerCase()
-          }
+            languageCode: languageCode.toLowerCase(),
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
-            .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
+            .select(
+              'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
+            )
             .in('keyword', normalizedKeywords)
             .eq('country_id', countryCode.toLowerCase())
             .eq('language_code', languageCode.toLowerCase())
             .limit(1000);
 
           if (error) {
-            logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching keyword data batch');
+            logger.error(
+              { error: error instanceof Error ? error.message : String(error) },
+              'Error fetching keyword data batch'
+            );
             return [];
           }
 
-          return (data || []).map(row => this.mapRowToEntity(row));
+          return (data || []).map((row) => this.mapRowToEntity(row));
         }
       );
 
       return result;
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getKeywordDataBatch');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in getKeywordDataBatch'
+      );
       return [];
     }
   }
@@ -136,16 +159,20 @@ export class KeywordBankService implements IKeywordBankService {
     languageCode: string = 'en'
   ): Promise<CacheStatus> {
     try {
-      const normalizedKeywords = keywords.map(k => k.trim().toLowerCase());
-      const existingData = await this.getKeywordDataBatch(normalizedKeywords, countryCode, languageCode);
+      const normalizedKeywords = keywords.map((k) => k.trim().toLowerCase());
+      const existingData = await this.getKeywordDataBatch(
+        normalizedKeywords,
+        countryCode,
+        languageCode
+      );
 
-      const existingKeywords = new Set(existingData.map(d => d.keyword));
-      const missingKeywords = normalizedKeywords.filter(k => !existingKeywords.has(k));
+      const existingKeywords = new Set(existingData.map((d) => d.keyword));
+      const missingKeywords = normalizedKeywords.filter((k) => !existingKeywords.has(k));
 
       // Filter fresh data (updated within last 7 days)
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const freshData = existingData.filter(d => new Date(d.data_updated_at) > sevenDaysAgo);
-      const staleData = existingData.filter(d => new Date(d.data_updated_at) <= sevenDaysAgo);
+      const freshData = existingData.filter((d) => new Date(d.data_updated_at) > sevenDaysAgo);
+      const staleData = existingData.filter((d) => new Date(d.data_updated_at) <= sevenDaysAgo);
 
       return {
         total_keywords: keywords.length,
@@ -156,12 +183,15 @@ export class KeywordBankService implements IKeywordBankService {
         cache_hit_rate: existingKeywords.size / keywords.length,
         needs_api_call: missingKeywords.length > 0 || staleData.length > 0,
         missing_keyword_list: missingKeywords,
-        stale_keyword_list: staleData.map(d => d.keyword),
+        stale_keyword_list: staleData.map((d) => d.keyword),
         fresh_data: freshData,
-        stale_data: staleData
+        stale_data: staleData,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in checkCacheStatus');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in checkCacheStatus'
+      );
       return {
         total_keywords: keywords.length,
         cached_keywords: 0,
@@ -173,7 +203,7 @@ export class KeywordBankService implements IKeywordBankService {
         missing_keyword_list: keywords,
         stale_keyword_list: [],
         fresh_data: [],
-        stale_data: []
+        stale_data: [],
       };
     }
   }
@@ -199,7 +229,7 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: apiData.difficulty,
         history_trend: apiData.history_trend,
         keyword_intent: this.extractKeywordIntent(apiData),
-        data_updated_at: new Date().toISOString()
+        data_updated_at: new Date().toISOString(),
       };
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -213,8 +243,8 @@ export class KeywordBankService implements IKeywordBankService {
             countryCode: countryCode.toLowerCase(),
             languageCode: languageCode.toLowerCase(),
             hasData: apiData.is_data_found,
-            volume: apiData.volume
-          }
+            volume: apiData.volume,
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
         async () => {
@@ -222,21 +252,24 @@ export class KeywordBankService implements IKeywordBankService {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code'
+              onConflict: 'keyword,country_id,language_code',
             })
             .select()
             .single();
 
           if (error) {
-            logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error storing keyword data');
+            logger.error(
+              { error: error instanceof Error ? error.message : String(error) },
+              'Error storing keyword data'
+            );
             return {
               success: false,
               error: {
                 message: error.message,
-                code: error.code
+                code: error.code,
               },
               keyword,
-              operation: 'store'
+              operation: 'store',
             };
           }
 
@@ -244,7 +277,7 @@ export class KeywordBankService implements IKeywordBankService {
             success: true,
             data: data ? this.mapRowToEntity(data) : undefined,
             keyword,
-            operation: 'store'
+            operation: 'store',
           };
         }
       );
@@ -252,14 +285,17 @@ export class KeywordBankService implements IKeywordBankService {
       return result as KeywordBankOperationResult;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in storeKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in storeKeywordData'
+      );
       return {
         success: false,
         error: {
-          message: errorMessage
+          message: errorMessage,
         },
         keyword,
-        operation: 'store'
+        operation: 'store',
       };
     }
   }
@@ -283,11 +319,11 @@ export class KeywordBankService implements IKeywordBankService {
           failed_operations: 0,
           success_rate: 1,
           results: [],
-          errors: []
+          errors: [],
         };
       }
 
-      const insertData: KeywordBankInsertRow[] = keywordDataPairs.map(pair => ({
+      const insertData: KeywordBankInsertRow[] = keywordDataPairs.map((pair) => ({
         keyword: pair.keyword.trim().toLowerCase(),
         country_id: pair.countryCode.toLowerCase(),
         language_code: (pair.languageCode || 'en').toLowerCase(),
@@ -298,7 +334,7 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: pair.apiData.difficulty,
         history_trend: pair.apiData.history_trend,
         keyword_intent: this.extractKeywordIntent(pair.apiData),
-        data_updated_at: new Date().toISOString()
+        data_updated_at: new Date().toISOString(),
       }));
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -309,15 +345,15 @@ export class KeywordBankService implements IKeywordBankService {
           source: 'KeywordBankService.storeKeywordDataBatch',
           metadata: {
             batchSize: keywordDataPairs.length,
-            keywords: keywordDataPairs.slice(0, 5).map(p => p.keyword) // Log first 5 keywords only
-          }
+            keywords: keywordDataPairs.slice(0, 5).map((p) => p.keyword), // Log first 5 keywords only
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code'
+              onConflict: 'keyword,country_id,language_code',
             })
             .select()
             .limit(1000);
@@ -332,17 +368,20 @@ export class KeywordBankService implements IKeywordBankService {
       const errors: string[] = [];
 
       if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in batch store operation');
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Error in batch store operation'
+        );
         // Create error results for all keywords
-        keywordDataPairs.forEach(pair => {
+        keywordDataPairs.forEach((pair) => {
           results.push({
             success: false,
             error: {
               message: error.message,
-              code: error.code
+              code: error.code,
             },
             keyword: pair.keyword,
-            operation: 'batch_store'
+            operation: 'batch_store',
           });
           errors.push(`${pair.keyword}: ${error.message}`);
         });
@@ -353,12 +392,12 @@ export class KeywordBankService implements IKeywordBankService {
             success: true,
             data: this.mapRowToEntity(row),
             keyword: keywordDataPairs[index]?.keyword || 'unknown',
-            operation: 'batch_store'
+            operation: 'batch_store',
           });
         });
       }
 
-      const successfulCount = results.filter(r => r.success).length;
+      const successfulCount = results.filter((r) => r.success).length;
       const failedCount = results.length - successfulCount;
 
       return {
@@ -367,20 +406,23 @@ export class KeywordBankService implements IKeywordBankService {
         failed_operations: failedCount,
         success_rate: successfulCount / keywordDataPairs.length,
         results,
-        errors
+        errors,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in storeKeywordDataBatch');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in storeKeywordDataBatch'
+      );
 
       // Create error results for all keywords
-      const results = keywordDataPairs.map(pair => ({
+      const results = keywordDataPairs.map((pair) => ({
         success: false as const,
         error: {
-          message: errorMessage
+          message: errorMessage,
         },
         keyword: pair.keyword,
-        operation: 'batch_store' as const
+        operation: 'batch_store' as const,
       }));
 
       return {
@@ -389,7 +431,7 @@ export class KeywordBankService implements IKeywordBankService {
         failed_operations: keywordDataPairs.length,
         success_rate: 0,
         results,
-        errors: [errorMessage]
+        errors: [errorMessage],
       };
     }
   }
@@ -411,14 +453,19 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: updates.difficulty,
         history_trend: updates.history_trend,
         keyword_intent: updates.keyword_intent,
-        data_updated_at: updates.data_updated_at instanceof Date
-          ? updates.data_updated_at.toISOString()
-          : updates.data_updated_at,
-        updated_at: new Date().toISOString()
+        data_updated_at:
+          updates.data_updated_at instanceof Date
+            ? updates.data_updated_at.toISOString()
+            : updates.data_updated_at,
+        updated_at: new Date().toISOString(),
       };
 
-      if (updates.volume !== undefined || updates.cpc !== undefined ||
-        updates.competition !== undefined || updates.difficulty !== undefined) {
+      if (
+        updates.volume !== undefined ||
+        updates.cpc !== undefined ||
+        updates.competition !== undefined ||
+        updates.difficulty !== undefined
+      ) {
         updateData.data_updated_at = new Date().toISOString();
       }
 
@@ -432,8 +479,8 @@ export class KeywordBankService implements IKeywordBankService {
             keywordId: id,
             hasVolumeUpdate: updates.volume !== undefined,
             hasCpcUpdate: updates.cpc !== undefined,
-            hasCompetitionUpdate: updates.competition !== undefined
-          }
+            hasCompetitionUpdate: updates.competition !== undefined,
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'update', data: updateData },
         async () => {
@@ -451,15 +498,18 @@ export class KeywordBankService implements IKeywordBankService {
       const { data, error } = result;
 
       if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating keyword data');
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Error updating keyword data'
+        );
         return {
           success: false,
           error: {
             message: error.message,
-            code: error.code
+            code: error.code,
           },
           keyword: id,
-          operation: 'update'
+          operation: 'update',
         };
       }
 
@@ -467,18 +517,21 @@ export class KeywordBankService implements IKeywordBankService {
         success: true,
         data: data ? this.mapRowToEntity(data) : undefined,
         keyword: data?.keyword || id,
-        operation: 'update'
+        operation: 'update',
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in updateKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in updateKeywordData'
+      );
       return {
         success: false,
         error: {
-          message: errorMessage
+          message: errorMessage,
         },
         keyword: id,
-        operation: 'update'
+        operation: 'update',
       };
     }
   }
@@ -501,14 +554,12 @@ export class KeywordBankService implements IKeywordBankService {
             keyword: query.keyword,
             countryCode: query.country_code,
             limit,
-            offset
-          }
+            offset,
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {
-          let dbQuery = supabaseAdmin
-            .from('indb_keyword_bank')
-            .select('*', { count: 'exact' });
+          let dbQuery = supabaseAdmin.from('indb_keyword_bank').select('*', { count: 'exact' });
 
           if (query.keyword) {
             dbQuery = dbQuery.ilike('keyword', `%${escapeLikePattern(query.keyword)}%`);
@@ -553,29 +604,36 @@ export class KeywordBankService implements IKeywordBankService {
           const { data, error, count } = await dbQuery;
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Error querying keyword data: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error querying keyword data: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return { data: data || [], count: count || 0 };
         }
       );
 
-      const entities = result.data.map(row => this.mapRowToEntity(row));
+      const entities = result.data.map((row) => this.mapRowToEntity(row));
       const total = result.count;
-      const has_more = (offset + limit) < total;
+      const has_more = offset + limit < total;
 
       return {
         data: entities,
         total,
         has_more,
-        next_offset: has_more ? offset + limit : undefined
+        next_offset: has_more ? offset + limit : undefined,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in queryKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in queryKeywordData'
+      );
       return {
         data: [],
         total: 0,
-        has_more: false
+        has_more: false,
       };
     }
   }
@@ -583,10 +641,7 @@ export class KeywordBankService implements IKeywordBankService {
   /**
    * Get cache statistics
    */
-  async getCacheStats(
-    countryCode?: string,
-    languageCode?: string
-  ): Promise<CacheStats> {
+  async getCacheStats(countryCode?: string, languageCode?: string): Promise<CacheStats> {
     try {
       const stats = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -594,7 +649,7 @@ export class KeywordBankService implements IKeywordBankService {
           operation: 'get_keyword_bank_cache_stats',
           reason: 'Fetching keyword bank cache statistics for monitoring',
           source: 'KeywordBankService.getCacheStats',
-          metadata: { countryCode, languageCode }
+          metadata: { countryCode, languageCode },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {
@@ -612,8 +667,10 @@ export class KeywordBankService implements IKeywordBankService {
             .select('*', { count: 'exact', head: true })
             .eq('is_data_found', true);
 
-          if (countryCode) dataFoundQuery = dataFoundQuery.eq('country_id', countryCode.toLowerCase());
-          if (languageCode) dataFoundQuery = dataFoundQuery.eq('language_code', languageCode.toLowerCase());
+          if (countryCode)
+            dataFoundQuery = dataFoundQuery.eq('country_id', countryCode.toLowerCase());
+          if (languageCode)
+            dataFoundQuery = dataFoundQuery.eq('language_code', languageCode.toLowerCase());
 
           const { count: dataFoundCount } = await dataFoundQuery;
 
@@ -631,7 +688,7 @@ export class KeywordBankService implements IKeywordBankService {
           return {
             totalCount: totalCount || 0,
             dataFoundCount: dataFoundCount || 0,
-            freshCount: freshCount || 0
+            freshCount: freshCount || 0,
           };
         }
       );
@@ -656,10 +713,13 @@ export class KeywordBankService implements IKeywordBankService {
         stale_data: stale,
         data_found_rate: total > 0 ? dataFound / total : 0,
         fresh_data_rate: total > 0 ? fresh / total : 0,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getCacheStats');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in getCacheStats'
+      );
       return {
         total_entries: 0,
         cache_hits: 0,
@@ -675,7 +735,7 @@ export class KeywordBankService implements IKeywordBankService {
         stale_data: 0,
         data_found_rate: 0,
         fresh_data_rate: 0,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       };
     }
   }
@@ -693,7 +753,7 @@ export class KeywordBankService implements IKeywordBankService {
           operation: 'cleanup_stale_keyword_bank_data',
           reason: `Cleaning up keyword bank entries older than ${olderThanDays} days`,
           source: 'KeywordBankService.cleanupStaleData',
-          metadata: { olderThanDays, cutoffDate: cutoffDate.toISOString() }
+          metadata: { olderThanDays, cutoffDate: cutoffDate.toISOString() },
         },
         { table: 'indb_keyword_bank', operationType: 'delete' },
         async () => {
@@ -705,7 +765,11 @@ export class KeywordBankService implements IKeywordBankService {
             .limit(5000);
 
           if (selectError) {
-            throw ErrorHandlingService.createError({ message: `Error selecting stale records: ${selectError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error selecting stale records: ${selectError.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           const recordCount = staleRecords?.length || 0;
@@ -721,17 +785,21 @@ export class KeywordBankService implements IKeywordBankService {
             .lt('data_updated_at', cutoffDate.toISOString());
 
           if (deleteError) {
-            throw ErrorHandlingService.createError({ message: `Error deleting stale records: ${deleteError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error deleting stale records: ${deleteError.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return { staleRecords: staleRecords || [], recordCount, deleted: true };
         }
       );
 
-      const results: KeywordBankOperationResult[] = cleanupResult.staleRecords.map(record => ({
+      const results: KeywordBankOperationResult[] = cleanupResult.staleRecords.map((record) => ({
         success: true,
         keyword: record.keyword,
-        operation: 'cleanup'
+        operation: 'cleanup',
       }));
 
       return {
@@ -740,18 +808,21 @@ export class KeywordBankService implements IKeywordBankService {
         failed_operations: 0,
         success_rate: cleanupResult.recordCount > 0 ? 1 : 1,
         results,
-        errors: []
+        errors: [],
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in cleanupStaleData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in cleanupStaleData'
+      );
       return {
         total_operations: 0,
         successful_operations: 0,
         failed_operations: 1,
         success_rate: 0,
         results: [],
-        errors: [errorMessage]
+        errors: [errorMessage],
       };
     }
   }
@@ -774,7 +845,7 @@ export class KeywordBankService implements IKeywordBankService {
       keyword_intent: row.keyword_intent,
       data_updated_at: new Date(row.data_updated_at),
       created_at: new Date(row.created_at),
-      updated_at: new Date(row.updated_at)
+      updated_at: new Date(row.updated_at),
     };
   }
 
@@ -794,7 +865,7 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: data.difficulty,
         history_trend: data.history_trend,
         keyword_intent: data.keyword_intent,
-        data_updated_at: new Date().toISOString()
+        data_updated_at: new Date().toISOString(),
       };
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -806,21 +877,25 @@ export class KeywordBankService implements IKeywordBankService {
           metadata: {
             keyword: data.keyword,
             countryCode: data.country_id,
-            hasData: data.is_data_found
-          }
+            hasData: data.is_data_found,
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
         async () => {
           const { data: upsertResult, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code'
+              onConflict: 'keyword,country_id,language_code',
             })
             .select()
             .single();
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Error upserting keyword data: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error upserting keyword data: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return upsertResult;
@@ -831,18 +906,21 @@ export class KeywordBankService implements IKeywordBankService {
         success: true,
         data: result ? this.mapRowToEntity(result) : undefined,
         keyword: data.keyword,
-        operation: 'upsert'
+        operation: 'upsert',
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in upsertKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in upsertKeywordData'
+      );
       return {
         success: false,
         error: {
-          message: errorMessage
+          message: errorMessage,
         },
         keyword: data.keyword,
-        operation: 'upsert'
+        operation: 'upsert',
       };
     }
   }
@@ -859,11 +937,11 @@ export class KeywordBankService implements IKeywordBankService {
           total_processed: 0,
           successful: 0,
           failed: 0,
-          errors: []
+          errors: [],
         };
       }
 
-      const insertData: KeywordBankInsertRow[] = data.map(item => ({
+      const insertData: KeywordBankInsertRow[] = data.map((item) => ({
         keyword: item.keyword.trim().toLowerCase(),
         country_id: item.country_id.toLowerCase(),
         language_code: (item.language_code || 'en').toLowerCase(),
@@ -874,7 +952,7 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: item.difficulty,
         history_trend: item.history_trend,
         keyword_intent: item.keyword_intent,
-        data_updated_at: new Date().toISOString()
+        data_updated_at: new Date().toISOString(),
       }));
 
       const { data: result, error } = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -883,14 +961,14 @@ export class KeywordBankService implements IKeywordBankService {
           operation: 'bulk_upsert_keyword_bank_data',
           reason: 'Bulk inserting/updating keyword intelligence data in bank',
           source: 'KeywordBankService.bulkUpsertKeywordData',
-          metadata: { batchSize: data.length }
+          metadata: { batchSize: data.length },
         },
         { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
         async () => {
           const { data: upsertResult, error: upsertError } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code'
+              onConflict: 'keyword,country_id,language_code',
             })
             .select()
             .limit(1000);
@@ -900,11 +978,14 @@ export class KeywordBankService implements IKeywordBankService {
       );
 
       if (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in bulk upsert operation');
-        const errors = data.map(item => ({
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Error in bulk upsert operation'
+        );
+        const errors = data.map((item) => ({
           keyword: item.keyword,
           country_code: item.country_id,
-          error: error.message
+          error: error.message,
         }));
 
         return {
@@ -913,11 +994,11 @@ export class KeywordBankService implements IKeywordBankService {
           total_processed: data.length,
           successful: 0,
           failed: data.length,
-          errors
+          errors,
         };
       }
 
-      const entities = (result || []).map(row => this.mapRowToEntity(row));
+      const entities = (result || []).map((row) => this.mapRowToEntity(row));
 
       return {
         success: true,
@@ -925,16 +1006,19 @@ export class KeywordBankService implements IKeywordBankService {
         total_processed: data.length,
         successful: entities.length,
         failed: 0,
-        errors: []
+        errors: [],
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in bulkUpsertKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in bulkUpsertKeywordData'
+      );
 
-      const errors = data.map(item => ({
+      const errors = data.map((item) => ({
         keyword: item.keyword,
         country_code: item.country_id,
-        error: errorMessage
+        error: errorMessage,
       }));
 
       return {
@@ -943,7 +1027,7 @@ export class KeywordBankService implements IKeywordBankService {
         total_processed: data.length,
         successful: 0,
         failed: data.length,
-        errors
+        errors,
       };
     }
   }
@@ -968,13 +1052,15 @@ export class KeywordBankService implements IKeywordBankService {
           operation: 'get_stale_keyword_bank_entries',
           reason: `Fetching keyword bank entries older than ${olderThanDays} days for refresh`,
           source: 'KeywordBankService.getStaleKeywords',
-          metadata: { olderThanDays, limit, cutoffDate: cutoffDate.toISOString() }
+          metadata: { olderThanDays, limit, cutoffDate: cutoffDate.toISOString() },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {
           let query = supabaseAdmin
             .from('indb_keyword_bank')
-            .select('id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at')
+            .select(
+              'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
+            )
             .lt('data_updated_at', cutoffDate.toISOString())
             .order('data_updated_at', { ascending: true });
 
@@ -987,16 +1073,23 @@ export class KeywordBankService implements IKeywordBankService {
           const { data: rows, error } = await query;
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Error fetching stale keywords: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error fetching stale keywords: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return rows || [];
         }
       );
 
-      return data.map(row => this.mapRowToEntity(row));
+      return data.map((row) => this.mapRowToEntity(row));
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getStaleKeywords');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in getStaleKeywords'
+      );
       return [];
     }
   }
@@ -1016,15 +1109,18 @@ export class KeywordBankService implements IKeywordBankService {
         total_keywords: cacheStats.total_keywords,
         with_data: cacheStats.keywords_with_data,
         without_data: cacheStats.keywords_without_data,
-        average_age_days: 0
+        average_age_days: 0,
       };
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in getBankStats');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in getBankStats'
+      );
       return {
         total_keywords: 0,
         with_data: 0,
         without_data: 0,
-        average_age_days: 0
+        average_age_days: 0,
       };
     }
   }
@@ -1032,7 +1128,10 @@ export class KeywordBankService implements IKeywordBankService {
   /**
    * Delete keyword data from bank (Interface method - updated signature)
    */
-  async deleteKeywordData(keyword: string, countryCode: string): Promise<KeywordBankOperationResult> {
+  async deleteKeywordData(
+    keyword: string,
+    countryCode: string
+  ): Promise<KeywordBankOperationResult> {
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -1042,8 +1141,8 @@ export class KeywordBankService implements IKeywordBankService {
           source: 'KeywordBankService.deleteKeywordData',
           metadata: {
             keyword: keyword.trim().toLowerCase(),
-            countryCode: countryCode.toLowerCase()
-          }
+            countryCode: countryCode.toLowerCase(),
+          },
         },
         { table: 'indb_keyword_bank', operationType: 'delete' },
         async () => {
@@ -1054,7 +1153,11 @@ export class KeywordBankService implements IKeywordBankService {
             .eq('country_id', countryCode.toLowerCase());
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Error deleting keyword data: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Error deleting keyword data: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
 
           return null;
@@ -1064,18 +1167,21 @@ export class KeywordBankService implements IKeywordBankService {
       return {
         success: true,
         keyword,
-        operation: 'delete'
+        operation: 'delete',
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in deleteKeywordData');
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Error in deleteKeywordData'
+      );
       return {
         success: false,
         error: {
-          message: errorMessage
+          message: errorMessage,
         },
         keyword,
-        operation: 'delete'
+        operation: 'delete',
       };
     }
   }

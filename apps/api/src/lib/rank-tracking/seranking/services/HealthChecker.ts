@@ -8,17 +8,18 @@ import {
   HealthCheckResult,
   ServiceResponse,
   QuotaStatus,
-  ApiMetrics
+  ApiMetrics,
 } from '../types/SeRankingTypes';
 import {
   IHealthChecker,
   ISeRankingApiClient,
   IKeywordBankService,
-  IIntegrationService
+  IIntegrationService,
 } from '../types/ServiceTypes';
 import { supabaseAdmin } from '@indexnow/database';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { logger, Database, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { Database, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { logger } from '@/lib/monitoring/error-handling';
 
 // Comprehensive health check configuration
 export interface HealthCheckConfig {
@@ -199,35 +200,35 @@ export class HealthChecker implements IHealthChecker {
       intervals: {
         quickCheck: 30000, // 30 seconds
         fullCheck: 300000, // 5 minutes
-        deepDiagnostics: 1800000 // 30 minutes
+        deepDiagnostics: 1800000, // 30 minutes
       },
       thresholds: {
         responseTime: {
           good: 1000,
           degraded: 3000,
-          unhealthy: 10000
+          unhealthy: 10000,
         },
         errorRate: {
           good: 1,
           degraded: 5,
-          unhealthy: 15
+          unhealthy: 15,
         },
         availability: {
           good: 99.9,
           degraded: 99.0,
-          unhealthy: 95.0
-        }
+          unhealthy: 95.0,
+        },
       },
       dependencies: {
         critical: ['database', 'api_gateway', 'integration_service'],
         important: ['cache_layer', 'keyword_bank', 'quota_monitor'],
-        optional: ['metrics_collector', 'analytics']
+        optional: ['metrics_collector', 'analytics'],
       },
       recovery: {
         enableAutoRecovery: true,
         maxRetryAttempts: 3,
         retryBackoffMs: 5000,
-        escalationTimeoutMinutes: 15
+        escalationTimeoutMinutes: 15,
       },
       alerting: {
         channels: ['email', 'webhook'],
@@ -235,16 +236,16 @@ export class HealthChecker implements IHealthChecker {
           info: false,
           warning: true,
           error: true,
-          critical: true
-        }
+          critical: true,
+        },
       },
       monitoring: {
         retentionDays: 30,
         enableTrending: true,
-        enablePredictiveAnalysis: true
+        enablePredictiveAnalysis: true,
       },
       logLevel: 'info',
-      ...config
+      ...config,
     };
 
     this.initializeHealthMonitoring();
@@ -282,19 +283,14 @@ export class HealthChecker implements IHealthChecker {
       const startTime = Date.now();
 
       // Perform all health checks in parallel for efficiency
-      const [
-        apiHealth,
-        dbHealth,
-        cacheHealth,
-        integrationHealth,
-        systemHealth
-      ] = await Promise.allSettled([
-        this.checkApiHealth(),
-        this.checkDatabaseHealth(),
-        this.checkCacheHealth(),
-        this.checkIntegrationHealth(),
-        this.checkSystemHealth()
-      ]);
+      const [apiHealth, dbHealth, cacheHealth, integrationHealth, systemHealth] =
+        await Promise.allSettled([
+          this.checkApiHealth(),
+          this.checkDatabaseHealth(),
+          this.checkCacheHealth(),
+          this.checkIntegrationHealth(),
+          this.checkSystemHealth(),
+        ]);
 
       // Process results and calculate overall health
       const healthResults = {
@@ -302,7 +298,7 @@ export class HealthChecker implements IHealthChecker {
         database: this.extractResult(dbHealth),
         cache_layer: this.extractResult(cacheHealth),
         integration_service: this.extractResult(integrationHealth),
-        system_resources: this.extractResult(systemHealth)
+        system_resources: this.extractResult(systemHealth),
       };
 
       // Calculate overall health score
@@ -326,10 +322,13 @@ export class HealthChecker implements IHealthChecker {
         status: overallStatus,
         response_time: totalTime,
         last_check: this.lastHealthCheck,
-        timestamp: this.lastHealthCheck
+        timestamp: this.lastHealthCheck,
       };
 
-      this.log('info', `Health check completed: ${overallStatus} (score: ${overallScore}, time: ${totalTime}ms)`);
+      this.log(
+        'info',
+        `Health check completed: ${overallStatus} (score: ${overallScore}, time: ${totalTime}ms)`
+      );
 
       return result;
     } catch (error) {
@@ -338,7 +337,7 @@ export class HealthChecker implements IHealthChecker {
         status: 'unhealthy',
         error: `Health check failed: ${error}`,
         last_check: new Date(),
-        timestamp: new Date()
+        timestamp: new Date(),
       };
     }
   }
@@ -372,17 +371,19 @@ export class HealthChecker implements IHealthChecker {
           response_time: responseTime,
           availability_percent: isHealthy ? 100 : 0,
           error_rate_percent: 0,
-          throughput: 0
+          throughput: 0,
         },
         diagnostics: {
           checks_performed: ['connection_test', 'authentication_test', 'rate_limit_check'],
           anomalies_detected: [],
-          performance_issues: responseTime > this.config.thresholds.responseTime.degraded ?
-            ['High response time detected'] : [],
-          recovery_attempts: this.recoveryAttempts.get('api_gateway') || 0
+          performance_issues:
+            responseTime > this.config.thresholds.responseTime.degraded
+              ? ['High response time detected']
+              : [],
+          recovery_attempts: this.recoveryAttempts.get('api_gateway') || 0,
         },
         historical_comparison: await this.getHistoricalComparison('api_gateway'),
-        recommendations: await this.generateRecommendations('api_gateway', status, responseTime)
+        recommendations: await this.generateRecommendations('api_gateway', status, responseTime),
       };
 
       return healthCheck;
@@ -403,25 +404,27 @@ export class HealthChecker implements IHealthChecker {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
           operation: 'test_database_connectivity',
-          reason: 'Health checker performing database connectivity test to verify database health status',
+          reason:
+            'Health checker performing database connectivity test to verify database health status',
           source: 'HealthChecker',
           metadata: {
             check_type: 'database_health',
-            operation_type: 'connectivity_test'
-          }
+            operation_type: 'connectivity_test',
+          },
         },
         {
           table: 'indb_site_integration',
-          operationType: 'select'
+          operationType: 'select',
         },
         async () => {
-          const { error } = await supabaseAdmin
-            .from('indb_site_integration')
-            .select('id')
-            .limit(1);
+          const { error } = await supabaseAdmin.from('indb_site_integration').select('id').limit(1);
 
           if (error) {
-            throw ErrorHandlingService.createError({ message: `Database query failed: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+            throw ErrorHandlingService.createError({
+              message: `Database query failed: ${error.message}`,
+              type: ErrorType.DATABASE,
+              severity: ErrorSeverity.HIGH,
+            });
           }
           return [];
         }
@@ -442,23 +445,29 @@ export class HealthChecker implements IHealthChecker {
           response_time: responseTime,
           availability_percent: 100,
           error_rate_percent: 0,
-          throughput: 0
+          throughput: 0,
         },
         diagnostics: {
           checks_performed: ['connection_test', 'query_performance', 'table_accessibility'],
           anomalies_detected: [],
-          performance_issues: responseTime > this.config.thresholds.responseTime.degraded ?
-            ['Slow database response time'] : [],
-          recovery_attempts: this.recoveryAttempts.get('database') || 0
+          performance_issues:
+            responseTime > this.config.thresholds.responseTime.degraded
+              ? ['Slow database response time']
+              : [],
+          recovery_attempts: this.recoveryAttempts.get('database') || 0,
         },
         historical_comparison: await this.getHistoricalComparison('database'),
-        recommendations: await this.generateRecommendations('database', status, responseTime)
+        recommendations: await this.generateRecommendations('database', status, responseTime),
       };
 
       return healthCheck;
     } catch (error) {
       this.log('error', `Database health check failed: ${error}`);
-      return this.createHealthResult('unhealthy', startTime, `Database health check failed: ${error}`);
+      return this.createHealthResult(
+        'unhealthy',
+        startTime,
+        `Database health check failed: ${error}`
+      );
     }
   }
 
@@ -477,8 +486,8 @@ export class HealthChecker implements IHealthChecker {
       const cacheStats = await this.keywordBankService.getBankStats();
       const responseTime = Date.now() - startTime;
 
-      const hitRatio = cacheStats.total_keywords > 0 ?
-        cacheStats.with_data / cacheStats.total_keywords : 1;
+      const hitRatio =
+        cacheStats.total_keywords > 0 ? cacheStats.with_data / cacheStats.total_keywords : 1;
 
       let status: HealthCheckResult['status'] = 'healthy';
       if (hitRatio < 0.5) status = 'unhealthy';
@@ -496,17 +505,19 @@ export class HealthChecker implements IHealthChecker {
           response_time: responseTime,
           availability_percent: 100,
           error_rate_percent: 0,
-          throughput: 0
+          throughput: 0,
         },
         diagnostics: {
           checks_performed: ['cache_stats', 'hit_ratio_check', 'response_time_check'],
           anomalies_detected: hitRatio < 0.5 ? ['Low cache hit ratio detected'] : [],
-          performance_issues: responseTime > this.config.thresholds.responseTime.degraded ?
-            ['Slow cache response time'] : [],
-          recovery_attempts: this.recoveryAttempts.get('cache_layer') || 0
+          performance_issues:
+            responseTime > this.config.thresholds.responseTime.degraded
+              ? ['Slow cache response time']
+              : [],
+          recovery_attempts: this.recoveryAttempts.get('cache_layer') || 0,
         },
         historical_comparison: await this.getHistoricalComparison('cache_layer'),
-        recommendations: await this.generateRecommendations('cache_layer', status, responseTime)
+        recommendations: await this.generateRecommendations('cache_layer', status, responseTime),
       };
 
       return healthCheck;
@@ -532,7 +543,11 @@ export class HealthChecker implements IHealthChecker {
       const responseTime = Date.now() - startTime;
 
       if (!integrationResult.success || !integrationResult.data) {
-        throw ErrorHandlingService.createError({ message: 'Integration service test failed', type: ErrorType.SYSTEM, severity: ErrorSeverity.HIGH });
+        throw ErrorHandlingService.createError({
+          message: 'Integration service test failed',
+          type: ErrorType.SYSTEM,
+          severity: ErrorSeverity.HIGH,
+        });
       }
 
       const integrationHealth = integrationResult.data;
@@ -547,25 +562,37 @@ export class HealthChecker implements IHealthChecker {
         dependency_level: 'critical',
         metrics: {
           response_time: responseTime,
-          availability_percent: integrationHealth.status === 'healthy' ? 100 :
-            integrationHealth.status === 'degraded' ? 75 : 25,
+          availability_percent:
+            integrationHealth.status === 'healthy'
+              ? 100
+              : integrationHealth.status === 'degraded'
+                ? 75
+                : 25,
           error_rate_percent: 0,
-          throughput: 0
+          throughput: 0,
         },
         diagnostics: {
           checks_performed: ['integration_test', 'quota_check', 'api_key_validation'],
           anomalies_detected: integrationHealth.warning ? [integrationHealth.warning] : [],
           performance_issues: integrationHealth.error ? [integrationHealth.error] : [],
-          recovery_attempts: this.recoveryAttempts.get('integration_service') || 0
+          recovery_attempts: this.recoveryAttempts.get('integration_service') || 0,
         },
         historical_comparison: await this.getHistoricalComparison('integration_service'),
-        recommendations: await this.generateRecommendations('integration_service', integrationHealth.status, responseTime)
+        recommendations: await this.generateRecommendations(
+          'integration_service',
+          integrationHealth.status,
+          responseTime
+        ),
       };
 
       return healthCheck;
     } catch (error) {
       this.log('error', `Integration health check failed: ${error}`);
-      return this.createHealthResult('unhealthy', startTime, `Integration health check failed: ${error}`);
+      return this.createHealthResult(
+        'unhealthy',
+        startTime,
+        `Integration health check failed: ${error}`
+      );
     }
   }
 
@@ -597,24 +624,28 @@ export class HealthChecker implements IHealthChecker {
           error_rate_percent: 0,
           throughput: 0,
           resource_utilization: {
-            memory: Math.round(memoryUsage.heapUsed / memoryUsage.heapTotal * 100),
-            cpu: Math.round((cpuUsage.user + cpuUsage.system) / 1000000) // Convert to milliseconds
-          }
+            memory: Math.round((memoryUsage.heapUsed / memoryUsage.heapTotal) * 100),
+            cpu: Math.round((cpuUsage.user + cpuUsage.system) / 1000000), // Convert to milliseconds
+          },
         },
         diagnostics: {
           checks_performed: ['memory_usage', 'cpu_usage', 'uptime_check'],
           anomalies_detected: [],
           performance_issues: [],
-          recovery_attempts: 0
+          recovery_attempts: 0,
         },
         historical_comparison: await this.getHistoricalComparison('system_resources'),
-        recommendations: []
+        recommendations: [],
       };
 
       return healthCheck;
     } catch (error) {
       this.log('error', `System health check failed: ${error}`);
-      return this.createHealthResult('unhealthy', startTime, `System health check failed: ${error}`);
+      return this.createHealthResult(
+        'unhealthy',
+        startTime,
+        `System health check failed: ${error}`
+      );
     }
   }
 
@@ -624,15 +655,15 @@ export class HealthChecker implements IHealthChecker {
   async getSystemHealthSummary(): Promise<SystemHealthSummary> {
     try {
       // Ensure we have recent health data
-      if (!this.lastHealthCheck || (Date.now() - this.lastHealthCheck.getTime()) > 60000) {
+      if (!this.lastHealthCheck || Date.now() - this.lastHealthCheck.getTime() > 60000) {
         await this.performHealthCheck();
       }
 
       const healthComponents = Array.from(this.healthCache.values());
       const totalComponents = healthComponents.length;
-      const healthyComponents = healthComponents.filter(h => h.status === 'healthy').length;
-      const degradedComponents = healthComponents.filter(h => h.status === 'degraded').length;
-      const unhealthyComponents = healthComponents.filter(h => h.status === 'unhealthy').length;
+      const healthyComponents = healthComponents.filter((h) => h.status === 'healthy').length;
+      const degradedComponents = healthComponents.filter((h) => h.status === 'degraded').length;
+      const unhealthyComponents = healthComponents.filter((h) => h.status === 'unhealthy').length;
 
       const overallScore = this.calculateOverallHealthScore(
         Object.fromEntries(Array.from(this.healthCache.entries()))
@@ -647,26 +678,37 @@ export class HealthChecker implements IHealthChecker {
         overall_status: overallStatus,
         overall_score: overallScore,
         component_health: {
-          api_gateway: this.healthCache.get('api_gateway') || this.getEmptyHealthCheck('api_gateway'),
+          api_gateway:
+            this.healthCache.get('api_gateway') || this.getEmptyHealthCheck('api_gateway'),
           database: this.healthCache.get('database') || this.getEmptyHealthCheck('database'),
-          cache_layer: this.healthCache.get('cache_layer') || this.getEmptyHealthCheck('cache_layer'),
-          keyword_bank: this.healthCache.get('keyword_bank') || this.getEmptyHealthCheck('keyword_bank'),
-          integration_service: this.healthCache.get('integration_service') || this.getEmptyHealthCheck('integration_service'),
-          quota_monitor: this.healthCache.get('quota_monitor') || this.getEmptyHealthCheck('quota_monitor'),
-          metrics_collector: this.healthCache.get('metrics_collector') || this.getEmptyHealthCheck('metrics_collector')
+          cache_layer:
+            this.healthCache.get('cache_layer') || this.getEmptyHealthCheck('cache_layer'),
+          keyword_bank:
+            this.healthCache.get('keyword_bank') || this.getEmptyHealthCheck('keyword_bank'),
+          integration_service:
+            this.healthCache.get('integration_service') ||
+            this.getEmptyHealthCheck('integration_service'),
+          quota_monitor:
+            this.healthCache.get('quota_monitor') || this.getEmptyHealthCheck('quota_monitor'),
+          metrics_collector:
+            this.healthCache.get('metrics_collector') ||
+            this.getEmptyHealthCheck('metrics_collector'),
         },
         system_metrics: {
           total_dependencies: totalComponents,
           healthy_dependencies: healthyComponents,
           degraded_dependencies: degradedComponents,
           unhealthy_dependencies: unhealthyComponents,
-          average_response_time: healthComponents.length > 0 ?
-            healthComponents.reduce((sum, h) => sum + (h.response_time || 0), 0) / healthComponents.length : 0,
-          system_uptime_hours: (Date.now() - this.systemStartTime.getTime()) / (1000 * 60 * 60)
+          average_response_time:
+            healthComponents.length > 0
+              ? healthComponents.reduce((sum, h) => sum + (h.response_time || 0), 0) /
+                healthComponents.length
+              : 0,
+          system_uptime_hours: (Date.now() - this.systemStartTime.getTime()) / (1000 * 60 * 60),
         },
         active_incidents: Array.from(this.activeIncidents.values()),
         predictive_alerts: [],
-        performance_bottlenecks: await this.identifyPerformanceBottlenecks()
+        performance_bottlenecks: await this.identifyPerformanceBottlenecks(),
       };
 
       return summary;
@@ -680,7 +722,9 @@ export class HealthChecker implements IHealthChecker {
    * Private helper methods
    */
 
-  private extractResult(settledResult: PromiseSettledResult<HealthCheckResult>): DetailedHealthCheck | null {
+  private extractResult(
+    settledResult: PromiseSettledResult<HealthCheckResult>
+  ): DetailedHealthCheck | null {
     if (settledResult.status === 'fulfilled') {
       return settledResult.value as DetailedHealthCheck;
     } else {
@@ -689,17 +733,23 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private calculateOverallHealthScore(healthResults: Record<string, DetailedHealthCheck | null>): number {
-    const results = Object.values(healthResults).filter(r => r !== null) as DetailedHealthCheck[];
+  private calculateOverallHealthScore(
+    healthResults: Record<string, DetailedHealthCheck | null>
+  ): number {
+    const results = Object.values(healthResults).filter((r) => r !== null) as DetailedHealthCheck[];
 
     if (results.length === 0) return 0;
 
-    const scores = results.map(result => {
+    const scores = results.map((result) => {
       switch (result.status) {
-        case 'healthy': return 100;
-        case 'degraded': return 70;
-        case 'unhealthy': return 30;
-        default: return 50;
+        case 'healthy':
+          return 100;
+        case 'degraded':
+          return 70;
+        case 'unhealthy':
+          return 30;
+        default:
+          return 50;
       }
     });
 
@@ -708,8 +758,12 @@ export class HealthChecker implements IHealthChecker {
     let totalWeight = 0;
 
     results.forEach((result, index) => {
-      const weight = result.dependency_level === 'critical' ? 3 :
-        result.dependency_level === 'important' ? 2 : 1;
+      const weight =
+        result.dependency_level === 'critical'
+          ? 3
+          : result.dependency_level === 'important'
+            ? 2
+            : 1;
       weightedScore += scores[index] * weight;
       totalWeight += weight;
     });
@@ -723,7 +777,10 @@ export class HealthChecker implements IHealthChecker {
     return 'unhealthy';
   }
 
-  private evaluateResponseTime(responseTime: number, component: string): HealthCheckResult['status'] {
+  private evaluateResponseTime(
+    responseTime: number,
+    component: string
+  ): HealthCheckResult['status'] {
     const thresholds = this.config.thresholds.responseTime;
 
     if (responseTime <= thresholds.good) return 'healthy';
@@ -749,20 +806,20 @@ export class HealthChecker implements IHealthChecker {
         response_time: Date.now() - startTime,
         availability_percent: status === 'healthy' ? 100 : 0,
         error_rate_percent: 0,
-        throughput: 0
+        throughput: 0,
       },
       diagnostics: {
         checks_performed: [],
         anomalies_detected: error ? [error] : [],
         performance_issues: [],
-        recovery_attempts: 0
+        recovery_attempts: 0,
       },
       historical_comparison: {
         compared_to_yesterday: 'same',
         compared_to_last_week: 'same',
-        trend_direction: 'stable'
+        trend_direction: 'stable',
       },
-      recommendations: []
+      recommendations: [],
     };
   }
 
@@ -780,36 +837,40 @@ export class HealthChecker implements IHealthChecker {
         response_time: 0,
         availability_percent: 0,
         error_rate_percent: 100,
-        throughput: 0
+        throughput: 0,
       },
       diagnostics: {
         checks_performed: [],
         anomalies_detected: ['Service not available for monitoring'],
         performance_issues: [],
-        recovery_attempts: 0
+        recovery_attempts: 0,
       },
       historical_comparison: {
         compared_to_yesterday: 'worse',
         compared_to_last_week: 'worse',
-        trend_direction: 'degrading'
+        trend_direction: 'degrading',
       },
-      recommendations: [{
-        type: 'immediate',
-        priority: 'high',
-        description: 'Configure health monitoring for this service',
-        implementation_effort: 'medium',
-        estimated_impact: 'Improved system visibility'
-      }]
+      recommendations: [
+        {
+          type: 'immediate',
+          priority: 'high',
+          description: 'Configure health monitoring for this service',
+          implementation_effort: 'medium',
+          estimated_impact: 'Improved system visibility',
+        },
+      ],
     };
   }
 
-  private async getHistoricalComparison(serviceName: string): Promise<DetailedHealthCheck['historical_comparison']> {
+  private async getHistoricalComparison(
+    serviceName: string
+  ): Promise<DetailedHealthCheck['historical_comparison']> {
     // This would compare with historical data from database
     // Placeholder implementation
     return {
       compared_to_yesterday: 'same',
       compared_to_last_week: 'same',
-      trend_direction: 'stable'
+      trend_direction: 'stable',
     };
   }
 
@@ -826,7 +887,7 @@ export class HealthChecker implements IHealthChecker {
         priority: 'critical',
         description: `${serviceName} is unhealthy and requires immediate attention`,
         implementation_effort: 'high',
-        estimated_impact: 'Restore service functionality'
+        estimated_impact: 'Restore service functionality',
       });
     }
 
@@ -836,7 +897,7 @@ export class HealthChecker implements IHealthChecker {
         priority: 'medium',
         description: 'Optimize response time through caching or resource scaling',
         implementation_effort: 'medium',
-        estimated_impact: 'Improve user experience and system performance'
+        estimated_impact: 'Improve user experience and system performance',
       });
     }
 
@@ -846,14 +907,16 @@ export class HealthChecker implements IHealthChecker {
         priority: 'medium',
         description: 'Monitor service closely and consider preventive maintenance',
         implementation_effort: 'low',
-        estimated_impact: 'Prevent service degradation'
+        estimated_impact: 'Prevent service degradation',
       });
     }
 
     return recommendations;
   }
 
-  private async processHealthResults(healthResults: Record<string, DetailedHealthCheck | null>): Promise<void> {
+  private async processHealthResults(
+    healthResults: Record<string, DetailedHealthCheck | null>
+  ): Promise<void> {
     // Process health results for incidents and recovery actions
     for (const [serviceName, result] of Object.entries(healthResults)) {
       if (!result) continue;
@@ -868,7 +931,10 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private async attemptAutoRecovery(serviceName: string, healthCheck: DetailedHealthCheck): Promise<void> {
+  private async attemptAutoRecovery(
+    serviceName: string,
+    healthCheck: DetailedHealthCheck
+  ): Promise<void> {
     const currentAttempts = this.recoveryAttempts.get(serviceName) || 0;
 
     if (currentAttempts >= this.config.recovery.maxRetryAttempts) {
@@ -876,7 +942,10 @@ export class HealthChecker implements IHealthChecker {
       return;
     }
 
-    this.log('info', `Attempting auto-recovery for ${serviceName} (attempt ${currentAttempts + 1})`);
+    this.log(
+      'info',
+      `Attempting auto-recovery for ${serviceName} (attempt ${currentAttempts + 1})`
+    );
 
     try {
       // Implement service-specific recovery actions
@@ -895,7 +964,10 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private async executeRecoveryAction(serviceName: string, healthCheck: DetailedHealthCheck): Promise<boolean> {
+  private async executeRecoveryAction(
+    serviceName: string,
+    healthCheck: DetailedHealthCheck
+  ): Promise<boolean> {
     // Implement service-specific recovery logic
     switch (serviceName) {
       case 'api_gateway':
@@ -932,18 +1004,15 @@ export class HealthChecker implements IHealthChecker {
           source: 'HealthChecker',
           metadata: {
             healthCheck: healthCheck.status,
-            recoveryAttempt: true
-          }
+            recoveryAttempt: true,
+          },
         },
         {
           table: 'indb_site_integration',
-          operationType: 'select'
+          operationType: 'select',
         },
         async () => {
-          await supabaseAdmin
-            .from('indb_site_integration')
-            .select('id')
-            .limit(1);
+          await supabaseAdmin.from('indb_site_integration').select('id').limit(1);
           return [];
         }
       );
@@ -960,7 +1029,10 @@ export class HealthChecker implements IHealthChecker {
     return true; // Placeholder
   }
 
-  private async createIncidentIfNeeded(serviceName: string, healthCheck: DetailedHealthCheck): Promise<void> {
+  private async createIncidentIfNeeded(
+    serviceName: string,
+    healthCheck: DetailedHealthCheck
+  ): Promise<void> {
     if (!this.activeIncidents.has(serviceName)) {
       const incident = {
         id: `incident_${serviceName}_${Date.now()}`,
@@ -968,7 +1040,7 @@ export class HealthChecker implements IHealthChecker {
         component: serviceName,
         description: healthCheck.error || `${serviceName} is ${healthCheck.status}`,
         started_at: new Date(),
-        recovery_actions: healthCheck.recommendations.map(r => r.description)
+        recovery_actions: healthCheck.recommendations.map((r) => r.description),
       };
 
       this.activeIncidents.set(serviceName, incident);
@@ -976,21 +1048,29 @@ export class HealthChecker implements IHealthChecker {
     }
   }
 
-  private async identifyPerformanceBottlenecks(): Promise<SystemHealthSummary['performance_bottlenecks']> {
+  private async identifyPerformanceBottlenecks(): Promise<
+    SystemHealthSummary['performance_bottlenecks']
+  > {
     const bottlenecks: SystemHealthSummary['performance_bottlenecks'] = [];
 
     for (const [serviceName, healthCheck] of Array.from(this.healthCache.entries())) {
-      if (healthCheck.response_time && healthCheck.response_time > this.config.thresholds.responseTime.degraded) {
+      if (
+        healthCheck.response_time &&
+        healthCheck.response_time > this.config.thresholds.responseTime.degraded
+      ) {
         bottlenecks.push({
           component: serviceName,
           bottleneck_type: 'network',
-          severity_score: Math.min(100, (healthCheck.response_time / this.config.thresholds.responseTime.good) * 10),
+          severity_score: Math.min(
+            100,
+            (healthCheck.response_time / this.config.thresholds.responseTime.good) * 10
+          ),
           impact_description: `High response time: ${healthCheck.response_time}ms`,
           optimization_suggestions: [
             'Implement response caching',
             'Optimize database queries',
-            'Consider CDN implementation'
-          ]
+            'Consider CDN implementation',
+          ],
         });
       }
     }
@@ -1019,12 +1099,12 @@ export class HealthChecker implements IHealthChecker {
           source: 'HealthChecker.loadHistoricalHealthData',
           metadata: {
             lookbackHours: 24,
-            limit: 100
-          }
+            limit: 100,
+          },
         },
         {
           table: 'indb_seranking_health_checks',
-          operationType: 'select'
+          operationType: 'select',
         },
         async () => {
           const { data, error } = await supabaseAdmin
