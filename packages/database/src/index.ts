@@ -90,6 +90,7 @@ export {
 export { DatabaseService, db } from './DatabaseService'
 
 // Utility exports
+export { ApiError } from './utils/api-error'
 export { 
     ApiClient, 
     apiClient, 
@@ -97,6 +98,7 @@ export {
 } from './utils/ApiClient'
 export * from './utils/site-settings'
 export * from './utils/queryClient'
+export { toJson, fromJson, fromJsonOr } from './utils/json-helpers'
 
 // Hook exports
 export * from './hooks'

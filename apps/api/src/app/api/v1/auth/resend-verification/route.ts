@@ -8,74 +8,10 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { z } from 'zod';
+import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
 
-// In-memory rate limit store for verification resend requests
-const rateLimitStore = new Map<string, { count: number; resetTime: number; lastRequest: number }>();
-
-const RATE_LIMIT = {
-    MAX_ATTEMPTS: 3,
-    WINDOW_MS: 15 * 60 * 1000,
-    COOLDOWN_MS: 60 * 1000,
-};
-
-/**
- * Check rate limit for resend verification requests
- */
-function checkRateLimit(email: string, clientIP: string): { allowed: boolean; retryAfter?: number } {
-    const now = Date.now();
-    const emailKey = `resend_email_${email.toLowerCase()}`;
-    const ipKey = `resend_ip_${clientIP}`;
-
-    // Clear expired entries
-    const emailRecord = rateLimitStore.get(emailKey);
-    const ipRecord = rateLimitStore.get(ipKey);
-
-    if (emailRecord && now > emailRecord.resetTime) {
-        rateLimitStore.delete(emailKey);
-    }
-    if (ipRecord && now > ipRecord.resetTime) {
-        rateLimitStore.delete(ipKey);
-    }
-
-    const currentEmailRecord = rateLimitStore.get(emailKey);
-    const currentIPRecord = rateLimitStore.get(ipKey);
-
-    // Check cooldown between requests
-    if (currentEmailRecord && (now - currentEmailRecord.lastRequest) < RATE_LIMIT.COOLDOWN_MS) {
-        const retryAfter = Math.ceil((RATE_LIMIT.COOLDOWN_MS - (now - currentEmailRecord.lastRequest)) / 1000);
-        return { allowed: false, retryAfter };
-    }
-
-    // Check max attempts by IP
-    if (currentIPRecord && currentIPRecord.count >= RATE_LIMIT.MAX_ATTEMPTS) {
-        const retryAfter = Math.ceil((currentIPRecord.resetTime - now) / 1000);
-        return { allowed: false, retryAfter };
-    }
-
-    // Check max attempts by email
-    if (currentEmailRecord && currentEmailRecord.count >= RATE_LIMIT.MAX_ATTEMPTS) {
-        const retryAfter = Math.ceil((currentEmailRecord.resetTime - now) / 1000);
-        return { allowed: false, retryAfter };
-    }
-
-    // Update rate limit records
-    const emailCount = currentEmailRecord ? currentEmailRecord.count + 1 : 1;
-    const ipCount = currentIPRecord ? currentIPRecord.count + 1 : 1;
-
-    rateLimitStore.set(emailKey, {
-        count: emailCount,
-        resetTime: currentEmailRecord?.resetTime || (now + RATE_LIMIT.WINDOW_MS),
-        lastRequest: now
-    });
-
-    rateLimitStore.set(ipKey, {
-        count: ipCount,
-        resetTime: currentIPRecord?.resetTime || (now + RATE_LIMIT.WINDOW_MS),
-        lastRequest: now
-    });
-
-    return { allowed: true };
-}
+const RESEND_RATE_LIMIT = { maxAttempts: 3, windowMs: 15 * 60 * 1000 };
+const RESEND_COOLDOWN = { maxAttempts: 1, windowMs: 60 * 1000 };
 
 // Type for resend result
 interface ResendResult {
@@ -110,15 +46,37 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
             || '127.0.0.1';
 
         // Check rate limits
-        const rateCheck = checkRateLimit(normalizedEmail, clientIP);
-        if (!rateCheck.allowed) {
+        const emailKey = `resend_email_${normalizedEmail}`;
+        const ipKey = `resend_ip_${clientIP}`;
+        const cooldownKey = `resend_cooldown_${normalizedEmail}`;
+
+        const [cooldownCheck, emailCheck, ipCheck] = await Promise.all([
+            redisRateLimiter.check(cooldownKey, RESEND_COOLDOWN),
+            redisRateLimiter.check(emailKey, RESEND_RATE_LIMIT),
+            redisRateLimiter.check(ipKey, RESEND_RATE_LIMIT),
+        ]);
+
+        if (!cooldownCheck.allowed) {
+            const rateLimitError = await ErrorHandlingService.createError(
+                ErrorType.RATE_LIMIT,
+                'Please wait before requesting another verification email.',
+                {
+                    severity: ErrorSeverity.LOW,
+                    statusCode: 429,
+                    metadata: { retryAfter: cooldownCheck.retryAfter }
+                }
+            );
+            return formatError(rateLimitError);
+        }
+        if (!emailCheck.allowed || !ipCheck.allowed) {
+            const retryAfter = Math.max(emailCheck.retryAfter, ipCheck.retryAfter);
             const rateLimitError = await ErrorHandlingService.createError(
                 ErrorType.RATE_LIMIT,
                 'Too many requests. Please try again later.',
                 {
                     severity: ErrorSeverity.LOW,
                     statusCode: 429,
-                    metadata: { retryAfter: rateCheck.retryAfter }
+                    metadata: { retryAfter }
                 }
             );
             return formatError(rateLimitError);
@@ -168,10 +126,17 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
             logger.warn({ message: 'Resend verification error (hidden from user)', error: resendError.message });
         }
 
+        // Increment rate limit counters after successful processing
+        await Promise.all([
+            redisRateLimiter.increment(emailKey, RESEND_RATE_LIMIT),
+            redisRateLimiter.increment(ipKey, RESEND_RATE_LIMIT),
+            redisRateLimiter.increment(cooldownKey, RESEND_COOLDOWN),
+        ]);
+
         // Always return success message to prevent email enumeration
         return formatSuccess({
             message: 'If an account with this email exists and is unverified, a verification email has been sent.',
-            canResendAfter: RATE_LIMIT.COOLDOWN_MS / 1000
+            canResendAfter: RESEND_COOLDOWN.windowMs / 1000
         });
 
     } catch (error) {

@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 interface SiteSettings {
   site_name: string
   white_logo: string
@@ -25,10 +27,13 @@ export function Footer({ siteSettings, onScrollToPricing }: FooterProps) {
             <div className="space-y-4">
               {/* Company Logo/Name */}
               <div className="flex items-center">
-                <img
-                  src={siteSettings?.white_logo}
-                  alt={siteSettings?.site_name}
+                <Image
+                  src={siteSettings?.white_logo || ''}
+                  alt={siteSettings?.site_name || 'Logo'}
+                  width={200}
+                  height={80}
                   className="h-20 w-auto brightness-110"
+                  unoptimized
                 />
               </div>
               {/* Social Media Icons */}

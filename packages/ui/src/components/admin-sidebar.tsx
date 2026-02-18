@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   LayoutDashboard,
   Users,
@@ -210,11 +211,13 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
             }`}>
             <div className="flex items-center">
               {logoUrl && (
-                <img
+                <Image
                   src={logoUrl}
                   alt="Admin Logo"
-                  className={isCollapsed ? "h-8 w-8 object-contain" : ""}
-                  style={!isCollapsed ? { width: '106.664px', height: '60px' } : {}}
+                  width={isCollapsed ? 32 : 107}
+                  height={isCollapsed ? 32 : 60}
+                  className={isCollapsed ? "object-contain" : ""}
+                  unoptimized
                 />
               )}
             </div>
@@ -273,10 +276,12 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
           <div className="flex items-center justify-between px-4 py-5">
             <div className="flex items-center">
               {logoUrl && (
-                <img
+                <Image
                   src={logoUrl}
                   alt="Admin Logo"
-                  style={{ width: '106.664px', height: '60px' }}
+                  width={107}
+                  height={60}
+                  unoptimized
                 />
               )}
             </div>
@@ -357,10 +362,12 @@ export const AdminSidebar = ({ isOpen, onToggle, onCollapse, user, isCollapsed =
               <Menu className="h-5 w-5" />
             </button>
             {iconUrl ? (
-              <img
+              <Image
                 src={iconUrl}
                 alt={`${siteName} Admin Icon`}
-                className="h-6 w-6"
+                width={24}
+                height={24}
+                unoptimized
               />
             ) : (
               <div className="h-6 w-6 bg-brand-accent rounded flex items-center justify-center">

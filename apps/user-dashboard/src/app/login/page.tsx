@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from 'next/image'
 import { authService } from '@indexnow/supabase-client'
 import { logger, loginSchema, forgotPasswordSchema } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database/client'
@@ -237,14 +238,14 @@ export default function Login() {
         {/* Logo for both mobile and desktop */}
         {logoUrl && (
           <div className={`absolute ${isMobile ? 'top-5 left-5' : 'top-10 left-[60px]'} flex items-center`}>
-            <img 
+            <Image 
               src={logoUrl} 
               alt="Logo"
-              style={{
-                height: isMobile ? '48px' : '72px',
-                width: 'auto',
-                maxWidth: isMobile ? '240px' : '360px'
-              }}
+              width={isMobile ? 240 : 360}
+              height={isMobile ? 48 : 72}
+              className="w-auto"
+              style={{ maxWidth: isMobile ? '240px' : '360px' }}
+              unoptimized
             />
           </div>
         )}

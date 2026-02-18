@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Image from 'next/image'
 import {
   LayoutDashboard,
   Zap,
@@ -228,11 +229,13 @@ export function Sidebar({
                 <div className={`bg-muted animate-pulse rounded ${isCollapsed ? 'h-8 w-8' : 'h-12 w-24'
                   }`}></div>
               ) : logoUrl && (
-                <img
+                <Image
                   src={logoUrl}
                   alt={isCollapsed ? 'Icon' : 'Logo'}
-                  className={isCollapsed ? "h-8 w-8 object-contain" : "object-contain"}
-                  style={!isCollapsed ? { width: '106.664px', height: '60px' } : { width: '32px', height: '32px' }}
+                  width={isCollapsed ? 32 : 107}
+                  height={isCollapsed ? 32 : 60}
+                  className="object-contain"
+                  unoptimized
                 />
               )}
             </div>

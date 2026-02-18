@@ -4,8 +4,8 @@
  * Handles job prioritization, scheduling, and persistence
  */
 
-import { Database, Json, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { Database, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { supabaseAdmin, SecureServiceRoleWrapper, toJson, fromJson, fromJsonOr } from '@indexnow/database';
 import {
   EnrichmentJob,
   EnrichmentJobType,
@@ -159,11 +159,11 @@ export class EnrichmentQueue extends EventEmitter {
         job_type: jobRequest.type,
         status: EnrichmentJobStatus.QUEUED,
         priority: jobRequest.priority || JobPriority.NORMAL,
-        config: jobConfig as unknown as Json,
-        source_data: jobRequest.data as unknown as Json,
-        progress_data: progress as unknown as Json,
+        config: toJson(jobConfig),
+        source_data: toJson(jobRequest.data),
+        progress_data: toJson(progress),
         retry_count: 0,
-        metadata: jobRequest.metadata as unknown as Json,
+        metadata: toJson(jobRequest.metadata),
         next_retry_at: scheduledFor?.toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -351,7 +351,7 @@ export class EnrichmentQueue extends EventEmitter {
       );
 
       // Convert to EnrichmentJob type
-      const job = this.recordToJob(jobRecord as unknown as EnrichmentJobRecord);
+      const job = this.recordToJob(fromJson<EnrichmentJobRecord>(jobRecord));
 
       // Emit event
       if (this.config.enableEvents) {
@@ -413,7 +413,7 @@ export class EnrichmentQueue extends EventEmitter {
           const { error: updateError } = await supabaseAdmin
             .from('indb_enrichment_jobs')
             .update({
-              progress_data: updatedProgress as unknown as Json,
+              progress_data: toJson(updatedProgress),
               updated_at: new Date().toISOString()
             })
             .eq('id', jobId);
@@ -449,7 +449,7 @@ export class EnrichmentQueue extends EventEmitter {
     try {
       const updates: EnrichmentJobUpdate = {
         status,
-        result_data: result as unknown as Json,
+        result_data: toJson(result),
         completed_at: new Date().toISOString(),
         locked_at: null,
         worker_id: null,
@@ -695,7 +695,7 @@ export class EnrichmentQueue extends EventEmitter {
         };
       }
 
-      const job = this.recordToJob(data as unknown as EnrichmentJobRecord);
+      const job = this.recordToJob(fromJson<EnrichmentJobRecord>(data));
 
       return {
         success: true,
@@ -1009,10 +1009,10 @@ export class EnrichmentQueue extends EventEmitter {
       type: (record.job_type as EnrichmentJobType) || EnrichmentJobType.SINGLE_KEYWORD,
       status: (record.status as EnrichmentJobStatus) || EnrichmentJobStatus.QUEUED,
       priority: (record.priority as JobPriority) || JobPriority.NORMAL,
-      config: (record.config as unknown as EnrichmentJobConfig) || DEFAULT_JOB_CONFIG,
-      data: record.source_data as unknown as EnrichmentJobData,
-      progress: (record.progress_data as unknown as JobProgress) || { total: 0, processed: 0, successful: 0, failed: 0, skipped: 0, startedAt: new Date() },
-      result: (record.result_data as unknown as JobResult) || undefined,
+      config: fromJsonOr<EnrichmentJobConfig>(record.config, DEFAULT_JOB_CONFIG),
+      data: fromJson<EnrichmentJobData>(record.source_data),
+      progress: fromJsonOr<JobProgress>(record.progress_data, { total: 0, processed: 0, successful: 0, failed: 0, skipped: 0, startedAt: new Date() }),
+      result: record.result_data ? fromJson<JobResult>(record.result_data) : undefined,
       retryCount: record.retry_count || 0,
       lastRetryAt: record.last_retry_at ? new Date(record.last_retry_at) : undefined,
       nextRetryAt: record.next_retry_at ? new Date(record.next_retry_at) : undefined,
@@ -1022,7 +1022,7 @@ export class EnrichmentQueue extends EventEmitter {
       completedAt: record.completed_at ? new Date(record.completed_at) : undefined,
       cancelledAt: record.cancelled_at ? new Date(record.cancelled_at) : undefined,
       error: record.error_message || undefined,
-      metadata: (record.metadata as unknown as Record<string, unknown>) || undefined,
+      metadata: record.metadata ? fromJson<Record<string, unknown>>(record.metadata) : undefined,
       workerId: record.worker_id || undefined,
       lockedAt: record.locked_at ? new Date(record.locked_at) : undefined
     };

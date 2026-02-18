@@ -15,68 +15,12 @@ import {
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 import { getRequestInfo } from '@indexnow/shared';
-
-// In-memory rate limit store for login attempts
-// NOTE: In-memory store is per-process; use Redis for multi-instance deployments
-const loginRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
 
 const LOGIN_RATE_LIMIT = {
-  MAX_ATTEMPTS_PER_EMAIL: 5,    // 5 failed attempts per email
-  MAX_ATTEMPTS_PER_IP: 20,      // 20 attempts per IP (allows multiple users behind NAT)
-  WINDOW_MS: 15 * 60 * 1000,    // 15-minute window
+  email: { maxAttempts: 5, windowMs: 15 * 60 * 1000 } as const,
+  ip: { maxAttempts: 20, windowMs: 15 * 60 * 1000 } as const,
 };
-
-/**
- * Check rate limit for login requests
- */
-function checkLoginRateLimit(email: string, clientIP: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now();
-  const emailKey = `login_email_${email.toLowerCase()}`;
-  const ipKey = `login_ip_${clientIP}`;
-
-  // Clear expired entries
-  for (const key of [emailKey, ipKey]) {
-    const record = loginRateLimitStore.get(key);
-    if (record && now > record.resetTime) {
-      loginRateLimitStore.delete(key);
-    }
-  }
-
-  const emailRecord = loginRateLimitStore.get(emailKey);
-  const ipRecord = loginRateLimitStore.get(ipKey);
-
-  // Check email limit
-  if (emailRecord && emailRecord.count >= LOGIN_RATE_LIMIT.MAX_ATTEMPTS_PER_EMAIL) {
-    const retryAfter = Math.ceil((emailRecord.resetTime - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  // Check IP limit
-  if (ipRecord && ipRecord.count >= LOGIN_RATE_LIMIT.MAX_ATTEMPTS_PER_IP) {
-    const retryAfter = Math.ceil((ipRecord.resetTime - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  return { allowed: true };
-}
-
-/**
- * Record a failed login attempt for rate limiting
- */
-function recordFailedLogin(email: string, clientIP: string): void {
-  const now = Date.now();
-  const emailKey = `login_email_${email.toLowerCase()}`;
-  const ipKey = `login_ip_${clientIP}`;
-
-  for (const key of [emailKey, ipKey]) {
-    const record = loginRateLimitStore.get(key);
-    if (record && now <= record.resetTime) {
-      record.count++;
-    } else {
-      loginRateLimitStore.set(key, { count: 1, resetTime: now + LOGIN_RATE_LIMIT.WINDOW_MS });
-    }
-  }
-}
 
 /**
  * POST /api/v1/auth/login
@@ -111,8 +55,14 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     // 2. Check rate limit before attempting authentication
     const clientIP = getClientIP(request) || 'unknown';
-    const rateLimit = checkLoginRateLimit(email, clientIP);
-    if (!rateLimit.allowed) {
+    const emailKey = `login_email_${email.toLowerCase()}`;
+    const ipKey = `login_ip_${clientIP}`;
+    const [emailCheck, ipCheck] = await Promise.all([
+      redisRateLimiter.check(emailKey, LOGIN_RATE_LIMIT.email),
+      redisRateLimiter.check(ipKey, LOGIN_RATE_LIMIT.ip),
+    ]);
+    if (!emailCheck.allowed || !ipCheck.allowed) {
+      const retryAfter = Math.max(emailCheck.retryAfter, ipCheck.retryAfter);
       const error = await ErrorHandlingService.createError(
         ErrorType.RATE_LIMIT,
         'Too many login attempts. Please try again later.',
@@ -121,7 +71,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           endpoint,
           method,
           statusCode: 429,
-          metadata: { retryAfter: rateLimit.retryAfter }
+          metadata: { retryAfter }
         }
       );
       return formatError(error);
@@ -138,7 +88,10 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     if (authError || !authData.user) {
       // Record failed attempt for rate limiting
-      recordFailedLogin(email, clientIP);
+      await Promise.all([
+        redisRateLimiter.increment(`login_email_${email.toLowerCase()}`, LOGIN_RATE_LIMIT.email),
+        redisRateLimiter.increment(`login_ip_${clientIP}`, LOGIN_RATE_LIMIT.ip),
+      ]);
 
       // Log failed login attempt
       await ActivityLogger.logAuth(

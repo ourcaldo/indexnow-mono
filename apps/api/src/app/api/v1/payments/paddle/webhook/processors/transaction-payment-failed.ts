@@ -7,7 +7,7 @@
  * 2. Insert into Paddle-specific table (indb_paddle_transactions) with failure details
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, TransactionMetadata, logger } from '@indexnow/shared';
 import { validateCustomData, getPackageIdFromSubscription, CustomData } from './utils';
 
@@ -117,7 +117,7 @@ export async function processTransactionPaymentFailed(data: unknown) {
                     paddle_subscription_id: subscription_id || null,
                     paddle_customer_id: txData.customer_id || null,
                     event_type: 'transaction.payment_failed',
-                    event_data: { details, failure_reason: 'payment_failed' } as unknown as Json,
+                    event_data: toJson({ details, failure_reason: 'payment_failed' }),
                     status: 'failed',
                 });
 

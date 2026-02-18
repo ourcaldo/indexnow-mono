@@ -7,7 +7,7 @@
  * 2. Insert into Paddle-specific table (indb_paddle_transactions) with FK
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, toJson, fromJson } from '@indexnow/database';
 import { Json, TransactionMetadata } from '@indexnow/shared';
 import { validateCustomData, safeGet, getPackageIdFromSubscription, CustomData } from './utils';
 
@@ -73,7 +73,7 @@ export async function processTransactionCompleted(data: unknown) {
     }
 
     const paymentMethod = Array.isArray(payments) && payments.length > 0
-        ? safeGet(payments[0] as unknown as Record<string, unknown>, 'method_details.type', 'unknown')
+        ? safeGet(fromJson<Record<string, unknown>>(payments[0]), 'method_details.type', 'unknown')
         : 'unknown';
 
     const packageId = await getPackageIdFromSubscription(
@@ -129,7 +129,7 @@ export async function processTransactionCompleted(data: unknown) {
                     paddle_subscription_id: subscription_id || null,
                     paddle_customer_id: txData.customer_id || null,
                     event_type: 'transaction.completed',
-                    event_data: { details, payments } as unknown as Json,
+                    event_data: toJson({ details, payments }),
                     status: 'completed',
                 });
 

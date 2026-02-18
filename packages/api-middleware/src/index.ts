@@ -124,6 +124,9 @@ export const securityHeaders: MiddlewareFunction = async (context, next) => {
 // For production-grade rate limiting, use a distributed store (Redis/Upstash).
 // MIGRATION PATH: Use the Redis cacheService at apps/api/src/lib/cache/redis-cache.ts
 // to back the rate limit counters for multi-instance deployments.
+// NOTE: This middleware-level rate limiter remains in-memory because it runs in Edge middleware
+// context where Redis connections are not available. Route-level rate limiters in auth/billing
+// routes have been migrated to Redis via @/lib/rate-limiting/redis-rate-limiter.
 const MAX_API_RATE_LIMIT_STORE = 10_000;
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 

@@ -3,7 +3,7 @@
  * Sends security notifications when users log into their accounts
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, fromJson } from '@indexnow/database';
 import * as nodemailer from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -162,7 +162,7 @@ export class LoginNotificationService {
             .single();
 
           if (error) return null;
-          return settings as unknown as SiteSettingsRow; // Cast because select string might not infer exact SiteSettingsRow, but it's a partial
+          return fromJson<SiteSettingsRow>(settings); // Cast because select string might not infer exact SiteSettingsRow, but it's a partial
         }
       );
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Image from 'next/image'
 import {
   ArrowLeft,
   CheckCircle,
@@ -33,6 +34,7 @@ import {
   type Json
 } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
+import { fromJson } from '@indexnow/database/client'
 import { OrderActivityTimeline } from './components/OrderActivityTimeline'
 
 interface OrderMetadata {
@@ -219,8 +221,8 @@ export default function AdminOrderDetailPage() {
   if (!orderData) return null
 
   const { order, activity_history, transaction_history } = orderData
-  const metadata = order.metadata as unknown as OrderMetadata
-  const features = (order.package?.features as unknown as (string | { name: string })[]) || []
+  const metadata = fromJson<OrderMetadata>(order.metadata)
+  const features = fromJson<(string | { name: string })[]>(order.package?.features) || []
   const canUpdateStatus = ['proof_uploaded', 'pending'].includes(order.transaction_status)
 
   return (
@@ -514,14 +516,17 @@ export default function AdminOrderDetailPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="aspect-video bg-secondary rounded-lg flex items-center justify-center">
-                    <img
+                    <Image
                       src={order.payment_proof_url}
                       alt="Payment Proof"
+                      width={640}
+                      height={360}
                       className="max-w-full max-h-full object-contain rounded-lg"
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                       }}
+                      unoptimized
                     />
                     <div className="hidden text-center">
                       <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-2" />

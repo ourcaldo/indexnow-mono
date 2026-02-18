@@ -1,28 +1,12 @@
 import { QueryClient } from '@tanstack/react-query'
 import { 
-  ErrorType, 
-  ErrorSeverity, 
   type Json
 } from '@indexnow/shared'
 import { supabaseBrowser as supabase } from '@indexnow/supabase-client'
+import { ApiError } from './api-error'
 
-export class ApiError extends Error {
-  id: string
-  type: ErrorType
-  severity: ErrorSeverity
-  timestamp: string
-  statusCode: number
-
-  constructor(errorResponse: Record<string, Json | undefined>) {
-    super(typeof errorResponse.message === 'string' ? errorResponse.message : 'An unexpected error occurred')
-    this.name = 'ApiError'
-    this.id = typeof errorResponse.id === 'string' ? errorResponse.id : ''
-    this.type = (errorResponse.type as ErrorType) || ErrorType.INTERNAL
-    this.severity = (errorResponse.severity as ErrorSeverity) || ErrorSeverity.MEDIUM
-    this.timestamp = typeof errorResponse.timestamp === 'string' ? errorResponse.timestamp : new Date().toISOString()
-    this.statusCode = typeof errorResponse.statusCode === 'number' ? errorResponse.statusCode : 500
-  }
-}
+// Re-export for backward compatibility
+export { ApiError } from './api-error'
 
 export const queryClient = new QueryClient({
   defaultOptions: {

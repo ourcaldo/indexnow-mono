@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
 
 // Enhanced Zod schemas for payment validation
 const customerInfoSchema = z.object({
@@ -129,62 +130,23 @@ export async function validatePaymentRequest(request: NextRequest): Promise<Vali
     }
 }
 
-// Rate limiting implementation
-const rateLimits = new Map<string, { count: number; resetTime: number; blocked: boolean }>();
-
-export function checkRateLimit(
+// Rate limiting implementation (Redis-backed)
+export async function checkRateLimit(
     userKey: string,
     maxAttempts: number = 5,
     windowMs: number = 15 * 60 * 1000,
-    blockDurationMs: number = 60 * 60 * 1000 // 1 hour block after limit exceeded
-): { allowed: boolean; remaining: number; resetTime: number } {
-    const now = Date.now();
-    const userLimit = rateLimits.get(userKey);
-
-    // Check if user is currently blocked
-    if (userLimit?.blocked && now < userLimit.resetTime) {
-        return {
-            allowed: false,
-            remaining: 0,
-            resetTime: userLimit.resetTime
-        };
+    blockDurationMs: number = 60 * 60 * 1000
+): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+    const config = { maxAttempts, windowMs, blockDurationMs };
+    const result = await redisRateLimiter.check(`billing_${userKey}`, config);
+    if (!result.allowed) {
+        // Auto-increment on check (this function was check+track in one)
+        await redisRateLimiter.increment(`billing_${userKey}`, config);
     }
-
-    // Reset or initialize rate limit window
-    if (!userLimit || now > userLimit.resetTime) {
-        rateLimits.set(userKey, {
-            count: 1,
-            resetTime: now + windowMs,
-            blocked: false
-        });
-        return {
-            allowed: true,
-            remaining: maxAttempts - 1,
-            resetTime: now + windowMs
-        };
-    }
-
-    // Check if limit exceeded
-    if (userLimit.count >= maxAttempts) {
-        // Block user for extended period
-        rateLimits.set(userKey, {
-            count: userLimit.count + 1,
-            resetTime: now + blockDurationMs,
-            blocked: true
-        });
-        return {
-            allowed: false,
-            remaining: 0,
-            resetTime: now + blockDurationMs
-        };
-    }
-
-    // Increment count
-    userLimit.count++;
     return {
-        allowed: true,
-        remaining: maxAttempts - userLimit.count,
-        resetTime: userLimit.resetTime
+        allowed: result.allowed,
+        remaining: result.remaining,
+        resetTime: Date.now() + (result.retryAfter * 1000),
     };
 }
 

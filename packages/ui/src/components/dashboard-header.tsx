@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { Plus } from 'lucide-react'
 import { SharedDomainSelector, DeviceCountryFilter, AddKeywordModal } from '..'
 import { useSiteName, useSiteLogo } from '@indexnow/database/client'
@@ -135,10 +136,13 @@ export function DashboardHeader({
       <div className="lg:hidden bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-3 min-w-0 flex-1">
           {iconUrl && (
-            <img 
+            <Image 
               src={iconUrl} 
               alt="Icon"
-              className="w-6 h-6 rounded flex-shrink-0"
+              width={24}
+              height={24}
+              className="rounded flex-shrink-0"
+              unoptimized
             />
           )}
           <h1 className="text-lg font-semibold text-foreground truncate">{siteName}</h1>

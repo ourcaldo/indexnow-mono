@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@indexnow/ui'
 import { PasswordInput, AuthErrorAlert, AuthLoadingButton } from '@indexnow/ui/auth'
 import { useZodForm } from '@indexnow/ui/hooks'
@@ -84,10 +85,13 @@ export default function AdminLoginPage() {
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-foreground rounded-full flex items-center justify-center">
             {logoUrl && (
-              <img 
+              <Image 
                 src={logoUrl} 
                 alt="Admin Logo"
-                className="w-12 h-12 object-contain filter brightness-0 invert"
+                width={48}
+                height={48}
+                className="object-contain filter brightness-0 invert"
+                unoptimized
               />
             )}
           </div>

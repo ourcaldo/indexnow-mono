@@ -4,7 +4,7 @@
  * For client-side logging, use `useActivityLogger` hook from `@indexnow/ui`.
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database';
 import { InsertSecurityActivityLog, Json, ActivityEventTypes } from '@indexnow/shared';
 import { logger } from './error-handling';
 import { getRequestInfo, formatDeviceInfo, formatLocationData, DeviceInfo, LocationData } from '@indexnow/shared';
@@ -95,8 +95,8 @@ export class ServerActivityLogger {
             target_id: data.targetId || null,
             ip_address: ipAddress || null,
             user_agent: userAgent || null,
-            device_info: deviceInfo as unknown as Json || null,
-            location_data: locationData as unknown as Json || null,
+            device_info: deviceInfo ? toJson(deviceInfo) : null,
+            location_data: locationData ? toJson(locationData) : null,
             success: data.success !== false,
             error_message: data.errorMessage || null,
             metadata: enhancedMetadata,

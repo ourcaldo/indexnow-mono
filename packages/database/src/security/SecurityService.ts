@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../server'
 import { logger, type Json } from '@indexnow/shared'
 import { type PostgrestError } from '@supabase/supabase-js'
+import { toJson } from '../utils/json-helpers'
 
 // Table name constant
 const AUDIT_TABLE = 'indb_security_audit_logs' as const
@@ -218,12 +219,12 @@ export class SecurityService {
       } else if (Array.isArray(value)) {
         sanitized[cleanKey] = value.map(item => {
           if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
-            return this.sanitizeDataObject(item as Record<string, Json | undefined>) as unknown as Json
+            return toJson(this.sanitizeDataObject(item as Record<string, Json | undefined>))
           }
           return item
         })
       } else if (typeof value === 'object') {
-        sanitized[cleanKey] = this.sanitizeDataObject(value as Record<string, Json | undefined>) as unknown as Json
+        sanitized[cleanKey] = toJson(this.sanitizeDataObject(value as Record<string, Json | undefined>))
       } else {
         sanitized[cleanKey] = String(value).substring(0, 1000)
       }

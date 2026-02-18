@@ -8,51 +8,9 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
+import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
 
-// In-memory rate limit store for registration attempts
-// NOTE: In-memory store is per-process; use Redis for multi-instance deployments
-const registerRateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-const REGISTER_RATE_LIMIT = {
-  MAX_REGISTRATIONS_PER_IP: 3,  // 3 registrations per IP per hour
-  WINDOW_MS: 60 * 60 * 1000,    // 1-hour window
-};
-
-/**
- * Check rate limit for registration requests
- */
-function checkRegisterRateLimit(clientIP: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now();
-  const ipKey = `register_ip_${clientIP}`;
-
-  // Clear expired entries
-  const record = registerRateLimitStore.get(ipKey);
-  if (record && now > record.resetTime) {
-    registerRateLimitStore.delete(ipKey);
-  }
-
-  const currentRecord = registerRateLimitStore.get(ipKey);
-  if (currentRecord && currentRecord.count >= REGISTER_RATE_LIMIT.MAX_REGISTRATIONS_PER_IP) {
-    const retryAfter = Math.ceil((currentRecord.resetTime - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  return { allowed: true };
-}
-
-/**
- * Record a registration attempt for rate limiting
- */
-function recordRegistrationAttempt(clientIP: string): void {
-  const now = Date.now();
-  const ipKey = `register_ip_${clientIP}`;
-  const record = registerRateLimitStore.get(ipKey);
-  if (record && now <= record.resetTime) {
-    record.count++;
-  } else {
-    registerRateLimitStore.set(ipKey, { count: 1, resetTime: now + REGISTER_RATE_LIMIT.WINDOW_MS });
-  }
-}
+const REGISTER_RATE_LIMIT = { maxAttempts: 3, windowMs: 60 * 60 * 1000 };
 
 /**
  * POST /api/v1/auth/register
@@ -74,7 +32,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     // Check rate limit before processing registration
     const clientIP = getClientIP(request) || 'unknown';
-    const rateLimit = checkRegisterRateLimit(clientIP);
+    const rateLimit = await redisRateLimiter.check(`register_ip_${clientIP}`, REGISTER_RATE_LIMIT);
     if (!rateLimit.allowed) {
       const error = await ErrorHandlingService.createError(
         ErrorType.RATE_LIMIT,
@@ -119,7 +77,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     // If user was created, update their profile with additional data
     if (data.user?.id) {
       // Record successful registration for rate limiting
-      recordRegistrationAttempt(clientIP);
+      await redisRateLimiter.increment(`register_ip_${clientIP}`, REGISTER_RATE_LIMIT);
       try {
         const operationContext = {
           userId: data.user.id,

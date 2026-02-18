@@ -4,6 +4,10 @@
  */
 
 import { ApiEndpoints, type Json } from '@indexnow/shared';
+import { ApiError } from './api-error';
+
+// Re-export for backward compatibility
+export { ApiError } from './api-error';
 
 export interface ApiErrorDetails {
   message: string;
@@ -37,20 +41,6 @@ interface ApiClientConfig {
   baseUrl?: string;
   headers?: Record<string, string>;
   timeout?: number;
-}
-
-export class ApiError extends Error {
-  public id?: string;
-  public severity?: string;
-  public statusCode?: number;
-
-  constructor(message: string, id?: string, severity?: string, statusCode?: number) {
-    super(message);
-    this.name = 'ApiError';
-    this.id = id;
-    this.severity = severity;
-    this.statusCode = statusCode;
-  }
 }
 
 export class ApiClient {

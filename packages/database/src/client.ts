@@ -66,6 +66,7 @@ export {
 export * from './hooks'
 
 // Utility exports (client-safe)
+export { ApiError } from './utils/api-error'
 export {
     ApiClient,
     apiClient,
@@ -73,3 +74,4 @@ export {
 } from './utils/ApiClient'
 export * from './utils/site-settings'
 export * from './utils/queryClient'
+export { toJson, fromJson, fromJsonOr } from './utils/json-helpers'

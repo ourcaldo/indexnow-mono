@@ -1,4 +1,4 @@
-import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
@@ -135,7 +135,7 @@ async function activateUserPlan(transaction: TransactionRow, adminUserId: string
       operationType: 'update',
       columns: Object.keys(updateData),
       whereConditions: { user_id: transaction.user_id },
-      data: updateData as unknown as Json
+      data: toJson(updateData)
     },
     async () => {
       const { error } = await supabaseAdmin

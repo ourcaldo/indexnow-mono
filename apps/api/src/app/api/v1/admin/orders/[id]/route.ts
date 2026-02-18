@@ -3,7 +3,8 @@ import {
   SecureServiceRoleHelpers,
   SecureServiceRoleWrapper,
   type UserProfile,
-  supabaseAdmin
+  supabaseAdmin,
+  fromJson
 } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
@@ -110,7 +111,7 @@ export const GET = adminApiWrapper(async (
         throw new Error(error?.message || 'Order not found')
       }
 
-      return data as unknown as OrderWithRelations;
+      return fromJson<OrderWithRelations>(data);
     }
   )
 

@@ -9,6 +9,7 @@ import {
   formatError 
 } from '@/lib/core/api-response-middleware'
 import { ErrorType, ErrorSeverity, type Json } from '@indexnow/shared'
+import { toJson } from '@indexnow/database'
 import { z } from 'zod'
 
 const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME
@@ -192,7 +193,7 @@ export const POST = adminApiWrapper(async (request: NextRequest) => {
         { 
           statusCode: 400, 
           severity: ErrorSeverity.LOW,
-          metadata: { issues: validation.error.issues as unknown as Json[] }
+          metadata: { issues: toJson(validation.error.issues) }
         }
       )
       return formatError(error)

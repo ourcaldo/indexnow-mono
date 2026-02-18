@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Menu, X } from 'lucide-react'
 
 import type { SupabaseUser as User } from '@indexnow/database/client'
@@ -71,10 +72,13 @@ export function Header({
             {/* Logo */}
             <div className="flex items-center">
               <a href="/" className="flex items-center">
-                <img
-                  src={siteSettings?.white_logo}
-                  alt={siteSettings?.site_name}
+                <Image
+                  src={siteSettings?.white_logo || ''}
+                  alt={siteSettings?.site_name || 'Logo'}
+                  width={200}
+                  height={80}
                   className="h-20 w-auto"
+                  unoptimized
                 />
               </a>
             </div>

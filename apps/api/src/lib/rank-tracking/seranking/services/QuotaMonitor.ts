@@ -12,7 +12,7 @@ import {
 } from '../types/SeRankingTypes';
 import { Database, Json } from '@indexnow/shared';
 import { IQuotaMonitor, IIntegrationService } from '../types/ServiceTypes';
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database';
 import { logger } from '@indexnow/shared';
 
 // Enhanced quota configuration
@@ -741,7 +741,7 @@ export class QuotaMonitor implements IQuotaMonitor {
               country_code: entry.country_code,
               keywords_count: entry.keywords_count,
               cost_per_request: entry.cost_per_request,
-              metadata: entry.metadata as unknown as Json
+              metadata: toJson(entry.metadata)
             });
 
           if (error) {

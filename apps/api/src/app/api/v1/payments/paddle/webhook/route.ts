@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
@@ -166,7 +166,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
                         .upsert({
                             event_id,
                             event_type,
-                            payload: eventData as unknown as Json,
+                            payload: toJson(eventData),
                             processed: false,
                         }, { onConflict: 'event_id', ignoreDuplicates: true });
 

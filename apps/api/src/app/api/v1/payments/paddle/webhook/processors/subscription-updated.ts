@@ -3,7 +3,7 @@
  * Handles subscription update events (plan changes, status changes)
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, fromJson } from '@indexnow/database';
 import { safeGet } from './utils';
 
 interface SubscriptionItem {
@@ -57,7 +57,7 @@ export async function processSubscriptionUpdated(data: unknown) {
     const paused_at = subData.paused_at;
 
     const priceId = Array.isArray(items) && items.length > 0
-        ? safeGet(items[0] as unknown as Record<string, unknown>, 'price.id', null)
+        ? safeGet(fromJson<Record<string, unknown>>(items[0]), 'price.id', null)
         : null;
 
     const updateData: Record<string, unknown> = {
