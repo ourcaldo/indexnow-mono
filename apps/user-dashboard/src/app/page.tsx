@@ -46,7 +46,12 @@ function DashboardContent() {
     calculatePositionChange,
   } = useDashboardPageData();
 
-  const selectedDomainName = selectedDomain?.display_name || selectedDomain?.domain_name || '';
+  // Runtime domain objects from Supabase have DB column names (display_name, domain_name)
+  // which differ from the RankTrackingDomain TS interface (name, domain).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const domainAny = selectedDomain as any;
+  const selectedDomainName =
+    domainAny?.display_name || domainAny?.domain_name || selectedDomain?.name || '';
 
   return (
     <div className="space-y-6">
