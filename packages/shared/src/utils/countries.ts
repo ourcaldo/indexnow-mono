@@ -1,11 +1,11 @@
 // Comprehensive list of countries for registration form
-export interface Country {
-  code: string
-  name: string
-  flag: string
+export interface RegistrationCountry {
+  code: string;
+  name: string;
+  flag: string;
 }
 
-export const countries: Country[] = [
+export const countries: RegistrationCountry[] = [
   { code: 'AF', name: 'Afghanistan', flag: '🇦🇫' },
   { code: 'AL', name: 'Albania', flag: '🇦🇱' },
   { code: 'DZ', name: 'Algeria', flag: '🇩🇿' },
@@ -59,7 +59,7 @@ export const countries: Country[] = [
   { code: 'CD', name: 'Congo (Democratic Republic)', flag: '🇨🇩' },
   { code: 'CK', name: 'Cook Islands', flag: '🇨🇰' },
   { code: 'CR', name: 'Costa Rica', flag: '🇨🇷' },
-  { code: 'CI', name: 'Côte d\'Ivoire', flag: '🇨🇮' },
+  { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮' },
   { code: 'HR', name: 'Croatia', flag: '🇭🇷' },
   { code: 'CU', name: 'Cuba', flag: '🇨🇺' },
   { code: 'CW', name: 'Curaçao', flag: '🇨🇼' },
@@ -123,7 +123,7 @@ export const countries: Country[] = [
   { code: 'KZ', name: 'Kazakhstan', flag: '🇰🇿' },
   { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
   { code: 'KI', name: 'Kiribati', flag: '🇰🇮' },
-  { code: 'KP', name: 'Korea (Democratic People\'s Republic)', flag: '🇰🇵' },
+  { code: 'KP', name: "Korea (Democratic People's Republic)", flag: '🇰🇵' },
   { code: 'KR', name: 'Korea (Republic)', flag: '🇰🇷' },
   { code: 'KW', name: 'Kuwait', flag: '🇰🇼' },
   { code: 'KG', name: 'Kyrgyzstan', flag: '🇰🇬' },
@@ -253,23 +253,23 @@ export const countries: Country[] = [
   { code: 'EH', name: 'Western Sahara', flag: '🇪🇭' },
   { code: 'YE', name: 'Yemen', flag: '🇾🇪' },
   { code: 'ZM', name: 'Zambia', flag: '🇿🇲' },
-  { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' }
-]
+  { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' },
+];
 
 // Helper function to find country by code
-export function findCountryByCode(code: string): Country | undefined {
-  return countries.find(country => country.code === code)
+export function findCountryByCode(code: string): RegistrationCountry | undefined {
+  return countries.find((country) => country.code === code);
 }
 
 // Helper function to find country by name
-export function findCountryByName(name: string): Country | undefined {
-  return countries.find(country => 
-    country.name.toLowerCase().includes(name.toLowerCase())
-  )
+export function findCountryByName(name: string): RegistrationCountry | undefined {
+  return countries.find((country) => country.name.toLowerCase().includes(name.toLowerCase()));
 }
 
 // Helper function to get popular countries (commonly used for defaults)
-export function getPopularCountries(): Country[] {
-  const popularCodes = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'CN', 'IN', 'BR']
-  return popularCodes.map(code => findCountryByCode(code)).filter(Boolean) as Country[]
+export function getPopularCountries(): RegistrationCountry[] {
+  const popularCodes = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'CN', 'IN', 'BR'];
+  return popularCodes
+    .map((code) => findCountryByCode(code))
+    .filter(Boolean) as RegistrationCountry[];
 }

@@ -37,6 +37,16 @@ Internal admin dashboard for managing the IndexNow Studio platform. Access is re
 | `/settings/payments` | Payment gateway settings |
 | `/login`             | Admin login              |
 
+## Environment Variables
+
+| Variable                        | Required | Description                                 |
+| ------------------------------- | -------- | ------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Supabase anonymous key                      |
+| `NEXT_PUBLIC_ADMIN_API_URL`     | Yes      | API base URL (e.g. `http://localhost:3001`) |
+| `NEXT_PUBLIC_POSTHOG_KEY`       | No       | PostHog project API key                     |
+| `NEXT_PUBLIC_POSTHOG_HOST`      | No       | PostHog ingestion host                      |
+
 ## Development
 
 ```bash

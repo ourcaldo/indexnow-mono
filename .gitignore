@@ -27,3 +27,12 @@ out/
 
 # Local overrides
 *.local
+
+# Lint & build caches
+.eslintcache
+.swc/
+
+# Artifacts & secrets
+*.tgz
+*.pem
+.sentryclirc

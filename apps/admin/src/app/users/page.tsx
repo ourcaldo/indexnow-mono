@@ -1,101 +1,58 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Edit3, 
-  Ban, 
-  Shield, 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Users,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit3,
+  Ban,
+  Shield,
   Mail,
   Key,
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Eye
-} from 'lucide-react'
-import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
-import { AdminPageSkeleton } from '@indexnow/ui'
-import { ConfirmationDialog } from '@indexnow/ui/modals'
-
-interface UserProfile {
-  id: string
-  user_id: string
-  full_name: string | null
-  role: string
-  email_notifications: boolean
-  created_at: string
-  updated_at: string
-  phone_number: string | null
-  package_id?: string
-  subscribed_at?: string
-  expires_at?: string
-  daily_quota_used?: number
-  daily_quota_reset_date?: string
-  package?: {
-    id: string
-    name: string
-    slug: string
-    quota_limits: {
-      concurrent_jobs: number
-      keywords_limit: number
-    }
-  }
-  email?: string
-  email_confirmed_at?: string
-  last_sign_in_at?: string
-}
+  Eye,
+} from 'lucide-react';
+import { AdminPageSkeleton } from '@indexnow/ui';
+import { ConfirmationDialog } from '@indexnow/ui/modals';
+import { useAdminUsers, useChangeUserRole, useSuspendUser, type UserProfile } from '@/hooks';
 
 export default function UserManagement() {
-  const router = useRouter()
-  const [users, setUsers] = useState<UserProfile[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
-  const pageSize = 20
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  const { data, isLoading: loading, refetch } = useAdminUsers(currentPage, pageSize);
+  const changeRoleMutation = useChangeUserRole();
+  const suspendMutation = useSuspendUser();
+
+  const users = data?.users ?? [];
+  const totalPages = data?.pagination?.total_pages ?? 1;
+  const totalItems = data?.pagination?.total_items ?? 0;
 
   // (#117) Confirmation dialog state for destructive actions
   const [confirmConfig, setConfirmConfig] = useState<{
-    isOpen: boolean
-    title: string
-    message: string
-    variant: 'destructive' | 'primary'
-    onConfirm: () => void
-    loading: boolean
-  }>({ isOpen: false, title: '', message: '', variant: 'primary', onConfirm: () => {}, loading: false })
-
-  useEffect(() => {
-    fetchUsers()
-  }, [currentPage])
-
-  const fetchUsers = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(`${ADMIN_ENDPOINTS.USERS}?page=${currentPage}&limit=${pageSize}`, {
-        credentials: 'include'
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data.data?.users || [])
-        const pagination = data.data?.pagination
-        if (pagination) {
-          setTotalPages(pagination.total_pages || 1)
-          setTotalItems(pagination.total_items || 0)
-        }
-      }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch users')
-    } finally {
-      setLoading(false)
-    }
-  }
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'destructive' | 'primary';
+    onConfirm: () => void;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'primary',
+    onConfirm: () => {},
+    loading: false,
+  });
 
   // (#117) Wrap role change with confirmation dialog
   const confirmRoleChange = (userId: string, newRole: string, userName: string | null) => {
@@ -106,31 +63,16 @@ export default function UserManagement() {
       variant: 'primary',
       loading: false,
       onConfirm: async () => {
-        setConfirmConfig(prev => ({ ...prev, loading: true }))
-        await handleRoleChange(userId, newRole)
-        setConfirmConfig(prev => ({ ...prev, isOpen: false, loading: false }))
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          await changeRoleMutation.mutateAsync({ userId, newRole });
+        } catch {
+          // Error handled by mutation's onError
+        }
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
       },
-    })
-  }
-
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    try {
-      const response = await fetch(ADMIN_ENDPOINTS.USER_ROLE(userId), {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ role: newRole }),
-      })
-
-      if (response.ok) {
-        fetchUsers() // Refresh the list
-      }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to update user role')
-    }
-  }
+    });
+  };
 
   // (#117) Wrap suspend with confirmation dialog
   const confirmSuspendUser = (userId: string, userName: string | null) => {
@@ -141,65 +83,51 @@ export default function UserManagement() {
       variant: 'destructive',
       loading: false,
       onConfirm: async () => {
-        setConfirmConfig(prev => ({ ...prev, loading: true }))
-        await handleSuspendUser(userId)
-        setConfirmConfig(prev => ({ ...prev, isOpen: false, loading: false }))
+        setConfirmConfig((prev) => ({ ...prev, loading: true }));
+        try {
+          await suspendMutation.mutateAsync(userId);
+        } catch {
+          // Error handled by mutation's onError
+        }
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
       },
-    })
-  }
+    });
+  };
 
-  const handleSuspendUser = async (userId: string) => {
-    try {
-      const response = await fetch(ADMIN_ENDPOINTS.USER_BY_ID(userId), {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'suspended' }),
-      })
-
-      if (response.ok) {
-        fetchUsers() // Refresh the list
-      }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to suspend user')
-    }
-  }
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = !searchTerm || 
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      !searchTerm ||
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesSearch && matchesRole
-  })
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+
+    return matchesSearch && matchesRole;
+  });
 
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'super_admin':
-        return 'bg-destructive/10 text-destructive border-destructive/20'
+        return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'admin':
-        return 'bg-warning/10 text-warning border-warning/20'
+        return 'bg-warning/10 text-warning border-warning/20';
       case 'user':
-        return 'bg-success/10 text-success border-success/20'
+        return 'bg-success/10 text-success border-success/20';
       default:
-        return 'bg-muted/10 text-muted-foreground border-muted/20'
+        return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
-  }
+  };
 
   const getStatusIcon = (user: UserProfile) => {
     if (user.email_confirmed_at) {
-      return <CheckCircle className="h-4 w-4 text-success" />
+      return <CheckCircle className="text-success h-4 w-4" />;
     } else {
-      return <AlertTriangle className="h-4 w-4 text-warning" />
+      return <AlertTriangle className="text-warning h-4 w-4" />;
     }
-  }
+  };
 
   if (loading) {
-    return <AdminPageSkeleton />
+    return <AdminPageSkeleton />;
   }
 
   return (
@@ -207,90 +135,90 @@ export default function UserManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">User Management</h1>
+          <h1 className="text-foreground text-2xl font-bold">User Management</h1>
           <p className="text-muted-foreground mt-1">Manage user accounts, roles, and permissions</p>
         </div>
         <button
-          onClick={fetchUsers}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          onClick={() => refetch()}
+          className="bg-primary hover:bg-primary/90 rounded-lg px-4 py-2 text-white transition-colors"
         >
           Refresh
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-border p-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="border-border rounded-lg border bg-white p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-accent/10">
-              <Users className="h-5 w-5 text-accent" />
+            <div className="bg-accent/10 rounded-lg p-2">
+              <Users className="text-accent h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-bold text-foreground">{users.length}</p>
-              <p className="text-xs text-muted-foreground">Total Users</p>
+              <p className="text-foreground text-lg font-bold">{users.length}</p>
+              <p className="text-muted-foreground text-xs">Total Users</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-border p-4">
+        <div className="border-border rounded-lg border bg-white p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <Shield className="h-5 w-5 text-success" />
+            <div className="bg-success/10 rounded-lg p-2">
+              <Shield className="text-success h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-bold text-foreground">
-                {users.filter(u => u.role === 'admin' || u.role === 'super_admin').length}
+              <p className="text-foreground text-lg font-bold">
+                {users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length}
               </p>
-              <p className="text-xs text-muted-foreground">Admins</p>
+              <p className="text-muted-foreground text-xs">Admins</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-border p-4">
+        <div className="border-border rounded-lg border bg-white p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <CheckCircle className="h-5 w-5 text-warning" />
+            <div className="bg-warning/10 rounded-lg p-2">
+              <CheckCircle className="text-warning h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-bold text-foreground">
-                {users.filter(u => u.email_confirmed_at).length}
+              <p className="text-foreground text-lg font-bold">
+                {users.filter((u) => u.email_confirmed_at).length}
               </p>
-              <p className="text-xs text-muted-foreground">Verified</p>
+              <p className="text-muted-foreground text-xs">Verified</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-border p-4">
+        <div className="border-border rounded-lg border bg-white p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-destructive/10">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div className="bg-destructive/10 rounded-lg p-2">
+              <AlertTriangle className="text-destructive h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-bold text-foreground">
-                {users.filter(u => !u.email_confirmed_at).length}
+              <p className="text-foreground text-lg font-bold">
+                {users.filter((u) => !u.email_confirmed_at).length}
               </p>
-              <p className="text-xs text-muted-foreground">Unverified</p>
+              <p className="text-muted-foreground text-xs">Unverified</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-border p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="border-border rounded-lg border bg-white p-4">
+        <div className="flex flex-col gap-4 md:flex-row">
+          <div className="relative flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
             <input
               type="text"
               placeholder="Search users by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+              className="border-border focus:ring-accent w-full rounded-lg border py-2 pr-4 pl-10 focus:border-transparent focus:ring-2"
             />
           </div>
           <div className="flex items-center space-x-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Filter className="text-muted-foreground h-4 w-4" />
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+              className="border-border focus:ring-accent rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
             >
               <option value="all">All Roles</option>
               <option value="user">Users</option>
@@ -302,109 +230,116 @@ export default function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg border border-border overflow-hidden">
+      <div className="border-border overflow-hidden rounded-lg border bg-white">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-secondary border-b border-border">
+            <thead className="bg-secondary border-border border-b">
               <tr>
-                <th className="text-left py-3 px-4 font-medium text-foreground">User</th>
-                <th className="text-left py-3 px-4 font-medium text-foreground">Role</th>
-                <th className="text-left py-3 px-4 font-medium text-foreground">Package</th>
-                <th className="text-left py-3 px-4 font-medium text-foreground">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-foreground">Joined</th>
-                <th className="text-center py-3 px-4 font-medium text-foreground">Actions</th>
+                <th className="text-foreground px-4 py-3 text-left font-medium">User</th>
+                <th className="text-foreground px-4 py-3 text-left font-medium">Role</th>
+                <th className="text-foreground px-4 py-3 text-left font-medium">Package</th>
+                <th className="text-foreground px-4 py-3 text-left font-medium">Status</th>
+                <th className="text-foreground px-4 py-3 text-left font-medium">Joined</th>
+                <th className="text-foreground px-4 py-3 text-center font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-border divide-y">
               {filteredUsers.map((user) => (
-                <tr 
-                  key={user.id} 
+                <tr
+                  key={user.id}
                   className="hover:bg-secondary cursor-pointer transition-colors"
                   onClick={() => router.push(`/users/${user.user_id}`)}
                 >
-                  <td className="py-4 px-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-accent">
+                      <div className="bg-accent/10 flex h-8 w-8 items-center justify-center rounded-full">
+                        <span className="text-accent text-sm font-medium">
                           {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-foreground text-sm font-medium">
                           {user.full_name || 'No name'}
                         </p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <p className="text-muted-foreground text-xs">{user.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getRoleColor(user.role)}`}>
+                  <td className="px-4 py-4">
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${getRoleColor(user.role)}`}
+                    >
                       {user.role.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${
-                        user.package?.slug === 'free' ? 'bg-muted/10 text-muted-foreground border-muted/20' :
-                        user.package?.slug === 'premium' ? 'bg-accent/10 text-accent border-accent/20' :
-                        user.package?.slug === 'pro' ? 'bg-warning/10 text-warning border-warning/20' :
-                        'bg-muted/10 text-muted-foreground border-muted/20'
-                      }`}>
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${
+                          user.package?.slug === 'free'
+                            ? 'bg-muted/10 text-muted-foreground border-muted/20'
+                            : user.package?.slug === 'premium'
+                              ? 'bg-accent/10 text-accent border-accent/20'
+                              : user.package?.slug === 'pro'
+                                ? 'bg-warning/10 text-warning border-warning/20'
+                                : 'bg-muted/10 text-muted-foreground border-muted/20'
+                        }`}
+                      >
                         {user.package?.name || 'No Package'}
                       </span>
                     </div>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       {getStatusIcon(user)}
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {user.email_confirmed_at ? 'Verified' : 'Unverified'}
                       </span>
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <span className="text-sm text-muted-foreground">
+                  <td className="px-4 py-4">
+                    <span className="text-muted-foreground text-sm">
                       {new Date(user.created_at).toLocaleDateString()}
                     </span>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="px-4 py-4">
                     <div className="flex items-center justify-end space-x-2">
-                      <button 
+                      <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          router.push(`/users/${user.user_id}`)
+                          e.stopPropagation();
+                          router.push(`/users/${user.user_id}`);
                         }}
-                        className="p-1 text-muted-foreground hover:text-accent hover:bg-accent/10 rounded transition-colors"
+                        className="text-muted-foreground hover:text-accent hover:bg-accent/10 rounded p-1 transition-colors"
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          router.push(`/users/${user.user_id}`)
+                          e.stopPropagation();
+                          router.push(`/users/${user.user_id}`);
                         }}
-                        className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors"
+                        className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded p-1 transition-colors"
                         title="Edit User"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={(e) => {
-                          e.stopPropagation()
+                          e.stopPropagation();
                           // Quick actions could be implemented here
                         }}
-                        className="p-1 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded transition-colors"
+                        className="text-muted-foreground hover:text-warning hover:bg-warning/10 rounded p-1 transition-colors"
                         title="Reset Password"
                       >
                         <Key className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          confirmSuspendUser(user.user_id, user.full_name)
+                          e.stopPropagation();
+                          confirmSuspendUser(user.user_id, user.full_name);
                         }}
-                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded p-1 transition-colors"
                         title="Suspend User"
                       >
                         <Ban className="h-4 w-4" />
@@ -418,33 +353,34 @@ export default function UserManagement() {
         </div>
 
         {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <div className="py-12 text-center">
+            <Users className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
             <p className="text-muted-foreground">No users found matching your criteria</p>
           </div>
         )}
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <p className="text-sm text-muted-foreground">
-              Showing {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems} users
+          <div className="border-border flex items-center justify-between border-t px-4 py-3">
+            <p className="text-muted-foreground text-sm">
+              Showing {(currentPage - 1) * pageSize + 1}–
+              {Math.min(currentPage * pageSize, totalItems)} of {totalItems} users
             </p>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 text-sm rounded border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="border-border bg-background hover:bg-accent rounded border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 Page {currentPage} of {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-sm rounded border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="border-border bg-background hover:bg-accent rounded border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -461,8 +397,8 @@ export default function UserManagement() {
         variant={confirmConfig.variant as 'destructive' | 'primary'}
         loading={confirmConfig.loading}
         onConfirm={confirmConfig.onConfirm}
-        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
-  )
+  );
 }

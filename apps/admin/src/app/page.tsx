@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react';
 import {
   Users,
   Activity,
@@ -10,56 +10,23 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  type LucideIcon
-} from 'lucide-react'
-import Link from 'next/link'
-import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
-import { authenticatedFetch } from '@indexnow/supabase-client'
-import { AdminPageSkeleton } from '@indexnow/ui'
-import { useAdminDashboardLogger } from '@indexnow/ui/hooks'
-
-interface DashboardStats {
-  total_users: number
-  regular_users: number
-  admin_users: number
-}
+  type LucideIcon,
+} from 'lucide-react';
+import Link from 'next/link';
+import { AdminPageSkeleton } from '@indexnow/ui';
+import { useAdminDashboardLogger } from '@indexnow/ui/hooks';
+import { useAdminDashboard } from '@/hooks';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const { logDashboardView, logStatsRefresh } = useAdminDashboardLogger()
+  const { data: stats, isLoading, refetch } = useAdminDashboard();
+  const { logDashboardView, logStatsRefresh } = useAdminDashboardLogger();
 
   useEffect(() => {
-    fetchDashboardStats()
-    // Log admin dashboard access
-    logDashboardView()
-  }, [])
+    logDashboardView();
+  }, []);
 
-  const fetchDashboardStats = async () => {
-    try {
-      const response = await authenticatedFetch(ADMIN_ENDPOINTS.DASHBOARD)
-
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data.data?.stats)
-        // Log stats refresh if this is a manual refresh
-        if (stats !== null) {
-          logStatsRefresh()
-        }
-      } else {
-        logger.error('Error fetching dashboard stats: ' + response.status)
-        const errorData = await response.text()
-        logger.error({ error: errorData instanceof Error ? errorData : undefined }, 'Error details')
-      }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch dashboard stats')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return <AdminPageSkeleton />
+  if (isLoading) {
+    return <AdminPageSkeleton />;
   }
 
   const statCards = [
@@ -69,89 +36,97 @@ export default function AdminDashboard() {
       subtitle: `${stats?.regular_users || 0} regular, ${stats?.admin_users || 0} admin`,
       icon: Users,
       color: 'text-accent',
-      bgColor: 'bg-accent/10'
-    }
-  ]
+      bgColor: 'bg-accent/10',
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+          <h1 className="text-foreground text-2xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground mt-1">Overview of IndexNow Studio system metrics</p>
         </div>
         <button
-          onClick={fetchDashboardStats}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          onClick={() => {
+            refetch();
+            logStatsRefresh();
+          }}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 transition-colors"
         >
           Refresh Data
         </button>
       </div>
 
       {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, index) => (
-          <div key={index} className="bg-background rounded-lg border border-border p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg ${card.bgColor}`}>
+          <div
+            key={index}
+            className="bg-background border-border rounded-lg border p-6 transition-shadow hover:shadow-md"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className={`rounded-lg p-3 ${card.bgColor}`}>
                 <card.icon className={`h-6 w-6 ${card.color}`} />
               </div>
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-foreground mb-1">{card.value.toLocaleString()}</h3>
-              <p className="text-sm font-medium text-foreground mb-1">{card.title}</p>
-              <p className="text-xs text-muted-foreground">{card.subtitle}</p>
+              <h3 className="text-foreground mb-1 text-2xl font-bold">
+                {card.value.toLocaleString()}
+              </h3>
+              <p className="text-foreground mb-1 text-sm font-medium">{card.title}</p>
+              <p className="text-muted-foreground text-xs">{card.subtitle}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* System Status */}
-      <div className="bg-background rounded-lg border border-border p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">System Status</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-background border-border rounded-lg border p-6">
+        <h2 className="text-foreground mb-4 text-lg font-semibold">System Status</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-success rounded-full"></div>
-            <span className="text-sm text-muted-foreground">Database Connection</span>
-            <span className="text-sm font-medium text-success">Healthy</span>
+            <div className="bg-success h-3 w-3 rounded-full"></div>
+            <span className="text-muted-foreground text-sm">Database Connection</span>
+            <span className="text-success text-sm font-medium">Healthy</span>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-success rounded-full"></div>
-            <span className="text-sm text-muted-foreground">Background Worker</span>
-            <span className="text-sm font-medium text-success">Running</span>
+            <div className="bg-success h-3 w-3 rounded-full"></div>
+            <span className="text-muted-foreground text-sm">Background Worker</span>
+            <span className="text-success text-sm font-medium">Running</span>
           </div>
         </div>
       </div>
 
       {/* Recent Activity Summary */}
-      <div className="bg-background rounded-lg border border-border p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-background border-border rounded-lg border p-6">
+        <h2 className="text-foreground mb-4 text-lg font-semibold">Quick Actions</h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Link
             href="/users"
-            className="flex items-center p-4 rounded-lg border border-border hover:bg-secondary transition-colors"
+            className="border-border hover:bg-secondary flex items-center rounded-lg border p-4 transition-colors"
           >
-            <Users className="h-5 w-5 text-accent mr-3" />
-            <span className="text-sm font-medium text-foreground">Manage Users</span>
+            <Users className="text-accent mr-3 h-5 w-5" />
+            <span className="text-foreground text-sm font-medium">Manage Users</span>
           </Link>
           <Link
             href="/activity"
-            className="flex items-center p-4 rounded-lg border border-border hover:bg-secondary transition-colors"
+            className="border-border hover:bg-secondary flex items-center rounded-lg border p-4 transition-colors"
           >
-            <Activity className="h-5 w-5 text-success mr-3" />
-            <span className="text-sm font-medium text-foreground">View Logs</span>
+            <Activity className="text-success mr-3 h-5 w-5" />
+            <span className="text-foreground text-sm font-medium">View Logs</span>
           </Link>
           <Link
             href="/settings/site"
-            className="flex items-center p-4 rounded-lg border border-border hover:bg-secondary transition-colors"
+            className="border-border hover:bg-secondary flex items-center rounded-lg border p-4 transition-colors"
           >
-            <Server className="h-5 w-5 text-warning mr-3" />
-            <span className="text-sm font-medium text-foreground">Site Settings</span>
+            <Server className="text-warning mr-3 h-5 w-5" />
+            <span className="text-foreground text-sm font-medium">Site Settings</span>
           </Link>
         </div>
       </div>
     </div>
-  )
+  );
 }

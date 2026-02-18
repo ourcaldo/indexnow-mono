@@ -1,34 +1,29 @@
-import React from 'react'
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
-import { Card, CardContent } from '../../card'
-import { Button } from '../../button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import React from 'react';
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { Card, CardContent } from '../../card';
+import { Button } from '../../button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
   pagination?: {
-    currentPage: number
-    totalPages: number
-    onPageChange: (page: number) => void
-  }
-  loading?: boolean
-  emptyMessage?: string
-  className?: string
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  };
+  loading?: boolean;
+  emptyMessage?: string;
+  className?: string;
 }
 
-export function DataTable<TData, TValue>({ 
-  data, 
-  columns, 
-  pagination, 
-  loading = false, 
+function DataTableInner<TData, TValue>({
+  data,
+  columns,
+  pagination,
+  loading = false,
   emptyMessage = 'No data available',
-  className = ''
+  className = '',
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -36,16 +31,16 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     manualPagination: !!pagination,
     pageCount: pagination?.totalPages ?? -1,
-  })
+  });
 
   if (loading) {
     return (
       <Card className={className}>
         <CardContent className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (data.length === 0) {
@@ -55,7 +50,7 @@ export function DataTable<TData, TValue>({
           <p className="text-muted-foreground">{emptyMessage}</p>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -64,21 +59,18 @@ export function DataTable<TData, TValue>({
         <table className="w-full">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="bg-muted border-b border-border">
+              <tr key={headerGroup.id} className="bg-muted border-border border-b">
                 {headerGroup.headers.map((header) => {
                   return (
                     <th
                       key={header.id}
-                      className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground"
+                      className="text-muted-foreground px-6 py-3 text-left text-xs font-medium tracking-wider"
                     >
                       {header.isPlaceholder
                         ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
-                  )
+                  );
                 })}
               </tr>
             ))}
@@ -87,13 +79,10 @@ export function DataTable<TData, TValue>({
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-b border-border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-150"
+                className="border-border border-b transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-                  >
+                  <td key={cell.id} className="text-foreground px-6 py-4 text-sm whitespace-nowrap">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -102,10 +91,10 @@ export function DataTable<TData, TValue>({
           </tbody>
         </table>
       </div>
-      
+
       {pagination && (
-        <div className="px-6 py-3 flex items-center justify-between border-t border-border bg-muted/30">
-          <div className="flex-1 flex justify-between sm:hidden">
+        <div className="border-border bg-muted/30 flex items-center justify-between border-t px-6 py-3">
+          <div className="flex flex-1 justify-between sm:hidden">
             <Button
               variant="outline"
               size="sm"
@@ -117,15 +106,17 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => pagination.onPageChange(Math.min(pagination.currentPage + 1, pagination.totalPages))}
+              onClick={() =>
+                pagination.onPageChange(Math.min(pagination.currentPage + 1, pagination.totalPages))
+              }
               disabled={pagination.currentPage === pagination.totalPages}
             >
               Next
             </Button>
           </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Page <span className="font-medium">{pagination.currentPage}</span> of{' '}
                 <span className="font-medium">{pagination.totalPages}</span>
               </p>
@@ -142,7 +133,11 @@ export function DataTable<TData, TValue>({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => pagination.onPageChange(Math.min(pagination.currentPage + 1, pagination.totalPages))}
+                onClick={() =>
+                  pagination.onPageChange(
+                    Math.min(pagination.currentPage + 1, pagination.totalPages)
+                  )
+                }
                 disabled={pagination.currentPage === pagination.totalPages}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -152,5 +147,8 @@ export function DataTable<TData, TValue>({
         </div>
       )}
     </Card>
-  )
+  );
 }
+
+/** React.memo wrapper — type assertion preserves generic type parameters */
+export const DataTable = React.memo(DataTableInner) as typeof DataTableInner;

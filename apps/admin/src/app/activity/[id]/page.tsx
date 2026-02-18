@@ -1,10 +1,18 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Separator, ErrorState } from '@indexnow/ui'
-import { ADMIN_ENDPOINTS, type ActivityDetail } from '@indexnow/shared'
-import { 
+import { useParams, useRouter } from 'next/navigation';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Separator,
+  ErrorState,
+} from '@indexnow/ui';
+import { type ActivityDetail } from '@indexnow/shared';
+import {
   ArrowLeft,
   Activity,
   Clock,
@@ -24,46 +32,20 @@ import {
   Server,
   AlertCircle,
   Calendar,
-  ExternalLink
-} from 'lucide-react'
-import Link from 'next/link'
+  ExternalLink,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useAdminActivityDetail } from '@/hooks';
 
 export default function ActivityDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [activity, setActivity] = useState<ActivityDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const router = useRouter();
+  const activityId = params.id as string;
 
-  useEffect(() => {
-    if (params.id) {
-      fetchActivityDetail(params.id as string)
-    }
-  }, [params.id])
-
-  const fetchActivityDetail = async (id: string) => {
-    try {
-      setLoading(true)
-      const response = await fetch(ADMIN_ENDPOINTS.ACTIVITY_BY_ID(id), {
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch activity details')
-      }
-
-      const data = await response.json()
-      setActivity(data.data?.activity || null)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: activity, isLoading: loading, error } = useAdminActivityDetail(activityId);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return {
       full: date.toLocaleString('en-US', {
         weekday: 'long',
@@ -73,16 +55,16 @@ export default function ActivityDetailPage() {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZoneName: 'short'
+        timeZoneName: 'short',
       }),
       short: date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
-  }
+        minute: '2-digit',
+      }),
+    };
+  };
 
   const getEventIcon = (eventType: string) => {
     const icons = {
@@ -99,111 +81,103 @@ export default function ActivityDetailPage() {
       admin_login: Shield,
       user_management: Settings,
       api_call: Server,
-      settings_change: Settings
-    }
-    
-    return icons[eventType as keyof typeof icons] || Activity
-  }
+      settings_change: Settings,
+    };
 
-  const getDeviceInfo = (userAgent?: string) => {
-    if (!userAgent) return { icon: Monitor, text: 'Desktop', details: 'Unknown Browser' }
-    
-    const ua = userAgent.toLowerCase()
-    let deviceType = 'Desktop'
-    let icon = Monitor
-    
+    return icons[eventType as keyof typeof icons] || Activity;
+  };
+
+  const getDeviceInfo = (userAgent?: string | null) => {
+    if (!userAgent) return { icon: Monitor, text: 'Desktop', details: 'Unknown Browser' };
+
+    const ua = userAgent.toLowerCase();
+    let deviceType = 'Desktop';
+    let icon = Monitor;
+
     if (ua.includes('mobile') || ua.includes('iphone')) {
-      deviceType = 'Mobile'
-      icon = Smartphone
+      deviceType = 'Mobile';
+      icon = Smartphone;
     } else if (ua.includes('tablet') || ua.includes('ipad')) {
-      deviceType = 'Tablet'
-      icon = Tablet
+      deviceType = 'Tablet';
+      icon = Tablet;
     }
-    
-    let browser = 'Unknown Browser'
-    if (ua.includes('chrome')) browser = 'Google Chrome'
-    else if (ua.includes('firefox')) browser = 'Mozilla Firefox'
-    else if (ua.includes('safari')) browser = 'Safari'
-    else if (ua.includes('edge')) browser = 'Microsoft Edge'
-    
-    return { icon, text: deviceType, details: browser }
-  }
+
+    let browser = 'Unknown Browser';
+    if (ua.includes('chrome')) browser = 'Google Chrome';
+    else if (ua.includes('firefox')) browser = 'Mozilla Firefox';
+    else if (ua.includes('safari')) browser = 'Safari';
+    else if (ua.includes('edge')) browser = 'Microsoft Edge';
+
+    return { icon, text: deviceType, details: browser };
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-secondary p-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="bg-secondary min-h-screen p-6">
+        <div className="mx-auto max-w-6xl">
           <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-foreground">Loading Activity Details...</h1>
+            <h1 className="text-foreground text-2xl font-semibold">Loading Activity Details...</h1>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !activity) {
     return (
-      <div className="min-h-screen bg-secondary p-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="bg-secondary min-h-screen p-6">
+        <div className="mx-auto max-w-6xl">
           <div className="mb-8">
-            <Button 
-              onClick={() => router.back()}
-              variant="outline"
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+            <Button onClick={() => router.back()} variant="outline" className="mb-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Activity Logs
             </Button>
             <ErrorState
               title="Activity Not Found"
-              message={error || 'The requested activity log could not be found.'}
+              message={error?.message || 'The requested activity log could not be found.'}
               showHomeButton
             />
           </div>
         </div>
       </div>
-    )
+    );
   }
 
-  const EventIcon = getEventIcon(activity.event_type)
-  const deviceInfo = getDeviceInfo(activity.user_agent)
-  const DeviceIcon = deviceInfo.icon
-  const formattedDate = formatDate(activity.created_at)
+  const EventIcon = getEventIcon(activity.event_type);
+  const deviceInfo = getDeviceInfo(activity.user_agent);
+  const DeviceIcon = deviceInfo.icon;
+  const formattedDate = formatDate(activity.created_at);
 
   return (
-    <div className="min-h-screen bg-secondary p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="bg-secondary min-h-screen p-6">
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <Button 
-            onClick={() => router.back()}
-            variant="outline"
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+          <Button onClick={() => router.back()} variant="outline" className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Activity Logs
           </Button>
-          <h1 className="text-2xl font-semibold text-foreground">Activity Details</h1>
+          <h1 className="text-foreground text-2xl font-semibold">Activity Details</h1>
           <p className="text-muted-foreground mt-2">
             Complete information about this user activity
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Main Activity Details */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Primary Information */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/10">
-                    <EventIcon className="h-6 w-6 text-accent" />
+                  <div className="bg-accent/10 rounded-lg p-2">
+                    <EventIcon className="text-accent h-6 w-6" />
                   </div>
                   <div>
-                    <div className="text-xl text-foreground">
+                    <div className="text-foreground text-xl">
                       {activity.event_type.replace('_', ' ').toUpperCase()}
                     </div>
-                    <div className="text-sm text-muted-foreground font-normal">
+                    <div className="text-muted-foreground text-sm font-normal">
                       Activity ID: {activity.id}
                     </div>
                   </div>
@@ -211,44 +185,42 @@ export default function ActivityDetailPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h4 className="text-sm font-medium text-foreground mb-2">Description</h4>
-                  <p className="text-foreground bg-secondary p-3 rounded-lg">
+                  <h4 className="text-foreground mb-2 text-sm font-medium">Description</h4>
+                  <p className="text-foreground bg-secondary rounded-lg p-3">
                     {activity.action_description}
                   </p>
                 </div>
 
                 {activity.error_message && (
                   <div>
-                    <h4 className="text-sm font-medium text-error mb-2">Error Details</h4>
-                    <div className="bg-error/5 border border-error/20 p-3 rounded-lg">
-                      <p className="text-error text-sm">
-                        {activity.error_message}
-                      </p>
+                    <h4 className="text-error mb-2 text-sm font-medium">Error Details</h4>
+                    <div className="bg-error/5 border-error/20 rounded-lg border p-3">
+                      <p className="text-error text-sm">{activity.error_message}</p>
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-2">Status</h4>
+                    <h4 className="text-foreground mb-2 text-sm font-medium">Status</h4>
                     <div className="flex items-center gap-2">
                       {activity.success ? (
                         <>
-                          <CheckCircle className="h-5 w-5 text-success" />
+                          <CheckCircle className="text-success h-5 w-5" />
                           <span className="text-success font-medium">Success</span>
                         </>
                       ) : (
                         <>
-                          <XCircle className="h-5 w-5 text-error" />
+                          <XCircle className="text-error h-5 w-5" />
                           <span className="text-error font-medium">Failed</span>
                         </>
                       )}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-2">Timestamp</h4>
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <h4 className="text-foreground mb-2 text-sm font-medium">Timestamp</h4>
+                    <div className="text-muted-foreground flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
                       <span className="text-sm">{formattedDate.full}</span>
                     </div>
@@ -257,15 +229,15 @@ export default function ActivityDetailPage() {
 
                 {activity.target_type && (
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-2">Target Resource</h4>
-                    <div className="bg-secondary p-3 rounded-lg">
+                    <h4 className="text-foreground mb-2 text-sm font-medium">Target Resource</h4>
+                    <div className="bg-secondary rounded-lg p-3">
                       <div className="text-sm">
                         <span className="font-medium">Type:</span> {activity.target_type}
                       </div>
                       {activity.target_id && (
-                        <div className="text-sm mt-1">
-                          <span className="font-medium">ID:</span> 
-                          <code className="ml-2 bg-white px-2 py-1 rounded text-xs">
+                        <div className="mt-1 text-sm">
+                          <span className="font-medium">ID:</span>
+                          <code className="ml-2 rounded bg-white px-2 py-1 text-xs">
                             {activity.target_id}
                           </code>
                         </div>
@@ -277,18 +249,21 @@ export default function ActivityDetailPage() {
             </Card>
 
             {/* Metadata */}
-            {activity.metadata && typeof activity.metadata === 'object' && !Array.isArray(activity.metadata) && Object.keys(activity.metadata).length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Additional Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="bg-secondary p-4 rounded-lg text-sm overflow-auto">
-                    {JSON.stringify(activity.metadata, null, 2)}
-                  </pre>
-                </CardContent>
-              </Card>
-            )}
+            {activity.metadata &&
+              typeof activity.metadata === 'object' &&
+              !Array.isArray(activity.metadata) &&
+              Object.keys(activity.metadata).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="bg-secondary overflow-auto rounded-lg p-4 text-sm">
+                      {JSON.stringify(activity.metadata, null, 2)}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}
           </div>
 
           {/* Sidebar */}
@@ -302,20 +277,17 @@ export default function ActivityDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center pb-4 border-b border-border">
-                  <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <User className="h-8 w-8 text-accent" />
+                <div className="border-border border-b pb-4 text-center">
+                  <div className="bg-accent/10 mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full">
+                    <User className="text-accent h-8 w-8" />
                   </div>
-                  <h3 className="font-medium text-foreground">{activity.user_name}</h3>
-                  <p className="text-sm text-muted-foreground">{activity.user_email}</p>
+                  <h3 className="text-foreground font-medium">{activity.user_name}</h3>
+                  <p className="text-muted-foreground text-sm">{activity.user_email}</p>
                 </div>
-                
-                <Link 
-                  href={`/users/${activity.user_id}`}
-                  className="block"
-                >
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                    <ExternalLink className="h-4 w-4 mr-2" />
+
+                <Link href={`/users/${activity.user_id}`} className="block">
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full">
+                    <ExternalLink className="mr-2 h-4 w-4" />
                     View User Profile
                   </Button>
                 </Link>
@@ -332,8 +304,8 @@ export default function ActivityDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-foreground mb-2">Device & Browser</h4>
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <h4 className="text-foreground mb-2 text-sm font-medium">Device & Browser</h4>
+                  <div className="text-muted-foreground flex items-center gap-2">
                     <DeviceIcon className="h-4 w-4" />
                     <div className="text-sm">
                       <div>{deviceInfo.text}</div>
@@ -344,10 +316,10 @@ export default function ActivityDetailPage() {
 
                 {activity.ip_address && (
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-2">IP Address</h4>
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <h4 className="text-foreground mb-2 text-sm font-medium">IP Address</h4>
+                    <div className="text-muted-foreground flex items-center gap-2">
                       <Globe className="h-4 w-4" />
-                      <code className="text-sm bg-secondary px-2 py-1 rounded">
+                      <code className="bg-secondary rounded px-2 py-1 text-sm">
                         {activity.ip_address}
                       </code>
                     </div>
@@ -356,8 +328,8 @@ export default function ActivityDetailPage() {
 
                 {activity.user_agent && (
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-2">User Agent</h4>
-                    <p className="text-xs text-muted-foreground bg-secondary p-2 rounded break-all">
+                    <h4 className="text-foreground mb-2 text-sm font-medium">User Agent</h4>
+                    <p className="text-muted-foreground bg-secondary rounded p-2 text-xs break-all">
                       {activity.user_agent}
                     </p>
                   </div>
@@ -373,42 +345,38 @@ export default function ActivityDetailPage() {
                     <Activity className="h-5 w-5" />
                     Recent Activities
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Latest activities from this user
-                  </p>
+                  <p className="text-muted-foreground text-sm">Latest activities from this user</p>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {activity.related_activities.slice(0, 5).map((relatedActivity) => {
-                      const RelatedIcon = getEventIcon(relatedActivity.event_type)
-                      const relatedDate = formatDate(relatedActivity.created_at)
-                      
+                      const RelatedIcon = getEventIcon(relatedActivity.event_type);
+                      const relatedDate = formatDate(relatedActivity.created_at);
+
                       return (
-                        <Link 
+                        <Link
                           key={relatedActivity.id}
                           href={`/activity/${relatedActivity.id}`}
-                          className="block hover:bg-secondary p-2 rounded transition-colors"
+                          className="hover:bg-secondary block rounded p-2 transition-colors"
                         >
                           <div className="flex items-start gap-2">
-                            <RelatedIcon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-foreground truncate">
+                            <RelatedIcon className="text-muted-foreground mt-0.5 h-4 w-4 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-foreground truncate text-sm">
                                 {relatedActivity.action_description}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {relatedDate.short}
-                              </p>
+                              <p className="text-muted-foreground text-xs">{relatedDate.short}</p>
                             </div>
                             <div className="flex items-center">
                               {relatedActivity.success ? (
-                                <CheckCircle className="h-3 w-3 text-success" />
+                                <CheckCircle className="text-success h-3 w-3" />
                               ) : (
-                                <XCircle className="h-3 w-3 text-error" />
+                                <XCircle className="text-error h-3 w-3" />
                               )}
                             </div>
                           </div>
                         </Link>
-                      )
+                      );
                     })}
                   </div>
                 </CardContent>
@@ -418,5 +386,5 @@ export default function ActivityDetailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

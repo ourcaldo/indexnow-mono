@@ -36,6 +36,18 @@ The user-facing dashboard for IndexNow Studio. Authenticated users manage keywor
 | `/register`                                 | New account registration        |
 | `/resend-verification`                      | Resend email verification       |
 
+## Environment Variables
+
+| Variable                          | Required | Description                                 |
+| --------------------------------- | -------- | ------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`        | Yes      | Supabase project URL                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | Yes      | Supabase anonymous key                      |
+| `NEXT_PUBLIC_API_BASE_URL`        | Yes      | API base URL (e.g. `http://localhost:3001`) |
+| `NEXT_PUBLIC_POSTHOG_KEY`         | No       | PostHog project API key                     |
+| `NEXT_PUBLIC_POSTHOG_HOST`        | No       | PostHog ingestion host                      |
+| `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | No       | Paddle client-side token (payments)         |
+| `NEXT_PUBLIC_PADDLE_ENVIRONMENT`  | No       | `sandbox` or `production`                   |
+
 ## Development
 
 ```bash

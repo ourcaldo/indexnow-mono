@@ -1,110 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  AlertCircle, 
-  CheckCircle2, 
-  Clock, 
-  User, 
+import {
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  User,
   XCircle,
   Calendar,
   Code,
   Globe,
-  Activity
+  Activity,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Separator, useToast, ErrorState } from '@indexnow/ui';
-import { formatDate, formatRelativeTime, ADMIN_ENDPOINTS, type ErrorDetailResponse } from '@indexnow/shared';
-import { authenticatedFetch } from '@indexnow/supabase-client';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Badge,
+  Separator,
+  useToast,
+  ErrorState,
+} from '@indexnow/ui';
+import { formatDate, formatRelativeTime, type ErrorDetailResponse } from '@indexnow/shared';
+import { useAdminErrorDetail, useErrorAction } from '@/hooks';
 
 export default function AdminErrorDetailPage() {
-  const [errorData, setErrorData] = useState<ErrorDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [updating, setUpdating] = useState(false);
-  
   const router = useRouter();
   const params = useParams();
   const { addToast } = useToast();
   const errorId = params.id as string;
 
-  useEffect(() => {
-    if (errorId) {
-      loadErrorDetail();
-    }
-  }, [errorId]);
-
-  const loadErrorDetail = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId));
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Error not found');
-        }
-        throw new Error('Failed to fetch error details');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setErrorData(data.data);
-      } else {
-        throw new Error(data.error || 'Failed to fetch error details');
-      }
-
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load error details';
-      setError(errorMessage);
-      addToast({
-        type: 'error',
-        title: 'Error',
-        description: errorMessage
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: errorData, isLoading: loading, error, refetch } = useAdminErrorDetail(errorId);
+  const actionMutation = useErrorAction(errorId);
 
   const handleAction = async (action: 'acknowledge' | 'resolve') => {
     try {
-      setUpdating(true);
+      await actionMutation.mutateAsync(action);
 
-      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId), {
-        method: 'PATCH',
-        body: JSON.stringify({ action }),
+      addToast({
+        type: 'success',
+        title: 'Success',
+        description: `Error has been ${action}d successfully`,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${action} error`);
-      }
-
-      if (data.success) {
-        addToast({
-          type: 'success',
-          title: 'Success',
-          description: `Error has been ${action}d successfully`
-        });
-        
-        await loadErrorDetail();
-      } else {
-        throw new Error(data.error || `Failed to ${action} error`);
-      }
-
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : `Failed to ${action} error`;
       addToast({
         type: 'error',
         title: 'Error',
-        description: errorMessage
+        description: errorMessage,
       });
-    } finally {
-      setUpdating(false);
     }
   };
 
@@ -125,9 +72,9 @@ export default function AdminErrorDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+          <div className="border-foreground mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
           <p className="text-muted-foreground">Loading error details...</p>
         </div>
       </div>
@@ -136,11 +83,11 @@ export default function AdminErrorDetailPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <ErrorState
           title="Error Loading Details"
-          message={error}
-          onRetry={loadErrorDetail}
+          message={error.message}
+          onRetry={() => refetch()}
           showHomeButton
         />
       </div>
@@ -156,80 +103,90 @@ export default function AdminErrorDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button 
-            onClick={() => router.back()} 
-            variant="outline" 
+          <Button
+            onClick={() => router.back()}
+            variant="outline"
             size="sm"
             className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
             data-testid="button-back"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Error Details</h1>
+            <h1 className="text-foreground text-2xl font-bold" data-testid="text-page-title">
+              Error Details
+            </h1>
             <p className="text-muted-foreground">View and manage error information</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          {getSeverityBadge(errorDetail.severity)}
-        </div>
+        <div className="flex items-center space-x-2">{getSeverityBadge(errorDetail.severity)}</div>
       </div>
 
       {/* Main 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* COLUMN 1 */}
         <div className="space-y-6">
           {/* Error Overview */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center text-foreground">
-                <AlertCircle className="w-5 h-5 mr-2" />
+              <CardTitle className="text-foreground flex items-center">
+                <AlertCircle className="mr-2 h-5 w-5" />
                 Error Overview
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Error ID</label>
-                <code className="block text-xs bg-muted px-2 py-1 rounded mt-1" data-testid="text-error-id">
+                <label className="text-muted-foreground text-sm font-medium">Error ID</label>
+                <code
+                  className="bg-muted mt-1 block rounded px-2 py-1 text-xs"
+                  data-testid="text-error-id"
+                >
                   {errorDetail.id}
                 </code>
               </div>
-              
+
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Error Type</label>
-                <code className="block text-xs bg-muted px-2 py-1 rounded mt-1" data-testid="text-error-type">
+                <label className="text-muted-foreground text-sm font-medium">Error Type</label>
+                <code
+                  className="bg-muted mt-1 block rounded px-2 py-1 text-xs"
+                  data-testid="text-error-type"
+                >
                   {errorDetail.error_type}
                 </code>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">User Message</label>
-                <p className="text-sm text-foreground mt-1" data-testid="text-user-message">
+                <label className="text-muted-foreground text-sm font-medium">User Message</label>
+                <p className="text-foreground mt-1 text-sm" data-testid="text-user-message">
                   {errorDetail.user_message}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Technical Message</label>
-                <pre className="text-xs bg-muted p-3 rounded overflow-x-auto mt-1" data-testid="text-technical-message">
+                <label className="text-muted-foreground text-sm font-medium">
+                  Technical Message
+                </label>
+                <pre
+                  className="bg-muted mt-1 overflow-x-auto rounded p-3 text-xs"
+                  data-testid="text-technical-message"
+                >
                   {errorDetail.message}
                 </pre>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {errorDetail.status_code && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Status Code</label>
-                    <p className="text-sm text-foreground mt-1" data-testid="text-status-code">
+                    <label className="text-muted-foreground text-sm font-medium">Status Code</label>
+                    <p className="text-foreground mt-1 text-sm" data-testid="text-status-code">
                       {errorDetail.status_code}
                     </p>
                   </div>
                 )}
                 {errorDetail.http_method && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">HTTP Method</label>
+                    <label className="text-muted-foreground text-sm font-medium">HTTP Method</label>
                     <Badge variant="outline" className="mt-1" data-testid="text-http-method">
                       {errorDetail.http_method}
                     </Badge>
@@ -239,21 +196,24 @@ export default function AdminErrorDetailPage() {
 
               {errorDetail.endpoint && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Endpoint</label>
-                  <code className="block text-xs bg-muted px-2 py-1 rounded mt-1 break-all" data-testid="text-endpoint">
+                  <label className="text-muted-foreground text-sm font-medium">Endpoint</label>
+                  <code
+                    className="bg-muted mt-1 block rounded px-2 py-1 text-xs break-all"
+                    data-testid="text-endpoint"
+                  >
                     {errorDetail.endpoint}
                   </code>
                 </div>
               )}
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Created At</label>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-sm text-foreground" data-testid="text-created-at">
+                <label className="text-muted-foreground text-sm font-medium">Created At</label>
+                <div className="mt-1 flex items-center space-x-2">
+                  <Calendar className="text-muted-foreground h-4 w-4" />
+                  <p className="text-foreground text-sm" data-testid="text-created-at">
                     {formatDate(errorDetail.created_at)}
                   </p>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     ({formatRelativeTime(errorDetail.created_at)})
                   </span>
                 </div>
@@ -265,20 +225,22 @@ export default function AdminErrorDetailPage() {
           {userInfo && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center text-foreground">
-                  <User className="w-5 h-5 mr-2" />
+                <CardTitle className="text-foreground flex items-center">
+                  <User className="mr-2 h-5 w-5" />
                   Affected User
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-sm text-foreground mt-1" data-testid="text-user-email">{userInfo.email}</p>
+                  <label className="text-muted-foreground text-sm font-medium">Email</label>
+                  <p className="text-foreground mt-1 text-sm" data-testid="text-user-email">
+                    {userInfo.email}
+                  </p>
                 </div>
                 {userInfo.full_name && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                    <p className="text-sm text-foreground mt-1">{userInfo.full_name}</p>
+                    <label className="text-muted-foreground text-sm font-medium">Full Name</label>
+                    <p className="text-foreground mt-1 text-sm">{userInfo.full_name}</p>
                   </div>
                 )}
               </CardContent>
@@ -289,13 +251,16 @@ export default function AdminErrorDetailPage() {
           {errorDetail.stack_trace && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center text-foreground">
-                  <Code className="w-5 h-5 mr-2" />
+                <CardTitle className="text-foreground flex items-center">
+                  <Code className="mr-2 h-5 w-5" />
                   Stack Trace
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <pre className="text-xs bg-muted p-3 rounded overflow-x-auto max-h-96" data-testid="text-stack-trace">
+                <pre
+                  className="bg-muted max-h-96 overflow-x-auto rounded p-3 text-xs"
+                  data-testid="text-stack-trace"
+                >
                   {errorDetail.stack_trace}
                 </pre>
               </CardContent>
@@ -308,40 +273,41 @@ export default function AdminErrorDetailPage() {
           {/* Resolution Status */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center text-foreground">
-                <Activity className="w-5 h-5 mr-2" />
+              <CardTitle className="text-foreground flex items-center">
+                <Activity className="mr-2 h-5 w-5" />
                 Resolution Status
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {errorDetail.resolved_at ? (
-                <div className="flex items-center gap-2 text-success" data-testid="status-resolved">
+                <div className="text-success flex items-center gap-2" data-testid="status-resolved">
                   <CheckCircle2 className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium">Resolved</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {formatRelativeTime(errorDetail.resolved_at)}
                     </p>
                   </div>
                 </div>
               ) : errorDetail.acknowledged_at ? (
-                <div className="flex items-center gap-2 text-warning" data-testid="status-acknowledged">
+                <div
+                  className="text-warning flex items-center gap-2"
+                  data-testid="status-acknowledged"
+                >
                   <Clock className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium">Acknowledged</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {formatRelativeTime(errorDetail.acknowledged_at)}
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-destructive" data-testid="status-new">
+                <div className="text-destructive flex items-center gap-2" data-testid="status-new">
                   <AlertCircle className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium">Not Acknowledged</p>
-                    <p className="text-xs text-muted-foreground">
-                      Requires attention
-                    </p>
+                    <p className="text-muted-foreground text-xs">Requires attention</p>
                   </div>
                 </div>
               )}
@@ -352,23 +318,23 @@ export default function AdminErrorDetailPage() {
                   {!errorDetail.acknowledged_at && (
                     <Button
                       onClick={() => handleAction('acknowledge')}
-                      disabled={updating}
+                      disabled={actionMutation.isPending}
                       className="w-full"
                       variant="outline"
                       data-testid="button-acknowledge"
                     >
-                      <Clock className="w-4 h-4 mr-2" />
-                      {updating ? 'Processing...' : 'Acknowledge Error'}
+                      <Clock className="mr-2 h-4 w-4" />
+                      {actionMutation.isPending ? 'Processing...' : 'Acknowledge Error'}
                     </Button>
                   )}
                   <Button
                     onClick={() => handleAction('resolve')}
-                    disabled={updating}
-                    className="w-full bg-success hover:bg-success/90 text-success-foreground"
+                    disabled={actionMutation.isPending}
+                    className="bg-success hover:bg-success/90 text-success-foreground w-full"
                     data-testid="button-resolve"
                   >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    {updating ? 'Processing...' : 'Mark as Resolved'}
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {actionMutation.isPending ? 'Processing...' : 'Mark as Resolved'}
                   </Button>
                 </div>
               )}
@@ -379,25 +345,27 @@ export default function AdminErrorDetailPage() {
           {relatedErrors.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center text-foreground">
-                  <Globe className="w-5 h-5 mr-2" />
+                <CardTitle className="text-foreground flex items-center">
+                  <Globe className="mr-2 h-5 w-5" />
                   Related Errors (Last 24h)
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2" data-testid="list-related-errors">
                   {relatedErrors.slice(0, 10).map((relError) => (
-                    <div 
-                      key={relError.id} 
-                      className="p-3 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors cursor-pointer"
+                    <div
+                      key={relError.id}
+                      className="bg-secondary hover:bg-secondary/80 cursor-pointer rounded-lg p-3 transition-colors"
                       onClick={() => router.push(`/errors/${relError.id}`)}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <code className="text-xs font-medium text-foreground">{relError.error_type}</code>
+                      <div className="mb-1 flex items-center justify-between">
+                        <code className="text-foreground text-xs font-medium">
+                          {relError.error_type}
+                        </code>
                         {getSeverityBadge(relError.severity)}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{relError.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-muted-foreground truncate text-xs">{relError.message}</p>
+                      <p className="text-muted-foreground mt-1 text-xs">
                         {formatRelativeTime(relError.created_at)}
                       </p>
                     </div>

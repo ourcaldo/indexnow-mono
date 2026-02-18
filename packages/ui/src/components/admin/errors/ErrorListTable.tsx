@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@indexnow/database/client';
 import {
@@ -44,7 +44,10 @@ interface ErrorListResponse {
   };
 }
 
-export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
+export const ErrorListTable = memo(function ErrorListTable({
+  filters,
+  onErrorClick,
+}: ErrorListTableProps) {
   const [page, setPage] = useState(1);
   const limit = 50;
 
@@ -54,23 +57,21 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', limit.toString());
-      
+
       // Add filters
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
       });
-      
+
       return apiRequest<ErrorListResponse>(`/api/v1/admin/errors?${params}`);
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   if (isLoading) {
     return (
-      <div className="border rounded-lg" data-testid="table-loading">
-        <div className="p-8 text-center text-muted-foreground">
-          Loading errors...
-        </div>
+      <div className="rounded-lg border" data-testid="table-loading">
+        <div className="text-muted-foreground p-8 text-center">Loading errors...</div>
       </div>
     );
   }
@@ -83,10 +84,13 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
       CRITICAL: 'destructive',
       HIGH: 'default',
       MEDIUM: 'secondary',
-      LOW: 'outline'
+      LOW: 'outline',
     };
     return (
-      <Badge variant={variants[severity] || 'outline'} data-testid={`badge-severity-${severity.toLowerCase()}`}>
+      <Badge
+        variant={variants[severity] || 'outline'}
+        data-testid={`badge-severity-${severity.toLowerCase()}`}
+      >
         {severity}
       </Badge>
     );
@@ -94,17 +98,41 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
 
   const getStatusBadge = (error: ErrorRow) => {
     if (error.resolved_at) {
-      return <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300" data-testid="badge-status-resolved">Resolved</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+          data-testid="badge-status-resolved"
+        >
+          Resolved
+        </Badge>
+      );
     }
     if (error.acknowledged_at) {
-      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300" data-testid="badge-status-acknowledged">Acknowledged</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+          data-testid="badge-status-acknowledged"
+        >
+          Acknowledged
+        </Badge>
+      );
     }
-    return <Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" data-testid="badge-status-new">New</Badge>;
+    return (
+      <Badge
+        variant="outline"
+        className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+        data-testid="badge-status-new"
+      >
+        New
+      </Badge>
+    );
   };
 
   return (
     <div className="space-y-4">
-      <div className="border rounded-lg">
+      <div className="rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -120,7 +148,7 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
           <TableBody>
             {errors.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
                   No errors found
                 </TableCell>
               </TableRow>
@@ -131,7 +159,10 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
                     {formatDistanceToNow(new Date(error.created_at), { addSuffix: true })}
                   </TableCell>
                   <TableCell>
-                    <code className="text-xs bg-muted px-2 py-1 rounded" data-testid={`text-type-${error.id}`}>
+                    <code
+                      className="bg-muted rounded px-2 py-1 text-xs"
+                      data-testid={`text-type-${error.id}`}
+                    >
                       {error.error_type}
                     </code>
                   </TableCell>
@@ -140,7 +171,10 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
                   </TableCell>
                   <TableCell>{getSeverityBadge(error.severity)}</TableCell>
                   <TableCell>{getStatusBadge(error)}</TableCell>
-                  <TableCell className="max-w-xs truncate text-sm text-muted-foreground" data-testid={`text-endpoint-${error.id}`}>
+                  <TableCell
+                    className="text-muted-foreground max-w-xs truncate text-sm"
+                    data-testid={`text-endpoint-${error.id}`}
+                  >
                     {error.endpoint || 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
@@ -162,8 +196,9 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
 
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground" data-testid="text-pagination-info">
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total errors)
+          <p className="text-muted-foreground text-sm" data-testid="text-pagination-info">
+            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total
+            errors)
           </p>
           <div className="flex gap-2">
             <Button
@@ -191,4 +226,4 @@ export function ErrorListTable({ filters, onErrorClick }: ErrorListTableProps) {
       )}
     </div>
   );
-}
+});

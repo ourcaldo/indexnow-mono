@@ -30,11 +30,10 @@ type Tables = Database['public']['Tables'];
  * limitation; consider migrating to a discriminated result type like
  * `{ data: T | null; error: Error | null }` for better error propagation.
  *
- * TYPE CASTS (T-06): Methods use `as Type` casts on Supabase return values.
- * This is necessary because `.select('col1, col2, ...')` with explicit column
- * strings returns `any` in the Supabase JS SDK. The casts are safe since the
- * selected columns match the target type's fields exactly.
- * Future: use `.select()` (all columns) or Supabase's typed `.returns<T>()`.
+ * TYPE CASTS (T-06): Methods use Supabase's `.returns<T>()` to type query
+ * results without unsafe `as Type` casts. `.returns<T>()` is inserted before
+ * `.single()` (or at the end of the builder chain) so the SDK infers the
+ * correct return type from the explicit column `.select()` strings.
  */
 export class DatabaseService {
   private readonly supabase: SupabaseClient<Database>;
@@ -66,6 +65,7 @@ export class DatabaseService {
         'id, user_id, full_name, phone_number, country, role, is_active, is_suspended, is_trial_active, trial_ends_at, subscription_end_date, package_id, daily_quota_used, daily_quota_limit, created_at, updated_at'
       )
       .eq('user_id', userId)
+      .returns<UserProfile>()
       .single();
 
     if (error) {
@@ -73,7 +73,7 @@ export class DatabaseService {
       return null;
     }
 
-    return data as UserProfile | null;
+    return data;
   }
 
   async createUserProfile(profile: InsertUserProfile): Promise<UserProfile | null> {
@@ -84,6 +84,7 @@ export class DatabaseService {
       .from('indb_auth_user_profiles')
       .insert(insertData)
       .select()
+      .returns<UserProfile>()
       .single();
 
     if (error) {
@@ -91,7 +92,7 @@ export class DatabaseService {
       return null;
     }
 
-    return data as UserProfile | null;
+    return data;
   }
 
   async updateUserProfile(userId: string, updates: UpdateUserProfile): Promise<UserProfile | null> {
@@ -103,6 +104,7 @@ export class DatabaseService {
       .update(updateData)
       .eq('user_id', userId)
       .select()
+      .returns<UserProfile>()
       .single();
 
     if (error) {
@@ -110,7 +112,7 @@ export class DatabaseService {
       return null;
     }
 
-    return data as UserProfile | null;
+    return data;
   }
 
   async getUserSettings(userId: string): Promise<UserSettings | null> {
@@ -120,6 +122,7 @@ export class DatabaseService {
         'id, user_id, timeout_duration, retry_attempts, email_job_completion, email_job_failure, email_quota_alerts, default_schedule, email_daily_report, created_at, updated_at'
       )
       .eq('user_id', userId)
+      .returns<UserSettings>()
       .single();
 
     if (error) {
@@ -127,7 +130,7 @@ export class DatabaseService {
       return null;
     }
 
-    return data as UserSettings | null;
+    return data;
   }
 
   async updateUserSettings(
@@ -142,6 +145,7 @@ export class DatabaseService {
       .update(updateData)
       .eq('user_id', userId)
       .select()
+      .returns<UserSettings>()
       .single();
 
     if (error) {
@@ -149,7 +153,7 @@ export class DatabaseService {
       return null;
     }
 
-    return data as UserSettings | null;
+    return data;
   }
 
   // ============================================================================
@@ -173,14 +177,14 @@ export class DatabaseService {
       query = query.eq('is_read', false);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.returns<DashboardNotification[]>();
 
     if (error) {
       logger.error({ error }, 'Error fetching notifications:');
       return [];
     }
 
-    return (data as DashboardNotification[]) || [];
+    return data ?? [];
   }
 
   async markNotificationAsRead(notificationId: string, userId: string): Promise<boolean> {
