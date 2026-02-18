@@ -17,10 +17,11 @@ export function GlobalQuotaWarning() {
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchQuotaInfo = useCallback(async () => {
+  const fetchQuotaInfo = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await authenticatedFetch(DASHBOARD_ENDPOINTS.MAIN)
+      const response = await authenticatedFetch(DASHBOARD_ENDPOINTS.MAIN, { signal })
 
+      if (signal?.aborted) return
       if (response.ok) {
         const result = await response.json()
         // API now returns: { success: true, data: {...}, timestamp: "..." }
@@ -28,19 +29,26 @@ export function GlobalQuotaWarning() {
         setQuotaInfo(data.user?.quota)
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
       logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch quota info')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    fetchQuotaInfo()
+    const controller = new AbortController()
+    fetchQuotaInfo(controller.signal)
     
     // Check quota every 60 seconds (reduced from 10s — warning banner doesn't need aggressive polling)
-    const interval = setInterval(fetchQuotaInfo, 60000)
+    const interval = setInterval(() => fetchQuotaInfo(controller.signal), 60000)
     
-    return () => clearInterval(interval)
+    return () => {
+      controller.abort()
+      clearInterval(interval)
+    }
   }, [fetchQuotaInfo])
 
   // Only show if quota is exhausted and not unlimited

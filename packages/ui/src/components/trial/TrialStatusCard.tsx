@@ -28,21 +28,27 @@ export function TrialStatusCard() {
   const { addToast } = useToast()
 
   useEffect(() => {
-    fetchTrialStatus()
+    const controller = new AbortController()
+    fetchTrialStatus(controller.signal)
+    return () => { controller.abort() }
   }, [])
 
-  const fetchTrialStatus = async () => {
+  const fetchTrialStatus = async (signal?: AbortSignal) => {
     try {
-      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_STATUS)
+      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_STATUS, { signal })
 
+      if (signal?.aborted) return
       if (response.ok) {
         const result = await response.json()
         setTrialData(result.data)
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
       logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to fetch trial status')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 

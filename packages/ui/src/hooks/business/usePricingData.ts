@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react'
 import { formatCurrency as formatCurrencyUtil, PUBLIC_ENDPOINTS, logger } from '@indexnow/shared'
 
 /** @internal Only consumed internally by usePublicSettings — not directly used by apps */
@@ -48,7 +48,22 @@ export interface UsePricingDataOptions {
   maxPackages?: number
 }
 
-export const usePricingData = (options: UsePricingDataOptions = {}) => {
+export interface UsePricingDataReturn {
+  packages: PackageData[];
+  selectedPeriod: BillingPeriod;
+  isLoading: boolean;
+  error: string | null;
+  setSelectedPeriod: Dispatch<SetStateAction<BillingPeriod>>;
+  reloadData: (signal?: AbortSignal) => Promise<void>;
+  formatPrice: (price: number) => string;
+  getPricing: (pkg: PackageData, period?: BillingPeriod) => PriceInfo;
+  getFeaturesList: (pkg: PackageData) => string[];
+  getAvailablePeriods: () => BillingPeriod[];
+  getPeriodLabel: (period: BillingPeriod) => string;
+  getSavingsPercentage: (period: BillingPeriod) => number | null;
+}
+
+export const usePricingData = (options: UsePricingDataOptions = {}): UsePricingDataReturn => {
   const { initialPeriod = 'monthly', maxPackages } = options
   
   const [packages, setPackages] = useState<PackageData[]>([])

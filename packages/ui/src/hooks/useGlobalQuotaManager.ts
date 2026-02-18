@@ -45,7 +45,16 @@ export const QUOTA_QUERY_KEY = ['global-quota'] as const
  * After mutations that consume quota, call:
  *   queryClient.invalidateQueries({ queryKey: QUOTA_QUERY_KEY })
  */
-export function useGlobalQuotaManager() {
+export interface UseGlobalQuotaManagerReturn {
+  quotaInfo: QuotaInfo | null;
+  notifications: QuotaNotificationData[];
+  loading: boolean;
+  refreshQuota: () => Promise<void>;
+  canCreateJob: (urlCount?: number) => { allowed: boolean; reason: string | null };
+  lastFetchTime: number;
+}
+
+export function useGlobalQuotaManager(): UseGlobalQuotaManagerReturn {
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({

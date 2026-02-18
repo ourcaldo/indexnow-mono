@@ -6,3 +6,24 @@ dist/
 !.env.example
 *.log
 *.tsbuildinfo
+
+# Coverage & test artifacts
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & editor
+.vscode/settings.json
+
+# Deployment
+.vercel/
+out/
+
+# Cache
+.cache/
+.pnpm-store/
+
+# Local overrides
+*.local

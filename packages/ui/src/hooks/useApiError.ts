@@ -21,7 +21,11 @@ function isApiError(error: unknown): error is ApiError {
  * Automatically extracts error details (message, ID, severity) and displays
  * user-friendly toast notifications with optional error ID copying.
  */
-export function useApiError() {
+export interface UseApiErrorReturn {
+  handleApiError: (error: unknown) => void;
+}
+
+export function useApiError(): UseApiErrorReturn {
   const { addToast } = useToast()
 
   /**

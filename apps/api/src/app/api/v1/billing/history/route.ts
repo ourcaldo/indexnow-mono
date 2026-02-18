@@ -183,7 +183,8 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                         .from('indb_payment_transactions')
                         .select('id')
                         .eq('user_id', auth.userId)
-                        .limit(10000);
+                        .order('created_at', { ascending: false })
+                        .limit(MAX_RECORDS_PER_SOURCE);
 
                     if (!userTransactions || userTransactions.length === 0) {
                         return { data: [], count: 0 };

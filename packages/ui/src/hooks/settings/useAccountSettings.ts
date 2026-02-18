@@ -62,11 +62,12 @@ export function useAccountSettings(): UseAccountSettingsReturn {
     confirmPassword: ''
   })
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true)
-      const profileResponse = await authenticatedFetch(AUTH_ENDPOINTS.PROFILE)
+      const profileResponse = await authenticatedFetch(AUTH_ENDPOINTS.PROFILE, { signal })
 
+      if (signal?.aborted) return
       if (profileResponse.ok) {
         const profileData = await profileResponse.json()
         // Handle both response shapes: { data: { profile } } and { profile }
@@ -86,14 +87,19 @@ export function useAccountSettings(): UseAccountSettingsReturn {
         })
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
       logger.error({ error: error instanceof Error ? error : undefined }, 'Error loading profile data')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [user?.email])
 
   useEffect(() => {
-    loadData()
+    const controller = new AbortController()
+    loadData(controller.signal)
+    return () => { controller.abort() }
   }, [loadData])
 
   const handleSaveProfile = useCallback(async () => {

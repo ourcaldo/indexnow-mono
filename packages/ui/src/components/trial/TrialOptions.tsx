@@ -28,21 +28,27 @@ export function TrialOptions({}: TrialOptionsProps) {
   const router = useRouter()
 
   useEffect(() => {
-    checkTrialEligibility()
+    const controller = new AbortController()
+    checkTrialEligibility(controller.signal)
+    return () => { controller.abort() }
   }, [])
 
-  const checkTrialEligibility = async () => {
+  const checkTrialEligibility = async (signal?: AbortSignal) => {
     try {
-      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY)
+      const response = await authenticatedFetch(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY, { signal })
 
+      if (signal?.aborted) return
       if (response.ok) {
         const result = await response.json()
         setEligibility(result)
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
       logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to check trial eligibility')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 

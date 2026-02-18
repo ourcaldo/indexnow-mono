@@ -17,7 +17,16 @@ interface ActivityLogRequest {
   metadata?: Record<string, Json>
 }
 
-export const useActivityLogger = () => {
+export interface UseActivityLoggerReturn {
+  logActivity: (request: ActivityLogRequest) => Promise<void>;
+  logPageView: (pagePath: string, pageTitle?: string, metadata?: Record<string, Json>) => Promise<void>;
+  logDashboardActivity: (eventType: string, details?: string, metadata?: Record<string, Json>) => Promise<void>;
+  logBillingActivity: (eventType: string, details: string, metadata?: Record<string, Json>) => Promise<void>;
+  logJobActivity: (eventType: string, jobId?: string, details?: string, metadata?: Record<string, Json>) => Promise<void>;
+  logServiceAccountActivity: (eventType: string, serviceAccountId?: string, details?: string, metadata?: Record<string, Json>) => Promise<void>;
+}
+
+export const useActivityLogger = (): UseActivityLoggerReturn => {
   const pageViewLogged = useRef<string | null>(null)
 
   const logActivity = async (request: ActivityLogRequest) => {

@@ -10,7 +10,7 @@
 
 import { NextRequest } from 'next/server';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { publicApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 
 interface HealthCheckResult {
     status: 'healthy' | 'degraded' | 'unhealthy' | 'unconfigured';
@@ -112,7 +112,7 @@ function generateRecommendations(components: ComponentHealth): string[] {
     return recommendations;
 }
 
-export const GET = publicApiWrapper(async (request: NextRequest) => {
+export const GET = adminApiWrapper(async (request: NextRequest) => {
     const checkTime = new Date().toISOString();
 
     // Integration settings check - requires indb_seranking_integration table

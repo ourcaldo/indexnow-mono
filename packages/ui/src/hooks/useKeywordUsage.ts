@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type RefetchOptions, type QueryObserverResult } from '@tanstack/react-query'
 import { RANK_TRACKING_ENDPOINTS } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
 
@@ -19,7 +19,14 @@ export interface KeywordUsageDataExtended {
  * Previously used manual useState + useEffect + fetch pattern.
  * Now uses useQuery with automatic caching, retry, and stale management.
  */
-export function useKeywordUsage() {
+export interface UseKeywordUsageReturn {
+  keywordUsage: KeywordUsageDataExtended | null;
+  loading: boolean;
+  error: string | null;
+  refetch: (options?: RefetchOptions) => Promise<QueryObserverResult<KeywordUsageDataExtended, Error>>;
+}
+
+export function useKeywordUsage(): UseKeywordUsageReturn {
   const query = useQuery({
     queryKey: ['keyword-usage'],
     queryFn: async (): Promise<KeywordUsageDataExtended> => {

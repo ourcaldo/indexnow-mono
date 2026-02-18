@@ -74,7 +74,7 @@ export function useTrialManager(): UseTrialManagerReturn {
   const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
   // Fetch trial information
-  const fetchTrialInfo = useCallback(async () => {
+  const fetchTrialInfo = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true)
       setError(null)
@@ -86,8 +86,9 @@ export function useTrialManager(): UseTrialManagerReturn {
         return
       }
 
-      const response = await authenticatedFetch(`${BILLING_ENDPOINTS.OVERVIEW}/trial/info`)
+      const response = await authenticatedFetch(`${BILLING_ENDPOINTS.OVERVIEW}/trial/info`, { signal })
 
+      if (signal?.aborted) return
       if (!response.ok) {
         throw new Error(`Failed to fetch trial info: ${response.status}`)
       }
@@ -100,10 +101,13 @@ export function useTrialManager(): UseTrialManagerReturn {
       
       lastFetchTime.current = now
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       logger.error({ error: err instanceof Error ? err : undefined }, 'Error fetching trial info')
       setError(err instanceof Error ? err.message : 'Failed to fetch trial info')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -210,12 +214,14 @@ export function useTrialManager(): UseTrialManagerReturn {
 
   // Initial load and periodic refresh
   useEffect(() => {
-    fetchTrialInfo()
+    const controller = new AbortController()
+    fetchTrialInfo(controller.signal)
     
     // Refresh trial info every 10 minutes
-    const refreshInterval = setInterval(fetchTrialInfo, 10 * 60 * 1000)
+    const refreshInterval = setInterval(() => fetchTrialInfo(controller.signal), 10 * 60 * 1000)
     
     return () => {
+      controller.abort()
       clearInterval(refreshInterval)
     }
   }, [fetchTrialInfo])

@@ -11,7 +11,11 @@ interface AdminActivityMetadata {
   [key: string]: Json | undefined
 }
 
-export function useAdminActivityLogger() {
+export interface UseAdminActivityLoggerReturn {
+  logAdminActivity: (eventType: string, description: string, metadata?: AdminActivityMetadata) => Promise<void>;
+}
+
+export function useAdminActivityLogger(): UseAdminActivityLoggerReturn {
   const [user, setUser] = useState<AuthUser | null>(null)
 
   useEffect(() => {

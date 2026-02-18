@@ -31,7 +31,14 @@ export interface UserWithRole {
   isSuperAdmin: boolean
 }
 
-export function useUserProfile() {
+export interface UseUserProfileReturn {
+  user: UserWithRole | null;
+  loading: boolean;
+  error: string | null;
+  refetch: (signal?: AbortSignal) => Promise<void>;
+}
+
+export function useUserProfile(): UseUserProfileReturn {
   const [user, setUser] = useState<UserWithRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { DASHBOARD_ENDPOINTS } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
 import type { 
@@ -30,7 +30,9 @@ export interface DashboardData {
   notifications: Json[];
 }
 
-export const useDashboardData = () => {
+export type UseDashboardDataReturn = UseQueryResult<DashboardData, Error>
+
+export const useDashboardData = (): UseDashboardDataReturn => {
   return useQuery({
     queryKey: [DASHBOARD_ENDPOINTS.MAIN],
     queryFn: async (): Promise<DashboardData> => {
