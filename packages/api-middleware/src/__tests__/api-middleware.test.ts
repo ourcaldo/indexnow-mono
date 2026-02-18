@@ -2,15 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Mock dependencies before importing the module
-vi.mock('../utils/logger', () => ({
+vi.mock('@indexnow/shared', () => ({
   logger: { debug: vi.fn(), warn: vi.fn(), error: vi.fn(), info: vi.fn() },
-}))
-
-vi.mock('../utils/ip-device-utils', () => ({
   getClientIP: vi.fn(() => '127.0.0.1'),
-}))
-
-vi.mock('../core/config/AppConfig', () => ({
   AppConfig: {
     app: {
       environment: 'development',
@@ -28,7 +22,7 @@ import {
   composeMiddleware,
   requestLogger,
   type MiddlewareContext,
-} from '../core/api/ApiMiddleware'
+} from '../index'
 
 function makeContext(method = 'GET', url = 'http://localhost:3000/api/v1/test', headers: Record<string, string> = {}): MiddlewareContext {
   const req = new NextRequest(url, {
@@ -63,7 +57,7 @@ describe('corsMiddleware', () => {
 
   it('does not set origin for disallowed origins', async () => {
     // For non-dev: Mock isDevelopment to return false
-    const { isDevelopment } = await import('../core/config/AppConfig')
+    const { isDevelopment } = await import('@indexnow/shared')
     vi.mocked(isDevelopment).mockReturnValueOnce(false)
 
     const ctx = makeContext('GET', 'http://localhost:3000/api/v1/test', {
