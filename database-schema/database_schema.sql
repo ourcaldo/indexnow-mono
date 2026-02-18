@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS indb_auth_user_profiles (
   trial_ends_at TIMESTAMPTZ,
   suspension_reason TEXT,
   suspended_at TIMESTAMPTZ,
+  must_change_password BOOLEAN DEFAULT FALSE,
   
   -- Login Metadata
   last_login_at TIMESTAMPTZ,
@@ -180,7 +181,10 @@ CREATE TABLE IF NOT EXISTS indb_payment_transactions (
   notes TEXT,
   
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  verified_at TIMESTAMPTZ,
+  processed_at TIMESTAMPTZ
 );
 
 CREATE TRIGGER update_payment_transactions_updated_at
@@ -538,8 +542,14 @@ CREATE TABLE IF NOT EXISTS indb_notifications_dashboard (
   is_read BOOLEAN DEFAULT FALSE,
   action_url TEXT,
   metadata JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ
 );
+
+CREATE TRIGGER update_notifications_dashboard_updated_at
+BEFORE UPDATE ON indb_notifications_dashboard
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON indb_notifications_dashboard(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON indb_notifications_dashboard(user_id) WHERE is_read = FALSE;
@@ -548,11 +558,12 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON indb_notifications_
 -- Admin activity logs
 CREATE TABLE IF NOT EXISTS indb_admin_activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  action VARCHAR(100) NOT NULL,
+  admin_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  action_type VARCHAR(100) NOT NULL,
+  action_description TEXT,
   target_type VARCHAR(50),
   target_id UUID,
-  details JSONB,
+  metadata JSONB,
   ip_address VARCHAR(50),
   user_agent TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -586,9 +597,17 @@ CREATE TABLE IF NOT EXISTS indb_security_activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   event_type VARCHAR(100) NOT NULL,
+  action_description TEXT,
+  target_type VARCHAR(100),
+  target_id VARCHAR(255),
   ip_address VARCHAR(50),
   user_agent TEXT,
+  device_info JSONB,
+  location_data JSONB,
+  success BOOLEAN DEFAULT TRUE,
+  error_message TEXT,
   details JSONB,
+  metadata JSONB,
   severity VARCHAR(20) DEFAULT 'info',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -810,6 +829,31 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_user ON indb_enrichment_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_status ON indb_enrichment_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_created ON indb_enrichment_jobs(created_at DESC);
+
+-- External API keys for third-party service integrations (e.g. SE Ranking)
+CREATE TABLE IF NOT EXISTS indb_api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  service_name VARCHAR(100) NOT NULL,
+  key_value TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  last_used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_service ON indb_api_keys(service_name, is_active);
+
+-- System-level activity logs (non-security, e.g. cron jobs, manual triggers)
+CREATE TABLE IF NOT EXISTS indb_system_activity_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  event_type VARCHAR(100) NOT NULL,
+  description TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_activity_event ON indb_system_activity_logs(event_type);
 
 -- 20. indb_keyword_countries: Public read
 ALTER TABLE indb_keyword_countries ENABLE ROW LEVEL SECURITY;
@@ -1427,6 +1471,81 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;
+
+-- 3.5. Atomic order activation: update transaction + activate user plan
+-- (Merged from migrations/001_atomic_order_activation.sql)
+CREATE OR REPLACE FUNCTION activate_order_with_plan(
+  p_transaction_id UUID,
+  p_new_status     TEXT,
+  p_admin_user_id  UUID,
+  p_notes          TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_txn            RECORD;
+  v_billing_period TEXT;
+  v_expiry_date    TIMESTAMPTZ;
+  v_result         JSONB;
+BEGIN
+  SELECT *
+    INTO v_txn
+    FROM indb_payment_transactions
+   WHERE id = p_transaction_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'transaction_not_found');
+  END IF;
+
+  IF v_txn.status IN ('completed', 'failed') THEN
+    RETURN jsonb_build_object(
+      'error',          'terminal_status',
+      'current_status', v_txn.status
+    );
+  END IF;
+
+  UPDATE indb_payment_transactions
+     SET status       = p_new_status,
+         verified_by  = p_admin_user_id,
+         verified_at  = NOW(),
+         processed_at = CASE WHEN p_new_status = 'completed' THEN NOW() ELSE NULL END,
+         notes        = COALESCE(p_notes, notes),
+         updated_at   = NOW()
+   WHERE id = p_transaction_id;
+
+  IF p_new_status = 'completed' THEN
+    v_billing_period := COALESCE(v_txn.metadata ->> 'billing_period', 'monthly');
+
+    v_expiry_date := CASE v_billing_period
+      WHEN 'monthly'   THEN NOW() + INTERVAL '1 month'
+      WHEN 'quarterly'  THEN NOW() + INTERVAL '3 months'
+      WHEN 'biannual'   THEN NOW() + INTERVAL '6 months'
+      WHEN 'annual'     THEN NOW() + INTERVAL '1 year'
+      ELSE                   NOW() + INTERVAL '1 month'
+    END;
+
+    UPDATE indb_auth_user_profiles
+       SET package_id              = v_txn.package_id,
+           subscription_start_date = NOW(),
+           subscription_end_date   = v_expiry_date,
+           daily_quota_used        = 0,
+           quota_reset_date        = CURRENT_DATE,
+           updated_at              = NOW()
+     WHERE user_id = v_txn.user_id;
+  END IF;
+
+  SELECT to_jsonb(t)
+    INTO v_result
+    FROM indb_payment_transactions t
+   WHERE t.id = p_transaction_id;
+
+  RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION activate_order_with_plan(UUID, TEXT, UUID, TEXT) TO service_role;
 
 -- ============================================================
 -- PERFORMANCE OPTIMIZATION: COMPOSITE INDEXES
