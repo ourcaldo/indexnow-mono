@@ -2,12 +2,8 @@ import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
 import { AppConfig, ErrorType, ErrorSeverity, getClientIP, getRequestInfo } from '@indexnow/shared';
-import {
-  publicApiWrapper,
-  formatSuccess,
-  formatError
-} from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 import { z } from 'zod';
@@ -19,7 +15,11 @@ interface SessionData {
 }
 
 interface SetSessionResult {
-  data: { session: { user: { id: string; email: string | undefined; user_metadata?: { full_name?: string } } } | null };
+  data: {
+    session: {
+      user: { id: string; email: string | undefined; user_metadata?: { full_name?: string } };
+    } | null;
+  };
   error: { message: string } | null;
 }
 
@@ -36,24 +36,28 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
       reason: 'System checking user session status',
       metadata: {
         endpoint: '/api/v1/auth/session',
-        method: 'GET'
+        method: 'GET',
       },
       ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
+      userAgent: request.headers.get('user-agent') || undefined,
     },
     { table: 'auth.sessions', operationType: 'select' },
     async () => {
       const cookieStore = await cookies();
       const supabase = createServerClient(cookieStore);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       return {
         hasSession: !!session,
-        user: session?.user ? {
-          id: session.user.id,
-          email: session.user.email
-        } : null
+        user: session?.user
+          ? {
+              id: session.user.id,
+              email: session.user.email,
+            }
+          : null,
       };
     }
   );
@@ -81,7 +85,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 400,
-          userMessageKey: 'missing_required'
+          userMessageKey: 'missing_required',
         }
       );
       return formatError(error);
@@ -95,6 +99,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       try {
         return new URL(AppConfig.app.baseUrl).hostname;
       } catch {
+        /* URL parse fallback */
         return '';
       }
     };
@@ -115,20 +120,20 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         source: 'auth/session',
         metadata: {
           endpoint: '/api/v1/auth/session',
-          hasTokens: !!(access_token && refresh_token)
+          hasTokens: !!(access_token && refresh_token),
         },
         ipAddress: getClientIP(request) ?? 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown'
+        userAgent: request.headers.get('user-agent') || 'unknown',
       },
       { table: 'auth.sessions', operationType: 'insert' },
       async () => {
         const { data, error } = await supabase.auth.setSession({
           access_token,
-          refresh_token
+          refresh_token,
         });
         return {
           data: { session: data.session as any },
-          error: error ? { message: error.message } : null
+          error: error ? { message: error.message } : null,
         };
       }
     );
@@ -142,7 +147,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 400,
-          userMessageKey: 'default'
+          userMessageKey: 'default',
         }
       );
       return formatError(structuredError);
@@ -155,31 +160,37 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           userId: data.session.user.id,
           eventType: 'session_established',
           actionDescription: 'User session restored from stored tokens',
-          request
+          request,
         });
 
         // Send login notification email for session restoration (fire-and-forget)
         const requestInfo = await getRequestInfo(request);
-        loginNotificationService.sendLoginNotification({
-          userId: data.session.user.id,
-          userEmail: data.session.user.email || '',
-          userName: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0] || 'User',
-          ipAddress: requestInfo.ipAddress || 'Unknown',
-          userAgent: requestInfo.userAgent || 'Unknown',
-          deviceInfo: requestInfo.deviceInfo,
-          locationData: requestInfo.locationData,
-          loginTime: new Date().toISOString()
-        }).catch(() => {
-          // Silent fail for notification errors
-        });
-
-      } catch {
-        // Continue even if activity logging fails
+        loginNotificationService
+          .sendLoginNotification({
+            userId: data.session.user.id,
+            userEmail: data.session.user.email || '',
+            userName:
+              data.session.user.user_metadata?.full_name ||
+              data.session.user.email?.split('@')[0] ||
+              'User',
+            ipAddress: requestInfo.ipAddress || 'Unknown',
+            userAgent: requestInfo.userAgent || 'Unknown',
+            deviceInfo: requestInfo.deviceInfo,
+            locationData: requestInfo.locationData,
+            loginTime: new Date().toISOString(),
+          })
+          .catch(() => {
+            // Silent fail for notification errors
+          });
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err : undefined },
+          'Failed to log session activity'
+        );
       }
     }
 
     return formatSuccess({ success: true });
-
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
@@ -187,7 +198,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       {
         severity: ErrorSeverity.HIGH,
         statusCode: 500,
-        userMessageKey: 'default'
+        userMessageKey: 'default',
       }
     );
     return formatError(structuredError);
@@ -207,7 +218,7 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
       (AppConfig.app as any).dashboardUrl,
       (AppConfig.app as any).backendUrl,
       (AppConfig.app as any).apiBaseUrl,
-      AppConfig.app.baseUrl
+      AppConfig.app.baseUrl,
     ].filter(Boolean) as string[];
 
     for (const url of envUrls) {
@@ -218,7 +229,7 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
           return parts.slice(-2).join('.');
         }
       } catch {
-        // Continue to next URL
+        /* URL parse fallback */
       }
     }
 
@@ -228,10 +239,10 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
   const baseDomain = getBaseDomain();
 
   // Create Supabase client for logout
-  const supabase = createServerClient(
-    cookieStore,
-    { maxAge: 0, ...(baseDomain && { domain: `.${baseDomain}` }) }
-  );
+  const supabase = createServerClient(cookieStore, {
+    maxAge: 0,
+    ...(baseDomain && { domain: `.${baseDomain}` }),
+  });
 
   // Sign out from Supabase using secure wrapper (system operation)
   await SecureServiceRoleWrapper.executeSecureOperation(
@@ -241,10 +252,10 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
       reason: 'System deleting user session via logout',
       source: 'auth/session',
       metadata: {
-        endpoint: '/api/v1/auth/session'
+        endpoint: '/api/v1/auth/session',
       },
       ipAddress: getClientIP(request) ?? 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown'
+      userAgent: request.headers.get('user-agent') || 'unknown',
     },
     { table: 'auth.sessions', operationType: 'delete' },
     async () => {
@@ -255,4 +266,3 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
 
   return formatSuccess({ success: true });
 });
-

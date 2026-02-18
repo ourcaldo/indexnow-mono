@@ -5,13 +5,13 @@ import {
   publicApiWrapper,
   formatSuccess,
   formatError,
-  type RouteContext
+  type RouteContext,
 } from '@/lib/core/api-response-middleware';
 import {
   ErrorHandlingService,
   ErrorType,
   ErrorSeverity,
-  logger
+  logger,
 } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
@@ -46,7 +46,7 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
           method,
           statusCode: 400,
           userMessageKey: 'invalid_format',
-          metadata: { errors: validationResult.error.errors }
+          metadata: { errors: validationResult.error.errors },
         }
       );
       return formatError(error);
@@ -72,7 +72,7 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
           endpoint,
           method,
           statusCode: 429,
-          metadata: { retryAfter }
+          metadata: { retryAfter },
         }
       );
       return formatError(error);
@@ -111,7 +111,7 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
           endpoint,
           method,
           statusCode: 401,
-          userMessageKey: 'invalid_credentials'
+          userMessageKey: 'invalid_credentials',
         }
       );
       return formatError(error);
@@ -134,36 +134,36 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
           session: {
             access_token: authData.session.access_token,
             refresh_token: authData.session.refresh_token,
-            expires_at: authData.session.expires_at
-          }
+            expires_at: authData.session.expires_at,
+          },
         });
       }
     } catch {
-      // Column may not exist yet — skip gracefully
+      /* Column may not exist yet */
     }
 
     // 6. Log successful login activity
     const requestInfo = await getRequestInfo(request);
-    await ActivityLogger.logAuth(
-      user.id,
-      ActivityEventTypes.LOGIN,
-      true,
-      request
-    );
+    await ActivityLogger.logAuth(user.id, ActivityEventTypes.LOGIN, true, request);
 
     // 7. Send login notification email (async)
-    loginNotificationService.sendLoginNotification({
-      userId: user.id,
-      userEmail: user.email!,
-      userName: user.user_metadata?.full_name || user.email!.split('@')[0],
-      ipAddress: requestInfo.ipAddress || 'Unknown',
-      userAgent: requestInfo.userAgent || 'Unknown',
-      deviceInfo: requestInfo.deviceInfo,
-      locationData: requestInfo.locationData,
-      loginTime: new Date().toISOString()
-    }).catch(emailError => {
-      logger.error({ error: emailError instanceof Error ? emailError : undefined }, 'Failed to send login notification email');
-    });
+    loginNotificationService
+      .sendLoginNotification({
+        userId: user.id,
+        userEmail: user.email!,
+        userName: user.user_metadata?.full_name || user.email!.split('@')[0],
+        ipAddress: requestInfo.ipAddress || 'Unknown',
+        userAgent: requestInfo.userAgent || 'Unknown',
+        deviceInfo: requestInfo.deviceInfo,
+        locationData: requestInfo.locationData,
+        loginTime: new Date().toISOString(),
+      })
+      .catch((emailError) => {
+        logger.error(
+          { error: emailError instanceof Error ? emailError : undefined },
+          'Failed to send login notification email'
+        );
+      });
 
     // 8. Return success response with session data
     return formatSuccess({
@@ -171,15 +171,14 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
         id: user.id,
         email: user.email,
         role: user.role,
-        last_sign_in_at: user.last_sign_in_at
+        last_sign_in_at: user.last_sign_in_at,
       },
       session: {
         access_token: authData.session.access_token,
         refresh_token: authData.session.refresh_token,
-        expires_at: authData.session.expires_at
-      }
+        expires_at: authData.session.expires_at,
+      },
     });
-
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
@@ -189,7 +188,7 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
         endpoint,
         method,
         statusCode: 500,
-        userMessageKey: 'default'
+        userMessageKey: 'default',
       }
     );
     return formatError(structuredError);

@@ -49,7 +49,8 @@ export default function PaymentGateways() {
       });
       setEditingGateway(null);
       setIsCreating(false);
-    } catch {
+    } catch (err) {
+      logger.error({ err: err as Error }, 'Failed to save payment gateway');
       setMessage({ type: 'error', text: 'Failed to save payment gateway' });
     }
   };
@@ -66,7 +67,8 @@ export default function PaymentGateways() {
         try {
           await deleteGatewayMutation.mutateAsync(id);
           setMessage({ type: 'success', text: 'Payment gateway deleted successfully!' });
-        } catch {
+        } catch (err) {
+          logger.error({ err: err as Error }, 'Failed to delete payment gateway');
           setMessage({ type: 'error', text: 'Failed to delete payment gateway' });
         } finally {
           setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
@@ -79,7 +81,8 @@ export default function PaymentGateways() {
     try {
       await setDefaultMutation.mutateAsync(id);
       setMessage({ type: 'success', text: 'Default payment gateway updated!' });
-    } catch {
+    } catch (err) {
+      logger.error({ err: err as Error }, 'Failed to update default gateway');
       setMessage({ type: 'error', text: 'Failed to update default gateway' });
     }
   };

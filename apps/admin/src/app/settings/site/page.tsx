@@ -48,7 +48,8 @@ export default function SiteSettings() {
     try {
       await saveMutation.mutateAsync(settings);
       setMessage({ type: 'success', text: 'Site settings saved successfully!' });
-    } catch {
+    } catch (err) {
+      console.error('Failed to save site settings:', err);
       setMessage({ type: 'error', text: 'Failed to save site settings' });
     }
   };

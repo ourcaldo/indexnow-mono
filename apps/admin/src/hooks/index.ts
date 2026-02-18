@@ -5,6 +5,7 @@ export * from './useAdminOrderDetail';
 export * from './useAdminActivity';
 export * from './useAdminActivityDetail';
 export * from './useAdminErrorDetail';
+export * from './useAdminErrorStats';
 export * from './useAdminSiteSettings';
 export * from './useAdminPaymentSettings';
 export * from './useAdminPackages';

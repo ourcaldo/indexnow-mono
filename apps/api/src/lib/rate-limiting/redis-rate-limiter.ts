@@ -28,7 +28,12 @@ function getRedisClient(): Redis | null {
     const redisUrl = process.env.REDIS_URL;
 
     _client = redisUrl
-      ? new Redis(redisUrl, { keyPrefix: 'rl:', lazyConnect: true, maxRetriesPerRequest: 2, enableOfflineQueue: false })
+      ? new Redis(redisUrl, {
+          keyPrefix: 'rl:',
+          lazyConnect: true,
+          maxRetriesPerRequest: 2,
+          enableOfflineQueue: false,
+        })
       : new Redis({
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT || '6379', 10),
@@ -41,7 +46,10 @@ function getRedisClient(): Redis | null {
         });
 
     _client.on('error', (err) => {
-      logger.warn({ error: err.message }, '[RateLimiter] Redis connection error — falling back to in-memory');
+      logger.warn(
+        { error: err.message },
+        '[RateLimiter] Redis connection error — falling back to in-memory'
+      );
       _redisAvailable = false;
     });
 
@@ -51,7 +59,11 @@ function getRedisClient(): Redis | null {
     });
 
     return _client;
-  } catch {
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err : undefined },
+      'Redis rate limiter initialization failed, falling back to in-memory'
+    );
     _redisAvailable = false;
     return null;
   }
@@ -124,16 +136,28 @@ async function redisCheck(key: string, config: RateLimitConfig): Promise<RateLim
     }
 
     if (entry.blocked) {
-      return { allowed: false, remaining: 0, retryAfter: Math.ceil((entry.resetTime - now) / 1000) };
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: Math.ceil((entry.resetTime - now) / 1000),
+      };
     }
 
     if (entry.count >= config.maxAttempts) {
-      return { allowed: false, remaining: 0, retryAfter: Math.ceil((entry.resetTime - now) / 1000) };
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: Math.ceil((entry.resetTime - now) / 1000),
+      };
     }
 
     return { allowed: true, remaining: config.maxAttempts - entry.count, retryAfter: 0 };
-  } catch {
-    return null; // Fallback to in-memory
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err : undefined },
+      'Redis rate limit check failed, allowing request'
+    );
+    return null;
   }
 }
 
@@ -166,7 +190,10 @@ async function redisIncrement(key: string, config: RateLimitConfig): Promise<voi
       await client.setex(key, Math.max(remainingTtl, 1), JSON.stringify(entry));
     }
   } catch (err) {
-    logger.warn({ error: err instanceof Error ? err.message : String(err) }, '[RateLimiter] Redis increment failed');
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err) },
+      '[RateLimiter] Redis increment failed'
+    );
   }
 }
 
@@ -255,7 +282,11 @@ export const redisRateLimiter = {
   async reset(key: string): Promise<void> {
     const client = getRedisClient();
     if (client) {
-      try { await client.del(key); } catch { /* ignore */ }
+      try {
+        await client.del(key);
+      } catch {
+        /* Redis key deletion best-effort */
+      }
     }
     inMemoryStore.delete(key);
   },

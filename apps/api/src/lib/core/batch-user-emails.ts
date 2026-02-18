@@ -29,9 +29,15 @@ export async function batchGetUserEmails(userIds: string[]): Promise<Map<string,
     }
 
     // RPC not available — fall back to parallel individual calls
-    logger.warn({ error: error?.message }, 'get_user_emails_by_ids RPC unavailable, falling back to individual lookups');
-  } catch {
-    logger.warn('get_user_emails_by_ids RPC failed, falling back to individual lookups');
+    logger.warn(
+      { error: error?.message },
+      'get_user_emails_by_ids RPC unavailable, falling back to individual lookups'
+    );
+  } catch (err) {
+    logger.warn(
+      { error: err instanceof Error ? err : undefined },
+      'Batch email RPC fallback triggered'
+    );
   }
 
   // Fallback: parallel getUserById (existing behavior)
@@ -43,7 +49,10 @@ export async function batchGetUserEmails(userIds: string[]): Promise<Map<string,
           emailMap.set(uid, data.user.email);
         }
       } catch (e) {
-        logger.warn({ userId: uid, error: e instanceof Error ? e.message : String(e) }, 'Failed to fetch email for user');
+        logger.warn(
+          { userId: uid, error: e instanceof Error ? e.message : String(e) },
+          'Failed to fetch email for user'
+        );
       }
     })
   );

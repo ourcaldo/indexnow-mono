@@ -17,7 +17,7 @@ const SENSITIVE_KEYS = [
   'client_secret',
   'private_key',
   'access_token',
-  'refresh_token'
+  'refresh_token',
 ];
 
 /**
@@ -30,11 +30,15 @@ export function sanitizePII(data: unknown): unknown {
 
   if (typeof data === 'string') {
     // Try to parse string as JSON if it looks like it
-    if ((data.startsWith('{') && data.endsWith('}')) || (data.startsWith('[') && data.endsWith(']'))) {
+    if (
+      (data.startsWith('{') && data.endsWith('}')) ||
+      (data.startsWith('[') && data.endsWith(']'))
+    ) {
       try {
         const parsed = JSON.parse(data) as unknown;
         return JSON.stringify(sanitizePII(parsed));
       } catch {
+        /* PII sanitization fallback — return raw data */
         return data;
       }
     }
@@ -42,7 +46,7 @@ export function sanitizePII(data: unknown): unknown {
   }
 
   if (Array.isArray(data)) {
-    return data.map(item => sanitizePII(item));
+    return data.map((item) => sanitizePII(item));
   }
 
   if (typeof data === 'object') {
@@ -51,7 +55,7 @@ export function sanitizePII(data: unknown): unknown {
 
     for (const [key, value] of Object.entries(record)) {
       const lowerKey = key.toLowerCase();
-      if (SENSITIVE_KEYS.some(sensitiveKey => lowerKey.includes(sensitiveKey))) {
+      if (SENSITIVE_KEYS.some((sensitiveKey) => lowerKey.includes(sensitiveKey))) {
         sanitized[key] = '[REDACTED]';
       } else {
         sanitized[key] = sanitizePII(value);

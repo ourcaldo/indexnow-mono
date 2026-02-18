@@ -989,6 +989,7 @@ export class HealthChecker implements IHealthChecker {
         const result = await this.apiClient.testConnection();
         return result.status === 'healthy';
       } catch {
+        /* Service unavailable */
         return false;
       }
     }
@@ -1022,6 +1023,7 @@ export class HealthChecker implements IHealthChecker {
       // If we can successfully query the table, database is healthy
       return true;
     } catch {
+      /* Service unavailable */
       return false;
     }
   }
@@ -1038,7 +1040,9 @@ export class HealthChecker implements IHealthChecker {
     if (!this.activeIncidents.has(serviceName)) {
       const incident: HealthIncident = {
         id: `incident_${serviceName}_${Date.now()}`,
-        severity: (healthCheck.status === 'unhealthy' ? 'high' : 'medium') as HealthIncident['severity'],
+        severity: (healthCheck.status === 'unhealthy'
+          ? 'high'
+          : 'medium') as HealthIncident['severity'],
         component: serviceName,
         description: healthCheck.error || `${serviceName} is ${healthCheck.status}`,
         started_at: new Date(),

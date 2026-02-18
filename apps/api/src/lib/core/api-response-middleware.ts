@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireServerSuperAdminAuth } from '@indexnow/auth/server';
 import { type AdminUser } from '@indexnow/auth';
 import { ErrorHandlingService, logger } from '../monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Json , getClientIP} from '@indexnow/shared';
-import { formatSuccess, formatError, type ApiSuccessResponse, type ApiErrorResponse } from './api-response-formatter';
+import { ErrorType, ErrorSeverity, type Json, getClientIP } from '@indexnow/shared';
+import {
+  formatSuccess,
+  formatError,
+  type ApiSuccessResponse,
+  type ApiErrorResponse,
+} from './api-response-formatter';
 import { authenticateRequest, type AuthenticatedRequest } from './api-middleware';
 import { validateUuidParam } from './validate-params';
 
@@ -42,7 +47,7 @@ async function validateRouteParams(context: RouteContext): Promise<NextResponse 
       }
     }
   } catch {
-    // If params resolution fails, let the handler deal with it
+    /* Params resolution fallback */
   }
   return null;
 }
@@ -96,7 +101,7 @@ export function adminApiWrapper<T = unknown>(
       try {
         adminUser = await requireServerSuperAdminAuth(request as any);
       } catch (error) {
-        // If auth fails, requireServerSuperAdminAuth throws. 
+        // If auth fails, requireServerSuperAdminAuth throws.
         // We catch it here to allow the custom unauthorized handling below.
         adminUser = null;
       }
@@ -105,16 +110,19 @@ export function adminApiWrapper<T = unknown>(
         const ipAddress = getClientIP(request) ?? 'unknown';
         const userAgent = request.headers.get('user-agent') || 'unknown';
 
-        logger.warn({
-          eventType: 'unauthorized_access',
-          endpoint,
-          method,
-          ipAddress,
-          userAgent,
-          reason: 'Attempted to access admin endpoint without super admin privileges',
-          requiredRole: 'super_admin',
-          severity: 'high'
-        }, `Unauthorized admin access attempt: ${method} ${endpoint}`);
+        logger.warn(
+          {
+            eventType: 'unauthorized_access',
+            endpoint,
+            method,
+            ipAddress,
+            userAgent,
+            reason: 'Attempted to access admin endpoint without super admin privileges',
+            requiredRole: 'super_admin',
+            severity: 'high',
+          },
+          `Unauthorized admin access attempt: ${method} ${endpoint}`
+        );
 
         const error = await ErrorHandlingService.createError(
           ErrorType.AUTHORIZATION,
@@ -124,19 +132,22 @@ export function adminApiWrapper<T = unknown>(
             endpoint,
             method,
             statusCode: 403,
-            userMessageKey: 'default'
+            userMessageKey: 'default',
           }
         );
 
         return NextResponse.json(formatError(error), { status: 403 });
       }
 
-      logger.info({
-        userId: adminUser.id,
-        endpoint,
-        method,
-        adminEmail: adminUser.email
-      }, `Admin API access: ${method} ${endpoint}`);
+      logger.info(
+        {
+          userId: adminUser.id,
+          endpoint,
+          method,
+          adminEmail: adminUser.email,
+        },
+        `Admin API access: ${method} ${endpoint}`
+      );
 
       // Validate UUID route params before running handler
       const paramError = await validateRouteParams(context);
@@ -159,7 +170,6 @@ export function adminApiWrapper<T = unknown>(
         const statusCode = response.error.statusCode || 500;
         return NextResponse.json(response, { status: statusCode, headers: CACHE_HEADERS.private });
       }
-
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
@@ -169,11 +179,14 @@ export function adminApiWrapper<T = unknown>(
           endpoint,
           method,
           statusCode: 500,
-          userMessageKey: 'default'
+          userMessageKey: 'default',
         }
       );
 
-      return NextResponse.json(formatError(structuredError), { status: 500, headers: CACHE_HEADERS.private });
+      return NextResponse.json(formatError(structuredError), {
+        status: 500,
+        headers: CACHE_HEADERS.private,
+      });
     }
   };
 }
@@ -196,15 +209,20 @@ export function authenticatedApiWrapper<T = unknown>(
       const authResult = await authenticateRequest(request, endpoint, method);
 
       if (!authResult.success) {
-        return NextResponse.json(formatError(authResult.error), { status: authResult.error.statusCode || 401 });
+        return NextResponse.json(formatError(authResult.error), {
+          status: authResult.error.statusCode || 401,
+        });
       }
 
-      logger.debug({
-        userId: authResult.data.userId,
-        endpoint,
-        method,
-        userEmail: authResult.data.user.email
-      }, `Authenticated API access: ${method} ${endpoint}`);
+      logger.debug(
+        {
+          userId: authResult.data.userId,
+          endpoint,
+          method,
+          userEmail: authResult.data.user.email,
+        },
+        `Authenticated API access: ${method} ${endpoint}`
+      );
 
       // Validate UUID route params before running handler
       const paramError = await validateRouteParams(context);
@@ -226,7 +244,6 @@ export function authenticatedApiWrapper<T = unknown>(
         const statusCode = response.error.statusCode || 500;
         return NextResponse.json(response, { status: statusCode, headers: CACHE_HEADERS.private });
       }
-
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
@@ -236,11 +253,14 @@ export function authenticatedApiWrapper<T = unknown>(
           endpoint,
           method,
           statusCode: 500,
-          userMessageKey: 'default'
+          userMessageKey: 'default',
         }
       );
 
-      return NextResponse.json(formatError(structuredError), { status: 500, headers: CACHE_HEADERS.private });
+      return NextResponse.json(formatError(structuredError), {
+        status: 500,
+        headers: CACHE_HEADERS.private,
+      });
     }
   };
 }
@@ -249,18 +269,24 @@ export function authenticatedApiWrapper<T = unknown>(
  * Public API wrapper - No authentication required
  */
 export function publicApiWrapper<T = unknown>(
-  handler: (request: NextRequest, context: RouteContext) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
+  handler: (
+    request: NextRequest,
+    context: RouteContext
+  ) => Promise<ApiSuccessResponse<T> | ApiErrorResponse | NextResponse>
 ) {
   return async (request: NextRequest, context: RouteContext): Promise<NextResponse> => {
     const endpoint = new URL(request.url).pathname;
     const method = request.method;
 
     try {
-      logger.debug({
-        endpoint,
-        method,
-        ipAddress: getClientIP(request) ?? 'unknown'
-      }, `Public API access: ${method} ${endpoint}`);
+      logger.debug(
+        {
+          endpoint,
+          method,
+          ipAddress: getClientIP(request) ?? 'unknown',
+        },
+        `Public API access: ${method} ${endpoint}`
+      );
 
       // Validate UUID route params before running handler
       const paramError = await validateRouteParams(context);
@@ -282,7 +308,6 @@ export function publicApiWrapper<T = unknown>(
         const statusCode = response.error.statusCode || 500;
         return NextResponse.json(response, { status: statusCode, headers: CACHE_HEADERS.public });
       }
-
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
@@ -292,11 +317,14 @@ export function publicApiWrapper<T = unknown>(
           endpoint,
           method,
           statusCode: 500,
-          userMessageKey: 'default'
+          userMessageKey: 'default',
         }
       );
 
-      return NextResponse.json(formatError(structuredError), { status: 500, headers: CACHE_HEADERS.public });
+      return NextResponse.json(formatError(structuredError), {
+        status: 500,
+        headers: CACHE_HEADERS.public,
+      });
     }
   };
 }
@@ -315,11 +343,9 @@ export async function withDatabaseOperation<T>(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Database operation failed';
     logger.error({ error: err instanceof Error ? err : undefined }, message);
-    const structuredError = await ErrorHandlingService.createError(
-      ErrorType.DATABASE,
-      message,
-      { severity: ErrorSeverity.HIGH }
-    );
+    const structuredError = await ErrorHandlingService.createError(ErrorType.DATABASE, message, {
+      severity: ErrorSeverity.HIGH,
+    });
     return NextResponse.json(formatError(structuredError), { status: 500 });
   }
 }

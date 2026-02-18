@@ -1,8 +1,20 @@
 import { NextRequest } from 'next/server';
-import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
+import {
+  authenticatedApiWrapper,
+  formatSuccess,
+  formatError,
+} from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, type PackageFeatures, type PackageQuotaLimits, type PackagePricingTiers , getClientIP} from '@indexnow/shared';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import {
+  ErrorType,
+  ErrorSeverity,
+  type Database,
+  type PackageFeatures,
+  type PackageQuotaLimits,
+  type PackagePricingTiers,
+  getClientIP,
+} from '@indexnow/shared';
 
 // Derived types from Database schema
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
@@ -13,20 +25,20 @@ type UserPackageInfo = Pick<UserProfileRow, 'package_id' | 'subscription_end_dat
 
 // Transformed package for frontend
 interface TransformedPackage {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    price: number;
-    currency: string;
-    billing_period: string;
-    features: PackageFeatures | null;
-    quota_limits: PackageQuotaLimits | null;
-    is_popular: boolean;
-    is_current: boolean;
-    pricing_tiers: PackagePricingTiers | null;
-    user_country: string | null;
-    free_trial_enabled: boolean;
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  billing_period: string;
+  features: PackageFeatures | null;
+  quota_limits: PackageQuotaLimits | null;
+  is_popular: boolean;
+  is_current: boolean;
+  pricing_tiers: PackagePricingTiers | null;
+  user_country: string | null;
+  free_trial_enabled: boolean;
 }
 
 /**
@@ -34,109 +46,122 @@ interface TransformedPackage {
  * Get available billing packages for subscription selection
  */
 export const GET = authenticatedApiWrapper(async (request, auth) => {
-    try {
-        // Fetch active packages
-        const packages = await SecureServiceRoleWrapper.executeWithUserSession<PaymentPackageRow[]>(
-            auth.supabase,
-            {
-                userId: auth.userId,
-                operation: 'get_active_billing_packages',
-                source: 'billing/packages',
-                reason: 'User fetching available billing packages for subscription selection',
-                metadata: { endpoint: '/api/v1/billing/packages', packageFilter: 'active_only' },
-                ipAddress: getClientIP(request),
-                userAgent: request.headers.get('user-agent') ?? undefined
-            },
-            { table: 'indb_payment_packages', operationType: 'select' },
-            async (db) => {
-                const { data, error } = await db
-                    .from('indb_payment_packages')
-                    .select('*')
-                    .eq('is_active', true)
-                    .is('deleted_at', null)
-                    .order('sort_order', { ascending: true })
-                    .limit(50);
+  try {
+    // Fetch active packages
+    const packages = await SecureServiceRoleWrapper.executeWithUserSession<PaymentPackageRow[]>(
+      auth.supabase,
+      {
+        userId: auth.userId,
+        operation: 'get_active_billing_packages',
+        source: 'billing/packages',
+        reason: 'User fetching available billing packages for subscription selection',
+        metadata: { endpoint: '/api/v1/billing/packages', packageFilter: 'active_only' },
+        ipAddress: getClientIP(request),
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      },
+      { table: 'indb_payment_packages', operationType: 'select' },
+      async (db) => {
+        const { data, error } = await db
+          .from('indb_payment_packages')
+          .select('*')
+          .eq('is_active', true)
+          .is('deleted_at', null)
+          .order('sort_order', { ascending: true })
+          .limit(50);
 
-                if (error) throw error;
-                return data ?? [];
-            }
-        );
+        if (error) throw error;
+        return data ?? [];
+      }
+    );
 
-        if (!packages || packages.length === 0) {
-            const error = await ErrorHandlingService.createError(
-                ErrorType.NOT_FOUND,
-                'No packages found',
-                {
-                    severity: ErrorSeverity.LOW,
-                    userId: auth.userId,
-                    endpoint: '/api/v1/billing/packages',
-                    statusCode: 404
-                }
-            );
-            return formatError(error);
+    if (!packages || packages.length === 0) {
+      const error = await ErrorHandlingService.createError(
+        ErrorType.NOT_FOUND,
+        'No packages found',
+        {
+          severity: ErrorSeverity.LOW,
+          userId: auth.userId,
+          endpoint: '/api/v1/billing/packages',
+          statusCode: 404,
         }
-
-        // Fetch user profile for current package info
-        let userProfile: UserPackageInfo | null = null;
-        try {
-            userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserPackageInfo | null>(
-                auth.supabase,
-                {
-                    userId: auth.userId,
-                    operation: 'get_user_billing_profile',
-                    source: 'billing/packages',
-                    reason: 'User fetching their billing profile information for package display',
-                    metadata: { endpoint: '/api/v1/billing/packages', profileFields: 'package_id, subscription_end_date, country' },
-                    ipAddress: getClientIP(request),
-                    userAgent: request.headers.get('user-agent') ?? undefined
-                },
-                { table: 'indb_auth_user_profiles', operationType: 'select' },
-                async (db) => {
-                    const { data, error } = await db
-                        .from('indb_auth_user_profiles')
-                        .select('package_id, subscription_end_date, country')
-                        .eq('user_id', auth.userId)
-                        .single();
-
-                    if (error && error.code !== 'PGRST116') throw error;
-                    return data;
-                }
-            );
-        } catch {
-            userProfile = null;
-        }
-
-        // Transform packages for frontend consumption
-        const transformedPackages: TransformedPackage[] = packages.map(pkg => ({
-            id: pkg.id,
-            name: pkg.name,
-            slug: pkg.slug,
-            description: pkg.description,
-            price: pkg.price,
-            currency: pkg.currency,
-            billing_period: pkg.billing_period,
-            features: pkg.features,
-            quota_limits: pkg.quota_limits,
-            is_popular: pkg.is_popular,
-            is_current: userProfile ? pkg.id === userProfile.package_id : false,
-            pricing_tiers: pkg.pricing_tiers as PackagePricingTiers | null,
-            user_country: userProfile?.country ?? null,
-            free_trial_enabled: pkg.free_trial_enabled
-        }));
-
-        return formatSuccess({
-            packages: transformedPackages,
-            current_package_id: userProfile?.package_id ?? null,
-            subscription_end_date: userProfile?.subscription_end_date ?? null,
-            currency: 'USD',
-            user_country: userProfile?.country ?? null
-        });
-    } catch (error) {
-        const structuredError = await ErrorHandlingService.createError(
-            ErrorType.DATABASE,
-            error instanceof Error ? error : new Error(String(error)),
-            { severity: ErrorSeverity.HIGH, userId: auth.userId, endpoint: '/api/v1/billing/packages', method: 'GET', statusCode: 500 }
-        );
-        return formatError(structuredError);
+      );
+      return formatError(error);
     }
+
+    // Fetch user profile for current package info
+    let userProfile: UserPackageInfo | null = null;
+    try {
+      userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserPackageInfo | null>(
+        auth.supabase,
+        {
+          userId: auth.userId,
+          operation: 'get_user_billing_profile',
+          source: 'billing/packages',
+          reason: 'User fetching their billing profile information for package display',
+          metadata: {
+            endpoint: '/api/v1/billing/packages',
+            profileFields: 'package_id, subscription_end_date, country',
+          },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') ?? undefined,
+        },
+        { table: 'indb_auth_user_profiles', operationType: 'select' },
+        async (db) => {
+          const { data, error } = await db
+            .from('indb_auth_user_profiles')
+            .select('package_id, subscription_end_date, country')
+            .eq('user_id', auth.userId)
+            .single();
+
+          if (error && error.code !== 'PGRST116') throw error;
+          return data;
+        }
+      );
+    } catch (err) {
+      logger.warn(
+        { error: err instanceof Error ? err : undefined },
+        'Failed to fetch user profile for packages'
+      );
+      userProfile = null;
+    }
+
+    // Transform packages for frontend consumption
+    const transformedPackages: TransformedPackage[] = packages.map((pkg) => ({
+      id: pkg.id,
+      name: pkg.name,
+      slug: pkg.slug,
+      description: pkg.description,
+      price: pkg.price,
+      currency: pkg.currency,
+      billing_period: pkg.billing_period,
+      features: pkg.features,
+      quota_limits: pkg.quota_limits,
+      is_popular: pkg.is_popular,
+      is_current: userProfile ? pkg.id === userProfile.package_id : false,
+      pricing_tiers: pkg.pricing_tiers as PackagePricingTiers | null,
+      user_country: userProfile?.country ?? null,
+      free_trial_enabled: pkg.free_trial_enabled,
+    }));
+
+    return formatSuccess({
+      packages: transformedPackages,
+      current_package_id: userProfile?.package_id ?? null,
+      subscription_end_date: userProfile?.subscription_end_date ?? null,
+      currency: 'USD',
+      user_country: userProfile?.country ?? null,
+    });
+  } catch (error) {
+    const structuredError = await ErrorHandlingService.createError(
+      ErrorType.DATABASE,
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        severity: ErrorSeverity.HIGH,
+        userId: auth.userId,
+        endpoint: '/api/v1/billing/packages',
+        method: 'GET',
+        statusCode: 500,
+      }
+    );
+    return formatError(structuredError);
+  }
 });

@@ -1,34 +1,27 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import {
-  ArrowLeft,
-  Edit3,
-  Save,
-  X,
-  XCircle
-} from 'lucide-react'
+import { useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Edit3, Save, X, XCircle } from 'lucide-react';
 
 // Import extracted components
-import { UserProfileCard } from './components/UserProfileCard'
-import { UserActionsPanel } from './components/UserActionsPanel'
-import { PackageSubscriptionCard } from './components/PackageSubscriptionCard'
-import { UserActivityCard } from './components/UserActivityCard'
-import { UserSecurityCard } from './components/UserSecurityCard'
-import { PackageChangeModal } from './components/PackageChangeModal'
-import { AdminUserDetailSkeleton, ErrorState } from '@indexnow/ui'
-import { ConfirmationDialog } from '@indexnow/ui/modals'
-
+import { UserProfileCard } from './components/UserProfileCard';
+import { UserActionsPanel } from './components/UserActionsPanel';
+import { PackageSubscriptionCard } from './components/PackageSubscriptionCard';
+import { UserActivityCard } from './components/UserActivityCard';
+import { UserSecurityCard } from './components/UserSecurityCard';
+import { PackageChangeModal } from './components/PackageChangeModal';
+import { AdminUserDetailSkeleton, ErrorState } from '@indexnow/ui';
+import { ConfirmationDialog } from '@indexnow/ui/modals';
 
 // Import custom hooks
-import { useUserData } from './hooks/useUserData'
-import { useUserManagement } from './hooks/useUserManagement'
+import { useUserData } from './hooks/useUserData';
+import { useUserManagement } from './hooks/useUserManagement';
 
 export default function UserDetail() {
-  const params = useParams()
-  const router = useRouter()
-  const userId = params.id as string
+  const params = useParams();
+  const router = useRouter();
+  const userId = params.id as string;
 
   // Use custom hooks
   const {
@@ -41,8 +34,8 @@ export default function UserDetail() {
     securityLoading,
     fetchUser,
     fetchUserActivity,
-    fetchUserSecurity
-  } = useUserData(userId)
+    fetchUserSecurity,
+  } = useUserData(userId);
 
   const {
     actionLoading,
@@ -66,8 +59,8 @@ export default function UserDetail() {
     handleSaveEdit,
     handlePackageChangeSubmit,
     handleEditFormChange,
-    handleTogglePasswordVisibility
-  } = useUserManagement()
+    handleTogglePasswordVisibility,
+  } = useUserManagement();
 
   // Initialize edit form when user data is loaded
   useEffect(() => {
@@ -76,39 +69,41 @@ export default function UserDetail() {
         full_name: user.full_name || '',
         role: user.role || '',
         email_notifications: user.email_notifications || false,
-        phone_number: user.phone_number || ''
-      })
+        phone_number: user.phone_number || '',
+      });
     }
-  }, [user, editMode, setEditForm])
+  }, [user, editMode, setEditForm]);
 
   // Action handlers with callback functions
-  const handleSuspendUserWithRefresh = () => handleSuspendUser(userId, fetchUser)
-  const handleResetPasswordWithCallback = () => handleResetPassword(userId)
-  const handleResetQuotaWithRefresh = () => handleResetQuota(userId, fetchUser)
-  const handleExtendSubscriptionWithRefresh = () => handleExtendSubscription(userId, fetchUser)
-  const handleSaveEditWithRefresh = () => handleSaveEdit(userId, editForm, () => {
-    fetchUser()
-    fetchUserActivity()
-    fetchUserSecurity()
-  })
-  const handlePackageChangeSubmitWithRefresh = () => handlePackageChangeSubmit(userId, selectedPackageId, fetchUser)
+  const handleSuspendUserWithRefresh = () => handleSuspendUser(userId, fetchUser);
+  const handleResetPasswordWithCallback = () => handleResetPassword(userId);
+  const handleResetQuotaWithRefresh = () => handleResetQuota(userId, fetchUser);
+  const handleExtendSubscriptionWithRefresh = () => handleExtendSubscription(userId, fetchUser);
+  const handleSaveEditWithRefresh = () =>
+    handleSaveEdit(userId, editForm, () => {
+      fetchUser();
+      fetchUserActivity();
+      fetchUserSecurity();
+    });
+  const handlePackageChangeSubmitWithRefresh = () =>
+    handlePackageChangeSubmit(userId, selectedPackageId, fetchUser);
 
   // Loading state
   if (loading) {
-    return <AdminUserDetailSkeleton />
+    return <AdminUserDetailSkeleton />;
   }
 
   // User not found state
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-96">
+      <div className="flex min-h-96 flex-col items-center justify-center">
         <ErrorState
           title="User Not Found"
           message="The user you're looking for doesn't exist."
           showHomeButton
         />
       </div>
-    )
+    );
   }
 
   return (
@@ -118,12 +113,12 @@ export default function UserDetail() {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => router.back()}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">User Details</h1>
+            <h1 className="text-foreground text-2xl font-bold">User Details</h1>
             <p className="text-muted-foreground mt-1">Manage user account and permissions</p>
           </div>
         </div>
@@ -132,7 +127,7 @@ export default function UserDetail() {
           {!editMode ? (
             <button
               onClick={() => setEditMode(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors"
             >
               <Edit3 className="h-4 w-4" />
               <span>Edit User</span>
@@ -141,7 +136,7 @@ export default function UserDetail() {
             <>
               <button
                 onClick={() => setEditMode(false)}
-                className="px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-secondary transition-colors flex items-center space-x-2"
+                className="border-border text-muted-foreground hover:bg-secondary flex items-center space-x-2 rounded-lg border px-4 py-2 transition-colors"
               >
                 <X className="h-4 w-4" />
                 <span>Cancel</span>
@@ -149,7 +144,7 @@ export default function UserDetail() {
               <button
                 onClick={handleSaveEditWithRefresh}
                 disabled={actionLoading.editData}
-                className="px-4 py-2 bg-success text-success-foreground rounded-lg hover:bg-success/90 transition-colors flex items-center space-x-2 disabled:opacity-50"
+                className="bg-success text-success-foreground hover:bg-success/90 flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
                 <span>{actionLoading.editData ? 'Saving...' : 'Save Changes'}</span>
@@ -184,18 +179,10 @@ export default function UserDetail() {
       />
 
       {/* Recent Activity Card */}
-      <UserActivityCard
-        activityLogs={activityLogs}
-        activityLoading={activityLoading}
-      />
+      <UserActivityCard activityLogs={activityLogs} activityLoading={activityLoading} />
 
       {/* Security Overview Card */}
-      <UserSecurityCard
-        securityData={securityData}
-        securityLoading={securityLoading}
-      />
-
-
+      <UserSecurityCard securityData={securityData} securityLoading={securityLoading} />
 
       {/* Package Change Modal */}
       <PackageChangeModal
@@ -216,8 +203,8 @@ export default function UserDetail() {
         confirmText={confirmConfig.confirmText}
         variant={confirmConfig.variant}
         onConfirm={confirmConfig.onConfirm}
-        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
       />
     </div>
-  )
+  );
 }

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { supabase, SecureServiceRoleHelpers } from '@indexnow/database';
 import { registerSchema, ErrorType, ErrorSeverity, getClientIP, sleep } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
 
@@ -69,8 +69,11 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           request,
           error.message
         );
-      } catch {
-        // Silently fail activity logging
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err : undefined },
+          'Failed to log registration activity'
+        );
       }
 
       return formatError(authError);
@@ -111,7 +114,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
               break;
             }
           } catch {
-            // Continue polling
+            /* Retry: profile not ready yet */
           }
         }
 
@@ -130,8 +133,11 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
             { user_id: data.user.id }
           );
         }
-      } catch {
-        // Silently fail profile update - registration still succeeded
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err : undefined },
+          'Failed to update user full_name during registration'
+        );
       }
     }
 
@@ -139,8 +145,11 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     if (data.user?.id) {
       try {
         await ActivityLogger.logAuth(data.user.id, ActivityEventTypes.REGISTER, true, request);
-      } catch {
-        // Silently fail activity logging
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err : undefined },
+          'Failed to log registration completion activity'
+        );
       }
     }
 

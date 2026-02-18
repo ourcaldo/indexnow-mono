@@ -1,9 +1,9 @@
-import { supabase as _supabase, authService } from '@indexnow/supabase-client'
-import { type Json, type Database, logger } from '@indexnow/shared'
-import type { SupabaseClient } from '@indexnow/database/client'
+import { supabase as _supabase, authService } from '@indexnow/supabase-client';
+import { type Json, type Database, logger } from '@indexnow/shared';
+import type { SupabaseClient } from '@indexnow/database/client';
 
 // Re-assert the Database generic lost through the external package re-export chain during DTS generation
-const supabase = _supabase as unknown as SupabaseClient<Database>
+const supabase = _supabase as unknown as SupabaseClient<Database>;
 
 // AdminUser type is now defined in server-auth.ts and exported from index.ts
 
@@ -17,9 +17,9 @@ export class AdminAuthService {
    */
   async getCurrentAdminUser() {
     try {
-      const currentUser = await authService.getCurrentUser()
+      const currentUser = await authService.getCurrentUser();
       if (!currentUser) {
-        return null
+        return null;
       }
 
       try {
@@ -27,27 +27,31 @@ export class AdminAuthService {
           .from('indb_auth_user_profiles')
           .select('role, full_name')
           .eq('user_id', currentUser.id)
-          .limit(1)
+          .limit(1);
 
         if (!error && profiles && profiles.length > 0) {
-          const profile = profiles[0]
-          const role = profile.role || 'user'
+          const profile = profiles[0];
+          const role = profile.role || 'user';
           return {
             id: currentUser.id,
             email: currentUser.email,
             name: profile.full_name || currentUser.name,
             role,
             isAdmin: role === 'admin' || role === 'super_admin',
-            isSuperAdmin: role === 'super_admin'
-          }
+            isSuperAdmin: role === 'super_admin',
+          };
         }
-      } catch {
-        // Silent failure for profile fetch
+      } catch (err) {
+        logger.warn(
+          { error: err instanceof Error ? err : undefined },
+          'Failed to fetch admin profile'
+        );
       }
 
-      return null
-    } catch {
-      return null
+      return null;
+    } catch (err) {
+      logger.warn({ error: err instanceof Error ? err : undefined }, 'Admin auth check failed');
+      return null;
     }
   }
 
@@ -55,16 +59,16 @@ export class AdminAuthService {
    * Check if current user has admin access
    */
   async hasAdminAccess(): Promise<boolean> {
-    const adminUser = await this.getCurrentAdminUser()
-    return adminUser?.isAdmin || false
+    const adminUser = await this.getCurrentAdminUser();
+    return adminUser?.isAdmin || false;
   }
 
   /**
    * Check if current user has super admin access
    */
   async hasSuperAdminAccess(): Promise<boolean> {
-    const adminUser = await this.getCurrentAdminUser()
-    return adminUser?.isSuperAdmin || false
+    const adminUser = await this.getCurrentAdminUser();
+    return adminUser?.isSuperAdmin || false;
   }
 
   /**
@@ -78,9 +82,9 @@ export class AdminAuthService {
     metadata?: Record<string, Json>
   ): Promise<void> {
     try {
-      const adminUser = await this.getCurrentAdminUser()
+      const adminUser = await this.getCurrentAdminUser();
       if (!adminUser?.isAdmin) {
-        return
+        return;
       }
 
       const logContext = {
@@ -93,29 +97,28 @@ export class AdminAuthService {
           actionDescription,
           targetType: targetType || null,
           targetId: targetId || null,
-          originalMetadata: JSON.stringify(metadata || {})
-        }
-      }
+          originalMetadata: JSON.stringify(metadata || {}),
+        },
+      };
 
       // Dynamic import to avoid pulling server-only modules into client bundle
-      const { SecureServiceRoleHelpers } = await import('@indexnow/database')
+      const { SecureServiceRoleHelpers } = await import('@indexnow/database');
 
-      await SecureServiceRoleHelpers.secureInsert(
-        logContext,
-        'indb_admin_activity_logs',
-        {
-          admin_id: adminUser.id,
-          action_type: actionType,
-          action_description: actionDescription,
-          target_type: targetType || null,
-          target_id: targetId || null,
-          metadata: metadata || {}
-        }
-      )
+      await SecureServiceRoleHelpers.secureInsert(logContext, 'indb_admin_activity_logs', {
+        admin_id: adminUser.id,
+        action_type: actionType,
+        action_description: actionDescription,
+        target_type: targetType || null,
+        target_id: targetId || null,
+        metadata: metadata || {},
+      });
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, '[AdminAuth] Failed to log admin activity')
+      logger.error(
+        { error: error instanceof Error ? error : undefined },
+        '[AdminAuth] Failed to log admin activity'
+      );
     }
   }
 }
 
-export const adminAuthService = new AdminAuthService()
+export const adminAuthService = new AdminAuthService();

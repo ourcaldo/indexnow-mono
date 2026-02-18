@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { logger } from '@indexnow/shared';
+import type { AppUserProfile, TrialEligibility, UserSubscription } from '@indexnow/shared';
 import { usePageViewLogger, useActivityLogger, useDashboardData } from '@indexnow/ui/hooks';
 import { useDomain } from '@indexnow/ui/contexts';
 import type { ActivityItem } from '@indexnow/ui/dashboard';
@@ -15,17 +16,12 @@ interface RankingDataItem {
 }
 
 export function useDashboardPageData() {
-  // Use `any` for state from API to avoid coupling local types to shared-package internals.
-  // The original monolithic page.tsx relied on the same loose typing.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<AppUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [packagesData, setPackagesData] = useState<any>(null);
+  const [packagesData, setPackagesData] = useState<UserSubscription | null>(null);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [startingTrial, setStartingTrial] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [trialEligible, setTrialEligible] = useState<any>(null);
+  const [trialEligible, setTrialEligible] = useState<TrialEligibility | null>(null);
 
   // Log page view and dashboard activities
   usePageViewLogger('/dashboard', 'Dashboard', { section: 'main_dashboard' });
@@ -124,7 +120,7 @@ export function useDashboardPageData() {
         }
       );
     }
-  }, [dashboardData, dashboardLoading]);
+  }, [dashboardData, dashboardLoading, logDashboardActivity]);
 
   // Handle dashboard loading errors
   useEffect(() => {
@@ -135,7 +131,7 @@ export function useDashboardPageData() {
       });
       setLoading(false);
     }
-  }, [dashboardError]);
+  }, [dashboardError, logDashboardActivity]);
 
   const rankingData = useMemo((): RankingDataItem[] => {
     return domainKeywords.map((keyword: KeywordData) => ({
@@ -179,7 +175,9 @@ export function useDashboardPageData() {
         description: `Tracking ${domainKeywords.length} keywords`,
         timestamp: domainActivityTime.toISOString(),
         metadata: {
-          domain: (domains.find((d) => d.id === selectedDomainId) as any)?.display_name || 'Domain',
+          domain:
+            ((domains.find((d) => d.id === selectedDomainId) as unknown as Record<string, unknown>)
+              ?.display_name as string) || 'Domain',
         },
       });
     }

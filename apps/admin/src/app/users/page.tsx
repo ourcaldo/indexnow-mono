@@ -66,7 +66,7 @@ export default function UserManagement() {
         setConfirmConfig((prev) => ({ ...prev, loading: true }));
         try {
           await changeRoleMutation.mutateAsync({ userId, newRole });
-        } catch {
+        } catch (_err) {
           // Error handled by mutation's onError
         }
         setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));
@@ -86,7 +86,7 @@ export default function UserManagement() {
         setConfirmConfig((prev) => ({ ...prev, loading: true }));
         try {
           await suspendMutation.mutateAsync(userId);
-        } catch {
+        } catch (_err) {
           // Error handled by mutation's onError
         }
         setConfirmConfig((prev) => ({ ...prev, isOpen: false, loading: false }));

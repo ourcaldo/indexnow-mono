@@ -1,83 +1,98 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Badge, Separator, useToast } from '@indexnow/ui'
-import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
-import { BILLING_ENDPOINTS, formatCurrency, logger, type Json } from '@indexnow/shared'
-import { authenticatedFetch } from '@indexnow/supabase-client'
-import { supabaseBrowser } from '@indexnow/database/client'
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  Label,
+  Badge,
+  Separator,
+  useToast,
+} from '@indexnow/ui';
+import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { BILLING_ENDPOINTS, formatCurrency, logger, type Json } from '@indexnow/shared';
+import { authenticatedFetch } from '@indexnow/supabase-client';
+import { supabaseBrowser } from '@indexnow/database/client';
 
 interface Transaction {
-  id: string
-  user_id: string
-  package_id: string
-  gateway_id: string
-  transaction_type: string
-  transaction_status: string
-  amount: number
-  currency: string
-  payment_proof_url: string | null
-  billing_period: string
-  created_at: string
-  metadata: Record<string, Json>
+  id: string;
+  user_id: string;
+  package_id: string;
+  gateway_id: string;
+  transaction_type: string;
+  transaction_status: string;
+  amount: number;
+  currency: string;
+  payment_proof_url: string | null;
+  billing_period: string;
+  created_at: string;
+  metadata: Record<string, Json>;
   package: {
-    id: string
-    name: string
-    description: string
-    features: string[]
-  }
+    id: string;
+    name: string;
+    description: string;
+    features: string[];
+  };
   gateway: {
-    id: string
-    name: string
+    id: string;
+    name: string;
     configuration: {
-      bank_name?: string
-      account_name?: string
-      account_number?: string
-    }
-  }
+      bank_name?: string;
+      account_name?: string;
+      account_number?: string;
+    };
+  };
   customer_info: {
-    first_name: string
-    last_name: string
-    email: string
-    phone_number: string
-  }
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+  };
 }
 
 export default function OrderCompletedPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { addToast } = useToast()
-  const [transaction, setTransaction] = useState<Transaction | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [showUploadForm, setShowUploadForm] = useState(false)
-  const [proofFile, setProofFile] = useState<File | null>(null)
+  const params = useParams();
+  const router = useRouter();
+  const { addToast } = useToast();
+  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   useEffect(() => {
-    fetchTransactionDetails()
-  }, [params.id])
+    fetchTransactionDetails();
+  }, [params.id]);
 
   const fetchTransactionDetails = async () => {
     try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession()
+      const {
+        data: { session },
+      } = await supabaseBrowser.auth.getSession();
 
       if (!session) {
-        router.push('/auth/login')
-        return
+        router.push('/auth/login');
+        return;
       }
 
-      const response = await authenticatedFetch(`${BILLING_ENDPOINTS.HISTORY.replace('/history', '')}/orders/${params.id}`)
+      const response = await authenticatedFetch(
+        `${BILLING_ENDPOINTS.HISTORY.replace('/history', '')}/orders/${params.id}`
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch transaction details')
+        throw new Error('Failed to fetch transaction details');
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.success && data.data) {
         // Map API response to frontend Transaction interface
-        const orderData = data.data
+        const orderData = data.data;
         const mappedTransaction = {
           id: orderData.order_id,
           user_id: '', // Not needed for frontend
@@ -95,146 +110,180 @@ export default function OrderCompletedPage() {
             id: '',
             name: 'Unknown Package',
             description: '',
-            features: []
+            features: [],
           },
           gateway: {
             id: '',
             name: orderData.payment_method || 'Unknown Gateway',
-            configuration: {}
+            configuration: {},
           },
           customer_info: orderData.customer_info || {
             first_name: '',
             last_name: '',
             email: '',
-            phone_number: ''
-          }
-        }
-        setTransaction(mappedTransaction)
+            phone_number: '',
+          },
+        };
+        setTransaction(mappedTransaction);
       } else {
-        throw new Error('Invalid response format')
+        throw new Error('Invalid response format');
       }
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching transaction')
+      logger.error(
+        { error: error instanceof Error ? error : undefined },
+        'Error fetching transaction'
+      );
       addToast({
         type: 'error',
         title: 'Error',
-        description: 'Failed to load order details'
-      })
+        description: 'Failed to load order details',
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       // Validate file type and size
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
-      const maxSize = 5 * 1024 * 1024 // 5MB
+      const allowedTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'application/pdf',
+      ];
+      const maxSize = 5 * 1024 * 1024; // 5MB
 
       if (!allowedTypes.includes(file.type)) {
         addToast({
           type: 'error',
           title: 'File Type Error',
-          description: 'Please upload JPG, PNG, WebP, or PDF files only'
-        })
-        return
+          description: 'Please upload JPG, PNG, WebP, or PDF files only',
+        });
+        return;
       }
 
       if (file.size > maxSize) {
         addToast({
           type: 'error',
           title: 'File Size Error',
-          description: 'File size must be less than 5MB'
-        })
-        return
+          description: 'File size must be less than 5MB',
+        });
+        return;
       }
 
-      setProofFile(file)
+      setProofFile(file);
     }
-  }
+  };
 
   const handleUploadProof = async () => {
-    if (!proofFile || !transaction) return
+    if (!proofFile || !transaction) return;
 
-    setUploading(true)
+    setUploading(true);
     try {
-      const formData = new FormData()
-      formData.append('proof_file', proofFile)
-      formData.append('transaction_id', transaction.id)
+      const formData = new FormData();
+      formData.append('proof_file', proofFile);
+      formData.append('transaction_id', transaction.id);
 
       const response = await authenticatedFetch(BILLING_ENDPOINTS.UPLOAD_PROOF, {
         method: 'POST',
         body: formData,
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to upload payment proof')
+        throw new Error('Failed to upload payment proof');
       }
 
-      const result = await response.json()
+      const result = await response.json();
 
       // Update transaction status
-      setTransaction(prev => prev ? {
-        ...prev,
-        transaction_status: 'proof_uploaded',
-        payment_proof_url: result.file_url
-      } : null)
+      setTransaction((prev) =>
+        prev
+          ? {
+              ...prev,
+              transaction_status: 'proof_uploaded',
+              payment_proof_url: result.file_url,
+            }
+          : null
+      );
 
       addToast({
         type: 'success',
         title: 'Upload Successful',
-        description: 'Payment proof uploaded successfully! We will verify your payment soon.'
-      })
+        description: 'Payment proof uploaded successfully! We will verify your payment soon.',
+      });
 
-      setShowUploadForm(false)
-      setProofFile(null)
-
+      setShowUploadForm(false);
+      setProofFile(null);
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error uploading proof')
+      logger.error({ error: error instanceof Error ? error : undefined }, 'Error uploading proof');
       addToast({
         type: 'error',
         title: 'Upload Failed',
-        description: 'Failed to upload payment proof. Please try again.'
-      })
+        description: 'Failed to upload payment proof. Please try again.',
+      });
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge className="bg-warning text-warning-foreground"><Clock className="w-3 h-3 mr-1" />Pending Payment</Badge>
+        return (
+          <Badge className="bg-warning text-warning-foreground">
+            <Clock className="mr-1 h-3 w-3" />
+            Pending Payment
+          </Badge>
+        );
       case 'proof_uploaded':
-        return <Badge className="bg-warning text-warning-foreground"><Upload className="w-3 h-3 mr-1" />Waiting for Confirmation</Badge>
+        return (
+          <Badge className="bg-warning text-warning-foreground">
+            <Upload className="mr-1 h-3 w-3" />
+            Waiting for Confirmation
+          </Badge>
+        );
       case 'completed':
-        return <Badge className="bg-success text-success-foreground"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>
+        return (
+          <Badge className="bg-success text-success-foreground">
+            <CheckCircle className="mr-1 h-3 w-3" />
+            Completed
+          </Badge>
+        );
       case 'failed':
-        return <Badge className="bg-destructive text-destructive-foreground"><AlertCircle className="w-3 h-3 mr-1" />Failed</Badge>
+        return (
+          <Badge className="bg-destructive text-destructive-foreground">
+            <AlertCircle className="mr-1 h-3 w-3" />
+            Failed
+          </Badge>
+        );
       default:
-        return <Badge className="bg-muted text-muted-foreground">{status}</Badge>
+        return <Badge className="bg-muted text-muted-foreground">{status}</Badge>;
     }
-  }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-secondary flex items-center justify-center">
+      <div className="bg-secondary flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground mx-auto mb-4"></div>
+          <div className="border-foreground mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
           <p className="text-muted-foreground">Loading order details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!transaction) {
     return (
-      <div className="min-h-screen bg-secondary flex items-center justify-center">
+      <div className="bg-secondary flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">Order Not Found</h2>
-          <p className="text-muted-foreground mb-4">The order you're looking for doesn't exist or you don't have access to it.</p>
+          <AlertCircle className="text-destructive mx-auto mb-4 h-16 w-16" />
+          <h2 className="text-foreground mb-2 text-xl font-semibold">Order Not Found</h2>
+          <p className="text-muted-foreground mb-4">
+            The order you're looking for doesn't exist or you don't have access to it.
+          </p>
           <Button
             onClick={() => router.push('/dashboard/settings?tab=plans-billing')}
             className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -243,64 +292,75 @@ export default function OrderCompletedPage() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-secondary py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-secondary min-h-screen py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <Button
             variant="ghost"
             onClick={() => router.push('/dashboard/settings?tab=plans-billing')}
-            className="mb-4 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            className="text-muted-foreground hover:text-foreground hover:bg-secondary mb-4"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Billing
           </Button>
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Order Completed</h1>
-              <p className="text-muted-foreground mt-1">Thank you for your order! Here are your order details.</p>
+              <h1 className="text-foreground text-2xl font-bold">Order Completed</h1>
+              <p className="text-muted-foreground mt-1">
+                Thank you for your order! Here are your order details.
+              </p>
             </div>
             {getStatusBadge(transaction.transaction_status)}
           </div>
         </div>
 
         {/* Main Content - Two Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           {/* Left Column - Order Details (60%) */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="space-y-6 lg:col-span-3">
             {/* Order Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">Order Information</CardTitle>
+                <CardTitle className="text-foreground text-lg font-semibold">
+                  Order Information
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Order ID</p>
-                    <p className="text-sm text-muted-foreground font-mono break-all">{transaction.id}</p>
+                    <p className="text-foreground text-sm font-medium">Order ID</p>
+                    <p className="text-muted-foreground font-mono text-sm break-all">
+                      {transaction.id}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Order Date</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-foreground text-sm font-medium">Order Date</p>
+                    <p className="text-muted-foreground text-sm">
                       {new Date(transaction.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
-                        day: 'numeric'
+                        day: 'numeric',
                       })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Package</p>
-                    <p className="text-sm text-muted-foreground">{transaction.package.name}</p>
+                    <p className="text-foreground text-sm font-medium">Package</p>
+                    <p className="text-muted-foreground text-sm">{transaction.package.name}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Billing Period</p>
-                    <p className="text-sm text-muted-foreground">{transaction.billing_period ? transaction.billing_period.charAt(0).toUpperCase() + transaction.billing_period.slice(1) : 'N/A'}</p>
+                    <p className="text-foreground text-sm font-medium">Billing Period</p>
+                    <p className="text-muted-foreground text-sm">
+                      {transaction.billing_period
+                        ? transaction.billing_period.charAt(0).toUpperCase() +
+                          transaction.billing_period.slice(1)
+                        : 'N/A'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -309,21 +369,25 @@ export default function OrderCompletedPage() {
             {/* Package Details */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">Package Details</CardTitle>
+                <CardTitle className="text-foreground text-lg font-semibold">
+                  Package Details
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-foreground">{transaction.package.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{transaction.package.description}</p>
+                    <h3 className="text-foreground font-semibold">{transaction.package.name}</h3>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      {transaction.package.description}
+                    </p>
                   </div>
 
                   <div>
-                    <p className="font-medium text-foreground mb-2">Package Features:</p>
+                    <p className="text-foreground mb-2 font-medium">Package Features:</p>
                     <ul className="space-y-1">
                       {transaction.package.features?.map((feature: string, index: number) => (
-                        <li key={index} className="text-sm text-muted-foreground flex items-center">
-                          <CheckCircle className="w-3 h-3 text-success mr-2 flex-shrink-0" />
+                        <li key={index} className="text-muted-foreground flex items-center text-sm">
+                          <CheckCircle className="text-success mr-2 h-3 w-3 flex-shrink-0" />
                           {feature}
                         </li>
                       ))}
@@ -332,14 +396,14 @@ export default function OrderCompletedPage() {
 
                   <Separator />
 
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-foreground">Total Amount</span>
-                    <span className="text-xl font-bold text-foreground">
-                      {transaction.amount !== null && transaction.amount !== undefined ? (
-                        transaction.currency === 'USD'
+                  <div className="flex items-center justify-between">
+                    <span className="text-foreground font-semibold">Total Amount</span>
+                    <span className="text-foreground text-xl font-bold">
+                      {transaction.amount !== null && transaction.amount !== undefined
+                        ? transaction.currency === 'USD'
                           ? `$${transaction.amount}`
                           : `Rp ${transaction.amount.toLocaleString('id-ID')}`
-                      ) : 'N/A'}
+                        : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -349,23 +413,32 @@ export default function OrderCompletedPage() {
             {/* Customer Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">Customer Information</CardTitle>
+                <CardTitle className="text-foreground text-lg font-semibold">
+                  Customer Information
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Name</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-foreground text-sm font-medium">Name</p>
+                    <p className="text-muted-foreground text-sm">
                       {transaction.customer_info.first_name} {transaction.customer_info.last_name}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Email</p>
-                    <p className="text-sm text-muted-foreground">{transaction.customer_info.email}</p>
+                    <p className="text-foreground text-sm font-medium">Email</p>
+                    <p className="text-muted-foreground text-sm">
+                      {transaction.customer_info.email}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Phone</p>
-                    <p className="text-sm text-muted-foreground">{transaction.customer_info.phone_number || transaction.metadata?.customer_info?.phone || 'N/A'}</p>
+                    <p className="text-foreground text-sm font-medium">Phone</p>
+                    <p className="text-muted-foreground text-sm">
+                      {transaction.customer_info.phone_number ||
+                        (transaction.metadata as Record<string, Record<string, string>>)
+                          ?.customer_info?.phone ||
+                        'N/A'}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -373,32 +446,36 @@ export default function OrderCompletedPage() {
           </div>
 
           {/* Right Column - Payment Information (40%) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Payment Instructions */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">Payment Instructions</CardTitle>
+                <CardTitle className="text-foreground text-lg font-semibold">
+                  Payment Instructions
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {transaction.transaction_status === 'completed' ? (
-                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                  <div className="bg-success/10 border-success/20 rounded-lg border p-4">
                     <div className="flex items-start space-x-2">
-                      <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="text-success mt-0.5 h-5 w-5 flex-shrink-0" />
                       <div>
-                        <p className="font-medium text-foreground mb-1">Payment Completed Successfully</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-foreground mb-1 font-medium">
+                          Payment Completed Successfully
+                        </p>
+                        <p className="text-muted-foreground text-sm">
                           Your payment has been processed and your package is now active.
                         </p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
+                  <div className="bg-warning/10 border-warning/20 rounded-lg border p-4">
                     <div className="flex items-start space-x-2">
-                      <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="text-warning mt-0.5 h-5 w-5 flex-shrink-0" />
                       <div>
-                        <p className="font-medium text-foreground mb-1">Payment Processing</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-foreground mb-1 font-medium">Payment Processing</p>
+                        <p className="text-muted-foreground text-sm">
                           Your payment is being processed. You will be notified once it's completed.
                         </p>
                       </div>
@@ -408,41 +485,47 @@ export default function OrderCompletedPage() {
 
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Payment Method</p>
-                    <p className="text-sm text-muted-foreground">{transaction.gateway.name}</p>
+                    <p className="text-foreground text-sm font-medium">Payment Method</p>
+                    <p className="text-muted-foreground text-sm">{transaction.gateway.name}</p>
                   </div>
 
                   {transaction.gateway.configuration?.bank_name && (
                     <>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Bank</p>
-                        <p className="text-sm text-muted-foreground">{transaction.gateway.configuration.bank_name}</p>
+                        <p className="text-foreground text-sm font-medium">Bank</p>
+                        <p className="text-muted-foreground text-sm">
+                          {transaction.gateway.configuration.bank_name}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Account Name</p>
-                        <p className="text-sm text-muted-foreground">{transaction.gateway.configuration.account_name}</p>
+                        <p className="text-foreground text-sm font-medium">Account Name</p>
+                        <p className="text-muted-foreground text-sm">
+                          {transaction.gateway.configuration.account_name}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Account Number</p>
-                        <p className="text-sm text-muted-foreground font-mono">{transaction.gateway.configuration.account_number}</p>
+                        <p className="text-foreground text-sm font-medium">Account Number</p>
+                        <p className="text-muted-foreground font-mono text-sm">
+                          {transaction.gateway.configuration.account_number}
+                        </p>
                       </div>
                     </>
                   )}
 
                   <div>
-                    <p className="text-sm font-medium text-foreground">Amount to Pay</p>
-                    <p className="text-lg font-bold text-foreground">
-                      {transaction.amount !== null && transaction.amount !== undefined ? (
-                        transaction.currency === 'USD'
+                    <p className="text-foreground text-sm font-medium">Amount to Pay</p>
+                    <p className="text-foreground text-lg font-bold">
+                      {transaction.amount !== null && transaction.amount !== undefined
+                        ? transaction.currency === 'USD'
                           ? `$${transaction.amount}`
                           : `Rp ${transaction.amount.toLocaleString('id-ID')}`
-                      ) : 'N/A'}
+                        : 'N/A'}
                     </p>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-foreground">Reference Number</p>
-                    <p className="text-sm text-muted-foreground font-mono">{transaction.id}</p>
+                    <p className="text-foreground text-sm font-medium">Reference Number</p>
+                    <p className="text-muted-foreground font-mono text-sm">{transaction.id}</p>
                   </div>
                 </div>
               </CardContent>
@@ -451,14 +534,16 @@ export default function OrderCompletedPage() {
             {/* Payment Proof Upload */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">Payment Confirmation</CardTitle>
+                <CardTitle className="text-foreground text-lg font-semibold">
+                  Payment Confirmation
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {transaction.payment_proof_url ? (
-                  <div className="text-center py-6">
-                    <CheckCircle className="w-12 h-12 text-success mx-auto mb-3" />
-                    <h3 className="font-semibold text-foreground mb-2">Payment Proof Uploaded</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
+                  <div className="py-6 text-center">
+                    <CheckCircle className="text-success mx-auto mb-3 h-12 w-12" />
+                    <h3 className="text-foreground mb-2 font-semibold">Payment Proof Uploaded</h3>
+                    <p className="text-muted-foreground mb-4 text-sm">
                       We have received your payment proof and will verify it soon.
                     </p>
                     <Button
@@ -472,23 +557,36 @@ export default function OrderCompletedPage() {
                   </div>
                 ) : (
                   <>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {transaction.transaction_status === 'completed' ? 'Payment has been processed successfully. No further action required.' : 'Upload your payment proof here to speed up payment verification.'}
+                    <p className="text-muted-foreground text-center text-sm">
+                      {transaction.transaction_status === 'completed'
+                        ? 'Payment has been processed successfully. No further action required.'
+                        : 'Upload your payment proof here to speed up payment verification.'}
                     </p>
 
                     <Button
                       onClick={() => setShowUploadForm(!showUploadForm)}
                       disabled={transaction.transaction_status === 'completed'}
-                      className="w-full bg-success hover:bg-success/90 text-success-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-success hover:bg-success/90 text-success-foreground w-full disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {showUploadForm ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                      {transaction.transaction_status === 'completed' ? 'Payment Completed' : (showUploadForm ? 'Hide Upload Form' : 'Upload Payment Proof')}
+                      {showUploadForm ? (
+                        <EyeOff className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Eye className="mr-2 h-4 w-4" />
+                      )}
+                      {transaction.transaction_status === 'completed'
+                        ? 'Payment Completed'
+                        : showUploadForm
+                          ? 'Hide Upload Form'
+                          : 'Upload Payment Proof'}
                     </Button>
 
                     {showUploadForm && (
-                      <div className="space-y-4 pt-4 border-t border-border">
+                      <div className="border-border space-y-4 border-t pt-4">
                         <div>
-                          <Label htmlFor="proof_file" className="text-sm font-medium text-foreground">
+                          <Label
+                            htmlFor="proof_file"
+                            className="text-foreground text-sm font-medium"
+                          >
                             Select Payment Proof *
                           </Label>
                           <Input
@@ -498,16 +596,16 @@ export default function OrderCompletedPage() {
                             onChange={handleFileSelect}
                             className="mt-1"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-muted-foreground mt-1 text-xs">
                             Supported formats: JPG, PNG, WebP, PDF (Max 5MB)
                           </p>
                         </div>
 
                         {proofFile && (
-                          <div className="bg-secondary border border-border rounded-lg p-3">
-                            <p className="text-sm font-medium text-foreground">Selected File:</p>
-                            <p className="text-sm text-muted-foreground">{proofFile.name}</p>
-                            <p className="text-xs text-muted-foreground">
+                          <div className="bg-secondary border-border rounded-lg border p-3">
+                            <p className="text-foreground text-sm font-medium">Selected File:</p>
+                            <p className="text-muted-foreground text-sm">{proofFile.name}</p>
+                            <p className="text-muted-foreground text-xs">
                               Size: {(proofFile.size / 1024 / 1024).toFixed(2)} MB
                             </p>
                           </div>
@@ -516,16 +614,16 @@ export default function OrderCompletedPage() {
                         <Button
                           onClick={handleUploadProof}
                           disabled={!proofFile || uploading}
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground w-full disabled:opacity-50"
                         >
                           {uploading ? (
                             <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                               Uploading...
                             </>
                           ) : (
                             <>
-                              <Upload className="w-4 h-4 mr-2" />
+                              <Upload className="mr-2 h-4 w-4" />
                               Upload Payment Proof
                             </>
                           )}
@@ -540,5 +638,5 @@ export default function OrderCompletedPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

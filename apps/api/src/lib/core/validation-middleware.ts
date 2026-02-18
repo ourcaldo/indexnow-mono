@@ -33,11 +33,7 @@ interface ValidationSchemas {
   params?: ZodSchema;
 }
 
-interface ValidatedData<
-  TBody = unknown,
-  TQuery = unknown,
-  TParams = unknown,
-> {
+interface ValidatedData<TBody = unknown, TQuery = unknown, TParams = unknown> {
   body: TBody;
   query: TQuery;
   params: TParams;
@@ -77,21 +73,17 @@ function formatZodError(error: ZodError): Record<string, string[]> {
  * );
  * ```
  */
-export function withValidation<
-  TBody = unknown,
-  TQuery = unknown,
-  TParams = unknown,
->(
+export function withValidation<TBody = unknown, TQuery = unknown, TParams = unknown>(
   schemas: {
     body?: ZodSchema<TBody>;
     query?: ZodSchema<TQuery>;
     params?: ZodSchema<TParams>;
   },
-  handler: ValidatedHandler<TBody, TQuery, TParams>,
+  handler: ValidatedHandler<TBody, TQuery, TParams>
 ) {
   return async (
     request: NextRequest,
-    context?: { params?: Record<string, string> },
+    context?: { params?: Record<string, string> }
   ): Promise<NextResponse> => {
     const validated: ValidatedData<TBody, TQuery, TParams> = {
       body: undefined as TBody,
@@ -115,6 +107,7 @@ export function withValidation<
           validated.body = result.data;
         }
       } catch {
+        /* Invalid JSON body — will be caught by validation */
         allErrors.push({
           source: 'body',
           errors: { _root: ['Invalid or missing JSON body'] },
@@ -152,7 +145,7 @@ export function withValidation<
           error: 'Validation failed',
           validationErrors: allErrors,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 

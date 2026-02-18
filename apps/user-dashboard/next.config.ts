@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
+import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -8,12 +8,24 @@ const securityHeaders = [
   { key: 'X-XSS-Protection', value: '1; mode=block' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
-  { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';" },
+  // TODO: Migrate to nonce-based CSP for script-src to remove 'unsafe-inline'
+  {
+    key: 'Content-Security-Policy',
+    value:
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://*.googletagmanager.com https://*.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.paddle.com https://*.google-analytics.com https://*.posthog.com https://*.sentry.io; frame-src 'self' https://*.paddle.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';",
+  },
 ];
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ["@indexnow/shared", "@indexnow/ui", "@indexnow/auth", "@indexnow/database", "@indexnow/analytics", "@indexnow/supabase-client"],
+  transpilePackages: [
+    '@indexnow/shared',
+    '@indexnow/ui',
+    '@indexnow/auth',
+    '@indexnow/database',
+    '@indexnow/analytics',
+    '@indexnow/supabase-client',
+  ],
   turbopack: {
     root: '../../',
   },

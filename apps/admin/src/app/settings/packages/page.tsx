@@ -52,7 +52,8 @@ export default function PackageManagement() {
       });
       setEditingPackage(null);
       setIsCreating(false);
-    } catch {
+    } catch (err) {
+      console.error('Failed to save package:', err);
       setMessage({ type: 'error', text: 'Failed to save package' });
     }
   };
@@ -68,7 +69,8 @@ export default function PackageManagement() {
         try {
           await deletePackageMutation.mutateAsync(id);
           setMessage({ type: 'success', text: 'Package deleted successfully!' });
-        } catch {
+        } catch (err) {
+          console.error('Failed to delete package:', err);
           setMessage({ type: 'error', text: 'Failed to delete package' });
         } finally {
           setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
@@ -230,7 +232,7 @@ export default function PackageManagement() {
         title={confirmConfig.title}
         message={confirmConfig.message}
         onConfirm={confirmConfig.onConfirm}
-        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
         confirmText={confirmConfig.confirmText}
         variant={confirmConfig.variant}
       />

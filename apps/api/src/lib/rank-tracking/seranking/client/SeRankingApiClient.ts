@@ -316,7 +316,9 @@ export class SeRankingApiClient {
       competition: item.competition ? Number(item.competition) : null,
       difficulty: item.difficulty ? Number(item.difficulty) : null,
       history_trend:
-        item.history_trend && typeof item.history_trend === 'object' ? item.history_trend as Record<string, number> | null : null,
+        item.history_trend && typeof item.history_trend === 'object'
+          ? (item.history_trend as Record<string, number> | null)
+          : null,
     }));
   }
 
@@ -330,9 +332,11 @@ export class SeRankingApiClient {
       try {
         errorData = JSON.parse(text);
       } catch {
+        /* Invalid JSON — use raw text */
         errorData = { message: text };
       }
     } catch {
+      /* Could not read response body */
       errorData = { message: response.statusText };
     }
 
@@ -490,6 +494,7 @@ export class SeRankingApiClient {
       const diffMs = retryDate.getTime() - now.getTime();
       return Math.max(0, Math.min(Math.ceil(diffMs / 1000), 300));
     } catch {
+      /* Invalid date in Retry-After header */
       return 0;
     }
   }

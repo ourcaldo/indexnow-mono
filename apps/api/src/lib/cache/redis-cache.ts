@@ -159,6 +159,7 @@ export const cacheService = {
       const result = await client.ping();
       return result === 'PONG';
     } catch {
+      /* Redis not available */
       return false;
     }
   },

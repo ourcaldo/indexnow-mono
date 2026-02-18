@@ -85,7 +85,9 @@ function DashboardContent() {
           <PerformanceOverview
             domainKeywords={domainKeywords}
             selectedDomainName={selectedDomainName}
-            keywordsUsed={userProfile?.keywords_used || 0}
+            keywordsUsed={
+              ((userProfile as unknown as Record<string, unknown>)?.keywords_used as number) || 0
+            }
           />
 
           <div className="grid gap-6 lg:grid-cols-3">
