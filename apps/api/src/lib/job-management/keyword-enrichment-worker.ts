@@ -11,13 +11,14 @@ import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingA
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
 import { SeRankingErrorHandler } from '../rank-tracking/seranking/services/ErrorHandlingService';
 import { IntegrationService } from '../rank-tracking/seranking/services/IntegrationService';
+import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 
 interface KeywordToEnrich {
   id: string;
   user_id: string;
   keyword: string;
-  country: string;  // ISO2 code stored directly (e.g., "id", "us")
+  country: string; // ISO2 code stored directly (e.g., "id", "us")
   keyword_bank_id: string | null;
   intelligence_updated_at: string | null;
 }
@@ -38,10 +39,13 @@ export class KeywordEnrichmentWorker {
     this.errorHandler = new SeRankingErrorHandler();
 
     // Initialize integration service to get API key from database
-    this.integrationService = new IntegrationService({
-      defaultQuotaLimit: 1000,
-      logLevel: 'info'
-    }, undefined); // Fix: removed as any casting
+    this.integrationService = new IntegrationService(
+      {
+        defaultQuotaLimit: 1000,
+        logLevel: 'info',
+      },
+      undefined
+    ); // Fix: removed as any casting
 
     // Get API key directly from database using correct column name 'api_key'
     const integrationData = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -52,14 +56,14 @@ export class KeywordEnrichmentWorker {
         source: 'job-management/keyword-enrichment-worker',
         metadata: {
           service_name: 'seranking_keyword_export',
-          operation_type: 'integration_config_lookup'
-        }
+          operation_type: 'integration_config_lookup',
+        },
       },
       {
         table: 'indb_site_integration',
         operationType: 'select',
         columns: ['api_key'],
-        whereConditions: { service_name: 'seranking_keyword_export', is_active: true }
+        whereConditions: { service_name: 'seranking_keyword_export', is_active: true },
       },
       async () => {
         const { data: integrationData, error } = await supabaseAdmin
@@ -67,15 +71,15 @@ export class KeywordEnrichmentWorker {
           .select('api_key')
           .eq('service_name', 'seranking_keyword_export')
           .eq('is_active', true)
-          .single()
+          .single();
 
         if (error) {
-          throw new Error(`Failed to get SeRanking API key: ${error.message}`)
+          throw new Error(`Failed to get SeRanking API key: ${error.message}`);
         }
 
-        return integrationData
+        return integrationData;
       }
-    )
+    );
 
     const apiKey = integrationData?.api_key || '';
 
@@ -89,7 +93,7 @@ export class KeywordEnrichmentWorker {
     const apiClient = new SeRankingApiClient({
       apiKey: apiKey,
       baseUrl: 'https://api.seranking.com',
-      timeout: 30000
+      timeout: 30000,
     });
 
     // Initialize enrichment service with 30-day cache
@@ -100,7 +104,7 @@ export class KeywordEnrichmentWorker {
       {
         cacheExpiryDays: 30,
         batchSize: 10, // Small batches to be gentle
-        maxConcurrentRequests: 2
+        maxConcurrentRequests: 2,
       }
     );
   }
@@ -133,23 +137,33 @@ export class KeywordEnrichmentWorker {
     // Wait for enrichmentService to be ready before processing keywords
     while (!this.enrichmentService) {
       logger.debug({}, 'Keyword Enrichment: Waiting for service initialization');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await sleep(100);
     }
 
     // Run immediately on startup to check for keywords
     logger.info({}, 'Keyword Enrichment: Running initial keyword check');
-    await this.processKeywords().catch(error => {
-      logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Keyword Enrichment: Initial run failed');
+    await this.processKeywords().catch((error) => {
+      logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Keyword Enrichment: Initial run failed'
+      );
     });
 
     // Then schedule to run every hour at minute 30
-    this.cronJob = cron.schedule('30 * * * *', async () => {
-      await this.processKeywords();
-    }, {
-      timezone: 'UTC'
-    });
+    this.cronJob = cron.schedule(
+      '30 * * * *',
+      async () => {
+        await this.processKeywords();
+      },
+      {
+        timezone: 'UTC',
+      }
+    );
 
-    logger.info({}, 'Keyword Enrichment: Background worker started - running immediately and then every hour');
+    logger.info(
+      {},
+      'Keyword Enrichment: Background worker started - running immediately and then every hour'
+    );
   }
 
   /**
@@ -196,16 +210,29 @@ export class KeywordEnrichmentWorker {
           await this.enrichKeyword(keyword);
           successful++;
           processed++;
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await sleep(500);
         } catch (error) {
-          logger.error({ jobId, keyword: keyword.keyword, error: error instanceof Error ? error.message : 'Unknown error' }, 'Keyword Enrichment: Error processing keyword');
+          logger.error(
+            {
+              jobId,
+              keyword: keyword.keyword,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            },
+            'Keyword Enrichment: Error processing keyword'
+          );
           processed++;
         }
       }
 
-      logger.info({ jobId, processed, successful, total: keywordsToEnrich.length }, 'Keyword Enrichment: Completed processing');
+      logger.info(
+        { jobId, processed, successful, total: keywordsToEnrich.length },
+        'Keyword Enrichment: Completed processing'
+      );
     } catch (error) {
-      logger.error({ jobId, error: error instanceof Error ? error.message : 'Unknown error' }, 'Keyword Enrichment: Job failed');
+      logger.error(
+        { jobId, error: error instanceof Error ? error.message : 'Unknown error' },
+        'Keyword Enrichment: Job failed'
+      );
     }
   }
 
@@ -225,36 +252,48 @@ export class KeywordEnrichmentWorker {
           source: 'job-management/keyword-enrichment-worker',
           metadata: {
             limit: limit,
-            operation_type: 'keyword_enrichment_lookup'
-          }
+            operation_type: 'keyword_enrichment_lookup',
+          },
         },
         {
           table: 'indb_rank_keywords',
           operationType: 'select',
-          columns: ['id', 'user_id', 'keyword', 'country', 'keyword_bank_id', 'intelligence_updated_at'],
-          whereConditions: { is_active: true, keyword_bank_id: null }
+          columns: [
+            'id',
+            'user_id',
+            'keyword',
+            'country',
+            'keyword_bank_id',
+            'intelligence_updated_at',
+          ],
+          whereConditions: { is_active: true, keyword_bank_id: null },
         },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_rank_keywords')
             .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at')
             .eq('is_active', true)
-            .is('keyword_bank_id', null)  // Simple: get keywords that don't have bank reference
-            .limit(limit)
+            .is('keyword_bank_id', null) // Simple: get keywords that don't have bank reference
+            .limit(limit);
 
           if (error) {
-            throw new Error(`Failed to find keywords needing enrichment: ${error.message}`)
+            throw new Error(`Failed to find keywords needing enrichment: ${error.message}`);
           }
 
-          return data || []
+          return data || [];
         }
-      )
+      );
 
-      logger.info({ count: (data || []).length }, 'Keyword Enrichment: Found keywords without enrichment data');
+      logger.info(
+        { count: (data || []).length },
+        'Keyword Enrichment: Found keywords without enrichment data'
+      );
       return data || [];
-
     } catch (error) {
-      logger.error({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Keyword Enrichment: Error finding keywords');
+      logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'Keyword Enrichment: Error finding keywords'
+      );
       return [];
     }
   }
@@ -270,30 +309,38 @@ export class KeywordEnrichmentWorker {
       const countryCode = keyword.country;
 
       if (!countryCode) {
-        logger.error({ keyword: keyword.keyword }, 'Keyword Enrichment: No country code set for keyword');
+        logger.error(
+          { keyword: keyword.keyword },
+          'Keyword Enrichment: No country code set for keyword'
+        );
         return;
       }
 
-      logger.debug({ country: countryCode, keyword: keyword.keyword }, 'Keyword Enrichment: Using country code');
+      logger.debug(
+        { country: countryCode, keyword: keyword.keyword },
+        'Keyword Enrichment: Using country code'
+      );
 
       // Use lowercase ISO2 code for KeywordBankService (it expects direct ISO2 codes like "id", "us")
       const countryCodeForBank = countryCode.toLowerCase();
       logger.debug({ countryCodeForBank }, 'Keyword Enrichment: Using country code');
-
 
       const result = await this.enrichmentService.enrichKeyword(
         keyword.keyword,
         countryCodeForBank
       );
 
-      logger.debug({
-        keyword: keyword.keyword,
-        success: result.success,
-        hasData: !!result.data,
-        dataFound: result.data?.is_data_found,
-        volume: result.data?.volume,
-        bankId: result.data?.id
-      }, 'Keyword Enrichment: Enrichment result');
+      logger.debug(
+        {
+          keyword: keyword.keyword,
+          success: result.success,
+          hasData: !!result.data,
+          dataFound: result.data?.is_data_found,
+          volume: result.data?.volume,
+          bankId: result.data?.id,
+        },
+        'Keyword Enrichment: Enrichment result'
+      );
 
       if (result.success && result.data) {
         // Update the keyword record with bank_id reference only
@@ -302,10 +349,17 @@ export class KeywordEnrichmentWorker {
         const updateData = {
           keyword_bank_id: result.data.id,
           intelligence_updated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
-        logger.debug({ keyword: keyword.keyword, bankId: result.data.id, isDataFound: result.data.is_data_found }, 'Keyword Enrichment: Updating keyword');
+        logger.debug(
+          {
+            keyword: keyword.keyword,
+            bankId: result.data.id,
+            isDataFound: result.data.is_data_found,
+          },
+          'Keyword Enrichment: Updating keyword'
+        );
 
         await SecureServiceRoleWrapper.executeSecureOperation(
           {
@@ -319,43 +373,61 @@ export class KeywordEnrichmentWorker {
               keyword_bank_id: result.data.id,
               search_volume: result.data.volume,
               is_data_found: result.data.is_data_found,
-              operation_type: 'keyword_enrichment_update'
-            }
+              operation_type: 'keyword_enrichment_update',
+            },
           },
           {
             table: 'indb_rank_keywords',
             operationType: 'update',
             whereConditions: { id: keyword.id },
-            data: updateData
+            data: updateData,
           },
           async () => {
             const { error: updateError } = await supabaseAdmin
               .from('indb_rank_keywords')
               .update(updateData)
-              .eq('id', keyword.id)
+              .eq('id', keyword.id);
 
             if (updateError) {
-              throw new Error(`Failed to update keyword enrichment data: ${updateError.message}`)
+              throw new Error(`Failed to update keyword enrichment data: ${updateError.message}`);
             }
 
-            return { success: true }
+            return { success: true };
           }
-        )
-
+        );
 
         {
           if (result.data.is_data_found) {
-            logger.info({ keyword: keyword.keyword, volume: result.data.volume }, 'Keyword Enrichment: Successfully enriched');
+            logger.info(
+              { keyword: keyword.keyword, volume: result.data.volume },
+              'Keyword Enrichment: Successfully enriched'
+            );
           } else {
-            logger.info({ keyword: keyword.keyword }, 'Keyword Enrichment: Successfully processed (no market data)');
+            logger.info(
+              { keyword: keyword.keyword },
+              'Keyword Enrichment: Successfully processed (no market data)'
+            );
           }
         }
       } else {
-        logger.error({ keyword: keyword.keyword, success: result.success, error: result.error, hasData: !!result.data }, 'Keyword Enrichment: Failed to enrich keyword');
+        logger.error(
+          {
+            keyword: keyword.keyword,
+            success: result.success,
+            error: result.error,
+            hasData: !!result.data,
+          },
+          'Keyword Enrichment: Failed to enrich keyword'
+        );
       }
-
     } catch (error) {
-      logger.error({ keyword: keyword.keyword, error: error instanceof Error ? error.message : 'Unknown error' }, 'Keyword Enrichment: Error enriching keyword');
+      logger.error(
+        {
+          keyword: keyword.keyword,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'Keyword Enrichment: Error enriching keyword'
+      );
     }
   }
 
@@ -370,7 +442,7 @@ export class KeywordEnrichmentWorker {
     return {
       isRunning: this.isRunning,
       schedule: '30 * * * *',
-      description: 'Checks for keywords needing enrichment every hour'
+      description: 'Checks for keywords needing enrichment every hour',
     };
   }
 

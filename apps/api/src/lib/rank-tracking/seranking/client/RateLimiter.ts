@@ -7,8 +7,9 @@ import {
   RateLimitConfig,
   RateLimitState,
   SeRankingErrorType,
-  SeRankingError
+  SeRankingError,
 } from '../types/SeRankingTypes';
+import { sleep } from '@indexnow/shared';
 
 export class RateLimiter {
   private config: RateLimitConfig;
@@ -24,29 +25,29 @@ export class RateLimiter {
    */
   async isAllowed(requestCount: number = 1): Promise<boolean> {
     const now = new Date();
-    
+
     // Clean up expired requests
     await this.cleanupExpiredRequests(now);
-    
+
     // Check each time window
     const minuteAllowed = this.isAllowedInWindow(
-      this.state.minuteRequests, 
-      this.config.requestsPerMinute, 
+      this.state.minuteRequests,
+      this.config.requestsPerMinute,
       requestCount
     );
-    
+
     const hourAllowed = this.isAllowedInWindow(
-      this.state.hourRequests, 
-      this.config.requestsPerHour, 
+      this.state.hourRequests,
+      this.config.requestsPerHour,
       requestCount
     );
-    
+
     const dailyAllowed = this.isAllowedInWindow(
-      this.state.dailyRequests, 
-      this.config.requestsPerDay, 
+      this.state.dailyRequests,
+      this.config.requestsPerDay,
       requestCount
     );
-    
+
     return minuteAllowed && hourAllowed && dailyAllowed;
   }
 
@@ -56,14 +57,14 @@ export class RateLimiter {
   async recordRequest(requestCount: number = 1): Promise<void> {
     const now = new Date();
     const timestamp = now.getTime();
-    
+
     // Add requests to each time window
     for (let i = 0; i < requestCount; i++) {
       this.state.minuteRequests.push(timestamp);
       this.state.hourRequests.push(timestamp);
       this.state.dailyRequests.push(timestamp);
     }
-    
+
     // Clean up expired requests
     await this.cleanupExpiredRequests(now);
   }
@@ -78,23 +79,23 @@ export class RateLimiter {
   }> {
     const now = new Date();
     await this.cleanupExpiredRequests(now);
-    
+
     return {
       remaining: {
         minute: Math.max(0, this.config.requestsPerMinute - this.state.minuteRequests.length),
         hour: Math.max(0, this.config.requestsPerHour - this.state.hourRequests.length),
-        day: Math.max(0, this.config.requestsPerDay - this.state.dailyRequests.length)
+        day: Math.max(0, this.config.requestsPerDay - this.state.dailyRequests.length),
       },
       resetTime: {
-        minute: new Date(now.getTime() + (60 * 1000)), // Next minute
-        hour: new Date(now.getTime() + (60 * 60 * 1000)), // Next hour
-        day: new Date(now.getTime() + (24 * 60 * 60 * 1000)) // Next day
+        minute: new Date(now.getTime() + 60 * 1000), // Next minute
+        hour: new Date(now.getTime() + 60 * 60 * 1000), // Next hour
+        day: new Date(now.getTime() + 24 * 60 * 60 * 1000), // Next day
       },
       currentUsage: {
         minute: this.state.minuteRequests.length,
         hour: this.state.hourRequests.length,
-        day: this.state.dailyRequests.length
-      }
+        day: this.state.dailyRequests.length,
+      },
     };
   }
 
@@ -104,7 +105,7 @@ export class RateLimiter {
   async getRetryAfterDelay(requestCount: number = 1): Promise<number> {
     const now = new Date();
     await this.cleanupExpiredRequests(now);
-    
+
     // Check which limit would be exceeded
     const minuteDelay = this.getDelayForWindow(
       this.state.minuteRequests,
@@ -112,21 +113,21 @@ export class RateLimiter {
       requestCount,
       60 * 1000 // 1 minute in ms
     );
-    
+
     const hourDelay = this.getDelayForWindow(
       this.state.hourRequests,
       this.config.requestsPerHour,
       requestCount,
       60 * 60 * 1000 // 1 hour in ms
     );
-    
+
     const dailyDelay = this.getDelayForWindow(
       this.state.dailyRequests,
       this.config.requestsPerDay,
       requestCount,
       24 * 60 * 60 * 1000 // 24 hours in ms
     );
-    
+
     // Return the longest delay needed
     return Math.max(minuteDelay, hourDelay, dailyDelay);
   }
@@ -143,13 +144,13 @@ export class RateLimiter {
    */
   async waitForAvailability(requestCount: number = 1): Promise<void> {
     const isAllowed = await this.isAllowed(requestCount);
-    
+
     if (!isAllowed) {
       const delay = await this.getRetryAfterDelay(requestCount);
-      
+
       if (delay > 0) {
-        await this.sleep(delay);
-        
+        await sleep(delay);
+
         // Recursively check again after waiting
         return this.waitForAvailability(requestCount);
       }
@@ -161,14 +162,14 @@ export class RateLimiter {
    */
   async getThrottlingError(requestCount: number = 1): Promise<Error | null> {
     const isAllowed = await this.isAllowed(requestCount);
-    
+
     if (!isAllowed) {
       const delay = await this.getRetryAfterDelay(requestCount);
       const status = await this.getStatus();
-      
+
       let limitType = '';
       let retryAfter = 0;
-      
+
       if (status.remaining.minute < requestCount) {
         limitType = 'minute';
         retryAfter = 60; // seconds
@@ -179,11 +180,11 @@ export class RateLimiter {
         limitType = 'day';
         retryAfter = 86400; // seconds
       }
-      
+
       const error = new Error(
         `Rate limit exceeded: ${requestCount} requests would exceed ${limitType} limit. Retry after ${retryAfter} seconds.`
       ) as SeRankingError;
-      
+
       // Add rate limit specific properties
       error.type = SeRankingErrorType.RATE_LIMIT_ERROR;
       error.retryable = true;
@@ -191,13 +192,13 @@ export class RateLimiter {
         retryAfter,
         limitType,
         remaining: status.remaining,
-        currentUsage: status.currentUsage
+        currentUsage: status.currentUsage,
       };
       error.timestamp = new Date();
-      
+
       return error;
     }
-    
+
     return null;
   }
 
@@ -206,7 +207,7 @@ export class RateLimiter {
    */
   private initializeState(): RateLimitState {
     const now = new Date();
-    
+
     return {
       minuteRequests: [],
       hourRequests: [],
@@ -214,20 +215,16 @@ export class RateLimiter {
       lastReset: {
         minute: now,
         hour: now,
-        day: now
-      }
+        day: now,
+      },
     };
   }
 
   /**
    * Check if request is allowed within a specific time window
    */
-  private isAllowedInWindow(
-    requests: number[], 
-    limit: number, 
-    requestCount: number
-  ): boolean {
-    return (requests.length + requestCount) <= limit;
+  private isAllowedInWindow(requests: number[], limit: number, requestCount: number): boolean {
+    return requests.length + requestCount <= limit;
   }
 
   /**
@@ -239,21 +236,21 @@ export class RateLimiter {
     requestCount: number,
     windowMs: number
   ): number {
-    if ((requests.length + requestCount) <= limit) {
+    if (requests.length + requestCount <= limit) {
       return 0; // No delay needed
     }
-    
+
     // Find the oldest request that would need to expire
-    const excessRequests = (requests.length + requestCount) - limit;
-    
+    const excessRequests = requests.length + requestCount - limit;
+
     if (requests.length >= excessRequests) {
       const oldestRelevantRequest = requests[excessRequests - 1];
       const now = Date.now();
       const expiryTime = oldestRelevantRequest + windowMs;
-      
+
       return Math.max(0, expiryTime - now);
     }
-    
+
     return windowMs; // Wait for full window if we can't calculate exactly
   }
 
@@ -262,38 +259,31 @@ export class RateLimiter {
    */
   private async cleanupExpiredRequests(now: Date): Promise<void> {
     const currentTime = now.getTime();
-    
+
     // Clean minute window (keep last 60 seconds)
-    const minuteThreshold = currentTime - (60 * 1000);
+    const minuteThreshold = currentTime - 60 * 1000;
     this.state.minuteRequests = this.state.minuteRequests.filter(
-      timestamp => timestamp > minuteThreshold
+      (timestamp) => timestamp > minuteThreshold
     );
-    
+
     // Clean hour window (keep last 60 minutes)
-    const hourThreshold = currentTime - (60 * 60 * 1000);
+    const hourThreshold = currentTime - 60 * 60 * 1000;
     this.state.hourRequests = this.state.hourRequests.filter(
-      timestamp => timestamp > hourThreshold
+      (timestamp) => timestamp > hourThreshold
     );
-    
+
     // Clean daily window (keep last 24 hours)
-    const dailyThreshold = currentTime - (24 * 60 * 60 * 1000);
+    const dailyThreshold = currentTime - 24 * 60 * 60 * 1000;
     this.state.dailyRequests = this.state.dailyRequests.filter(
-      timestamp => timestamp > dailyThreshold
+      (timestamp) => timestamp > dailyThreshold
     );
-    
+
     // Update last reset times
     this.state.lastReset = {
       minute: now,
       hour: now,
-      day: now
+      day: now,
     };
-  }
-
-  /**
-   * Sleep utility for waiting
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -301,9 +291,9 @@ export class RateLimiter {
    */
   static createDefaultConfig(): RateLimitConfig {
     return {
-      requestsPerMinute: 60,   // Conservative estimate
-      requestsPerHour: 1000,   // Conservative estimate  
-      requestsPerDay: 10000    // Conservative estimate (will be limited by quota)
+      requestsPerMinute: 60, // Conservative estimate
+      requestsPerHour: 1000, // Conservative estimate
+      requestsPerDay: 10000, // Conservative estimate (will be limited by quota)
     };
   }
 
@@ -312,9 +302,9 @@ export class RateLimiter {
    */
   static createConservativeConfig(): RateLimitConfig {
     return {
-      requestsPerMinute: 30,   // Very conservative
-      requestsPerHour: 500,    // Very conservative
-      requestsPerDay: 5000     // Very conservative
+      requestsPerMinute: 30, // Very conservative
+      requestsPerHour: 500, // Very conservative
+      requestsPerDay: 5000, // Very conservative
     };
   }
 
@@ -323,9 +313,9 @@ export class RateLimiter {
    */
   static createAggressiveConfig(): RateLimitConfig {
     return {
-      requestsPerMinute: 120,  // Aggressive
-      requestsPerHour: 2000,   // Aggressive
-      requestsPerDay: 20000    // Aggressive
+      requestsPerMinute: 120, // Aggressive
+      requestsPerHour: 2000, // Aggressive
+      requestsPerDay: 20000, // Aggressive
     };
   }
 
@@ -344,7 +334,7 @@ export class RateLimiter {
    * Estimate time to complete given number of requests
    */
   static estimateCompletionTime(
-    requestCount: number, 
+    requestCount: number,
     config: RateLimitConfig
   ): {
     optimisticMinutes: number;
@@ -353,17 +343,17 @@ export class RateLimiter {
   } {
     const batchSize = this.calculateOptimalBatchSize(config);
     const batchCount = Math.ceil(requestCount / batchSize);
-    
+
     // Optimistic: Use minute rate limit
     const optimisticMinutes = Math.ceil(batchCount / (config.requestsPerMinute / batchSize));
-    
+
     // Conservative: Account for potential delays and overhead
     const conservativeMinutes = optimisticMinutes * 1.5;
-    
+
     return {
       optimisticMinutes,
       conservativeMinutes,
-      batchCount
+      batchCount,
     };
   }
 }

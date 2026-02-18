@@ -6,6 +6,7 @@
 
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
+import { sleep } from '@indexnow/shared';
 import { EnrichmentQueue } from './EnrichmentQueue';
 import { KeywordEnrichmentService } from './KeywordEnrichmentService';
 import { SeRankingErrorHandler } from './ErrorHandlingService';
@@ -24,7 +25,7 @@ import {
   CacheRefreshJobData,
   JobError,
   JobErrorType,
-  JobEventType
+  JobEventType,
 } from '../types/EnrichmentJobTypes';
 
 // Processor configuration
@@ -57,7 +58,7 @@ const DEFAULT_PROCESSOR_CONFIG: ProcessorConfig = {
   enableMetrics: true,
   enableDetailedLogging: false,
   quotaCheckInterval: 60000, // 1 minute
-  emergencyStopThreshold: 0.95 // 95% quota usage
+  emergencyStopThreshold: 0.95, // 95% quota usage
 };
 
 // Worker class for individual job processing
@@ -69,7 +70,7 @@ class Worker extends EventEmitter {
   public totalErrors: number = 0;
   public startedAt: Date = new Date();
   public lastHeartbeat: Date = new Date();
-  
+
   private config: WorkerConfig;
   private queue: EnrichmentQueue;
   private enrichmentService: KeywordEnrichmentService;
@@ -89,7 +90,7 @@ class Worker extends EventEmitter {
     this.queue = queue;
     this.enrichmentService = enrichmentService;
     this.errorHandler = errorHandler;
-    
+
     this.startHeartbeat();
   }
 
@@ -104,7 +105,7 @@ class Worker extends EventEmitter {
 
     this.status = 'processing';
     this.emit('worker:started', { workerId: this.id });
-    
+
     // Start processing loop
     this.processJobs();
   }
@@ -117,24 +118,26 @@ class Worker extends EventEmitter {
       try {
         // Check if we can take more jobs
         if (this.currentJobs.size >= this.config.maxConcurrentJobs) {
-          await this.sleep(1000); // Wait 1 second before checking again
+          await sleep(1000); // Wait 1 second before checking again
           continue;
         }
 
         // Get next job from queue
         const job = await this.queue.dequeueJob(this.id);
         if (!job) {
-          await this.sleep(5000); // Wait 5 seconds if no jobs available
+          await sleep(5000); // Wait 5 seconds if no jobs available
           continue;
         }
 
         // Process the job
         this.processJobAsync(job);
-        
       } catch (error) {
-        logger.error({ workerId: this.id, error: error instanceof Error ? error.message : String(error) }, `Worker ${this.id} processing error`);
+        logger.error(
+          { workerId: this.id, error: error instanceof Error ? error.message : String(error) },
+          `Worker ${this.id} processing error`
+        );
         this.totalErrors++;
-        await this.sleep(10000); // Wait 10 seconds on error
+        await sleep(10000); // Wait 10 seconds on error
       }
     }
   }
@@ -144,7 +147,7 @@ class Worker extends EventEmitter {
    */
   private async processJobAsync(job: EnrichmentJob): Promise<void> {
     this.currentJobs.set(job.id, job);
-    
+
     try {
       await JobErrorHandler.withJobErrorHandling(
         async () => {
@@ -157,7 +160,7 @@ class Worker extends EventEmitter {
           jobId: job.id,
           jobType: 'keyword_enrichment_job',
           jobName: `SeRanking ${job.type} Job`,
-          metadata: { workerId: this.id, jobType: job.type }
+          metadata: { workerId: this.id, jobType: job.type },
         }
       );
     } catch (error) {
@@ -168,10 +171,10 @@ class Worker extends EventEmitter {
         timestamp: new Date(),
         context: {
           jobId: job.id,
-          workerId: this.id
-        }
+          workerId: this.id,
+        },
       };
-      
+
       await this.queue.failJob(job.id, jobError);
       this.totalErrors++;
     } finally {
@@ -184,35 +187,34 @@ class Worker extends EventEmitter {
    */
   private async processJob(job: EnrichmentJob): Promise<JobResult> {
     const startTime = Date.now();
-    
+
     try {
       let result: JobResult;
-      
+
       switch (job.type) {
         case EnrichmentJobType.SINGLE_KEYWORD:
           result = await this.processSingleKeywordJob(job);
           break;
-          
+
         case EnrichmentJobType.BULK_ENRICHMENT:
           result = await this.processBulkEnrichmentJob(job);
           break;
-          
+
         case EnrichmentJobType.CACHE_REFRESH:
           result = await this.processCacheRefreshJob(job);
           break;
-          
+
         default:
           throw new Error(`Unsupported job type: ${job.type}`);
       }
 
       result.summary.processingTime = Date.now() - startTime;
       result.completedAt = new Date();
-      
+
       return result;
-      
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       return {
         jobId: job.id,
         status: EnrichmentJobStatus.FAILED,
@@ -226,10 +228,10 @@ class Worker extends EventEmitter {
           apiCallsMade: 0,
           quotaUsed: 0,
           processingTime,
-          averageTimePerKeyword: 0
+          averageTimePerKeyword: 0,
         },
         startedAt: job.startedAt || new Date(),
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -240,13 +242,13 @@ class Worker extends EventEmitter {
   private async processSingleKeywordJob(job: EnrichmentJob): Promise<JobResult> {
     const data = job.data as SingleKeywordJobData;
     const startTime = Date.now();
-    
+
     try {
       // Update progress
       await this.queue.updateJobProgress(job.id, {
         currentKeyword: data.keyword,
         processed: 0,
-        total: 1
+        total: 1,
       });
 
       // Enrich keyword
@@ -265,14 +267,14 @@ class Worker extends EventEmitter {
         fromCache: enrichmentResult.metadata?.source === 'cache',
         processingTime: Date.now() - startTime,
         apiCallMade: enrichmentResult.metadata?.source === 'api',
-        quotaUsed: enrichmentResult.metadata?.source === 'api' ? 1 : 0
+        quotaUsed: enrichmentResult.metadata?.source === 'api' ? 1 : 0,
       };
 
       if (!enrichmentResult.success) {
         keywordResult.error = {
           type: 'enrichment_error',
           message: enrichmentResult.error?.message || 'Unknown error',
-          retryable: true
+          retryable: true,
         };
       }
 
@@ -280,7 +282,7 @@ class Worker extends EventEmitter {
       await this.queue.updateJobProgress(job.id, {
         processed: 1,
         successful: enrichmentResult.success ? 1 : 0,
-        failed: enrichmentResult.success ? 0 : 1
+        failed: enrichmentResult.success ? 0 : 1,
       });
 
       return {
@@ -296,13 +298,14 @@ class Worker extends EventEmitter {
           apiCallsMade: keywordResult.apiCallMade ? 1 : 0,
           quotaUsed: keywordResult.quotaUsed,
           processingTime: Date.now() - startTime,
-          averageTimePerKeyword: Date.now() - startTime
+          averageTimePerKeyword: Date.now() - startTime,
         },
-        startedAt: job.startedAt || new Date()
+        startedAt: job.startedAt || new Date(),
       };
-      
     } catch (error) {
-      throw new Error(`Single keyword job failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Single keyword job failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -314,24 +317,24 @@ class Worker extends EventEmitter {
     const startTime = Date.now();
     const results: KeywordEnrichmentResult[] = [];
     const batchSize = job.config.batchSize;
-    
+
     try {
       // Update initial progress
       await this.queue.updateJobProgress(job.id, {
         total: data.keywords.length,
         processed: 0,
-        totalBatches: Math.ceil(data.keywords.length / batchSize)
+        totalBatches: Math.ceil(data.keywords.length / batchSize),
       });
 
       // Process in batches
       for (let i = 0; i < data.keywords.length; i += batchSize) {
         const batch = data.keywords.slice(i, i + batchSize);
         const batchIndex = Math.floor(i / batchSize) + 1;
-        
+
         // Update progress for current batch
         await this.queue.updateJobProgress(job.id, {
           currentBatch: batchIndex,
-          currentKeyword: batch[0]?.keyword
+          currentKeyword: batch[0]?.keyword,
         });
 
         // Process batch
@@ -341,21 +344,21 @@ class Worker extends EventEmitter {
         // Update progress after batch completion
         await this.queue.updateJobProgress(job.id, {
           processed: i + batch.length,
-          successful: results.filter(r => r.success).length,
-          failed: results.filter(r => !r.success).length
+          successful: results.filter((r) => r.success).length,
+          failed: results.filter((r) => !r.success).length,
         });
 
         // Add delay between batches to respect rate limits
         if (i + batchSize < data.keywords.length) {
-          await this.sleep(1000);
+          await sleep(1000);
         }
       }
 
       // Calculate summary
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
-      const cacheHits = results.filter(r => r.fromCache).length;
-      const apiCalls = results.filter(r => r.apiCallMade).length;
+      const successful = results.filter((r) => r.success).length;
+      const failed = results.filter((r) => !r.success).length;
+      const cacheHits = results.filter((r) => r.fromCache).length;
+      const apiCalls = results.filter((r) => r.apiCallMade).length;
       const quotaUsed = results.reduce((sum, r) => sum + r.quotaUsed, 0);
 
       return {
@@ -371,13 +374,14 @@ class Worker extends EventEmitter {
           apiCallsMade: apiCalls,
           quotaUsed,
           processingTime: Date.now() - startTime,
-          averageTimePerKeyword: (Date.now() - startTime) / data.keywords.length
+          averageTimePerKeyword: (Date.now() - startTime) / data.keywords.length,
         },
-        startedAt: job.startedAt || new Date()
+        startedAt: job.startedAt || new Date(),
       };
-      
     } catch (error) {
-      throw new Error(`Bulk enrichment job failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Bulk enrichment job failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -387,16 +391,16 @@ class Worker extends EventEmitter {
   private async processCacheRefreshJob(job: EnrichmentJob): Promise<JobResult> {
     const data = job.data as CacheRefreshJobData;
     const startTime = Date.now();
-    
+
     try {
       // This would involve querying stale keywords and refreshing them
       // For now, return a placeholder implementation
-      
+
       await this.queue.updateJobProgress(job.id, {
         total: 100, // Placeholder
         processed: 100,
         successful: 100,
-        failed: 0
+        failed: 0,
       });
 
       return {
@@ -412,13 +416,14 @@ class Worker extends EventEmitter {
           apiCallsMade: 100,
           quotaUsed: 100,
           processingTime: Date.now() - startTime,
-          averageTimePerKeyword: (Date.now() - startTime) / 100
+          averageTimePerKeyword: (Date.now() - startTime) / 100,
         },
-        startedAt: job.startedAt || new Date()
+        startedAt: job.startedAt || new Date(),
       };
-      
     } catch (error) {
-      throw new Error(`Cache refresh job failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Cache refresh job failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -426,15 +431,15 @@ class Worker extends EventEmitter {
    * Process a batch of keywords
    */
   private async processBatch(
-    keywords: Array<{keyword: string; countryCode: string; languageCode?: string}>,
+    keywords: Array<{ keyword: string; countryCode: string; languageCode?: string }>,
     forceRefresh: boolean
   ): Promise<KeywordEnrichmentResult[]> {
     const results: KeywordEnrichmentResult[] = [];
-    
+
     // Process keywords in parallel (but limited)
     const promises = keywords.map(async (keywordData) => {
       const startTime = Date.now();
-      
+
       try {
         const enrichmentResult = await this.enrichmentService.enrichKeyword(
           keywordData.keyword,
@@ -452,13 +457,14 @@ class Worker extends EventEmitter {
           processingTime: Date.now() - startTime,
           apiCallMade: enrichmentResult.metadata?.source === 'api',
           quotaUsed: enrichmentResult.metadata?.source === 'api' ? 1 : 0,
-          error: enrichmentResult.error ? {
-            type: 'enrichment_error',
-            message: enrichmentResult.error.message,
-            retryable: true
-          } : undefined
+          error: enrichmentResult.error
+            ? {
+                type: 'enrichment_error',
+                message: enrichmentResult.error.message,
+                retryable: true,
+              }
+            : undefined,
         } as KeywordEnrichmentResult;
-        
       } catch (error) {
         return {
           keyword: keywordData.keyword,
@@ -472,14 +478,14 @@ class Worker extends EventEmitter {
           error: {
             type: 'processing_error',
             message: error instanceof Error ? error.message : 'Unknown error',
-            retryable: true
-          }
+            retryable: true,
+          },
         } as KeywordEnrichmentResult;
       }
     });
 
     const batchResults = await Promise.allSettled(promises);
-    
+
     batchResults.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         results.push(result.value);
@@ -498,8 +504,8 @@ class Worker extends EventEmitter {
           error: {
             type: 'promise_error',
             message: (result as PromiseRejectedResult).reason?.message || 'Promise rejected',
-            retryable: true
-          }
+            retryable: true,
+          },
         });
       }
     });
@@ -520,8 +526,8 @@ class Worker extends EventEmitter {
       lastHeartbeat: this.lastHeartbeat,
       totalProcessed: this.totalProcessed,
       totalErrors: this.totalErrors,
-      averageProcessingTime: this.totalProcessed > 0 ? 
-        (Date.now() - this.startedAt.getTime()) / this.totalProcessed : 0
+      averageProcessingTime:
+        this.totalProcessed > 0 ? (Date.now() - this.startedAt.getTime()) / this.totalProcessed : 0,
     };
   }
 
@@ -531,17 +537,17 @@ class Worker extends EventEmitter {
   async stop(): Promise<void> {
     this.isShuttingDown = true;
     this.status = 'stopping';
-    
+
     // Wait for current jobs to complete
     while (this.currentJobs.size > 0) {
-      await this.sleep(1000);
+      await sleep(1000);
     }
-    
+
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = undefined;
     }
-    
+
     this.status = 'idle';
     this.emit('worker:stopped', { workerId: this.id });
   }
@@ -554,13 +560,6 @@ class Worker extends EventEmitter {
       this.lastHeartbeat = new Date();
       this.emit('worker:heartbeat', this.getStatus());
     }, this.config.heartbeatInterval);
-  }
-
-  /**
-   * Sleep utility
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
@@ -596,7 +595,7 @@ export class JobProcessor extends EventEmitter {
       totalJobsProcessed: 0,
       totalErrors: 0,
       averageProcessingTime: 0,
-      startTime: new Date()
+      startTime: new Date(),
     };
   }
 
@@ -611,10 +610,10 @@ export class JobProcessor extends EventEmitter {
 
     this.isRunning = true;
     this.metrics.startTime = new Date();
-    
+
     // Start initial workers
     await this.scaleWorkers(this.config.minWorkers);
-    
+
     // Start auto-scaling if enabled
     if (this.config.enableAutoScaling) {
       this.startAutoScaling();
@@ -622,9 +621,12 @@ export class JobProcessor extends EventEmitter {
 
     // Start quota monitoring
     this.startQuotaMonitoring();
-    
+
     this.emit('processor:started');
-    logger.info({ workerCount: this.workers.size }, `JobProcessor started with ${this.workers.size} workers`);
+    logger.info(
+      { workerCount: this.workers.size },
+      `JobProcessor started with ${this.workers.size} workers`
+    );
   }
 
   /**
@@ -637,21 +639,21 @@ export class JobProcessor extends EventEmitter {
     }
 
     this.isRunning = false;
-    
+
     // Stop timers
     if (this.scalingTimer) {
       clearInterval(this.scalingTimer);
       this.scalingTimer = undefined;
     }
-    
+
     if (this.quotaCheckTimer) {
       clearInterval(this.quotaCheckTimer);
       this.quotaCheckTimer = undefined;
     }
-    
+
     // Stop all workers
     await this.stopAllWorkers();
-    
+
     this.emit('processor:stopped');
     logger.info({}, 'JobProcessor stopped');
   }
@@ -666,7 +668,7 @@ export class JobProcessor extends EventEmitter {
     metrics: typeof this.metrics;
     workerStatuses: WorkerStatus[];
   } {
-    const workerStatuses = Array.from(this.workers.values()).map(worker => worker.getStatus());
+    const workerStatuses = Array.from(this.workers.values()).map((worker) => worker.getStatus());
     const activeJobs = workerStatuses.reduce((sum, status) => sum + status.currentJobs, 0);
 
     return {
@@ -674,7 +676,7 @@ export class JobProcessor extends EventEmitter {
       workerCount: this.workers.size,
       activeJobs,
       metrics: this.metrics,
-      workerStatuses
+      workerStatuses,
     };
   }
 
@@ -683,7 +685,7 @@ export class JobProcessor extends EventEmitter {
    */
   private async scaleWorkers(targetCount: number): Promise<void> {
     const currentCount = this.workers.size;
-    
+
     if (targetCount > currentCount) {
       // Scale up
       const workersToAdd = targetCount - currentCount;
@@ -709,15 +711,10 @@ export class JobProcessor extends EventEmitter {
       heartbeatInterval: this.config.heartbeatInterval,
       enableMetrics: this.config.enableMetrics,
       autoScale: this.config.enableAutoScaling,
-      idleTimeout: this.config.workerIdleTimeout
+      idleTimeout: this.config.workerIdleTimeout,
     };
 
-    const worker = new Worker(
-      workerConfig,
-      this.queue,
-      this.enrichmentService,
-      this.errorHandler
-    );
+    const worker = new Worker(workerConfig, this.queue, this.enrichmentService, this.errorHandler);
 
     // Set up worker event handlers
     worker.on('worker:started', (data) => {
@@ -735,7 +732,7 @@ export class JobProcessor extends EventEmitter {
 
     this.workers.set(workerId, worker);
     await worker.start();
-    
+
     logger.info({ workerId }, `Added worker ${workerId}`);
   }
 
@@ -747,14 +744,14 @@ export class JobProcessor extends EventEmitter {
       .sort((a, b) => a.currentJobs.size - b.currentJobs.size) // Remove workers with fewer jobs first
       .slice(0, count);
 
-    await Promise.all(workersToRemove.map(worker => worker.stop()));
+    await Promise.all(workersToRemove.map((worker) => worker.stop()));
   }
 
   /**
    * Stop all workers
    */
   private async stopAllWorkers(): Promise<void> {
-    await Promise.all(Array.from(this.workers.values()).map(worker => worker.stop()));
+    await Promise.all(Array.from(this.workers.values()).map((worker) => worker.stop()));
     this.workers.clear();
   }
 
@@ -766,7 +763,10 @@ export class JobProcessor extends EventEmitter {
       try {
         await this.performAutoScaling();
       } catch (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in auto-scaling');
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Error in auto-scaling'
+        );
       }
     }, 60000); // Check every minute
   }
@@ -778,29 +778,33 @@ export class JobProcessor extends EventEmitter {
     const queueStats = await this.queue.getQueueStats();
     const currentWorkerCount = this.workers.size;
     const totalJobs = queueStats.queuedJobs + queueStats.processingJobs;
-    
+
     // Calculate utilization
     const maxCapacity = currentWorkerCount * this.config.maxConcurrentJobsPerWorker;
     const utilization = maxCapacity > 0 ? totalJobs / maxCapacity : 0;
-    
+
     let targetWorkerCount = currentWorkerCount;
-    
+
     if (utilization > this.config.scaleUpThreshold && currentWorkerCount < this.config.maxWorkers) {
       // Scale up
-      targetWorkerCount = Math.min(
-        this.config.maxWorkers,
-        Math.ceil(currentWorkerCount * 1.5)
-      );
-    } else if (utilization < this.config.scaleDownThreshold && currentWorkerCount > this.config.minWorkers) {
+      targetWorkerCount = Math.min(this.config.maxWorkers, Math.ceil(currentWorkerCount * 1.5));
+    } else if (
+      utilization < this.config.scaleDownThreshold &&
+      currentWorkerCount > this.config.minWorkers
+    ) {
       // Scale down
-      targetWorkerCount = Math.max(
-        this.config.minWorkers,
-        Math.floor(currentWorkerCount * 0.8)
-      );
+      targetWorkerCount = Math.max(this.config.minWorkers, Math.floor(currentWorkerCount * 0.8));
     }
-    
+
     if (targetWorkerCount !== currentWorkerCount) {
-      logger.info({ currentWorkerCount, targetWorkerCount, utilization: `${(utilization * 100).toFixed(1)}%` }, `Auto-scaling: ${currentWorkerCount} → ${targetWorkerCount} workers (utilization: ${(utilization * 100).toFixed(1)}%)`);
+      logger.info(
+        {
+          currentWorkerCount,
+          targetWorkerCount,
+          utilization: `${(utilization * 100).toFixed(1)}%`,
+        },
+        `Auto-scaling: ${currentWorkerCount} → ${targetWorkerCount} workers (utilization: ${(utilization * 100).toFixed(1)}%)`
+      );
       await this.scaleWorkers(targetWorkerCount);
     }
   }
@@ -813,7 +817,10 @@ export class JobProcessor extends EventEmitter {
       try {
         await this.checkQuotaStatus();
       } catch (error) {
-        logger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error checking quota status');
+        logger.error(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Error checking quota status'
+        );
       }
     }, this.config.quotaCheckInterval);
   }
@@ -824,12 +831,15 @@ export class JobProcessor extends EventEmitter {
   private async checkQuotaStatus(): Promise<void> {
     // This would integrate with the quota management system
     // For now, this is a placeholder implementation
-    
+
     // If quota usage exceeds emergency threshold, pause processing
     const quotaUsage = 0.7; // Placeholder
-    
+
     if (quotaUsage > this.config.emergencyStopThreshold) {
-      logger.warn({ quotaUsage: `${(quotaUsage * 100).toFixed(1)}%` }, `Emergency stop triggered: quota usage at ${(quotaUsage * 100).toFixed(1)}%`);
+      logger.warn(
+        { quotaUsage: `${(quotaUsage * 100).toFixed(1)}%` },
+        `Emergency stop triggered: quota usage at ${(quotaUsage * 100).toFixed(1)}%`
+      );
       await this.queue.pauseQueue();
       this.emit('processor:emergency-stop', { quotaUsage });
     }

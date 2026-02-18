@@ -1,11 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabase, SecureServiceRoleHelpers } from '@indexnow/database';
-import { registerSchema, ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
-import {
-  publicApiWrapper,
-  formatSuccess,
-  formatError
-} from '@/lib/core/api-response-middleware';
+import { registerSchema, ErrorType, ErrorSeverity, getClientIP, sleep } from '@indexnow/shared';
+import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
@@ -40,7 +36,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 429,
-          metadata: { retryAfter: rateLimit.retryAfter }
+          metadata: { retryAfter: rateLimit.retryAfter },
         }
       );
       return formatError(error);
@@ -51,7 +47,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone_number: phoneNumber, country } }
+      options: { data: { full_name: name, phone_number: phoneNumber, country } },
     });
 
     if (error) {
@@ -61,12 +57,18 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 400,
-          metadata: { email, errorCode: error.code || 'unknown', operation: 'user_registration' }
+          metadata: { email, errorCode: error.code || 'unknown', operation: 'user_registration' },
         }
       );
 
       try {
-        await ActivityLogger.logAuth(email, ActivityEventTypes.REGISTER, false, request, error.message);
+        await ActivityLogger.logAuth(
+          email,
+          ActivityEventTypes.REGISTER,
+          false,
+          request,
+          error.message
+        );
       } catch {
         // Silently fail activity logging
       }
@@ -85,9 +87,8 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           reason: 'Complete user profile after successful registration',
           source: 'auth/register',
           metadata: { hasPhoneNumber: !!phoneNumber, hasCountry: !!country, hasName: !!name },
-          ipAddress: getClientIP(request)
-            || 'unknown',
-          userAgent: request.headers.get('user-agent') || 'unknown'
+          ipAddress: getClientIP(request) || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
         };
 
         // Wait for the user profile to be created by the database trigger
@@ -95,7 +96,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         let profileReady = false;
         for (let attempt = 0; attempt < 5; attempt++) {
           const delay = Math.min(500 * Math.pow(2, attempt), 4000); // 500ms, 1s, 2s, 4s, 4s
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await sleep(delay);
 
           try {
             const checkResults = await SecureServiceRoleHelpers.secureSelect<{ id: string }>(
@@ -119,7 +120,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           const updateData = {
             phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
             country: country?.toString().substring(0, 100) || null,
-            full_name: name?.toString().substring(0, 255) || null
+            full_name: name?.toString().substring(0, 255) || null,
           };
 
           await SecureServiceRoleHelpers.secureUpdate(
@@ -143,19 +144,24 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       }
     }
 
-    return formatSuccess({
-      user: data.user,
-      session: data.session,
-      message: 'Registration successful. Please check your email to verify your account.'
-    }, 201);
-
+    return formatSuccess(
+      {
+        user: data.user,
+        session: data.session,
+        message: 'Registration successful. Please check your email to verify your account.',
+      },
+      201
+    );
   } catch (error) {
     const systemError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,
       error instanceof Error ? error : new Error(String(error)),
-      { severity: ErrorSeverity.CRITICAL, statusCode: 500, metadata: { operation: 'user_registration' } }
+      {
+        severity: ErrorSeverity.CRITICAL,
+        statusCode: 500,
+        metadata: { operation: 'user_registration' },
+      }
     );
     return formatError(systemError);
   }
 });
-

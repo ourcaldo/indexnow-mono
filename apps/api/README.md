@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# @indexnow/api
 
-## Getting Started
+Headless Next.js 16 app providing all REST API routes for the IndexNow Studio platform. No UI — only `src/app/api/` route handlers.
 
-First, run the development server:
+> Part of the [IndexNow Studio monorepo](../../README.md).
+
+## Tech Stack
+
+- **Runtime:** Next.js 16 (App Router, route handlers only)
+- **Database:** Supabase (Row-Level Security + service-role access)
+- **Payments:** Paddle (subscriptions, webhooks)
+- **Rank Tracking:** SeRanking integration
+- **Logging:** pino (structured JSON)
+- **Rate Limiting:** Redis
+- **Auth:** Supabase Auth (JWT validation via `@indexnow/auth`)
+
+## API Routes (`/api/v1/`)
+
+| Domain            | Routes                                                                                                      | Description                                        |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **Auth**          | `auth/session`, `auth/verify`, `auth/user/change-password`                                                  | Login, session validation, password change         |
+| **Admin**         | `admin/users`, `admin/verify-role`                                                                          | User management, role verification (super_admin)   |
+| **Billing**       | `billing/history`, `billing/overview`, `billing/payment`, `billing/orders/[id]`                             | Payment history, billing overview, order details   |
+| **Paddle**        | `payments/paddle/webhook`, `payments/paddle/subscription/*`, `payments/paddle/config`                       | Webhook receiver, subscription lifecycle, config   |
+| **Rank Tracking** | `rank-tracking/keywords`, `rank-tracking/domains`, `rank-tracking/check-rank`, `rank-tracking/rank-history` | Keyword CRUD, domain management, rank checks       |
+| **SeRanking**     | `integrations/seranking/keyword-data`, `integrations/seranking/quota/*`, `integrations/seranking/health`    | Keyword data sync, quota monitoring, health checks |
+| **Dashboard**     | `dashboard`                                                                                                 | Aggregated dashboard data                          |
+| **Activity**      | `activity`                                                                                                  | User activity log                                  |
+| **Notifications** | `notifications/dismiss/[id]`                                                                                | Dismiss notifications                              |
+| **System**        | `system/health`, `system/status`                                                                            | Health check, system status                        |
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# From monorepo root
+pnpm dev --filter=api
+
+# Run only this app
+cd apps/api && pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Default port: `3001` (see `next.config.js`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable                        | Description                             |
+| ------------------------------- | --------------------------------------- |
+| `SUPABASE_URL`                  | Supabase project URL                    |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Service-role key (server-side only)     |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key for client validation          |
+| `PADDLE_API_KEY`                | Paddle API key                          |
+| `PADDLE_WEBHOOK_SECRET`         | Paddle webhook signature secret         |
+| `SERANKING_API_KEY`             | SeRanking API key                       |
+| `REDIS_URL`                     | Redis connection string (rate limiting) |
 
-## Learn More
+## Architecture Notes
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- All routes are versioned under `/api/v1/`.
+- Auth middleware validates JWTs on protected routes via `@indexnow/auth`.
+- Paddle webhooks are verified using signature validation before processing.
+- Rate limiting is applied per-IP via Redis with configurable windows.
+- Structured logs (pino) are emitted as JSON for production log aggregation.

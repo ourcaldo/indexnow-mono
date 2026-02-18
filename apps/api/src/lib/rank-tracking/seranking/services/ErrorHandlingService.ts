@@ -13,6 +13,7 @@ import {
   QuotaStatus,
   HealthCheckResult,
 } from '../types/SeRankingTypes';
+import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 
 // Error handling configuration
@@ -227,7 +228,7 @@ export class SeRankingErrorHandler {
 
       if (i > 0) {
         const delay = this.calculateBackoffDelay(i);
-        await this.sleep(delay);
+        await sleep(delay);
       }
 
       try {
@@ -843,13 +844,6 @@ export class SeRankingErrorHandler {
       default:
         return ErrorSeverity.MEDIUM;
     }
-  }
-
-  /**
-   * Sleep utility
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**

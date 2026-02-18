@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# @indexnow/admin
 
-## Getting Started
+Internal admin dashboard for managing the IndexNow Studio platform. Access is restricted to users with the `super_admin` role.
 
-First, run the development server:
+> Part of the [IndexNow Studio monorepo](../../README.md).
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **UI:** `@indexnow/ui` shared component library
+- **Analytics:** `@indexnow/analytics` tracking package
+- **Auth:** Supabase Auth (super_admin role gate)
+
+## Features
+
+- **User Management** — list, view, and manage user accounts and activity
+- **Order Management** — view and inspect orders and transactions
+- **Analytics Dashboard** — platform-wide analytics and metrics
+- **Error Monitoring** — browse and inspect application errors
+- **Activity Log** — per-user and global activity history
+- **Settings** — site configuration, package management, payment settings
+
+## Key Routes
+
+| Route                | Description              |
+| -------------------- | ------------------------ |
+| `/`                  | Admin dashboard overview |
+| `/users`             | User list and management |
+| `/users/[id]`        | User detail / activity   |
+| `/orders`            | Order list               |
+| `/orders/[id]`       | Order detail             |
+| `/analytics`         | Platform analytics       |
+| `/errors`            | Error log                |
+| `/activity`          | Activity feed            |
+| `/settings/site`     | Site settings            |
+| `/settings/packages` | Package configuration    |
+| `/settings/payments` | Payment gateway settings |
+| `/login`             | Admin login              |
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# From monorepo root
+pnpm dev --filter=admin
+
+# Run only this app
+cd apps/admin && pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Default port: `3002` (see `next.config.js`).

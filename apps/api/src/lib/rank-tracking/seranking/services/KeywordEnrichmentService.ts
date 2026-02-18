@@ -15,7 +15,7 @@ import {
   SeRankingErrorType,
 } from '../types/SeRankingTypes';
 import { KeywordBankEntity, KeywordBankInsert, CacheStatus } from '../types/KeywordBankTypes';
-import { Database } from '@indexnow/shared';
+import { Database, sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 
 import {
@@ -272,7 +272,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           }
 
           // Small delay between requests
-          await this.delay(500);
+          await sleep(500);
         } catch (error) {
           processed++;
           failed++;
@@ -846,7 +846,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         job.updated_at = new Date();
 
         // Small delay to prevent overwhelming the API
-        await this.delay(100);
+        await sleep(100);
       } catch (error) {
         job.progress.failed++;
         job.progress.processed++;
@@ -905,10 +905,6 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
 
   private generateJobId(): string {
     return `enrichment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private async delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: unknown): void {
