@@ -117,15 +117,12 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
       },
     },
     async () => {
-      await supabaseAdmin
-        // @ts-expect-error — table type not fully matching generated schema
-        .from('indb_system_activity_logs')
-        .insert({
-          user_id: adminUser.id,
-          event_type: 'MANUAL_RANK_CHECK_TRIGGER',
-          description: 'Admin manually triggered rank check',
-          metadata: { beforeStats },
-        });
+      await supabaseAdmin.from('indb_system_activity_logs').insert({
+        user_id: adminUser.id,
+        event_type: 'MANUAL_RANK_CHECK_TRIGGER',
+        description: 'Admin manually triggered rank check',
+        metadata: toJson({ beforeStats }),
+      });
 
       return { success: true };
     }

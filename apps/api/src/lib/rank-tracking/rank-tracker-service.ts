@@ -19,10 +19,8 @@ export class RankTrackerService {
   ): Promise<RankResult> {
     try {
       // 1. Get domain name
-      const { data: domainData, error: domainError } = await untypedFrom(
-        adminClient,
-        'indb_domains'
-      )
+      const { data: domainData, error: domainError } = await adminClient
+        .from('indb_keyword_domains')
         .select('domain_name')
         .eq('id', domainId)
         .single();

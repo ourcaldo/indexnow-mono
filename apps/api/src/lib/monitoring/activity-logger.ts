@@ -5,7 +5,7 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database';
-import { InsertSecurityActivityLog, Json, ActivityEventTypes } from '@indexnow/shared';
+import { Json, ActivityEventTypes } from '@indexnow/shared';
 import { logger } from './error-handling';
 import {
   getRequestInfo,
@@ -107,7 +107,7 @@ export class ServerActivityLogger {
             success: data.success !== false,
             error_message: data.errorMessage || null,
             metadata: enhancedMetadata,
-          } as InsertSecurityActivityLog;
+          };
 
           const { data: result, error } = await supabaseAdmin
             .from('indb_security_activity_logs')

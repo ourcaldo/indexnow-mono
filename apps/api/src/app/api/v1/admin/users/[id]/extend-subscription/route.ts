@@ -47,13 +47,13 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
     {
       table: 'indb_auth_user_profiles',
       operationType: 'select',
-      columns: ['full_name', 'expires_at', 'package'],
+      columns: ['full_name', 'subscription_end_date', 'package'],
       whereConditions: { user_id: userId },
     },
     async () => {
       const { data, error } = await supabaseAdmin
         .from('indb_auth_user_profiles')
-        .select('full_name, expires_at, package:indb_payment_packages(name, slug)')
+        .select('full_name, subscription_end_date, package:indb_payment_packages(name, slug)')
         .eq('user_id', userId)
         .single();
       return { data, error };
@@ -63,7 +63,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
   const { data: rawCurrentUser, error: userError } = currentUserResult;
   const currentUser = rawCurrentUser as {
     full_name: string | null;
-    expires_at: string | null;
+    subscription_end_date: string | null;
     package: { name: string; slug: string } | null;
   } | null;
   if (userError || !currentUser) {
@@ -76,7 +76,9 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
     );
   }
 
-  const currentExpiry = currentUser.expires_at ? new Date(currentUser.expires_at) : new Date();
+  const currentExpiry = currentUser.subscription_end_date
+    ? new Date(currentUser.subscription_end_date)
+    : new Date();
   const now = new Date();
   const baseDate = currentExpiry > now ? currentExpiry : now;
   const newExpiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
@@ -91,7 +93,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
         targetUserId: userId,
         targetUserName: currentUser.full_name,
         extensionDays: days,
-        previousExpiry: currentUser.expires_at,
+        previousExpiry: currentUser.subscription_end_date,
         newExpiry: newExpiry.toISOString(),
         endpoint: '/api/v1/admin/users/[id]/extend-subscription',
         method: 'POST',
@@ -102,10 +104,10 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
     {
       table: 'indb_auth_user_profiles',
       operationType: 'update',
-      columns: ['expires_at', 'updated_at'],
+      columns: ['subscription_end_date', 'updated_at'],
       whereConditions: { user_id: userId },
       data: {
-        expires_at: newExpiry.toISOString(),
+        subscription_end_date: newExpiry.toISOString(),
         updated_at: new Date().toISOString(),
       },
     },
@@ -113,7 +115,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
       const { error } = await supabaseAdmin
         .from('indb_auth_user_profiles')
         .update({
-          expires_at: newExpiry.toISOString(),
+          subscription_end_date: newExpiry.toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
@@ -141,7 +143,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
     {
       subscriptionExtend: true,
       extensionDays: days,
-      previousExpiry: currentUser.expires_at,
+      previousExpiry: currentUser.subscription_end_date,
       newExpiry: newExpiry.toISOString(),
       userFullName: currentUser.full_name,
     }

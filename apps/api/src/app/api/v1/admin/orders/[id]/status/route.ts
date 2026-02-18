@@ -153,16 +153,12 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   }
 
   // Atomic status update + plan activation via RPC (A-02 fix)
-  const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
-    // @ts-expect-error - RPC 'activate_order_with_plan' not in generated Database types
-    'activate_order_with_plan',
-    {
-      p_transaction_id: orderId,
-      p_new_status: status,
-      p_admin_user_id: adminUser.id,
-      p_notes: notes || null,
-    }
-  );
+  const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('activate_order_with_plan', {
+    p_transaction_id: orderId,
+    p_new_status: status,
+    p_admin_user_id: adminUser.id,
+    p_notes: notes || null,
+  });
 
   if (rpcError) {
     throw new Error(`Failed to update order status: ${rpcError.message}`);

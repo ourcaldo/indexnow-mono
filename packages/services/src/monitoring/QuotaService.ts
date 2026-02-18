@@ -9,7 +9,7 @@
  * (useQuotaValidation, useGlobalQuotaManager) or direct DB queries via
  * service-role client in API routes.
  */
-import { supabaseBrowser } from '@indexnow/database/client';
+import { typedSupabaseBrowser as supabaseBrowser } from '@indexnow/database/client';
 
 import { logger } from '@indexnow/shared';
 
@@ -19,7 +19,6 @@ export class QuotaService {
    * Returns true if successful, false if insufficient quota.
    */
   static async consumeQuota(userId: string, count: number): Promise<boolean> {
-    // @ts-expect-error - RPC 'consume_user_quota' not in generated Database types
     const { data, error } = await supabaseBrowser.rpc('consume_user_quota', {
       target_user_id: userId,
       quota_amount: count,

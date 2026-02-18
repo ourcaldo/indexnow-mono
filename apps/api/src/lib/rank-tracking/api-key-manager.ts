@@ -1,4 +1,4 @@
-import { supabaseAdmin, untypedFrom } from '@indexnow/database';
+import { supabaseAdmin } from '@indexnow/database';
 import { logger } from '../monitoring/error-handling';
 
 const adminClient = supabaseAdmin;
@@ -9,7 +9,8 @@ export class ApiKeyManager {
    */
   static async getActiveKey(service: string): Promise<string | null> {
     try {
-      const { data, error } = await untypedFrom(adminClient, 'indb_api_keys')
+      const { data, error } = await adminClient
+        .from('indb_api_keys')
         .select('key_value')
         .eq('service_name', service)
         .eq('is_active', true)
@@ -23,7 +24,8 @@ export class ApiKeyManager {
       }
 
       // Update last used timestamp
-      await untypedFrom(adminClient, 'indb_api_keys')
+      await adminClient
+        .from('indb_api_keys')
         .update({ last_used_at: new Date().toISOString() })
         .eq('key_value', data.key_value);
 
@@ -38,7 +40,8 @@ export class ApiKeyManager {
    * Rotate to next available key (if multiple keys exist)
    */
   static async rotateKey(service: string, currentKey: string): Promise<string | null> {
-    await untypedFrom(adminClient, 'indb_api_keys')
+    await adminClient
+      .from('indb_api_keys')
       .update({ last_used_at: new Date().toISOString() })
       .eq('key_value', currentKey);
 

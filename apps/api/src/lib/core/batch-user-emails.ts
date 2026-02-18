@@ -15,7 +15,6 @@ export async function batchGetUserEmails(userIds: string[]): Promise<Map<string,
 
   try {
     // Attempt batch RPC call (single SQL query)
-    // @ts-expect-error - RPC 'get_user_emails_by_ids' not in generated Database types
     const { data, error } = await supabaseAdmin.rpc('get_user_emails_by_ids', {
       p_user_ids: userIds,
     });

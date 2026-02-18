@@ -166,13 +166,14 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
 
         const { data, error } = await supabaseAdmin
           .from('indb_payment_gateways')
-          // @ts-expect-error — insert columns not fully matching generated type
           .insert({
             name: body.name,
             slug: body.slug,
             is_active: body.is_active ?? false,
             is_default: body.is_default ?? false,
-            configuration: body.configuration ?? null,
+            configuration: (body.configuration ?? null) as
+              | import('@indexnow/shared').PaymentGatewayConfiguration
+              | null,
           })
           .select()
           .single();
