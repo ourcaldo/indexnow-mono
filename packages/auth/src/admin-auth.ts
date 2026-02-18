@@ -113,8 +113,6 @@ export class AdminAuthService {
         }
       )
     } catch (error) {
-      console.error('[AdminAuth] Failed to log admin activity:', error instanceof Error ? error.message : String(error))
-      // (#36) Also log via shared logger for structured monitoring
       logger.error({ error: error instanceof Error ? error : undefined }, '[AdminAuth] Failed to log admin activity')
     }
   }

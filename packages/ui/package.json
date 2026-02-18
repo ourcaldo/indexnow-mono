@@ -23,6 +23,8 @@
     "./modals": "./src/components/modals/index.ts",
     "./settings": "./src/components/settings/index.ts",
     "./trial": "./src/components/trial/index.ts",
+    "./primitives": "./src/components/index.ts",
+    "./utils": "./src/lib/utils.ts",
     "./hooks": "./src/hooks/index.ts",
     "./providers": "./src/providers/index.ts",
     "./contexts": "./src/contexts/index.ts",
@@ -43,7 +45,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "catalog:",
     "@paddle/paddle-js": "^1.4.2",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
@@ -67,8 +69,8 @@
     "@tanstack/react-table": "^8.20.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.453.0",
-    "react-hook-form": "^7.62.0",
+    "lucide-react": "catalog:",
+    "react-hook-form": "catalog:",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -77,15 +79,15 @@
     "@indexnow/auth": "workspace:*",
     "@indexnow/eslint-config": "workspace:*",
     "@indexnow/supabase-client": "workspace:*",
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "eslint": "^9",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwindcss": "^4.0.0",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "eslint": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
     "tsup": "^8.0.1",
-    "typescript": "^5.6.3"
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "@indexnow/analytics": "workspace:*",

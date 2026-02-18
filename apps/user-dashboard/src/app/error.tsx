@@ -6,6 +6,7 @@ import { AlertCircle, RefreshCcw, Home } from 'lucide-react'
 import Link from 'next/link'
 import { errorTracker } from '@indexnow/analytics'
 import { logger } from '@indexnow/shared'
+import * as Sentry from '@sentry/nextjs'
 
 export default function DashboardError({
   error,
@@ -15,6 +16,7 @@ export default function DashboardError({
   reset: () => void
 }) {
   useEffect(() => {
+    Sentry.captureException(error)
     logger.error({ error: error instanceof Error ? error : undefined }, 'Dashboard Application Error')
 
     errorTracker.logError({

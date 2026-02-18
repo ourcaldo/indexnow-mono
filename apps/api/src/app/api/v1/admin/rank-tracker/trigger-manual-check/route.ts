@@ -139,10 +139,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     // STUB(M-13): Get actual worker status when workerStartup is restored
     logger.warn('STUB: Rank check worker status endpoint hit — returning hardcoded status');
     const workerStatus = {
-        isInitialized: true,
-        actuallyReady: true,
+        isInitialized: false,
+        actuallyReady: false,
         rankCheckJobStatus: 'pending_restoration',
-        note: 'Worker startup service needs restoration for full status'
+        note: 'Worker startup service pending restoration'
     };
 
     return formatSuccess({

@@ -5,7 +5,7 @@
  * @stub Only updates local DB. Does NOT call Paddle API to actually change the subscription.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
@@ -26,6 +26,17 @@ const updateRequestSchema = z.object({
 });
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
+    // Safety guard: prevent data drift — local-only DB updates without Paddle API
+    if (process.env.PADDLE_SUBSCRIPTION_UPDATE_ENABLED !== 'true') {
+        return NextResponse.json(
+            {
+                error: 'Service temporarily unavailable',
+                message: 'Subscription updates are being configured. Paddle API integration pending.',
+            },
+            { status: 503, headers: { 'Retry-After': '86400' } }
+        );
+    }
+
     const body = await request.json();
 
     const validationResult = updateRequestSchema.safeParse(body);

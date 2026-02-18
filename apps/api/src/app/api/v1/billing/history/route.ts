@@ -124,8 +124,13 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     const statusFilter = url.searchParams.get('status');
 
     const offset = (page - 1) * limit;
-    const MAX_RECORDS_PER_SOURCE = 500;
+    // Fetch only what we need for the requested page, not all records
+    const fetchLimit = Math.min(offset + limit, 500);
 
+    // NOTE: We fetch (offset + limit) rows max from each source to bound memory usage.
+    // For deep pagination (e.g., page 25 × 20 = 500), this caps at 500 rows per source
+    // instead of always fetching the maximum. Full SQL-level pagination would require
+    // a UNION ALL view/RPC combining both transaction sources.
     try {
         // Fetch both legacy and paddle transactions in parallel
         const [legacyResult, paddleResult] = await Promise.all([
@@ -158,7 +163,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
 
                     const { data, error, count } = await query
                         .order('created_at', { ascending: false })
-                        .limit(MAX_RECORDS_PER_SOURCE);
+                        .limit(fetchLimit);
 
                     if (error) throw error;
                     return { data: (data ?? []) as TransactionWithJoins[], count: count ?? 0 };
@@ -184,7 +189,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                         .select('id')
                         .eq('user_id', auth.userId)
                         .order('created_at', { ascending: false })
-                        .limit(MAX_RECORDS_PER_SOURCE);
+                        .limit(fetchLimit);
 
                     if (!userTransactions || userTransactions.length === 0) {
                         return { data: [], count: 0 };
@@ -198,7 +203,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                         .select('*', { count: 'exact' })
                         .in('transaction_id', transactionIds)
                         .order('created_at', { ascending: false })
-                        .limit(MAX_RECORDS_PER_SOURCE);
+                        .limit(fetchLimit);
 
                     if (error) throw error;
                     return { data: (data ?? []) as PaddleTransactionRow[], count: count ?? 0 };

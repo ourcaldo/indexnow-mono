@@ -1,4 +1,8 @@
 import { logger } from '@/lib/monitoring/error-handling'
+import { setLoggerTransport, type LoggerTransport } from '@indexnow/shared'
+
+// E-01: Route shared-package logs through pino for unified structured logging
+setLoggerTransport(logger as unknown as LoggerTransport)
 
 export async function register() {
   // Initialize Sentry for server-side error tracking (Node.js + Edge)

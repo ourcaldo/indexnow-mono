@@ -5,7 +5,7 @@
  * @stub Returns a placeholder portal URL. Full Paddle customer portal integration requires PaddleCustomerService restoration.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
@@ -16,6 +16,17 @@ type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscri
 type SubscriptionPortalInfo = Pick<PaymentSubscriptionRow, 'paddle_subscription_id'>;
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
+    // Safety guard: prevent exposing placeholder portal URLs in production
+    if (process.env.PADDLE_PORTAL_ENABLED !== 'true') {
+        return NextResponse.json(
+            {
+                error: 'Service temporarily unavailable',
+                message: 'Customer portal is being configured. PaddleCustomerService integration pending.',
+            },
+            { status: 503, headers: { 'Retry-After': '86400' } }
+        );
+    }
+
     // Get user's active subscription using SecureServiceRoleWrapper
     const subscription = await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionPortalInfo | null>(
         auth.supabase,

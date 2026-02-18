@@ -1,3 +1,32 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+catalog:
+  # Framework
+  next: "16.1.4"
+  react: "19.2.3"
+  react-dom: "19.2.3"
+  # Shared production deps
+  "@sentry/nextjs": "^8.55.0"
+  date-fns: "^3.6.0"
+  zod: "^3.25.76"
+  "@tanstack/react-query": "^5.84.2"
+  "@hookform/resolvers": "^3.10.0"
+  lucide-react: "^0.453.0"
+  react-hook-form: "^7.62.0"
+  next-themes: "^0.4.6"
+  posthog-js: "^1.335.2"
+  cmdk: "^1.1.1"
+  react-day-picker: "^8.10.1"
+  uuid: "^11.1.0"
+  # Shared dev deps
+  typescript: "^5.6.3"
+  eslint: "^9"
+  eslint-config-next: "16.1.4"
+  tailwindcss: "^4"
+  "@tailwindcss/postcss": "^4"
+  "@types/node": "^20"
+  "@types/react": "^19"
+  "@types/react-dom": "^19"
+  "@types/uuid": "^11.0.0"

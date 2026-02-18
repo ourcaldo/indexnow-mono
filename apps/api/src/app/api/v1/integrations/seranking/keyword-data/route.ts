@@ -6,24 +6,16 @@
  * requires database migration (indb_seranking_integration table) before enabling.
  */
 
-import { NextRequest } from 'next/server';
-import { ErrorType, ErrorSeverity } from '@indexnow/shared';
-import {
-    authenticatedApiWrapper,
-    formatError
-} from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { NextResponse } from 'next/server';
+import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware';
 
-export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-    const error = await ErrorHandlingService.createError(
-        ErrorType.BUSINESS_LOGIC,
-        'SeRanking keyword data integration is not yet configured.',
+export const GET = authenticatedApiWrapper(async () => {
+    return NextResponse.json(
         {
-            severity: ErrorSeverity.LOW,
-            statusCode: 501,
-            userId: auth.userId,
-            endpoint: '/api/v1/integrations/seranking/keyword-data'
-        }
+            error: 'Not implemented',
+            message: 'SeRanking keyword data integration is not yet configured.',
+            retryAfterSeconds: 2592000,
+        },
+        { status: 501, headers: { 'Retry-After': '2592000' } }
     );
-    return formatError(error);
 });

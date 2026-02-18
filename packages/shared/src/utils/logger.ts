@@ -15,6 +15,25 @@ interface LogContext extends Record<string, Json | Error | object | undefined> {
   activityId?: string;
 }
 
+// Logger transport interface — allows pino or other structured loggers to receive shared package logs
+export interface LoggerTransport {
+  debug(obj: object, msg: string): void
+  info(obj: object, msg: string): void
+  warn(obj: object, msg: string): void
+  error(obj: object, msg: string): void
+}
+
+let _transport: LoggerTransport | null = null
+
+/**
+ * Set an external logger transport (e.g., pino) to receive all shared package log calls.
+ * Call this once at app startup. When set, all logger.info/warn/error/debug calls
+ * from @indexnow/shared packages will route through the transport instead of console.
+ */
+export function setLoggerTransport(transport: LoggerTransport): void {
+  _transport = transport
+}
+
 class Logger {
   private isProductionEnv = isProduction();
 
@@ -26,6 +45,13 @@ class Logger {
   private log(level: LogLevel, context: LogContext | string, message?: string) {
     const ctx = typeof context === 'string' ? {} : context;
     const msg = typeof context === 'string' ? context : message || '';
+
+    // Delegate to external transport if configured (e.g., pino)
+    if (_transport) {
+      const transportLevel = level === 'fatal' ? 'error' : level;
+      _transport[transportLevel](ctx, msg);
+      return;
+    }
 
     // In production, only allow warn/error/fatal through (suppress debug/info noise)
     if (this.isProductionEnv && (level === 'debug' || level === 'info')) return;
