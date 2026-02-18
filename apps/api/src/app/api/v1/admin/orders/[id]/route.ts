@@ -4,20 +4,24 @@ import {
   SecureServiceRoleWrapper,
   type UserProfile,
   supabaseAdmin,
-  fromJson
+  fromJson,
 } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
-import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { logger } from '@/lib/monitoring/error-handling'
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared'
+import { NextRequest } from 'next/server';
+import {
+  adminApiWrapper,
+  createStandardError,
+  formatError,
+} from '@/lib/core/api-response-middleware';
+import { formatSuccess } from '@/lib/core/api-response-formatter';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { logger } from '@/lib/monitoring/error-handling';
+import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import {
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
   type AdminTransactionHistory,
-  type AdminOrderActivityLog
-} from '@indexnow/shared'
+  type AdminOrderActivityLog,
+} from '@indexnow/shared';
 
 /** Supabase join result for payment transaction with package and gateway relations */
 interface OrderWithRelations {
@@ -55,12 +59,8 @@ interface OrderWithRelations {
   } | null;
 }
 
-export const GET = adminApiWrapper(async (
-  request: NextRequest,
-  adminUser,
-  context
-) => {
-  const { id: orderId } = await context.params as Record<string, string>
+export const GET = adminApiWrapper(async (request: NextRequest, adminUser, context) => {
+  const { id: orderId } = (await context.params) as Record<string, string>;
 
   // Fetch order with all related data using secure wrapper
   const orderContext = {
@@ -70,11 +70,11 @@ export const GET = adminApiWrapper(async (
     source: 'admin/orders/[id]',
     metadata: {
       orderId,
-      endpoint: '/api/v1/admin/orders/[id]'
+      endpoint: '/api/v1/admin/orders/[id]',
     },
     ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || undefined || 'unknown'
-  }
+    userAgent: request.headers.get('user-agent') || undefined || 'unknown',
+  };
 
   const order = await SecureServiceRoleWrapper.executeSecureOperation<OrderWithRelations>(
     orderContext,
@@ -82,12 +82,13 @@ export const GET = adminApiWrapper(async (
       table: 'indb_payment_transactions',
       operationType: 'select',
       columns: ['*', 'package', 'gateway'],
-      whereConditions: { id: orderId }
+      whereConditions: { id: orderId },
     },
     async () => {
       const { data, error } = await supabaseAdmin
         .from('indb_payment_transactions')
-        .select(`
+        .select(
+          `
             *,
             package:indb_payment_packages(
               *
@@ -100,36 +101,41 @@ export const GET = adminApiWrapper(async (
               pricing_tiers,
               configuration
             )
-          `)
+          `
+        )
         .eq('id', orderId)
-        .single()
+        .single();
 
       if (error || !data) {
-        throw new Error(error?.message || 'Order not found')
+        throw new Error(error?.message || 'Order not found');
       }
 
-      return fromJson<OrderWithRelations>(data as unknown as Json);
+      return fromJson<OrderWithRelations>(data as Json);
     }
-  )
+  );
 
   if (!order) {
-    logger.error({
-      userId: adminUser.id,
-      endpoint: '/api/v1/admin/orders/[id]',
-      method: 'GET',
-      orderId
-    }, 'Admin order lookup - Order not found')
-    return formatError(await createStandardError(
-      ErrorType.NOT_FOUND,
-      'Order not found',
-      { statusCode: 404, severity: ErrorSeverity.LOW }
-    ))
+    logger.error(
+      {
+        userId: adminUser.id,
+        endpoint: '/api/v1/admin/orders/[id]',
+        method: 'GET',
+        orderId,
+      },
+      'Admin order lookup - Order not found'
+    );
+    return formatError(
+      await createStandardError(ErrorType.NOT_FOUND, 'Order not found', {
+        statusCode: 404,
+        severity: ErrorSeverity.LOW,
+      })
+    );
   }
 
   // Get user profile data using secure wrapper
-  let userProfile: UserProfile | null = null
-  let authUser: { user: { id: string; email?: string } } | null = null
-  let verifierProfile: Pick<UserProfile, 'user_id' | 'full_name' | 'role'> | null = null
+  let userProfile: UserProfile | null = null;
+  let authUser: { user: { id: string; email?: string } } | null = null;
+  let verifierProfile: Pick<UserProfile, 'user_id' | 'full_name' | 'role'> | null = null;
 
   try {
     const profileContext = {
@@ -140,26 +146,29 @@ export const GET = adminApiWrapper(async (
       metadata: {
         orderId: orderId,
         targetUserId: order.user_id,
-        endpoint: '/api/v1/admin/orders/[id]'
-      }
-    }
+        endpoint: '/api/v1/admin/orders/[id]',
+      },
+    };
 
     const profiles = await SecureServiceRoleHelpers.secureSelect(
       profileContext,
       'indb_auth_user_profiles',
       ['*'],
       { user_id: order.user_id as string }
-    )
+    );
 
-    userProfile = profiles.length > 0 ? (profiles[0] as UserProfile) : null
+    userProfile = profiles.length > 0 ? (profiles[0] as UserProfile) : null;
   } catch (error) {
-    logger.error({
-      userId: adminUser.id,
-      endpoint: '/api/v1/admin/orders/[id]',
-      method: 'GET',
-      orderId,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, `Error fetching user profile for order ${orderId}`)
+    logger.error(
+      {
+        userId: adminUser.id,
+        endpoint: '/api/v1/admin/orders/[id]',
+        method: 'GET',
+        orderId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      `Error fetching user profile for order ${orderId}`
+    );
   }
 
   // Get user's email from Supabase Auth using secure wrapper
@@ -172,37 +181,43 @@ export const GET = adminApiWrapper(async (
       metadata: {
         orderId: orderId,
         targetUserId: order.user_id,
-        endpoint: '/api/v1/admin/orders/[id]'
-      }
-    }
+        endpoint: '/api/v1/admin/orders/[id]',
+      },
+    };
 
-    authUser = await SecureServiceRoleWrapper.executeSecureOperation<{ user: { id: string; email?: string } }, string>(
+    authUser = await SecureServiceRoleWrapper.executeSecureOperation<
+      { user: { id: string; email?: string } },
+      string
+    >(
       authContext,
       {
         table: 'auth.users',
         operationType: 'select',
         columns: ['id', 'email'],
-        whereConditions: { id: order.user_id }
+        whereConditions: { id: order.user_id },
       },
       async () => {
-        const { data, error } = await supabaseAdmin.auth.admin.getUserById(order.user_id)
-        if (error || !data?.user) throw error
+        const { data, error } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
+        if (error || !data?.user) throw error;
         return {
           user: {
             id: data.user.id,
-            email: data.user.email
-          }
-        }
+            email: data.user.email,
+          },
+        };
       }
-    )
+    );
   } catch (error) {
-    logger.error({
-      userId: adminUser.id,
-      endpoint: '/api/v1/admin/orders/[id]',
-      method: 'GET',
-      orderId,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, `Error fetching auth data for order ${orderId}`)
+    logger.error(
+      {
+        userId: adminUser.id,
+        endpoint: '/api/v1/admin/orders/[id]',
+        method: 'GET',
+        orderId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      `Error fetching auth data for order ${orderId}`
+    );
   }
 
   // Get verifier profile if exists using secure wrapper
@@ -217,26 +232,32 @@ export const GET = adminApiWrapper(async (
         metadata: {
           orderId: orderId,
           verifierId: verifierId,
-          endpoint: '/api/v1/admin/orders/[id]'
-        }
-      }
+          endpoint: '/api/v1/admin/orders/[id]',
+        },
+      };
 
       const verifiers = await SecureServiceRoleHelpers.secureSelect(
         verifierContext,
         'indb_auth_user_profiles',
         ['user_id', 'full_name', 'role'],
         { user_id: verifierId }
-      )
+      );
 
-      verifierProfile = verifiers.length > 0 ? (verifiers[0] as Pick<UserProfile, 'user_id' | 'full_name' | 'role'>) : null
+      verifierProfile =
+        verifiers.length > 0
+          ? (verifiers[0] as Pick<UserProfile, 'user_id' | 'full_name' | 'role'>)
+          : null;
     } catch (error) {
-      logger.error({
-        userId: adminUser.id,
-        endpoint: '/api/v1/admin/orders/[id]',
-        method: 'GET',
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, `Error fetching verifier profile for order ${orderId}`)
+      logger.error(
+        {
+          userId: adminUser.id,
+          endpoint: '/api/v1/admin/orders/[id]',
+          method: 'GET',
+          orderId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        `Error fetching verifier profile for order ${orderId}`
+      );
     }
   }
 
@@ -260,21 +281,25 @@ export const GET = adminApiWrapper(async (
     metadata: (order.metadata || {}) as Record<string, Json>,
     created_at: order.created_at,
     updated_at: order.updated_at,
-    package: order.package ? {
-      id: order.package.id,
-      name: order.package.name,
-      slug: order.package.slug,
-      description: order.package.description,
-      pricing_tiers: order.package.pricing_tiers,
-      currency: order.package.currency || 'USD',
-      billing_period: order.package.billing_period || 'monthly',
-      features: order.package.features || {}
-    } : null,
-    gateway: order.gateway ? {
-      id: order.gateway.id,
-      name: order.gateway.name,
-      slug: order.gateway.slug
-    } : null,
+    package: order.package
+      ? {
+          id: order.package.id,
+          name: order.package.name,
+          slug: order.package.slug,
+          description: order.package.description,
+          pricing_tiers: order.package.pricing_tiers,
+          currency: order.package.currency || 'USD',
+          billing_period: order.package.billing_period || 'monthly',
+          features: order.package.features || {},
+        }
+      : null,
+    gateway: order.gateway
+      ? {
+          id: order.gateway.id,
+          name: order.gateway.name,
+          slug: order.gateway.slug,
+        }
+      : null,
     user: {
       user_id: order.user_id,
       full_name: userProfile?.full_name || 'Unknown User',
@@ -284,17 +309,19 @@ export const GET = adminApiWrapper(async (
       package_id: userProfile?.package_id,
       subscribed_at: userProfile?.subscription_start_date, // Mapped from subscription_start_date
       expires_at: userProfile?.subscription_end_date, // Mapped from subscription_end_date
-      phone_number: userProfile?.phone_number
+      phone_number: userProfile?.phone_number,
     },
-    verifier: verifierProfile ? {
-      user_id: verifierProfile.user_id,
-      full_name: verifierProfile.full_name || 'Unknown',
-      role: verifierProfile.role
-    } : null
+    verifier: verifierProfile
+      ? {
+          user_id: verifierProfile.user_id,
+          full_name: verifierProfile.full_name || 'Unknown',
+          role: verifierProfile.role,
+        }
+      : null,
   };
 
   // Get activity history for this order using secure wrapper
-  let activityHistory: AdminOrderActivityLog[] = []
+  let activityHistory: AdminOrderActivityLog[] = [];
   try {
     const activityContext = {
       userId: adminUser.id,
@@ -303,22 +330,25 @@ export const GET = adminApiWrapper(async (
       source: 'admin/orders/[id]',
       metadata: {
         orderId,
-        endpoint: '/api/v1/admin/orders/[id]'
-      }
-    }
+        endpoint: '/api/v1/admin/orders/[id]',
+      },
+    };
 
-    activityHistory = await SecureServiceRoleWrapper.executeSecureOperation<AdminOrderActivityLog[]>(
+    activityHistory = await SecureServiceRoleWrapper.executeSecureOperation<
+      AdminOrderActivityLog[]
+    >(
       activityContext,
       {
         table: 'indb_security_activity_logs',
         operationType: 'select',
         columns: ['*', 'user'],
-        whereConditions: { id: orderId } // Approximation for security check
+        whereConditions: { id: orderId }, // Approximation for security check
       },
       async () => {
         const { data, error } = await supabaseAdmin
           .from('indb_security_activity_logs')
-          .select(`
+          .select(
+            `
               id,
               event_type,
               details,
@@ -329,16 +359,17 @@ export const GET = adminApiWrapper(async (
                 full_name,
                 role
               )
-            `)
+            `
+          )
           .or(`details->>target_id.eq.${orderId},details->>transaction_id.eq.${orderId}`)
           .order('created_at', { ascending: false })
-          .limit(20)
+          .limit(20);
 
         if (error) {
-          throw new Error(`Failed to fetch activity history: ${error.message}`)
+          throw new Error(`Failed to fetch activity history: ${error.message}`);
         }
 
-        return (data || []).map(item => {
+        return (data || []).map((item) => {
           const user = Array.isArray(item.user) ? item.user[0] : item.user;
           return {
             id: String(item.id),
@@ -349,28 +380,33 @@ export const GET = adminApiWrapper(async (
             target_id: orderId,
             metadata: item.details as Json,
             created_at: String(item.created_at),
-            user: user ? {
-              user_id: user.user_id,
-              full_name: user.full_name || 'Unknown',
-              email: 'N/A', // Email not available in profile join
-              role: user.role
-            } : null
+            user: user
+              ? {
+                  user_id: user.user_id,
+                  full_name: user.full_name || 'Unknown',
+                  email: 'N/A', // Email not available in profile join
+                  role: user.role,
+                }
+              : null,
           } as AdminOrderActivityLog;
-        })
+        });
       }
-    )
+    );
   } catch (error) {
-    logger.error({
-      userId: adminUser.id,
-      endpoint: '/api/v1/admin/orders/[id]',
-      method: 'GET',
-      orderId,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, 'Error fetching order activity history')
+    logger.error(
+      {
+        userId: adminUser.id,
+        endpoint: '/api/v1/admin/orders/[id]',
+        method: 'GET',
+        orderId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      'Error fetching order activity history'
+    );
   }
 
   // Get transaction history from the dedicated history table using secure wrapper
-  let transactionHistory: AdminTransactionHistory[] = []
+  let transactionHistory: AdminTransactionHistory[] = [];
   try {
     const transactionContext = {
       userId: adminUser.id,
@@ -379,22 +415,25 @@ export const GET = adminApiWrapper(async (
       source: 'admin/orders/[id]',
       metadata: {
         orderId,
-        endpoint: '/api/v1/admin/orders/[id]'
-      }
-    }
+        endpoint: '/api/v1/admin/orders/[id]',
+      },
+    };
 
-    transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation<AdminTransactionHistory[]>(
+    transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation<
+      AdminTransactionHistory[]
+    >(
       transactionContext,
       {
         table: 'indb_payment_transactions_history',
         operationType: 'select',
         columns: ['*', 'user'],
-        whereConditions: { transaction_id: orderId }
+        whereConditions: { transaction_id: orderId },
       },
       async () => {
         const { data, error } = await supabaseAdmin
           .from('indb_payment_transactions_history')
-          .select(`
+          .select(
+            `
               id,
               transaction_id,
               old_status,
@@ -415,16 +454,17 @@ export const GET = adminApiWrapper(async (
                 full_name,
                 role
               )
-            `)
+            `
+          )
           .eq('transaction_id', orderId)
           .order('created_at', { ascending: false })
           .limit(50);
 
         if (error) {
-          throw new Error(`Failed to fetch transaction history: ${error.message}`)
+          throw new Error(`Failed to fetch transaction history: ${error.message}`);
         }
 
-        return (data || []).map(item => {
+        return (data || []).map((item) => {
           const user = Array.isArray(item.user) ? item.user[0] : item.user;
           return {
             id: String(item.id),
@@ -442,24 +482,29 @@ export const GET = adminApiWrapper(async (
             ip_address: item.ip_address,
             user_agent: item.user_agent,
             created_at: String(item.created_at),
-            user: user ? {
-              user_id: user.user_id,
-              full_name: user.full_name || 'Unknown',
-              email: 'N/A', // Email not available in profile join
-              role: user.role
-            } : null
+            user: user
+              ? {
+                  user_id: user.user_id,
+                  full_name: user.full_name || 'Unknown',
+                  email: 'N/A', // Email not available in profile join
+                  role: user.role,
+                }
+              : null,
           };
-        })
+        });
       }
-    )
+    );
   } catch (error) {
-    logger.error({
-      userId: adminUser.id,
-      endpoint: '/api/v1/admin/orders/[id]',
-      method: 'GET',
-      orderId,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, 'Error fetching transaction history')
+    logger.error(
+      {
+        userId: adminUser.id,
+        endpoint: '/api/v1/admin/orders/[id]',
+        method: 'GET',
+        orderId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      'Error fetching transaction history'
+    );
   }
 
   // Log admin activity
@@ -475,24 +520,27 @@ export const GET = adminApiWrapper(async (
         orderId,
         orderStatus: order.status,
         orderAmount: order.amount,
-        customerId: order.user_id
+        customerId: order.user_id,
       }
-    )
+    );
   } catch (logError) {
-    logger.error({
-      userId: adminUser.id,
-      endpoint: '/api/v1/admin/orders/[id]',
-      method: 'GET',
-      orderId,
-      error: logError instanceof Error ? logError.message : 'Unknown error'
-    }, 'Failed to log admin activity')
+    logger.error(
+      {
+        userId: adminUser.id,
+        endpoint: '/api/v1/admin/orders/[id]',
+        method: 'GET',
+        orderId,
+        error: logError instanceof Error ? logError.message : 'Unknown error',
+      },
+      'Failed to log admin activity'
+    );
   }
 
   const response: AdminOrderDetailResponse = {
     order: adminOrderTransaction,
     activity_history: activityHistory,
-    transaction_history: transactionHistory
+    transaction_history: transactionHistory,
   };
 
   return formatSuccess(response);
-})
+});

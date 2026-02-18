@@ -99,7 +99,8 @@ export function adminApiWrapper<T = unknown>(
       // Verify super admin authentication
       let adminUser: AdminUser | null = null;
       try {
-        adminUser = await requireServerSuperAdminAuth(request as any);
+        // @ts-expect-error — NextRequest resolved from different pnpm paths
+        adminUser = await requireServerSuperAdminAuth(request);
       } catch (error) {
         // If auth fails, requireServerSuperAdminAuth throws.
         // We catch it here to allow the custom unauthorized handling below.

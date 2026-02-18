@@ -303,7 +303,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       timeout: 30000,
       retryAttempts: this.config.errorHandling.maxRetryAttempts,
       retryDelay: this.config.errorHandling.baseRetryDelay,
-    }) as unknown as ISeRankingApiClient;
+    }) as ISeRankingApiClient;
 
     // Initialize keyword bank service
     this.keywordBankService = new KeywordBankService();
@@ -361,7 +361,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         enableDetailedLogging: this.config.logging.enableDetailedLogging,
       },
       this.enrichmentQueue,
-      this.enrichmentService as unknown as KeywordEnrichmentService,
+      this.enrichmentService as KeywordEnrichmentService,
       this.errorHandler
     );
   }
@@ -400,7 +400,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       },
       retentionDays: this.config.monitoring.metricsRetentionDays,
       logLevel: this.config.logging.level,
-    }) as unknown as IQuotaMonitor;
+    }) as IQuotaMonitor;
 
     this.healthChecker = new HealthChecker(
       {
@@ -722,7 +722,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
 
       const [metrics, cacheStats, queueStats, quotaResult] = await Promise.all([
         this.metricsCollector.getMetrics(),
-        (this.keywordBankService as unknown as KeywordBankService).getCacheStats(),
+        (this.keywordBankService as KeywordBankService).getCacheStats(),
         this.enrichmentQueue.getQueueStats(),
         this.integrationService.getQuotaStatus(),
       ]);
@@ -750,7 +750,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       return (await this.errorHandler.handleError(error as Error, {
         operation: 'getSystemMetrics',
         timestamp: new Date(),
-      })) as unknown as ServiceResponse<{
+      })) as ServiceResponse<{
         metrics: ApiMetrics;
         cacheStats: CacheStats;
         queueStats: QueueStats;
@@ -791,7 +791,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       return (await this.errorHandler.handleError(error as Error, {
         operation: 'configureBulkProcessing',
         timestamp: new Date(),
-      })) as unknown as ServiceResponse<boolean>;
+      })) as ServiceResponse<boolean>;
     }
   }
 
@@ -825,7 +825,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       return (await this.errorHandler.handleError(error as Error, {
         operation: 'enableMonitoring',
         timestamp: new Date(),
-      })) as unknown as ServiceResponse<boolean>;
+      })) as ServiceResponse<boolean>;
     }
   }
 

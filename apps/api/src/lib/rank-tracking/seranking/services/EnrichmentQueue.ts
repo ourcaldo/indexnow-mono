@@ -5,6 +5,9 @@
  */
 
 import { Database, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
+
+type DbEnrichmentInsert = Database['public']['Tables']['indb_enrichment_jobs']['Insert'];
+type DbEnrichmentUpdate = Database['public']['Tables']['indb_enrichment_jobs']['Update'];
 import {
   supabaseAdmin,
   SecureServiceRoleWrapper,
@@ -202,7 +205,7 @@ export class EnrichmentQueue extends EventEmitter {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .insert([job as any])
+            .insert([job as unknown as DbEnrichmentInsert])
             .select()
             .single();
 
@@ -432,7 +435,7 @@ export class EnrichmentQueue extends EventEmitter {
 
           // Merge progress data
           const updatedProgress: JobProgress = {
-            ...(job.progress_data as unknown as Partial<JobProgress>),
+            ...(job.progress_data as Partial<JobProgress>),
             ...progress,
           } as JobProgress;
 
@@ -515,7 +518,7 @@ export class EnrichmentQueue extends EventEmitter {
         async () => {
           const { error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .update(updates as any)
+            .update(updates as DbEnrichmentUpdate)
             .eq('id', jobId);
 
           if (error) {
@@ -619,7 +622,7 @@ export class EnrichmentQueue extends EventEmitter {
 
           const { error: updateError } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .update(updates as any)
+            .update(updates as DbEnrichmentUpdate)
             .eq('id', jobId);
 
           if (updateError) {
@@ -742,10 +745,7 @@ export class EnrichmentQueue extends EventEmitter {
         },
         { table: 'indb_enrichment_jobs', operationType: 'select' },
         async () => {
-          let query = supabaseAdmin
-            .from('indb_enrichment_jobs')
-            .select('*')
-            .eq('id', jobId);
+          let query = supabaseAdmin.from('indb_enrichment_jobs').select('*').eq('id', jobId);
 
           if (userId) {
             query = query.eq('user_id', userId);

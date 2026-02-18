@@ -48,10 +48,12 @@ function DashboardContent() {
 
   // Runtime domain objects from Supabase have DB column names (display_name, domain_name)
   // which differ from the RankTrackingDomain TS interface (name, domain).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const domainAny = selectedDomain as any;
+  const domainRecord = selectedDomain as Record<string, unknown> | undefined;
   const selectedDomainName =
-    domainAny?.display_name || domainAny?.domain_name || selectedDomain?.name || '';
+    (domainRecord?.display_name as string) ||
+    (domainRecord?.domain_name as string) ||
+    selectedDomain?.name ||
+    '';
 
   return (
     <div className="space-y-6">

@@ -5,7 +5,7 @@
  */
 
 import * as cron from 'node-cron';
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, untypedFrom } from '@indexnow/database';
 import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
 import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
@@ -269,18 +269,17 @@ export class KeywordEnrichmentWorker {
           whereConditions: { is_active: true, keyword_bank_id: null },
         },
         async () => {
-          const { data, error } = await supabaseAdmin
-            .from('indb_rank_keywords')
-            .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at' as any)
+          const { data, error } = await untypedFrom(supabaseAdmin, 'indb_rank_keywords')
+            .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at')
             .eq('is_active', true)
-            .is('keyword_bank_id' as any, null) // Simple: get keywords that don't have bank reference
+            .is('keyword_bank_id', null) // Simple: get keywords that don't have bank reference
             .limit(limit);
 
           if (error) {
             throw new Error(`Failed to find keywords needing enrichment: ${error.message}`);
           }
 
-          return (data || []) as unknown as KeywordToEnrich[];
+          return (data || []) as KeywordToEnrich[];
         }
       );
 
@@ -383,9 +382,8 @@ export class KeywordEnrichmentWorker {
             data: updateData,
           },
           async () => {
-            const { error: updateError } = await supabaseAdmin
-              .from('indb_rank_keywords')
-              .update(updateData as any)
+            const { error: updateError } = await untypedFrom(supabaseAdmin, 'indb_rank_keywords')
+              .update(updateData)
               .eq('id', keyword.id);
 
             if (updateError) {

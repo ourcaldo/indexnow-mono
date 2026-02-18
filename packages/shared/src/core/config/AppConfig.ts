@@ -9,6 +9,9 @@ const AppSchema = z.object({
   version: z.string().default('1.0.0'),
   environment: z.enum(['development', 'staging', 'production']).default('production'),
   baseUrl: z.string().url().default('http://localhost:3000'),
+  dashboardUrl: z.string().url().optional(),
+  backendUrl: z.string().url().optional(),
+  apiBaseUrl: z.string().url().optional(),
   port: z.coerce.number().default(3000),
   allowedOrigins: z.array(z.string()).default([]),
 });
@@ -119,6 +122,9 @@ export const createAppConfig = (): AppConfigType => {
       version: process.env.NEXT_PUBLIC_APP_VERSION,
       environment: process.env.NODE_ENV,
       baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+      dashboardUrl: process.env.NEXT_PUBLIC_DASHBOARD_URL,
+      backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL,
+      apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
       port: process.env.PORT,
       allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',') || undefined,
     },
@@ -203,7 +209,10 @@ export const createAppConfig = (): AppConfigType => {
   if (!parsed.success) {
     const errorMsg = '❌ Invalid configuration: ' + JSON.stringify(parsed.error.format(), null, 2);
     if (isBuildPhase) {
-      console.warn('[AppConfig] Build-time config validation failed (non-fatal during build):', errorMsg);
+      console.warn(
+        '[AppConfig] Build-time config validation failed (non-fatal during build):',
+        errorMsg
+      );
       // Return a minimal config stub for build-time usage
       return rawConfig as unknown as ReturnType<typeof ConfigSchema.parse>;
     }
@@ -239,8 +248,10 @@ export const createAppConfig = (): AppConfigType => {
 
     // ── Warnings: recommended but not fatal ──
     if (!parsed.data.paddle.apiKey) warnings.push('PADDLE_API_KEY (payments will be unavailable)');
-    if (!parsed.data.paddle.webhookSecret) warnings.push('PADDLE_WEBHOOK_SECRET (webhook verification disabled)');
-    if (!parsed.data.monitoring.sentry.dsn) warnings.push('NEXT_PUBLIC_SENTRY_DSN (error tracking disabled)');
+    if (!parsed.data.paddle.webhookSecret)
+      warnings.push('PADDLE_WEBHOOK_SECRET (webhook verification disabled)');
+    if (!parsed.data.monitoring.sentry.dsn)
+      warnings.push('NEXT_PUBLIC_SENTRY_DSN (error tracking disabled)');
 
     if (warnings.length > 0) {
       console.warn(`⚠️  Missing recommended production variables:\n  - ${warnings.join('\n  - ')}`);

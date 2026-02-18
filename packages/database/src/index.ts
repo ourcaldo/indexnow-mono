@@ -108,6 +108,7 @@ export { ApiClient, apiClient } from './utils/ApiClient';
 export * from './utils/site-settings';
 export * from './utils/queryClient';
 export { toJson, fromJson, fromJsonOr } from './utils/json-helpers';
+export { asTypedClient, untypedFrom } from './utils/supabase-compat';
 
 // Hook exports
 export * from './hooks';

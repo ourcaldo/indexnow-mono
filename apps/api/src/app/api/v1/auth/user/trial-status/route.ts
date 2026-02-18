@@ -4,7 +4,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 
@@ -43,7 +43,7 @@ interface TrialStatusResponse {
 export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     const userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserTrialProfile>(
-      auth.supabase,
+      asTypedClient(auth.supabase),
       {
         userId: auth.userId,
         operation: 'get_user_trial_status',
@@ -91,7 +91,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       try {
         const packageInfo =
           await SecureServiceRoleWrapper.executeWithUserSession<PaymentPackageRow | null>(
-            auth.supabase,
+            asTypedClient(auth.supabase),
             {
               userId: auth.userId,
               operation: 'get_trial_package_info',
@@ -126,7 +126,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     try {
       const subscription =
         await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionInfo | null>(
-          auth.supabase,
+          asTypedClient(auth.supabase),
           {
             userId: auth.userId,
             operation: 'get_active_subscription_info',

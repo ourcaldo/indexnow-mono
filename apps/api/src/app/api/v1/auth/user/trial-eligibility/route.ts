@@ -4,7 +4,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 
@@ -49,7 +49,7 @@ export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (requ
     // Query available columns from user profile
     const profileResult =
       await SecureServiceRoleWrapper.executeWithUserSession<UserEligibilityProfile>(
-        auth.supabase,
+        asTypedClient(auth.supabase),
         {
           userId: auth.userId,
           operation: 'get_user_trial_eligibility_profile',
@@ -90,7 +90,7 @@ export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (requ
     let packages: TrialPackageInfo[] = [];
     try {
       packages = await SecureServiceRoleWrapper.executeWithUserSession<TrialPackageInfo[]>(
-        auth.supabase,
+        asTypedClient(auth.supabase),
         {
           userId: auth.userId,
           operation: 'get_available_trial_packages',

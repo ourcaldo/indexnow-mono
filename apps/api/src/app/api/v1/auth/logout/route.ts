@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
+import { SecureServiceRoleWrapper, createServerClient, asTypedClient } from '@indexnow/database';
 import { AppConfig, ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
@@ -11,9 +11,9 @@ import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
  */
 function getBaseDomain(): string {
   const envUrls = [
-    (AppConfig.app as any).dashboardUrl,
-    (AppConfig.app as any).backendUrl,
-    (AppConfig.app as any).apiBaseUrl,
+    AppConfig.app.dashboardUrl,
+    AppConfig.app.backendUrl,
+    AppConfig.app.apiBaseUrl,
     AppConfig.app.baseUrl,
   ].filter(Boolean) as string[];
 
@@ -53,7 +53,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     });
 
     const logoutResult = await SecureServiceRoleWrapper.executeWithUserSession<LogoutResult>(
-      supabase as any,
+      asTypedClient(supabase),
       {
         userId: 'user-logout',
         operation: 'user_logout',

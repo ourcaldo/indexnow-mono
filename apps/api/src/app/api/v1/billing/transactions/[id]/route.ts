@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server'
-import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
-import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
-import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
-import { SecureServiceRoleWrapper } from '@indexnow/database'
-import { DbTransactionRow as TransactionRow, getClientIP } from '@indexnow/shared'
+import { NextRequest } from 'next/server';
+import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware';
+import { formatSuccess, formatError } from '@/lib/core/api-response-formatter';
+import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling';
+import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
+import { DbTransactionRow as TransactionRow, getClientIP } from '@indexnow/shared';
 
 type TransactionDetail = TransactionRow & {
   package: Record<string, unknown> | null;
@@ -11,8 +11,8 @@ type TransactionDetail = TransactionRow & {
 };
 
 export const GET = authenticatedApiWrapper(async (request, auth, context) => {
-  const params = context?.params ? await context.params : null
-  const transactionId = params?.id as string | undefined
+  const params = context?.params ? await context.params : null;
+  const transactionId = params?.id as string | undefined;
 
   if (!transactionId) {
     const error = await ErrorHandlingService.createError(
@@ -22,42 +22,45 @@ export const GET = authenticatedApiWrapper(async (request, auth, context) => {
         severity: ErrorSeverity.LOW,
         userId: auth.userId,
         endpoint: '/api/v1/billing/transactions/[id]',
-        statusCode: 400
+        statusCode: 400,
       }
-    )
-    return formatError(error)
+    );
+    return formatError(error);
   }
 
   try {
     // Fetch transaction with related data using security wrapper
-    const transaction = await SecureServiceRoleWrapper.executeWithUserSession<TransactionDetail | null>(
-      auth.supabase,
-      {
-        userId: auth.userId,
-        operation: 'get_transaction_details',
-        source: 'billing/transactions/[id]',
-        reason: 'User fetching transaction details',
-        metadata: { transactionId, endpoint: '/api/v1/billing/transactions/[id]' },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined
-      },
-      { table: 'indb_payment_transactions', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_payment_transactions')
-          .select(`
+    const transaction =
+      await SecureServiceRoleWrapper.executeWithUserSession<TransactionDetail | null>(
+        asTypedClient(auth.supabase),
+        {
+          userId: auth.userId,
+          operation: 'get_transaction_details',
+          source: 'billing/transactions/[id]',
+          reason: 'User fetching transaction details',
+          metadata: { transactionId, endpoint: '/api/v1/billing/transactions/[id]' },
+          ipAddress: getClientIP(request) ?? undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+        },
+        { table: 'indb_payment_transactions', operationType: 'select' },
+        async (db) => {
+          const { data, error } = await db
+            .from('indb_payment_transactions')
+            .select(
+              `
             *,
             package:indb_payment_packages(*),
             gateway:indb_payment_gateways(*)
-          `)
-          .eq('id', transactionId)
-          .eq('user_id', auth.userId)
-          .single()
+          `
+            )
+            .eq('id', transactionId)
+            .eq('user_id', auth.userId)
+            .single();
 
-        if (error && error.code !== 'PGRST116') throw error
-        return data as TransactionDetail | null
-      }
-    )
+          if (error && error.code !== 'PGRST116') throw error;
+          return data as TransactionDetail | null;
+        }
+      );
 
     if (!transaction) {
       const error = await ErrorHandlingService.createError(
@@ -68,27 +71,33 @@ export const GET = authenticatedApiWrapper(async (request, auth, context) => {
           userId: auth.userId,
           endpoint: '/api/v1/billing/transactions/[id]',
           statusCode: 404,
-          metadata: { transactionId }
+          metadata: { transactionId },
         }
-      )
-      return formatError(error)
+      );
+      return formatError(error);
     }
 
     // Parse customer info from metadata
-    const customerInfo = (transaction.metadata as Record<string, unknown>)?.customer_info || {}
+    const customerInfo = (transaction.metadata as Record<string, unknown>)?.customer_info || {};
 
     return formatSuccess({
       transaction: {
         ...transaction,
-        customer_info: customerInfo
-      }
-    })
+        customer_info: customerInfo,
+      },
+    });
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.DATABASE,
       error instanceof Error ? error : String(error),
-      { severity: ErrorSeverity.HIGH, userId: auth.userId, endpoint: `/api/v1/billing/transactions/${transactionId}`, method: 'GET', statusCode: 500 }
-    )
-    return formatError(structuredError)
+      {
+        severity: ErrorSeverity.HIGH,
+        userId: auth.userId,
+        endpoint: `/api/v1/billing/transactions/${transactionId}`,
+        method: 'GET',
+        statusCode: 500,
+      }
+    );
+    return formatError(structuredError);
   }
-})
+});

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
+import { SecureServiceRoleWrapper, createServerClient, asTypedClient } from '@indexnow/database';
 import { AppConfig, ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
@@ -74,7 +74,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         // Handle email confirmation for new registration using secure wrapper
         try {
           await SecureServiceRoleWrapper.executeWithUserSession(
-            supabase as any,
+            asTypedClient(supabase),
             {
               userId: 'pending_verification',
               operation: 'verify_otp_signup',
@@ -127,7 +127,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         // Handle password reset verification using secure wrapper
         try {
           await SecureServiceRoleWrapper.executeWithUserSession(
-            supabase as any,
+            asTypedClient(supabase),
             {
               userId: 'pending_verification',
               operation: 'verify_otp_recovery',
@@ -180,7 +180,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         // Handle magic link authentication using secure wrapper
         try {
           await SecureServiceRoleWrapper.executeWithUserSession(
-            supabase as any,
+            asTypedClient(supabase),
             {
               userId: 'pending_verification',
               operation: 'verify_otp_magiclink',

@@ -8,13 +8,9 @@ import {
   type AdminOrdersResponse,
   type AdminOrderTransaction,
   type AdminOrderSummary,
-  escapeLikePattern
+  escapeLikePattern,
 } from '@indexnow/shared';
-import {
-  SecureServiceRoleWrapper,
-  supabaseAdmin,
-  type Json
-} from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin, type Json } from '@indexnow/database';
 import { batchGetUserEmails } from '@/lib/core/batch-user-emails';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
@@ -41,7 +37,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       request,
       {
         section: 'order_management',
-        adminUser: adminUser.email
+        adminUser: adminUser.email,
       }
     );
   } catch (logError) {
@@ -64,10 +60,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         dateFrom: dateFrom ?? null,
         dateTo: dateTo ?? null,
         amountMin: amountMin ?? null,
-        amountMax: amountMax ?? null
+        amountMax: amountMax ?? null,
       },
-      pagination: { page, limit }
-    } as Record<string, Json>
+      pagination: { page, limit },
+    } as Record<string, Json>,
   };
 
   const ordersResult = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -75,7 +71,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     {
       table: 'indb_payment_transactions',
       operationType: 'select',
-      columns: ['*', 'package', 'gateway']
+      columns: ['*', 'package', 'gateway'],
     },
     async () => {
       // Pre-filter user IDs when customer search is active (pushes filter into SQL)
@@ -89,7 +85,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           .select('user_id')
           .ilike('full_name', `%${escapedCustomer}%`)
           .limit(200);
-        const profileMatches = new Set((matchingProfiles || []).map(p => p.user_id));
+        const profileMatches = new Set((matchingProfiles || []).map((p) => p.user_id));
 
         // Search emails via batch RPC — limit to reasonable subset
         const { data: allProfiles } = await supabaseAdmin
@@ -97,7 +93,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           .select('user_id')
           .limit(500);
         if (allProfiles && allProfiles.length > 0) {
-          const allUserIds = allProfiles.map(p => p.user_id);
+          const allUserIds = allProfiles.map((p) => p.user_id);
           const emailMap = await batchGetUserEmails(allUserIds);
           emailMap.forEach((email, uid) => {
             if (email.toLowerCase().includes(customerLower)) {
@@ -114,9 +110,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       }
 
       // Build base query
-      let query = supabaseAdmin
-        .from('indb_payment_transactions')
-        .select(`
+      let query = supabaseAdmin.from('indb_payment_transactions').select(
+        `
   *,
   package: indb_payment_packages(
     id,
@@ -134,7 +129,9 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       name,
       slug
     )
-      `, { count: 'exact' });
+      `,
+        { count: 'exact' }
+      );
 
       // Apply customer filter at SQL level
       if (customerUserIds) {
@@ -143,7 +140,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
 
       // Apply filters
       if (status) {
-        query = query.eq('status', status as 'pending' | 'failed' | 'proof_uploaded' | 'completed' | 'cancelled' | 'refunded');
+        query = query.eq(
+          'status',
+          status as 'pending' | 'failed' | 'proof_uploaded' | 'completed' | 'cancelled' | 'refunded'
+        );
       }
 
       if (packageId) {
@@ -176,7 +176,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     }
   );
 
-  const { orders, count } = ordersResult as { orders: Record<string, unknown>[], count: number }; // Casting briefly to handle joins which are not in strict Row type
+  const { orders, count } = ordersResult as { orders: Record<string, unknown>[]; count: number }; // Casting briefly to handle joins which are not in strict Row type
 
   if (!orders) {
     return formatSuccess({
@@ -188,7 +188,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         completed_orders: 0,
         failed_orders: 0,
         total_revenue: 0,
-        recent_activity: 0
+        recent_activity: 0,
       },
       pagination: {
         current_page: page,
@@ -196,8 +196,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         total_items: 0,
         items_per_page: limit,
         has_next: false,
-        has_prev: false
-      }
+        has_prev: false,
+      },
     });
   }
 
@@ -208,7 +208,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const userIds = new Set<string>();
   const verifierIds = new Set<string>();
 
-  orders.forEach(order => {
+  orders.forEach((order) => {
     if (order.user_id) userIds.add(order.user_id as string);
     if (order.verified_by) verifierIds.add(order.verified_by as string);
   });
@@ -236,7 +236,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           return data;
         }
       );
-      profiles?.forEach(p => profileMap.set(p.user_id, p));
+      profiles?.forEach((p) => profileMap.set(p.user_id, p));
     } catch (e) {
       logger.error({ error: e }, 'Failed to bulk fetch profiles');
     }
@@ -254,26 +254,29 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     const verifierProfile = order.verified_by ? profileMap.get(order.verified_by as string) : null;
     const userEmail = order.user_id ? emailMap.get(order.user_id as string) : null;
 
-    const enrichedOrder: AdminOrderTransaction = {
-      ...order as any,
+    const enrichedOrder = {
+      ...(order as Record<string, unknown>),
       transaction_status: order.status as string, // Map status to transaction_status
       transaction_type: (order.transaction_type as string) || 'payment', // Default if missing
-      gateway_transaction_id: (order.external_transaction_id as string) || (order.gateway_transaction_id as string), // Map external id
+      gateway_transaction_id:
+        (order.external_transaction_id as string) || (order.gateway_transaction_id as string), // Map external id
       user: {
         user_id: order.user_id as string,
         full_name: (userProfile?.full_name as string) || 'Unknown User',
         role: (userProfile?.role as string) || 'user',
         email: userEmail || 'N/A',
-        created_at: (userProfile?.created_at as string) || (order.created_at as string)
+        created_at: (userProfile?.created_at as string) || (order.created_at as string),
       },
-      verifier: verifierProfile ? {
-        user_id: order.verified_by as string,
-        full_name: (verifierProfile.full_name as string) || 'Unknown',
-        role: (verifierProfile.role as string) || 'admin'
-      } : null,
+      verifier: verifierProfile
+        ? {
+            user_id: order.verified_by as string,
+            full_name: (verifierProfile.full_name as string) || 'Unknown',
+            role: (verifierProfile.role as string) || 'admin',
+          }
+        : null,
       package: order.package as AdminOrderTransaction['package'],
-      gateway: order.gateway as AdminOrderTransaction['gateway']
-    };
+      gateway: order.gateway as AdminOrderTransaction['gateway'],
+    } as AdminOrderTransaction;
 
     enrichedOrders.push(enrichedOrder);
   }
@@ -285,20 +288,43 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
     { table: 'indb_payment_transactions', operationType: 'select', columns: ['status', 'amount'] },
     async () => {
       // Fetch counts per status using separate filtered count queries
-      const [pending, proofUploaded, completed, failed, revenueResult, recentResult] = await Promise.all([
-        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'proof_uploaded'),
-        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
-        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).eq('status', 'failed'),
-        // Revenue total via RPC (avoids fetching all completed transactions)
-        (supabaseAdmin.rpc as Function)('get_total_revenue'),
-        supabaseAdmin.from('indb_payment_transactions').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-      ]);
+      const [pending, proofUploaded, completed, failed, revenueResult, recentResult] =
+        await Promise.all([
+          supabaseAdmin
+            .from('indb_payment_transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          supabaseAdmin
+            .from('indb_payment_transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'proof_uploaded'),
+          supabaseAdmin
+            .from('indb_payment_transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'completed'),
+          supabaseAdmin
+            .from('indb_payment_transactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'failed'),
+          // Revenue total via RPC (avoids fetching all completed transactions)
+          (supabaseAdmin.rpc as Function)('get_total_revenue'),
+          supabaseAdmin
+            .from('indb_payment_transactions')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        ]);
 
-      const totalRevenue = typeof revenueResult.data === 'number' ? revenueResult.data : Number(revenueResult.data) || 0;
+      const totalRevenue =
+        typeof revenueResult.data === 'number'
+          ? revenueResult.data
+          : Number(revenueResult.data) || 0;
 
       return {
-        total_orders: (pending.count || 0) + (proofUploaded.count || 0) + (completed.count || 0) + (failed.count || 0),
+        total_orders:
+          (pending.count || 0) +
+          (proofUploaded.count || 0) +
+          (completed.count || 0) +
+          (failed.count || 0),
         pending_orders: pending.count || 0,
         proof_uploaded_orders: proofUploaded.count || 0,
         completed_orders: completed.count || 0,
@@ -320,8 +346,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       total_items: count || 0,
       items_per_page: limit,
       has_next: offset + limit < (count || 0),
-      has_prev: page > 1
-    }
+      has_prev: page > 1,
+    },
   };
 
   return formatSuccess(response);

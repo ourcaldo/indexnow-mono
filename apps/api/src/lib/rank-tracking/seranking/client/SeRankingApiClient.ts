@@ -165,13 +165,16 @@ export class SeRankingApiClient {
    * Get current API quota status
    */
   async getQuotaStatus(): Promise<QuotaStatus> {
-    return {
-      total: 0,
-      used: 0,
-      remaining: 0,
-      resetDate: new Date().toISOString(),
-      isExceeded: false,
-    } as unknown as QuotaStatus;
+    const result: QuotaStatus = {
+      current_usage: 0,
+      quota_limit: 0,
+      quota_remaining: 0,
+      usage_percentage: 0,
+      reset_date: new Date(),
+      is_approaching_limit: false,
+      is_quota_exceeded: false,
+    };
+    return result;
   }
 
   /**

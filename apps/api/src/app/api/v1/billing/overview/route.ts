@@ -4,7 +4,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import {
   ErrorType,
@@ -66,7 +66,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     // Fetch user profile with package
     const userProfile = await SecureServiceRoleWrapper.executeWithUserSession<ProfileWithPackage>(
-      auth.supabase,
+      asTypedClient(auth.supabase),
       {
         userId: auth.userId,
         operation: 'get_billing_user_profile',
@@ -99,7 +99,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     try {
       currentSubscription =
         await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionWithPackage | null>(
-          auth.supabase,
+          asTypedClient(auth.supabase),
           {
             userId: auth.userId,
             operation: 'get_active_subscription',
@@ -143,7 +143,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       recentTransactions = await SecureServiceRoleWrapper.executeWithUserSession<
         TransactionWithJoins[]
       >(
-        auth.supabase,
+        asTypedClient(auth.supabase),
         {
           userId: auth.userId,
           operation: 'get_recent_transactions',

@@ -3,141 +3,149 @@
  * Comprehensive tracking for security and analytics purposes
  */
 
-import { NextRequest } from 'next/server'
-import { logger } from './logger'
+import { NextRequest } from 'next/server';
+import { logger } from './logger';
 
 export interface DeviceInfo {
-  type: 'mobile' | 'tablet' | 'desktop'
-  browser: string
-  os: string
-  version?: string
+  type: 'mobile' | 'tablet' | 'desktop';
+  browser: string;
+  os: string;
+  version?: string;
 }
 
 export interface LocationData {
-  country?: string
-  region?: string
-  city?: string
-  timezone?: string
-  latitude?: number
-  longitude?: number
-  isp?: string
+  country?: string;
+  region?: string;
+  city?: string;
+  timezone?: string;
+  latitude?: number;
+  longitude?: number;
+  isp?: string;
 }
 
 /**
  * Extract real IP address from various headers considering proxies
  */
-export function getClientIP(request?: NextRequest): string | null {
+export function getClientIP(request?: {
+  headers: { get(name: string): string | null };
+}): string | null {
   if (request) {
     // Check various headers for real IP (for server-side API routes)
-    const forwarded = request.headers.get('x-forwarded-for')
-    const realIP = request.headers.get('x-real-ip')
-    const clientIP = request.headers.get('x-client-ip')
+    const forwarded = request.headers.get('x-forwarded-for');
+    const realIP = request.headers.get('x-real-ip');
+    const clientIP = request.headers.get('x-client-ip');
 
     if (forwarded) {
       // x-forwarded-for can contain multiple IPs, take the first one
-      return forwarded.split(',')[0].trim()
+      return forwarded.split(',')[0].trim();
     }
 
-    if (realIP) return realIP
-    if (clientIP) return clientIP
+    if (realIP) return realIP;
+    if (clientIP) return clientIP;
 
     // Fallback - NextRequest doesn't have ip property in this version
-    return null
+    return null;
   }
 
   // Client-side extraction not available without request context
-  return null
+  return null;
 }
 
 /**
  * Parse User-Agent string to extract device information
  */
 export function parseUserAgent(userAgent: string): DeviceInfo {
-  const ua = userAgent.toLowerCase()
+  const ua = userAgent.toLowerCase();
 
   // Determine device type
-  let type: DeviceInfo['type'] = 'desktop'
+  let type: DeviceInfo['type'] = 'desktop';
   if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
-    type = 'mobile'
+    type = 'mobile';
   } else if (ua.includes('tablet') || ua.includes('ipad')) {
-    type = 'tablet'
+    type = 'tablet';
   }
 
   // Determine browser
-  let browser = 'Unrecognized Browser'
+  let browser = 'Unrecognized Browser';
   if (ua.includes('chrome') && !ua.includes('edg')) {
-    browser = 'Chrome'
+    browser = 'Chrome';
   } else if (ua.includes('firefox')) {
-    browser = 'Firefox'
+    browser = 'Firefox';
   } else if (ua.includes('safari') && !ua.includes('chrome')) {
-    browser = 'Safari'
+    browser = 'Safari';
   } else if (ua.includes('edg')) {
-    browser = 'Edge'
+    browser = 'Edge';
   } else if (ua.includes('opr') || ua.includes('opera')) {
-    browser = 'Opera'
+    browser = 'Opera';
   }
 
   // Determine OS
-  let os = 'Unrecognized OS'
+  let os = 'Unrecognized OS';
   if (ua.includes('windows')) {
-    os = 'Windows'
+    os = 'Windows';
   } else if (ua.includes('mac')) {
-    os = 'macOS'
+    os = 'macOS';
   } else if (ua.includes('linux')) {
-    os = 'Linux'
+    os = 'Linux';
   } else if (ua.includes('android')) {
-    os = 'Android'
+    os = 'Android';
   } else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) {
-    os = 'iOS'
+    os = 'iOS';
   }
 
-  return { type, browser, os }
+  return { type, browser, os };
 }
 
 /**
  * Get comprehensive device and location info from request
  */
 export async function getRequestInfo(request?: NextRequest): Promise<{
-  ipAddress: string | null
-  userAgent: string | null
-  deviceInfo: DeviceInfo | null
-  locationData: LocationData | null
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceInfo: DeviceInfo | null;
+  locationData: LocationData | null;
 }> {
-  let ipAddress: string | null = null
-  let userAgent: string | null = null
-  let deviceInfo: DeviceInfo | null = null
-  let locationData: LocationData | null = null
+  let ipAddress: string | null = null;
+  let userAgent: string | null = null;
+  let deviceInfo: DeviceInfo | null = null;
+  let locationData: LocationData | null = null;
 
   if (request) {
     // Server-side extraction
-    ipAddress = getClientIP(request)
-    userAgent = request.headers.get('user-agent')
+    ipAddress = getClientIP(request);
+    userAgent = request.headers.get('user-agent');
 
     if (userAgent) {
-      deviceInfo = parseUserAgent(userAgent)
+      deviceInfo = parseUserAgent(userAgent);
     }
 
     // Get location data using multiple methods
-    if (ipAddress && ipAddress !== '127.0.0.1' && ipAddress !== '::1' && !ipAddress.startsWith('192.168.') && !ipAddress.startsWith('10.')) {
+    if (
+      ipAddress &&
+      ipAddress !== '127.0.0.1' &&
+      ipAddress !== '::1' &&
+      !ipAddress.startsWith('192.168.') &&
+      !ipAddress.startsWith('10.')
+    ) {
       // Use IP geolocation service
       // NOTE: Using HTTPS endpoint. For ip-api.com, HTTPS requires a paid plan.
       // If using the free tier, switch to an alternative like ipapi.co or ip-api.com with HTTP.
       // SECURITY: HTTP sends IP data unencrypted — always prefer HTTPS in production.
       try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 5000)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(`https://ipapi.co/${ipAddress}/json/`, {
           signal: controller.signal,
           headers: {
-            'User-Agent': 'IndexNow-Pro/1.0'
-          }
-        })
+            'User-Agent': 'IndexNow-Pro/1.0',
+          },
+        });
 
-        clearTimeout(timeoutId)
+        clearTimeout(timeoutId);
 
         if (response.ok) {
-          const ipApiData = await response.json()
+          const ipApiData = await response.json();
           // ipapi.co returns { error: true } on failure, otherwise flat object with country_name, region, city, etc.
           if (ipApiData && typeof ipApiData === 'object' && !ipApiData.error) {
             locationData = {
@@ -147,38 +155,38 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
               timezone: ipApiData.timezone,
               latitude: ipApiData.latitude || ipApiData.lat,
               longitude: ipApiData.longitude || ipApiData.lon,
-              isp: ipApiData.org || ipApiData.isp
-            }
+              isp: ipApiData.org || ipApiData.isp,
+            };
           }
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        logger.warn({ ipAddress }, `IP geolocation lookup failed: ${message}`)
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn({ ipAddress }, `IP geolocation lookup failed: ${message}`);
       }
     }
 
     // Fallback: Extract location from headers if available (from CDN/proxy)
     if (!locationData) {
-      const country = request.headers.get('cf-ipcountry') || request.headers.get('x-country-code')
-      const region = request.headers.get('cf-region') || request.headers.get('x-region')
-      const city = request.headers.get('cf-ipcity') || request.headers.get('x-city')
-      const timezone = request.headers.get('cf-timezone') || request.headers.get('x-timezone')
+      const country = request.headers.get('cf-ipcountry') || request.headers.get('x-country-code');
+      const region = request.headers.get('cf-region') || request.headers.get('x-region');
+      const city = request.headers.get('cf-ipcity') || request.headers.get('x-city');
+      const timezone = request.headers.get('cf-timezone') || request.headers.get('x-timezone');
 
       if (country || region || city || timezone) {
         locationData = {
           country: country || undefined,
           region: region || undefined,
           city: city || undefined,
-          timezone: timezone || undefined
-        }
+          timezone: timezone || undefined,
+        };
       }
     }
   } else {
     // Client-side extraction - use browser APIs if available
     if (typeof window !== 'undefined') {
-      userAgent = navigator.userAgent
+      userAgent = navigator.userAgent;
       if (userAgent) {
-        deviceInfo = parseUserAgent(userAgent)
+        deviceInfo = parseUserAgent(userAgent);
       }
     }
   }
@@ -187,32 +195,32 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
     ipAddress,
     userAgent,
     deviceInfo,
-    locationData
-  }
+    locationData,
+  };
 }
 
 /**
  * Format device info for display
  */
 export function formatDeviceInfo(deviceInfo?: DeviceInfo | null): string {
-  if (!deviceInfo) return 'Unrecognized Device'
+  if (!deviceInfo) return 'Unrecognized Device';
 
-  const { type, browser, os } = deviceInfo
-  return `${browser} on ${os} (${type.charAt(0).toUpperCase() + type.slice(1)})`
+  const { type, browser, os } = deviceInfo;
+  return `${browser} on ${os} (${type.charAt(0).toUpperCase() + type.slice(1)})`;
 }
 
 /**
  * Format location data for display
  */
 export function formatLocationData(locationData?: LocationData | null): string {
-  if (!locationData) return 'Unrecognized Location'
+  if (!locationData) return 'Unrecognized Location';
 
-  const parts = []
-  if (locationData.city) parts.push(locationData.city)
-  if (locationData.region) parts.push(locationData.region)
-  if (locationData.country) parts.push(locationData.country)
+  const parts = [];
+  if (locationData.city) parts.push(locationData.city);
+  if (locationData.region) parts.push(locationData.region);
+  if (locationData.country) parts.push(locationData.country);
 
-  return parts.length > 0 ? parts.join(', ') : 'Unrecognized Location'
+  return parts.length > 0 ? parts.join(', ') : 'Unrecognized Location';
 }
 
 /**
@@ -225,29 +233,32 @@ export function getSecurityRiskLevel(
   previousIPs: string[] = [],
   previousDevices: DeviceInfo[] = []
 ): 'low' | 'medium' | 'high' {
-  let riskScore = 0
+  let riskScore = 0;
 
   // New IP address
   if (ipAddress && !previousIPs.includes(ipAddress)) {
-    riskScore += 1
+    riskScore += 1;
   }
 
   // New device type
-  if (deviceInfo && !previousDevices.some(d => d.type === deviceInfo.type && d.browser === deviceInfo.browser)) {
-    riskScore += 1
+  if (
+    deviceInfo &&
+    !previousDevices.some((d) => d.type === deviceInfo.type && d.browser === deviceInfo.browser)
+  ) {
+    riskScore += 1;
   }
 
   // Location-based risk (if available)
   if (locationData?.country) {
     // Add logic for high-risk countries if needed
-    const highRiskCountries = ['CN', 'RU', 'KP', 'IR'] // Example
+    const highRiskCountries = ['CN', 'RU', 'KP', 'IR']; // Example
     if (highRiskCountries.includes(locationData.country)) {
-      riskScore += 2
+      riskScore += 2;
     }
   }
 
   // Determine risk level
-  if (riskScore >= 3) return 'high'
-  if (riskScore >= 2) return 'medium'
-  return 'low'
+  if (riskScore >= 3) return 'high';
+  if (riskScore >= 2) return 'medium';
+  return 'low';
 }

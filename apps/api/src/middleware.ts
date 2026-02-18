@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  corsMiddleware, 
+import {
+  corsMiddleware,
   securityHeaders,
   requestLogger,
   rateLimit,
   composeMiddleware,
-  MiddlewareContext
+  MiddlewareContext,
 } from '@indexnow/api-middleware';
 
 // 100 requests per 60 seconds per IP
@@ -13,23 +13,22 @@ const apiRateLimit = rateLimit(100, 60_000);
 
 export async function middleware(request: NextRequest) {
   // Skip middleware for certain paths if needed
-  if (request.nextUrl.pathname.startsWith('/_next') || request.nextUrl.pathname === '/favicon.ico') {
+  if (
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname === '/favicon.ico'
+  ) {
     return NextResponse.next();
   }
 
-  const context: MiddlewareContext = { req: request as any };
-  
-  // Compose and execute middlewares
-  const composed = composeMiddleware(
-    requestLogger,
-    corsMiddleware,
-    securityHeaders,
-    apiRateLimit
-  );
+  const context = { req: request } as unknown as MiddlewareContext;
 
-  return composed(context, (async () => {
+  // Compose and execute middlewares
+  const composed = composeMiddleware(requestLogger, corsMiddleware, securityHeaders, apiRateLimit);
+
+  // @ts-expect-error — NextResponse resolved from different pnpm paths
+  return (await composed(context, async () => {
     return NextResponse.next();
-  }) as any) as any;
+  })) as unknown as NextResponse;
 }
 
 // See "Matching Paths" below to learn more

@@ -16,14 +16,30 @@ export const PADDLE_GATEWAY_ID = 'e24339a4-ec2c-44f7-a6d5-41836025fd47';
 
 export function validateCustomData(customData: unknown, eventId: string): CustomData | null {
   if (!customData || typeof customData !== 'object') {
-    logger.warn({ type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM, event_id: eventId, custom_data: customData } as any, `[VALIDATION] Missing or invalid custom_data in webhook event ${eventId}`);
+    logger.warn(
+      {
+        type: ErrorType.VALIDATION,
+        severity: ErrorSeverity.MEDIUM,
+        event_id: eventId,
+        custom_data: customData,
+      } as Record<string, unknown>,
+      `[VALIDATION] Missing or invalid custom_data in webhook event ${eventId}`
+    );
     return null;
   }
 
   const data = customData as Record<string, unknown>;
 
   if (!data.userId) {
-    logger.warn({ type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM, event_id: eventId, custom_data: customData } as any, `[VALIDATION] Missing userId in custom_data for webhook event ${eventId}`);
+    logger.warn(
+      {
+        type: ErrorType.VALIDATION,
+        severity: ErrorSeverity.MEDIUM,
+        event_id: eventId,
+        custom_data: customData,
+      } as Record<string, unknown>,
+      `[VALIDATION] Missing userId in custom_data for webhook event ${eventId}`
+    );
     return null;
   }
 
@@ -50,7 +66,18 @@ export async function logProcessorError(
   error: Error,
   metadata?: Record<string, unknown>
 ) {
-  logger.error({ type: ErrorType.EXTERNAL_API, severity: ErrorSeverity.HIGH, event_id: eventId, event_type: eventType, error_message: error.message, error_stack: error.stack, ...metadata } as any, '[PROCESSOR_ERROR]');
+  logger.error(
+    {
+      type: ErrorType.EXTERNAL_API,
+      severity: ErrorSeverity.HIGH,
+      event_id: eventId,
+      event_type: eventType,
+      error_message: error.message,
+      error_stack: error.stack,
+      ...metadata,
+    } as Record<string, unknown>,
+    '[PROCESSOR_ERROR]'
+  );
 }
 
 export async function getPackageIdFromSubscription(

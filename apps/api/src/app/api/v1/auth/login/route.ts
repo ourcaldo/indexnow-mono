@@ -121,13 +121,13 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
 
     // 5. Check if user must change password (set by admin password reset)
     try {
-      const { data: profile } = await supabase
+      const { data: profile } = (await supabase
         .from('indb_auth_user_profiles')
         .select('must_change_password')
         .eq('user_id', user.id)
-        .single();
+        .single()) as unknown as { data: { must_change_password: boolean } | null };
 
-      if ((profile as any)?.must_change_password) {
+      if (profile?.must_change_password) {
         return formatSuccess({
           user: { id: user.id, email: user.email },
           mustChangePassword: true,

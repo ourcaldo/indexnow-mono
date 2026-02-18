@@ -7,7 +7,13 @@
 import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database';
 import { InsertSecurityActivityLog, Json, ActivityEventTypes } from '@indexnow/shared';
 import { logger } from './error-handling';
-import { getRequestInfo, formatDeviceInfo, formatLocationData, DeviceInfo, LocationData } from '@indexnow/shared';
+import {
+  getRequestInfo,
+  formatDeviceInfo,
+  formatLocationData,
+  DeviceInfo,
+  LocationData,
+} from '@indexnow/shared';
 import { NextRequest } from 'next/server';
 
 export { ActivityEventTypes };
@@ -62,15 +68,16 @@ export class ServerActivityLogger {
       }
 
       // Ensure metadata is an object before spreading
-      const sourceMetadata = (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata))
-        ? data.metadata as Record<string, unknown>
-        : {};
+      const sourceMetadata =
+        data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)
+          ? (data.metadata as Record<string, unknown>)
+          : {};
 
       const enhancedMetadata: Json = {
-        ...sourceMetadata,
+        ...(sourceMetadata as Record<string, Json>),
         deviceFormatted: deviceInfo ? formatDeviceInfo(deviceInfo) : null,
         locationFormatted: locationData ? formatLocationData(locationData) : null,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -82,12 +89,12 @@ export class ServerActivityLogger {
           metadata: {
             targetUserId: data.userId,
             eventType: data.eventType,
-            success: data.success !== false
-          }
+            success: data.success !== false,
+          },
         },
         { table: 'indb_security_activity_logs', operationType: 'insert' },
         async () => {
-          const insertData: InsertSecurityActivityLog = {
+          const insertData = {
             user_id: data.userId,
             event_type: data.eventType,
             action_description: data.actionDescription,
@@ -100,7 +107,7 @@ export class ServerActivityLogger {
             success: data.success !== false,
             error_message: data.errorMessage || null,
             metadata: enhancedMetadata,
-          } as any;
+          } as InsertSecurityActivityLog;
 
           const { data: result, error } = await supabaseAdmin
             .from('indb_security_activity_logs')
@@ -116,16 +123,27 @@ export class ServerActivityLogger {
       return result.id;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error({ error: errorMessage, userId: data.userId, eventType: data.eventType }, 'Failed to log user activity');
+      logger.error(
+        { error: errorMessage, userId: data.userId, eventType: data.eventType },
+        'Failed to log user activity'
+      );
       return null;
     }
   }
 
-  static async logAuth(userId: string, eventType: string, success: boolean, request?: NextRequest, errorMessage?: string) {
+  static async logAuth(
+    userId: string,
+    eventType: string,
+    success: boolean,
+    request?: NextRequest,
+    errorMessage?: string
+  ) {
     const actionDescriptions: Record<string, string> = {
       [ActivityEventTypes.LOGIN]: success ? 'User logged in successfully' : 'Failed login attempt',
       [ActivityEventTypes.LOGOUT]: 'User logged out',
-      [ActivityEventTypes.REGISTER]: success ? 'User registered successfully' : 'Failed registration attempt',
+      [ActivityEventTypes.REGISTER]: success
+        ? 'User registered successfully'
+        : 'Failed registration attempt',
     };
 
     return this.logActivity({
@@ -135,11 +153,18 @@ export class ServerActivityLogger {
       success,
       errorMessage,
       request,
-      metadata: { authenticationEvent: true }
+      metadata: { authenticationEvent: true },
     });
   }
 
-  static async logAdminAction(userId: string, action: string, targetUserId?: string, actionDescription?: string, request?: NextRequest, metadata?: Record<string, unknown>) {
+  static async logAdminAction(
+    userId: string,
+    action: string,
+    targetUserId?: string,
+    actionDescription?: string,
+    request?: NextRequest,
+    metadata?: Record<string, unknown>
+  ) {
     return this.logActivity({
       userId,
       eventType: ActivityEventTypes.USER_MANAGEMENT,
@@ -147,7 +172,7 @@ export class ServerActivityLogger {
       targetType: targetUserId ? 'user' : undefined,
       targetId: targetUserId,
       request,
-      metadata: { adminAction: true, action, ...metadata }
+      metadata: { adminAction: true, action, ...metadata },
     });
   }
 }
@@ -156,4 +181,4 @@ export class ServerActivityLogger {
  * Backward-compatible alias. All API-internal imports use ActivityLogger,
  * which is now the ServerActivityLogger (direct DB writes).
  */
-export const ActivityLogger = ServerActivityLogger
+export const ActivityLogger = ServerActivityLogger;

@@ -14,7 +14,7 @@ import {
   logger,
   ErrorHandlingService,
   ErrorType,
-  ErrorSeverity
+  ErrorSeverity,
 } from '@indexnow/shared';
 import type { SupabaseClient } from '@indexnow/database';
 
@@ -71,16 +71,16 @@ export interface UserSettings {
 }
 
 export interface UserQuota {
-  dailyUrls: { used: number; limit: number; percentage: number; remaining: number; };
-  keywords: { used: number; limit: number; percentage: number; remaining: number; };
-  serviceAccounts: { used: number; limit: number; percentage: number; remaining: number; };
-  rankChecks: { used: number; limit: number; percentage: number; remaining: number; };
-  apiCalls: { used: number; limit: number; percentage: number; remaining: number; };
-  storage: { used: number; limit: number; percentage: number; remaining: number; };
+  dailyUrls: { used: number; limit: number; percentage: number; remaining: number };
+  keywords: { used: number; limit: number; percentage: number; remaining: number };
+  serviceAccounts: { used: number; limit: number; percentage: number; remaining: number };
+  rankChecks: { used: number; limit: number; percentage: number; remaining: number };
+  apiCalls: { used: number; limit: number; percentage: number; remaining: number };
+  storage: { used: number; limit: number; percentage: number; remaining: number };
 }
 
 export interface CreateUserRequest {
-  userId: string;  // Auth user UUID (from Supabase auth.users.id)
+  userId: string; // Auth user UUID (from Supabase auth.users.id)
   email: string;
   fullName: string;
   phoneNumber?: string;
@@ -147,9 +147,9 @@ export interface UserProfile {
 }
 
 export class UserManagementService {
-  private emailService: IEmailService;
+  private emailService: IEmailService | null;
 
-  constructor(emailService: IEmailService) {
+  constructor(emailService: IEmailService | null) {
     this.emailService = emailService;
   }
 
@@ -170,7 +170,11 @@ export class UserManagementService {
     const profile = await db.createUserProfile(userData);
 
     if (!profile) {
-      throw ErrorHandlingService.createError({ message: 'Failed to create user profile', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to create user profile',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     // Create default user settings
@@ -225,7 +229,11 @@ export class UserManagementService {
     const updatedProfile = await db.updateUserProfile(userId, updateData);
 
     if (!updatedProfile) {
-      throw ErrorHandlingService.createError({ message: 'Failed to update user profile', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to update user profile',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -259,26 +267,37 @@ export class UserManagementService {
   /**
    * Update user settings
    */
-  async updateUserSettings(
-    userId: string,
-    settings: Partial<UserSettings>
-  ): Promise<UserSettings> {
+  async updateUserSettings(userId: string, settings: Partial<UserSettings>): Promise<UserSettings> {
     const updateData: UpdateUserSettings = {};
 
-    if (settings.timeoutDuration !== undefined) updateData.timeout_duration = settings.timeoutDuration;
+    if (settings.timeoutDuration !== undefined)
+      updateData.timeout_duration = settings.timeoutDuration;
     if (settings.retryAttempts !== undefined) updateData.retry_attempts = settings.retryAttempts;
-    if (settings.emailJobCompletion !== undefined) updateData.email_job_completion = settings.emailJobCompletion;
-    if (settings.emailJobFailure !== undefined) updateData.email_job_failure = settings.emailJobFailure;
-    if (settings.emailQuotaAlerts !== undefined) updateData.email_quota_alerts = settings.emailQuotaAlerts;
-    if (settings.emailDailyReport !== undefined) updateData.email_daily_report = settings.emailDailyReport;
+    if (settings.emailJobCompletion !== undefined)
+      updateData.email_job_completion = settings.emailJobCompletion;
+    if (settings.emailJobFailure !== undefined)
+      updateData.email_job_failure = settings.emailJobFailure;
+    if (settings.emailQuotaAlerts !== undefined)
+      updateData.email_quota_alerts = settings.emailQuotaAlerts;
+    if (settings.emailDailyReport !== undefined)
+      updateData.email_daily_report = settings.emailDailyReport;
     if (settings.defaultSchedule !== undefined) {
-      updateData.default_schedule = settings.defaultSchedule as 'one-time' | 'hourly' | 'daily' | 'weekly' | 'monthly';
+      updateData.default_schedule = settings.defaultSchedule as
+        | 'one-time'
+        | 'hourly'
+        | 'daily'
+        | 'weekly'
+        | 'monthly';
     }
 
     const updatedSettings = await db.updateUserSettings(userId, updateData);
 
     if (!updatedSettings) {
-      throw ErrorHandlingService.createError({ message: 'Failed to update user settings', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to update user settings',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return this.mapDatabaseSettingsToModel(updatedSettings);
@@ -319,16 +338,21 @@ export class UserManagementService {
    */
   async getUserQuota(userId: string, feature: string): Promise<number> {
     const profile = await this.getUserProfile(userId);
-    if (!profile) throw ErrorHandlingService.createError({ message: 'User profile not found', type: ErrorType.NOT_FOUND, severity: ErrorSeverity.MEDIUM });
+    if (!profile)
+      throw ErrorHandlingService.createError({
+        message: 'User profile not found',
+        type: ErrorType.NOT_FOUND,
+        severity: ErrorSeverity.MEDIUM,
+      });
 
     const packageConfig = await this.getPackageConfig(profile.packageId || null);
 
     // Default fallback values if DB config is missing
     const defaults: Record<string, number> = {
-      'domains': 10,
-      'keywords': 100,
-      'pages': 1000,
-      'storage_mb': 100
+      domains: 10,
+      keywords: 100,
+      pages: 1000,
+      storage_mb: 100,
     };
 
     // Prioritize DB config -> then defaults
@@ -382,7 +406,11 @@ export class UserManagementService {
   async activateTrial(userId: string, trialDays: number = 14): Promise<UserProfile> {
     const eligibility = await this.checkTrialEligibility(userId);
     if (!eligibility.isEligible) {
-      throw ErrorHandlingService.createError({ message: `Trial not eligible: ${eligibility.restrictions?.join(', ')}`, type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM });
+      throw ErrorHandlingService.createError({
+        message: `Trial not eligible: ${eligibility.restrictions?.join(', ')}`,
+        type: ErrorType.VALIDATION,
+        severity: ErrorSeverity.MEDIUM,
+      });
     }
 
     const trialEndsAt = new Date();
@@ -394,7 +422,11 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw ErrorHandlingService.createError({ message: 'Failed to activate trial', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to activate trial',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -410,7 +442,11 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw ErrorHandlingService.createError({ message: 'Failed to cancel trial', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to cancel trial',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -437,7 +473,11 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw ErrorHandlingService.createError({ message: 'Failed to suspend user', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to suspend user',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -454,7 +494,11 @@ export class UserManagementService {
     });
 
     if (!updatedProfile) {
-      throw ErrorHandlingService.createError({ message: 'Failed to unsuspend user', type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: 'Failed to unsuspend user',
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return this.mapDatabaseProfileToModel(updatedProfile);
@@ -490,17 +534,23 @@ export class UserManagementService {
       email_job_failure: DEFAULT_SETTINGS.USER.EMAIL_JOB_FAILURE,
       email_quota_alerts: DEFAULT_SETTINGS.USER.EMAIL_QUOTA_ALERTS,
       email_daily_report: DEFAULT_SETTINGS.USER.EMAIL_DAILY_REPORT,
-      default_schedule: DEFAULT_SETTINGS.USER.DEFAULT_SCHEDULE as 'one-time' | 'hourly' | 'daily' | 'weekly' | 'monthly',
+      default_schedule: DEFAULT_SETTINGS.USER.DEFAULT_SCHEDULE as
+        | 'one-time'
+        | 'hourly'
+        | 'daily'
+        | 'weekly'
+        | 'monthly',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin
-      .from('indb_auth_user_settings')
-      .insert(defaultSettings);
+    const { error } = await supabaseAdmin.from('indb_auth_user_settings').insert(defaultSettings);
 
     if (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to create default user settings');
+      logger.error(
+        { error: error instanceof Error ? error : undefined },
+        'Failed to create default user settings'
+      );
     }
   }
 
@@ -549,7 +599,11 @@ export class UserManagementService {
           const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
 
           if (error || !data.user) {
-            if (error) logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching user email');
+            if (error)
+              logger.error(
+                { error: error instanceof Error ? error : undefined },
+                'Error fetching user email'
+              );
             return null;
           }
 
@@ -565,7 +619,11 @@ export class UserManagementService {
   /**
    * Map database profile to model
    */
-  private mapDatabaseProfileToModel(data: DbUserProfile, email?: string, quotas?: Record<string, number>): UserProfile {
+  private mapDatabaseProfileToModel(
+    data: DbUserProfile,
+    email?: string,
+    quotas?: Record<string, number>
+  ): UserProfile {
     return {
       id: data.id,
       userId: data.user_id,
@@ -579,7 +637,9 @@ export class UserManagementService {
       isTrialActive: data.is_trial_active ?? false,
       trialEndsAt: data.trial_ends_at ? new Date(data.trial_ends_at) : undefined,
       subscriptionStatus: 'active', // Default
-      subscriptionEndsAt: data.subscription_end_date ? new Date(data.subscription_end_date) : undefined,
+      subscriptionEndsAt: data.subscription_end_date
+        ? new Date(data.subscription_end_date)
+        : undefined,
       packageId: data.package_id || undefined,
       quotaUsage: {
         dailyUrls: data.daily_quota_used || 0,

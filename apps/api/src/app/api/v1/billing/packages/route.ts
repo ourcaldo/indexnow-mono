@@ -4,7 +4,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import {
   ErrorType,
@@ -49,7 +49,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     // Fetch active packages
     const packages = await SecureServiceRoleWrapper.executeWithUserSession<PaymentPackageRow[]>(
-      auth.supabase,
+      asTypedClient(auth.supabase),
       {
         userId: auth.userId,
         operation: 'get_active_billing_packages',
@@ -92,7 +92,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     let userProfile: UserPackageInfo | null = null;
     try {
       userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserPackageInfo | null>(
-        auth.supabase,
+        asTypedClient(auth.supabase),
         {
           userId: auth.userId,
           operation: 'get_user_billing_profile',

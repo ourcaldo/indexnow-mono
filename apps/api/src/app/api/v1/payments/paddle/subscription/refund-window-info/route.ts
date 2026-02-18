@@ -5,100 +5,107 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
+import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
+import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 import {
-    authenticatedApiWrapper,
-    formatSuccess,
-    formatError
+  authenticatedApiWrapper,
+  formatSuccess,
+  formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
-// Derived types from Database schema  
+// Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
-type SubscriptionRefundInfo = Pick<PaymentSubscriptionRow, 'user_id' | 'created_at' | 'paddle_subscription_id'>;
+type SubscriptionRefundInfo = Pick<
+  PaymentSubscriptionRow,
+  'user_id' | 'created_at' | 'paddle_subscription_id'
+>;
 
 const refundWindowRequestSchema = z.object({
-    subscriptionId: z.string().min(1, 'Subscription ID is required'),
+  subscriptionId: z.string().min(1, 'Subscription ID is required'),
 });
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-    const { searchParams } = new URL(request.url);
-    const subscriptionId = searchParams.get('subscriptionId');
+  const { searchParams } = new URL(request.url);
+  const subscriptionId = searchParams.get('subscriptionId');
 
-    const validationResult = refundWindowRequestSchema.safeParse({ subscriptionId });
-    if (!validationResult.success) {
-        const error = await ErrorHandlingService.createError(
-            ErrorType.VALIDATION,
-            validationResult.error.errors[0].message,
-            { severity: ErrorSeverity.LOW, statusCode: 400 }
-        );
-        return formatError(error);
+  const validationResult = refundWindowRequestSchema.safeParse({ subscriptionId });
+  if (!validationResult.success) {
+    const error = await ErrorHandlingService.createError(
+      ErrorType.VALIDATION,
+      validationResult.error.errors[0].message,
+      { severity: ErrorSeverity.LOW, statusCode: 400 }
+    );
+    return formatError(error);
+  }
+
+  try {
+    // Get subscription info using SecureServiceRoleWrapper
+    const subscription =
+      await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionRefundInfo | null>(
+        asTypedClient(auth.supabase),
+        {
+          userId: auth.userId,
+          operation: 'get_subscription_refund_window_info',
+          source: 'paddle/subscription/refund-window-info',
+          reason: 'User checking refund eligibility for subscription',
+          metadata: {
+            subscriptionId: validationResult.data.subscriptionId,
+            endpoint: '/api/v1/payments/paddle/subscription/refund-window-info',
+          },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') ?? undefined,
+        },
+        { table: 'indb_payment_subscriptions', operationType: 'select' },
+        async (db) => {
+          const { data, error } = await db
+            .from('indb_payment_subscriptions')
+            .select('user_id, created_at, paddle_subscription_id')
+            .eq('paddle_subscription_id', validationResult.data.subscriptionId)
+            .single();
+
+          if (error && error.code !== 'PGRST116') throw error;
+          return data;
+        }
+      );
+
+    if (!subscription) {
+      throw new Error('Subscription not found');
     }
 
-    try {
-        // Get subscription info using SecureServiceRoleWrapper
-        const subscription = await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionRefundInfo | null>(
-            auth.supabase,
-            {
-                userId: auth.userId,
-                operation: 'get_subscription_refund_window_info',
-                source: 'paddle/subscription/refund-window-info',
-                reason: 'User checking refund eligibility for subscription',
-                metadata: { subscriptionId: validationResult.data.subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/refund-window-info' },
-                ipAddress: getClientIP(request),
-                userAgent: request.headers.get('user-agent') ?? undefined
-            },
-            { table: 'indb_payment_subscriptions', operationType: 'select' },
-            async (db) => {
-                const { data, error } = await db
-                    .from('indb_payment_subscriptions')
-                    .select('user_id, created_at, paddle_subscription_id')
-                    .eq('paddle_subscription_id', validationResult.data.subscriptionId)
-                    .single();
-
-                if (error && error.code !== 'PGRST116') throw error;
-                return data;
-            }
-        );
-
-        if (!subscription) {
-            throw new Error('Subscription not found');
-        }
-
-        if (subscription.user_id !== auth.userId) {
-            throw new Error('You do not have permission to view this subscription');
-        }
-
-        // Calculate refund window
-        const createdAt = new Date(subscription.created_at);
-        const now = new Date();
-        const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-        const refundWindowDays = 7;
-        const daysRemaining = Math.max(0, refundWindowDays - daysActive);
-        const isEligible = daysRemaining > 0;
-
-        // Calculate refund window expiry date
-        const refundWindowExpiry = new Date(createdAt);
-        refundWindowExpiry.setDate(refundWindowExpiry.getDate() + refundWindowDays);
-
-        return formatSuccess({
-            subscriptionId: subscription.paddle_subscription_id,
-            refundWindowDays,
-            daysActive,
-            daysRemaining,
-            isEligible,
-            refundWindowExpiry: refundWindowExpiry.toISOString(),
-            message: isEligible
-                ? `You have ${daysRemaining} days remaining for a full refund`
-                : 'Refund window has expired'
-        });
-    } catch (error) {
-        const err = await ErrorHandlingService.createError(
-            ErrorType.BUSINESS_LOGIC,
-            error instanceof Error ? error.message : 'Failed to get refund window info',
-            { severity: ErrorSeverity.LOW, statusCode: 400, userId: auth.userId }
-        );
-        return formatError(err);
+    if (subscription.user_id !== auth.userId) {
+      throw new Error('You do not have permission to view this subscription');
     }
+
+    // Calculate refund window
+    const createdAt = new Date(subscription.created_at);
+    const now = new Date();
+    const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const refundWindowDays = 7;
+    const daysRemaining = Math.max(0, refundWindowDays - daysActive);
+    const isEligible = daysRemaining > 0;
+
+    // Calculate refund window expiry date
+    const refundWindowExpiry = new Date(createdAt);
+    refundWindowExpiry.setDate(refundWindowExpiry.getDate() + refundWindowDays);
+
+    return formatSuccess({
+      subscriptionId: subscription.paddle_subscription_id,
+      refundWindowDays,
+      daysActive,
+      daysRemaining,
+      isEligible,
+      refundWindowExpiry: refundWindowExpiry.toISOString(),
+      message: isEligible
+        ? `You have ${daysRemaining} days remaining for a full refund`
+        : 'Refund window has expired',
+    });
+  } catch (error) {
+    const err = await ErrorHandlingService.createError(
+      ErrorType.BUSINESS_LOGIC,
+      error instanceof Error ? error.message : 'Failed to get refund window info',
+      { severity: ErrorSeverity.LOW, statusCode: 400, userId: auth.userId }
+    );
+    return formatError(err);
+  }
 });

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { SecureServiceRoleWrapper, fromJson } from '@indexnow/database';
+import { SecureServiceRoleWrapper, fromJson, asTypedClient, type Json } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
@@ -57,8 +57,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     const userId = auth.userId;
 
     // Execute queries in parallel
-    const dashboardData = (await SecureServiceRoleWrapper.executeWithUserSession(
-      auth.supabase,
+    const dashboardData = await SecureServiceRoleWrapper.executeWithUserSession(
+      asTypedClient(auth.supabase),
       {
         userId: userId,
         operation: 'get_dashboard_data',
@@ -136,7 +136,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             .limit(20),
         ]);
       }
-    )) as any[];
+    );
 
     const [
       userProfileResult,
@@ -152,7 +152,9 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     if (userProfileResult.data) {
       // Supabase join typing: .select() returns the join as an array or object,
       // but cannot infer the joined table's shape. We use a deliberate cast here.
-      const rawPackage = fromJson<PackageData | null>(userProfileResult.data.package);
+      const rawPackage = fromJson<PackageData | null>(
+        userProfileResult.data.package as unknown as Json
+      );
       let transformedPackage = rawPackage;
 
       if (rawPackage) {

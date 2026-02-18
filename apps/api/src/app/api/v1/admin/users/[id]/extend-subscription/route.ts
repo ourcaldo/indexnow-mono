@@ -1,31 +1,33 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
-import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
-import { z } from 'zod'
+import { NextRequest } from 'next/server';
+import {
+  adminApiWrapper,
+  createStandardError,
+  formatError,
+} from '@/lib/core/api-response-middleware';
+import { formatSuccess } from '@/lib/core/api-response-formatter';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { z } from 'zod';
 
 const extendSubscriptionSchema = z.object({
   days: z.number().int().positive().default(30),
-})
+});
 
-export const POST = adminApiWrapper(async (
-  request: NextRequest,
-  adminUser,
-  context
-) => {
-  const { id: userId } = await context.params as Record<string, string>
-  const body = await request.json()
-  const parseResult = extendSubscriptionSchema.safeParse(body)
+export const POST = adminApiWrapper(async (request: NextRequest, adminUser, context) => {
+  const { id: userId } = (await context.params) as Record<string, string>;
+  const body = await request.json();
+  const parseResult = extendSubscriptionSchema.safeParse(body);
   if (!parseResult.success) {
-    return formatError(await createStandardError(
-      ErrorType.VALIDATION,
-      parseResult.error.errors[0]?.message || 'Invalid request body',
-      { statusCode: 400, severity: ErrorSeverity.LOW }
-    ))
+    return formatError(
+      await createStandardError(
+        ErrorType.VALIDATION,
+        parseResult.error.errors[0]?.message || 'Invalid request body',
+        { statusCode: 400, severity: ErrorSeverity.LOW }
+      )
+    );
   }
-  const { days } = parseResult.data
+  const { days } = parseResult.data;
 
   const currentUserResult = await SecureServiceRoleWrapper.executeSecureOperation(
     {
@@ -37,40 +39,47 @@ export const POST = adminApiWrapper(async (
         targetUserId: userId,
         requestedExtensionDays: days,
         endpoint: '/api/v1/admin/users/[id]/extend-subscription',
-        method: 'POST'
+        method: 'POST',
       },
       ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
+      userAgent: request.headers.get('user-agent') || undefined,
     },
     {
       table: 'indb_auth_user_profiles',
       operationType: 'select',
       columns: ['full_name', 'expires_at', 'package'],
-      whereConditions: { user_id: userId }
+      whereConditions: { user_id: userId },
     },
     async () => {
-      const { data, error } = await (supabaseAdmin
-        .from('indb_auth_user_profiles') as any)
+      const { data, error } = await supabaseAdmin
+        .from('indb_auth_user_profiles')
         .select('full_name, expires_at, package:indb_payment_packages(name, slug)')
         .eq('user_id', userId)
-        .single()
-      return { data, error }
+        .single();
+      return { data, error };
     }
-  )
+  );
 
-  const { data: currentUser, error: userError } = currentUserResult
+  const { data: rawCurrentUser, error: userError } = currentUserResult;
+  const currentUser = rawCurrentUser as {
+    full_name: string | null;
+    expires_at: string | null;
+    package: { name: string; slug: string } | null;
+  } | null;
   if (userError || !currentUser) {
-    return formatError(await createStandardError(
-      ErrorType.AUTHORIZATION,
-      'User not found',
-      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
-    ))
+    return formatError(
+      await createStandardError(ErrorType.AUTHORIZATION, 'User not found', {
+        statusCode: 404,
+        severity: ErrorSeverity.MEDIUM,
+        metadata: { userId },
+      })
+    );
   }
 
-  const currentExpiry = currentUser.expires_at ? new Date(currentUser.expires_at) : new Date()
-  const now = new Date()
-  const baseDate = currentExpiry > now ? currentExpiry : now
-  const newExpiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000)
+  const currentExpiry = currentUser.expires_at ? new Date(currentUser.expires_at) : new Date();
+  const now = new Date();
+  const baseDate = currentExpiry > now ? currentExpiry : now;
+  const newExpiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
 
   const updateResult = await SecureServiceRoleWrapper.executeSecureOperation(
     {
@@ -85,10 +94,10 @@ export const POST = adminApiWrapper(async (
         previousExpiry: currentUser.expires_at,
         newExpiry: newExpiry.toISOString(),
         endpoint: '/api/v1/admin/users/[id]/extend-subscription',
-        method: 'POST'
+        method: 'POST',
       },
       ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
+      userAgent: request.headers.get('user-agent') || undefined,
     },
     {
       table: 'indb_auth_user_profiles',
@@ -97,28 +106,30 @@ export const POST = adminApiWrapper(async (
       whereConditions: { user_id: userId },
       data: {
         expires_at: newExpiry.toISOString(),
-        updated_at: new Date().toISOString()
-      }
+        updated_at: new Date().toISOString(),
+      },
     },
     async () => {
       const { error } = await supabaseAdmin
         .from('indb_auth_user_profiles')
         .update({
           expires_at: newExpiry.toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('user_id', userId)
-      return { error }
+        .eq('user_id', userId);
+      return { error };
     }
-  )
+  );
 
-  const { error: updateError } = updateResult
+  const { error: updateError } = updateResult;
   if (updateError) {
-    return formatError(await createStandardError(
-      ErrorType.DATABASE,
-      'Failed to extend subscription',
-      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { userId, days } }
-    ))
+    return formatError(
+      await createStandardError(ErrorType.DATABASE, 'Failed to extend subscription', {
+        statusCode: 500,
+        severity: ErrorSeverity.HIGH,
+        metadata: { userId, days },
+      })
+    );
   }
 
   await ActivityLogger.logAdminAction(
@@ -132,13 +143,16 @@ export const POST = adminApiWrapper(async (
       extensionDays: days,
       previousExpiry: currentUser.expires_at,
       newExpiry: newExpiry.toISOString(),
-      userFullName: currentUser.full_name
+      userFullName: currentUser.full_name,
     }
-  )
+  );
 
-  return formatSuccess({
-    message: `Subscription successfully extended by ${days} days`,
-    new_expiry: newExpiry.toISOString()
-  }, undefined, 201)
-})
-
+  return formatSuccess(
+    {
+      message: `Subscription successfully extended by ${days} days`,
+      new_expiry: newExpiry.toISOString(),
+    },
+    undefined,
+    201
+  );
+});

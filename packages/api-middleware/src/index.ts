@@ -32,7 +32,7 @@ export const requestLogger: MiddlewareFunction = async (context, next) => {
     status: response.status,
     duration: `${duration}ms`,
     userAgent: req.headers.get('user-agent'),
-    ip: getClientIP(req as any), // NextRequest type mismatch between package resolutions
+    ip: getClientIP(req),
   };
 
   // Log all requests
@@ -56,11 +56,20 @@ export const corsMiddleware: MiddlewareFunction = async (context, next) => {
     } else if (!origin && isDevelopment()) {
       // Allow local development without origin header (e.g. Postman)
       // NOTE (#9): Use first allowed origin instead of '*' to avoid CORS+credentials conflict
-      preflightResponse.headers.set('Access-Control-Allow-Origin', allowedOrigins[0] || 'http://localhost:3000');
+      preflightResponse.headers.set(
+        'Access-Control-Allow-Origin',
+        allowedOrigins[0] || 'http://localhost:3000'
+      );
     }
 
-    preflightResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    preflightResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-signature, x-timestamp');
+    preflightResponse.headers.set(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, DELETE, PATCH, OPTIONS'
+    );
+    preflightResponse.headers.set(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-Requested-With, x-api-key, x-signature, x-timestamp'
+    );
     preflightResponse.headers.set('Access-Control-Max-Age', '86400');
     preflightResponse.headers.set('Access-Control-Allow-Credentials', 'true');
 
@@ -74,11 +83,17 @@ export const corsMiddleware: MiddlewareFunction = async (context, next) => {
     response.headers.set('Access-Control-Allow-Credentials', 'true');
   } else if (!origin && isDevelopment()) {
     // NOTE (#9): Use first allowed origin instead of '*' to avoid CORS+credentials conflict
-    response.headers.set('Access-Control-Allow-Origin', allowedOrigins[0] || 'http://localhost:3000');
+    response.headers.set(
+      'Access-Control-Allow-Origin',
+      allowedOrigins[0] || 'http://localhost:3000'
+    );
   }
 
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-api-key, x-signature, x-timestamp');
+  response.headers.set(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Requested-With, x-api-key, x-signature, x-timestamp'
+  );
   response.headers.set('Access-Control-Max-Age', '86400');
 
   return response;
@@ -95,10 +110,7 @@ export const securityHeaders: MiddlewareFunction = async (context, next) => {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
   // HSTS: enforce HTTPS for 1 year, include subdomains
-  response.headers.set(
-    'Strict-Transport-Security',
-    'max-age=31536000; includeSubDomains; preload'
-  );
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
   // CSP: restrict resource loading to same origin + known CDNs
   response.headers.set(
@@ -133,7 +145,7 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 export const rateLimit = (maxRequests: number, windowMs: number): MiddlewareFunction => {
   return async (context, next) => {
     const { req } = context;
-    const clientId = getClientIP(req as any) ?? 'anonymous'; // NextRequest type mismatch between package resolutions
+    const clientId = getClientIP(req) ?? 'anonymous';
     const now = Date.now();
 
     const current = rateLimitStore.get(clientId);
@@ -153,7 +165,7 @@ export const rateLimit = (maxRequests: number, windowMs: number): MiddlewareFunc
         {
           success: false,
           error: 'Rate limit exceeded',
-          retryAfter: Math.ceil((current.resetTime - now) / 1000)
+          retryAfter: Math.ceil((current.resetTime - now) / 1000),
         },
         { status: 429 }
       );

@@ -153,9 +153,9 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   }
 
   // Atomic status update + plan activation via RPC (A-02 fix)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated types yet
   const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
-    'activate_order_with_plan' as any,
+    // @ts-expect-error - RPC 'activate_order_with_plan' not in generated Database types
+    'activate_order_with_plan',
     {
       p_transaction_id: orderId,
       p_new_status: status,
