@@ -4,7 +4,8 @@ import { loginSchema, getClientIP } from '@indexnow/shared';
 import {
   publicApiWrapper,
   formatSuccess,
-  formatError
+  formatError,
+  type RouteContext
 } from '@/lib/core/api-response-middleware';
 import {
   ErrorHandlingService,
@@ -26,7 +27,7 @@ const LOGIN_RATE_LIMIT = {
  * POST /api/v1/auth/login
  * Handles user authentication via Supabase and logs activity
  */
-export const POST = publicApiWrapper(async (request: NextRequest) => {
+export const POST = publicApiWrapper<any>(async (request: NextRequest, _context: RouteContext) => {
   const endpoint = '/api/v1/auth/login';
   const method = 'POST';
 
@@ -126,7 +127,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         .eq('user_id', user.id)
         .single();
 
-      if (profile?.must_change_password) {
+      if ((profile as any)?.must_change_password) {
         return formatSuccess({
           user: { id: user.id, email: user.email },
           mustChangePassword: true,

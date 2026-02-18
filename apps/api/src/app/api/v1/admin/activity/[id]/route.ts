@@ -11,12 +11,9 @@ import {
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters');
-  }
-  const { id } = await context.params;
+  const { id } = await context.params as Record<string, string>;
 
   // Fetch specific log
   const operationContext = {

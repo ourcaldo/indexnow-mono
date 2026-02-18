@@ -30,7 +30,11 @@ import {
   IApiMetricsCollector,
   IQuotaMonitor,
   IHealthChecker,
-  ISeRankingApiClient
+  ISeRankingApiClient,
+  IKeywordValidator,
+  IApiResponseValidator,
+  IEnrichmentQueue,
+  IJobProcessor
 } from '../types/ServiceTypes';
 
 // Service imports
@@ -210,8 +214,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
   public keywordBank!: IKeywordBankService;
   public integration!: IIntegrationService;
   public validation!: {
-    keyword: typeof ValidationService;
-    response: typeof ValidationService;
+    keyword: IKeywordValidator;
+    response: IApiResponseValidator;
     quota: IIntegrationService;
   };
   public monitoring!: {
@@ -220,8 +224,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
     health: IHealthChecker;
   };
   public queue!: {
-    enrichment: EnrichmentQueue;
-    processor: JobProcessor;
+    enrichment: IEnrichmentQueue;
+    processor: IJobProcessor;
   };
 
   constructor(config: Partial<SeRankingServiceConfig> = {}) {
@@ -303,7 +307,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       timeout: 30000,
       retryAttempts: this.config.errorHandling.maxRetryAttempts,
       retryDelay: this.config.errorHandling.baseRetryDelay
-    });
+    }) as unknown as ISeRankingApiClient;
 
     // Initialize keyword bank service
     this.keywordBankService = new KeywordBankService();
@@ -355,7 +359,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       enableAutoScaling: true,
       enableMetrics: this.config.monitoring.enableMetrics,
       enableDetailedLogging: this.config.logging.enableDetailedLogging
-    }, this.enrichmentQueue, this.enrichmentService, this.errorHandler);
+    }, this.enrichmentQueue, this.enrichmentService as unknown as KeywordEnrichmentService, this.errorHandler);
   }
 
   /**
@@ -370,7 +374,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       logLevel: this.config.logging.level
     });
 
-    this.quotaMonitor = new QuotaMonitor({
+    this.quotaMonitor = new QuotaMonitor(this.integrationService, {
       alertThresholds: {
         warning: this.config.monitoring.quotaWarningThreshold,
         critical: this.config.monitoring.quotaCriticalThreshold,
@@ -392,39 +396,46 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       },
       retentionDays: this.config.monitoring.metricsRetentionDays,
       logLevel: this.config.logging.level
-    }, this.integrationService);
+    }) as unknown as IQuotaMonitor;
 
-    this.healthChecker = new HealthChecker({
-      intervals: {
-        quickCheck: 60000, // 1 minute
-        fullCheck: 300000, // 5 minutes
-        deepDiagnostics: 1800000 // 30 minutes
+    this.healthChecker = new HealthChecker(
+      {
+        apiClient: this.apiClient,
+        keywordBankService: this.keywordBankService,
+        integrationService: this.integrationService
       },
-      thresholds: {
-        responseTime: {
-          good: 1000,
-          degraded: 5000,
-          unhealthy: 10000
+      {
+        intervals: {
+          quickCheck: 60000, // 1 minute
+          fullCheck: 300000, // 5 minutes
+          deepDiagnostics: 1800000 // 30 minutes
         },
-        errorRate: {
-          good: 1,
-          degraded: 5,
-          unhealthy: 10
+        thresholds: {
+          responseTime: {
+            good: 1000,
+            degraded: 5000,
+            unhealthy: 10000
+          },
+          errorRate: {
+            good: 1,
+            degraded: 5,
+            unhealthy: 10
+          },
+          availability: {
+            good: 99,
+            degraded: 95,
+            unhealthy: 90
+          }
         },
-        availability: {
-          good: 99,
-          degraded: 95,
-          unhealthy: 90
-        }
-      },
-      recovery: {
-        enableAutoRecovery: true,
-        maxRetryAttempts: 3,
-        retryBackoffMs: 5000,
-        escalationTimeoutMinutes: 15
-      },
-      logLevel: this.config.logging.level
-    }, this.apiClient, this.keywordBankService, this.integrationService);
+        recovery: {
+          enableAutoRecovery: true,
+          maxRetryAttempts: 3,
+          retryBackoffMs: 5000,
+          escalationTimeoutMinutes: 15
+        },
+        logLevel: this.config.logging.level
+      }
+    );
   }
 
   /**
@@ -436,8 +447,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
     this.integration = this.integrationService;
     
     this.validation = {
-      keyword: ValidationService,
-      response: ValidationService,
+      keyword: ValidationService as unknown as IKeywordValidator,
+      response: ValidationService as unknown as IApiResponseValidator,
       quota: this.integrationService
     };
     
@@ -448,8 +459,8 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
     };
     
     this.queue = {
-      enrichment: this.enrichmentQueue,
-      processor: this.jobProcessor
+      enrichment: this.enrichmentQueue as unknown as IEnrichmentQueue,
+      processor: this.jobProcessor as unknown as IJobProcessor
     };
   }
 
@@ -509,7 +520,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       );
 
       if (!enrichResult.success) {
-        return enrichResult as ServiceResponse<KeywordIntelligenceResult>;
+        return enrichResult as unknown as ServiceResponse<KeywordIntelligenceResult>;
       }
 
       const processingTime = Date.now() - startTime;
@@ -534,7 +545,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         timestamp: new Date(),
         keywords: [keyword],
         countryCode
-      }) as ServiceResponse<KeywordIntelligenceResult>;
+      }) as unknown as ServiceResponse<KeywordIntelligenceResult>;
     }
   }
 
@@ -569,17 +580,17 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       const bulkResult = await this.enrichmentService.enrichKeywordsBulk(keywords);
       
       if (!bulkResult.success || !bulkResult.data) {
-        return bulkResult as ServiceResponse<BulkEnrichmentResult>;
+        return bulkResult as unknown as ServiceResponse<BulkEnrichmentResult>;
       }
 
       const job = bulkResult.data;
       const result: BulkEnrichmentResult = {
-        jobId: job.job_id,
-        status: job.status,
-        totalKeywords: job.total_keywords,
-        processedKeywords: job.processed_keywords,
-        successfulKeywords: job.successful_keywords,
-        failedKeywords: job.failed_keywords,
+        jobId: job.id,
+        status: job.status as BulkEnrichmentResult['status'],
+        totalKeywords: job.progress.total,
+        processedKeywords: job.progress.processed,
+        successfulKeywords: job.progress.successful,
+        failedKeywords: job.progress.failed,
         estimatedCompletion: job.estimated_completion,
         results: [] // Would be populated from job results
       };
@@ -594,7 +605,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         timestamp: new Date(),
         keywords: keywords.map(k => k.keyword),
         batchSize: keywords.length
-      }) as ServiceResponse<BulkEnrichmentResult>;
+      }) as unknown as ServiceResponse<BulkEnrichmentResult>;
     }
   }
 
@@ -609,7 +620,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
         this.metricsCollector?.getMetrics().catch(() => ({}))
       ]);
 
-      const queueStatus = await this.enrichmentQueue?.getQueueStatus().catch(() => ({ processing: 0 }));
+      const queueStatus = await this.enrichmentQueue?.getQueueStats().catch(() => ({ processing: 0 }));
       
       return {
         isInitialized: this.isInitialized,
@@ -623,7 +634,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
           integration: !!this.integrationService
         },
         lastHealthCheck: new Date(),
-        quotaStatus: quotaStatus?.success ? quotaStatus.data! : {
+        quotaStatus: (quotaStatus && 'data' in quotaStatus && quotaStatus.success) ? quotaStatus.data! : {
           current_usage: 0,
           quota_limit: 0,
           quota_remaining: 0,
@@ -640,7 +651,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
           cache_hits: 0,
           cache_misses: 0
         },
-        activeJobs: queueStatus?.processing || 0,
+        activeJobs: (queueStatus && 'processingJobs' in queueStatus) ? queueStatus.processingJobs : (queueStatus as { processing?: number })?.processing || 0,
         systemUptime: Date.now() - this.startedAt.getTime()
       };
     } catch (error) {
@@ -694,7 +705,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       
       const [metrics, cacheStats, queueStats, quotaResult] = await Promise.all([
         this.metricsCollector.getMetrics(),
-        this.keywordBankService.getCacheStats(),
+        (this.keywordBankService as unknown as KeywordBankService).getCacheStats(),
         this.enrichmentQueue.getQueueStats(),
         this.integrationService.getQuotaStatus()
       ]);
@@ -720,7 +731,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       return await this.errorHandler.handleError(error as Error, {
         operation: 'getSystemMetrics',
         timestamp: new Date()
-      });
+      }) as unknown as ServiceResponse<{ metrics: ApiMetrics; cacheStats: CacheStats; queueStats: QueueStats; quotaStatus: QuotaStatus }>;
     }
   }
 
@@ -756,7 +767,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       return await this.errorHandler.handleError(error as Error, {
         operation: 'configureBulkProcessing',
         timestamp: new Date()
-      });
+      }) as unknown as ServiceResponse<boolean>;
     }
   }
 
@@ -790,7 +801,7 @@ export class SeRankingService extends EventEmitter implements ISeRankingService 
       return await this.errorHandler.handleError(error as Error, {
         operation: 'enableMonitoring',
         timestamp: new Date()
-      });
+      }) as unknown as ServiceResponse<boolean>;
     }
   }
 

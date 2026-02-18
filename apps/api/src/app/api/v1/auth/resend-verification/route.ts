@@ -86,7 +86,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         const supabase = createAnonServerClient();
 
         const resendResult = await SecureServiceRoleWrapper.executeWithUserSession<ResendResult>(
-            supabase,
+            supabase as any,
             {
                 userId: 'anonymous',
                 operation: 'resend_verification_email',

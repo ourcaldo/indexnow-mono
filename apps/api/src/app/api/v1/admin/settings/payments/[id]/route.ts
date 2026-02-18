@@ -1,4 +1,4 @@
-import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin, type Json } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { type AdminUser } from '@indexnow/auth'
@@ -16,10 +16,9 @@ const updateGatewaySchema = z.object({
   api_credentials: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context) => {
   // Extract ID from route params
-  if (!context) throw new Error('Missing route context');
-  const { id } = await context.params;
+  const { id } = await context.params as Record<string, string>;
   const rawBody = await request.json()
 
   // Validate input with Zod schema
@@ -66,7 +65,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
         isDefault: body.is_default
       },
       endpoint: '/api/v1/admin/settings/payments/[id]'
-    }
+    } as any
   }
 
   const updateData = {
@@ -75,8 +74,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
     description: body.description,
     is_active: body.is_active,
     is_default: body.is_default,
-    configuration: body.configuration || {},
-    api_credentials: body.api_credentials || {},
+    configuration: (body.configuration || {}) as Json,
+    api_credentials: (body.api_credentials || {}) as Json,
     updated_at: new Date().toISOString()
   }
 
@@ -88,7 +87,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
         operationType: 'update',
         columns: Object.keys(updateData),
         whereConditions: { id },
-        data: updateData
+        data: updateData as any
       },
       async () => {
         const { data, error } = await supabaseAdmin
@@ -117,10 +116,9 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
   }
 })
 
-export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context) => {
   // Extract ID from route params
-  if (!context) throw new Error('Missing route context');
-  const { id } = await context.params;
+  const { id } = await context.params as Record<string, string>;
 
   // Delete payment gateway using secure wrapper
   const deleteContext = {

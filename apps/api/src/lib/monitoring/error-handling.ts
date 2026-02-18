@@ -126,7 +126,7 @@ export class ErrorHandlingService {
       endpoint: options.endpoint,
       method: options.method,
       statusCode: options.statusCode || 500,
-      metadata: options.metadata,
+      metadata: options.metadata as Record<string, Json> | undefined,
       stack,
       timestamp
     };
@@ -200,7 +200,7 @@ export class ErrorHandlingService {
           severity: error.severity,
           endpoint: error.endpoint,
           statusCode: error.statusCode
-        }
+        } as Record<string, Json>
       };
 
       await SecureServiceRoleHelpers.secureInsert(

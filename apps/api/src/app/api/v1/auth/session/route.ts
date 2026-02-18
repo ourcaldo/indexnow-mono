@@ -127,7 +127,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           refresh_token
         });
         return {
-          data: { session: data.session },
+          data: { session: data.session as any },
           error: error ? { message: error.message } : null
         };
       }
@@ -204,9 +204,9 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
   // Get base domain for cross-subdomain cookie clearing
   const getBaseDomain = (): string => {
     const envUrls = [
-      AppConfig.app.dashboardUrl,
-      AppConfig.app.backendUrl,
-      AppConfig.app.apiBaseUrl,
+      (AppConfig.app as any).dashboardUrl,
+      (AppConfig.app as any).backendUrl,
+      (AppConfig.app as any).apiBaseUrl,
       AppConfig.app.baseUrl
     ].filter(Boolean) as string[];
 

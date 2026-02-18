@@ -19,10 +19,10 @@ export class QuotaService {
    * Returns true if successful, false if insufficient quota.
    */
   static async consumeQuota(userId: string, count: number): Promise<boolean> {
-    const { data, error } = await supabaseBrowser.rpc('consume_user_quota', {
+    const { data, error } = await supabaseBrowser.rpc('consume_user_quota' as any, {
       target_user_id: userId,
       quota_amount: count
-    });
+    } as any);
 
     if (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Error consuming quota');
@@ -51,8 +51,9 @@ export class QuotaService {
     }
 
     // -1 indicates unlimited quota
-    if (profile.daily_quota_limit === -1) return true;
+    const p = profile as { daily_quota_used: number; daily_quota_limit: number };
+    if (p.daily_quota_limit === -1) return true;
 
-    return (profile.daily_quota_used + count) <= profile.daily_quota_limit;
+    return (p.daily_quota_used + count) <= p.daily_quota_limit;
   }
 }

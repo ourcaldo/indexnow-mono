@@ -346,7 +346,7 @@ export class ValidationService {
 
       return {
         isValid: true,
-        data: validatedData,
+        data: validatedData as unknown as KeywordBankInsert,
         errors: [],
         warnings
       };
@@ -395,7 +395,7 @@ export class ValidationService {
 
       return {
         isValid: true,
-        data: validatedData,
+        data: validatedData as unknown as KeywordBankUpdate,
         errors: [],
         warnings
       };
@@ -502,7 +502,7 @@ export class ValidationService {
 
       return {
         isValid: true,
-        data: validatedQuery,
+        data: validatedQuery as unknown as KeywordBankQuery,
         errors: [],
         warnings
       };

@@ -40,7 +40,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
         const { keyword_id } = validation.data;
 
         // Fetch keyword details (from indb_rank_keywords)
-        const keywordData = await SecureServiceRoleWrapper.executeWithUserSession(
+        const keywordData = await SecureServiceRoleWrapper.executeWithUserSession<RankKeywordSelect>(
             auth.supabase,
             {
                 userId: auth.userId,
@@ -48,7 +48,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/check-rank',
                 reason: 'Fetching keyword details to perform manual rank check',
                 metadata: { keywordId: keyword_id },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'select' },
@@ -195,7 +195,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
     try {
-        const integration = await SecureServiceRoleWrapper.executeWithUserSession(
+        const integration = await SecureServiceRoleWrapper.executeWithUserSession<{
+            api_quota_limit: number;
+            api_quota_used: number;
+            quota_reset_date: string | null;
+            is_active: boolean;
+        } | null>(
             auth.supabase,
             {
                 userId: auth.userId,
@@ -203,7 +208,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/check-rank',
                 reason: 'User checking if rank tracker API is configured and quota availability',
                 metadata: { serviceName: 'custom_tracker' },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_site_integration', operationType: 'select' },

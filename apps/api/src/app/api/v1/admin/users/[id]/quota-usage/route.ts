@@ -2,21 +2,18 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { UserManagementService } from '@indexnow/services';
-const userManagementService = new UserManagementService();
+const userManagementService = new UserManagementService(null as any);
 import { ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
 
   try {
-    const quota = await userManagementService.getUserQuota(userId)
+    const quota = await userManagementService.getUserQuota(userId, 'all')
     return formatSuccess(quota)
   } catch (error) {
     return formatError(await createStandardError(

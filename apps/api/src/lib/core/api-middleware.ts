@@ -98,7 +98,7 @@ export async function authenticateRequest(
       data: { 
         user: { id: user.id, email: user.email! },
         userId: user.id,
-        supabase: supabase as SupabaseClient<Database>
+        supabase: supabase as unknown as SupabaseClient<Database>
       } 
     };
   } catch (error) {
@@ -131,9 +131,9 @@ export async function validateRequest<T = unknown>(
     const result = schema.safeParse(body);
     
     if (!result.success) {
-      const validationDetails = result.error.errors
-        .map((err: { path: (string | number)[]; message: string }) => `${err.path.join('.')}: ${err.message}`)
-        .join(', ');
+      const validationDetails = result.error?.errors
+        ?.map((err: { path: (string | number)[]; message: string }) => `${err.path.join('.')}: ${err.message}`)
+        ?.join(', ') ?? 'Unknown validation error';
       
       const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
@@ -144,13 +144,13 @@ export async function validateRequest<T = unknown>(
           endpoint,
           statusCode: 400,
           userMessageKey: 'invalid_format',
-          metadata: { validationErrors: result.error.errors }
+          metadata: { validationErrors: result.error?.errors }
         }
       );
       return { success: false, error };
     }
 
-    return { success: true, data: result.data };
+    return { success: true, data: result.data as T };
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
       ErrorType.VALIDATION,

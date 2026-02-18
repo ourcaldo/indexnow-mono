@@ -73,7 +73,7 @@ export async function processTransactionCompleted(data: unknown) {
     }
 
     const paymentMethod = Array.isArray(payments) && payments.length > 0
-        ? safeGet(fromJson<Record<string, unknown>>(payments[0]), 'method_details.type', 'unknown')
+        ? safeGet(fromJson<Record<string, unknown>>(payments[0] as any), 'method_details.type', 'unknown')
         : 'unknown';
 
     const packageId = await getPackageIdFromSubscription(

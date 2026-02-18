@@ -8,13 +8,10 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 export const POST = authenticatedApiWrapper(async (
   request: NextRequest,
   auth,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
   try {
-    if (!context) {
-      throw new Error('Missing context parameters')
-    }
-    const params = await context.params
+    const params = await context.params as Record<string, string>
     const notificationId = params.id
 
     // Dismiss the notification using SecureWrapper

@@ -12,8 +12,16 @@ import {
   ApiMetrics,
   HealthCheckResult,
   SeRankingError,
-  QueueStats
 } from './SeRankingTypes';
+
+/** Queue statistics (not yet in SeRankingTypes — defined locally) */
+export interface QueueStats {
+  pending: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+}
 
 import {
   KeywordBankEntity,

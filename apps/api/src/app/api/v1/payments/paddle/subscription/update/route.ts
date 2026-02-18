@@ -14,7 +14,7 @@ import {
     formatSuccess,
     formatError
 } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 
 // Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
@@ -85,7 +85,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
     // Update the subscription with new price ID
     // STUB(M-13): Integrate PaddleSubscriptionService.updateSubscription when restored
-    ErrorHandlingService.logError(new Error('STUB: Subscription update only updates local DB — Paddle API call pending'), 'paddle-subscription-update');
+    logger.warn('STUB: Subscription update only updates local DB — Paddle API call pending');
     const updatedAt = new Date().toISOString();
     const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<PaymentSubscriptionRow>(
         auth.supabase,

@@ -8,12 +8,9 @@ import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
 
   // Pagination for log fetching (analysis uses up to maxAnalysisRows)
   const { searchParams } = new URL(request.url)
@@ -46,7 +43,7 @@ export const GET = adminApiWrapper(async (
     },
     async () => {
       const { data, error, count } = await (supabaseAdmin
-        .from('indb_security_activity_logs') as unknown)
+        .from('indb_security_activity_logs') as any)
         .select('ip_address, device_info, location_data, event_type, created_at, success', { count: 'exact' })
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -82,9 +79,9 @@ export const GET = adminApiWrapper(async (
           usageCount: 1
         })
       } else {
-        const existing = devices.get(deviceKey)
+        const existing = devices.get(deviceKey)!
         existing.lastUsed = log.created_at
-        existing.usageCount++
+        existing.usageCount = (existing.usageCount as number) + 1
       }
     }
 

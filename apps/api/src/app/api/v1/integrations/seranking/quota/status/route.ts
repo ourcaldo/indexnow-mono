@@ -15,7 +15,7 @@ import {
     formatSuccess,
     formatError
 } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 
 interface QuotaStatusData {
     current_usage: number;
@@ -32,7 +32,7 @@ interface QuotaStatusData {
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
     // STUB(M-13): Replace with actual database query once indb_seranking_integration table is created
-    ErrorHandlingService.logError(new Error('STUB: Quota status endpoint hit — integration not configured'), 'seranking-quota-status');
+    logger.warn('STUB: Quota status endpoint hit — integration not configured');
 
     const isConfigured = false;
 

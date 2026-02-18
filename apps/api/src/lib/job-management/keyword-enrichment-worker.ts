@@ -271,16 +271,16 @@ export class KeywordEnrichmentWorker {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_rank_keywords')
-            .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at')
+            .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at' as any)
             .eq('is_active', true)
-            .is('keyword_bank_id', null) // Simple: get keywords that don't have bank reference
+            .is('keyword_bank_id' as any, null) // Simple: get keywords that don't have bank reference
             .limit(limit);
 
           if (error) {
             throw new Error(`Failed to find keywords needing enrichment: ${error.message}`);
           }
 
-          return data || [];
+          return (data || []) as unknown as KeywordToEnrich[];
         }
       );
 
@@ -385,7 +385,7 @@ export class KeywordEnrichmentWorker {
           async () => {
             const { error: updateError } = await supabaseAdmin
               .from('indb_rank_keywords')
-              .update(updateData)
+              .update(updateData as any)
               .eq('id', keyword.id);
 
             if (updateError) {

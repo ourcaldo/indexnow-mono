@@ -75,10 +75,10 @@ async function processAutoCancel(job: Job<AutoCancelJob>): Promise<{
         )
 
         await getEmailService().sendEmail({
-          to: transaction.user_email,
+          to: transaction.user_email ?? '',
           subject: 'Order Expired',
           template: 'order_expired',
-          data: {
+          context: {
             customerName: transaction.customer_name,
             orderId: transaction.order_id,
             packageName: transaction.package_name,

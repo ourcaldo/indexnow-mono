@@ -10,12 +10,9 @@ import { z } from 'zod'
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
 
   const operationContext = {
     userId: adminUser.id,
@@ -160,12 +157,9 @@ const updateUserSchema = z.object({
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
   const body = await request.json()
   const parseResult = updateUserSchema.safeParse(body)
   if (!parseResult.success) {
@@ -250,7 +244,7 @@ export const PATCH = adminApiWrapper(async (
       updatedFields: { full_name, role, email_notifications, phone_number },
       roleChanged: currentProfile.length > 0 ? currentProfile[0].role !== role : false,
       endpoint: '/api/v1/admin/users/[id]'
-    },
+    } as any,
     ipAddress: getClientIP(request) ?? 'unknown',
     userAgent: request.headers.get('user-agent') || undefined || 'unknown'
   }

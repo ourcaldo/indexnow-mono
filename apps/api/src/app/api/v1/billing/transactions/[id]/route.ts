@@ -2,17 +2,17 @@ import { NextRequest } from 'next/server'
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling'
-import { SecureServiceRoleWrapper, TransactionRow } from '@indexnow/database'
+import { SecureServiceRoleWrapper } from '@indexnow/database'
+import { DbTransactionRow as TransactionRow, getClientIP } from '@indexnow/shared'
 
-interface TransactionDetail extends TransactionRow {
+type TransactionDetail = TransactionRow & {
   package: Record<string, unknown> | null;
   gateway: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-}
+};
 
 export const GET = authenticatedApiWrapper(async (request, auth, context) => {
   const params = context?.params ? await context.params : null
-  const transactionId = params?.id
+  const transactionId = params?.id as string | undefined
 
   if (!transactionId) {
     const error = await ErrorHandlingService.createError(
@@ -38,7 +38,7 @@ export const GET = authenticatedApiWrapper(async (request, auth, context) => {
         source: 'billing/transactions/[id]',
         reason: 'User fetching transaction details',
         metadata: { transactionId, endpoint: '/api/v1/billing/transactions/[id]' },
-        ipAddress: getClientIP(request),
+        ipAddress: getClientIP(request) ?? undefined,
         userAgent: request.headers.get('user-agent') || undefined
       },
       { table: 'indb_payment_transactions', operationType: 'select' },

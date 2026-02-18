@@ -1,6 +1,7 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { type AdminUser } from '@indexnow/auth'
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 
@@ -18,10 +19,9 @@ const updatePackageSchema = z.object({
   pricing_tiers: z.array(z.record(z.string(), z.unknown())).optional(),
 }).strict();
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context) => {
   // Extract ID from route params
-  if (!context) throw new Error('Missing route context');
-  const { id } = await context.params;
+  const { id } = await context.params as Record<string, string>;
   const body = await request.json()
 
   // Validate input
@@ -101,17 +101,16 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
     { userId: adminUser.id, endpoint: '/api/v1/admin/settings/packages/[id]' }
   )
 
-  if (!result.success) {
+  if (result instanceof NextResponse) {
     return result
   }
 
   return formatSuccess({ package: result.data }, undefined, 200)
 })
 
-export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context) => {
   // Extract ID from route params
-  if (!context) throw new Error('Missing route context');
-  const { id } = await context.params;
+  const { id } = await context.params as Record<string, string>;
 
   // Delete package using secure wrapper
   const deleteContext = {
@@ -152,7 +151,7 @@ export const DELETE = adminApiWrapper(async (request: NextRequest, adminUser: Ad
     { userId: adminUser.id, endpoint: '/api/v1/admin/settings/packages/[id]' }
   )
 
-  if (!result.success) {
+  if (result instanceof NextResponse) {
     return result
   }
 

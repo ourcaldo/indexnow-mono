@@ -70,7 +70,7 @@ export interface ServiceRoleOperationContext {
   reason: string
   source: string
   metadata?: Record<string, Json>
-  ipAddress?: string
+  ipAddress?: string | null
   userAgent?: string
 }
 
@@ -83,7 +83,7 @@ export interface UserOperationContext {
   source: string
   reason: string
   metadata?: Record<string, Json>
-  ipAddress?: string
+  ipAddress?: string | null
   userAgent?: string
 }
 

@@ -9,7 +9,7 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling'
 export const GET = publicApiWrapper(async (request, context) => {
   // Get packageId from context params (Next.js 15 dynamic routes)
   const params = context?.params ? await context.params : null
-  const packageId = params?.id
+  const packageId = params?.id as string | undefined
 
   if (!packageId) {
     const error = await ErrorHandlingService.createError(

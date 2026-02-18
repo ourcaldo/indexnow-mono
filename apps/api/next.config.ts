@@ -17,10 +17,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: '../../',
   },
-  // Skip TypeScript build errors - 318 pre-existing type strictness issues
-  // to be resolved incrementally (phantom table names, Record<string,unknown> casts, etc.)
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   async headers() {
     return [

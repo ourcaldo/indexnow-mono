@@ -58,12 +58,9 @@ interface OrderWithRelations {
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: orderId } = await context.params
+  const { id: orderId } = await context.params as Record<string, string>
 
   // Fetch order with all related data using secure wrapper
   const orderContext = {
@@ -111,7 +108,7 @@ export const GET = adminApiWrapper(async (
         throw new Error(error?.message || 'Order not found')
       }
 
-      return fromJson<OrderWithRelations>(data);
+      return fromJson<OrderWithRelations>(data as unknown as Json);
     }
   )
 

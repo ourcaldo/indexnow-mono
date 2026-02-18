@@ -15,9 +15,9 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
  */
 function getBaseDomain(): string {
     const envUrls = [
-        AppConfig.app.dashboardUrl,
-        AppConfig.app.backendUrl,
-        AppConfig.app.apiBaseUrl,
+        (AppConfig.app as any).dashboardUrl,
+        (AppConfig.app as any).backendUrl,
+        (AppConfig.app as any).apiBaseUrl,
         AppConfig.app.baseUrl
     ].filter(Boolean) as string[];
 
@@ -57,7 +57,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         );
 
         const logoutResult = await SecureServiceRoleWrapper.executeWithUserSession<LogoutResult>(
-            supabase,
+            supabase as any,
             {
                 userId: 'user-logout',
                 operation: 'user_logout',

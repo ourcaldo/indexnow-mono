@@ -8,7 +8,7 @@
 
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, type Json } from '@indexnow/database';
 import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 import {
     adminApiWrapper,
@@ -94,7 +94,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
             reason: 'Admin manually triggered rank check process',
             source: 'admin/rank-tracker/trigger-manual-check',
             metadata: {
-                beforeStats,
+                beforeStats: beforeStats as unknown as Json,
                 endpoint: '/api/v1/admin/rank-tracker/trigger-manual-check'
             },
             ipAddress: getClientIP(request),
@@ -107,11 +107,11 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
                 user_id: adminUser.id,
                 event_type: 'MANUAL_RANK_CHECK_TRIGGER',
                 description: 'Admin manually triggered rank check',
-                metadata: { beforeStats }
+                metadata: { beforeStats: beforeStats as unknown as Json }
             }
         },
         async () => {
-            await supabaseAdmin
+            await (supabaseAdmin as any)
                 .from('indb_system_activity_logs')
                 .insert({
                     user_id: adminUser.id,

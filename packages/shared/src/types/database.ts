@@ -179,6 +179,7 @@ export type Database = {
                     suspended_at: string | null
                     last_login_at: string | null
                     last_login_ip: string | null
+                    must_change_password: boolean
                     created_at: string
                     updated_at: string
                 }
@@ -205,6 +206,7 @@ export type Database = {
                     suspended_at?: string | null
                     last_login_at?: string | null
                     last_login_ip?: string | null
+                    must_change_password?: boolean
                     created_at?: string
                     updated_at?: string
                 }
@@ -231,6 +233,7 @@ export type Database = {
                     suspended_at?: string | null
                     last_login_at?: string | null
                     last_login_ip?: string | null
+                    must_change_password?: boolean
                     created_at?: string
                     updated_at?: string
                 }
@@ -527,7 +530,7 @@ export type Database = {
                 Row: {
                     id: string
                     user_id: string
-                    type: 'info' | 'success' | 'warning' | 'error'
+                    type: string
                     title: string
                     message: string
                     is_read: boolean
@@ -540,7 +543,7 @@ export type Database = {
                 Insert: {
                     id?: string
                     user_id: string
-                    type: 'info' | 'success' | 'warning' | 'error'
+                    type: string
                     title: string
                     message: string
                     is_read?: boolean
@@ -553,7 +556,7 @@ export type Database = {
                 Update: {
                     id?: string
                     user_id?: string
-                    type?: 'info' | 'success' | 'warning' | 'error'
+                    type?: string
                     title?: string
                     message?: string
                     is_read?: boolean
@@ -916,6 +919,7 @@ export type Database = {
                     amount: number
                     currency: string
                     status: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded'
+                    transaction_status: string | null
                     payment_status: string | null
                     error_message: string | null
                     transaction_id: string | null
@@ -925,6 +929,15 @@ export type Database = {
                     gateway_response: TransactionGatewayResponse | null
                     metadata: TransactionMetadata | null
                     notes: string | null
+                    user_email: string | null
+                    customer_name: string | null
+                    order_id: string | null
+                    package_name: string | null
+                    billing_period: string | null
+                    gross_amount: number | null
+                    verified_by: string | null
+                    verified_at: string | null
+                    processed_at: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -936,6 +949,7 @@ export type Database = {
                     amount: number
                     currency?: string
                     status?: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded'
+                    transaction_status?: string | null
                     error_message?: string | null
                     transaction_id?: string | null
                     external_transaction_id?: string | null
@@ -944,6 +958,15 @@ export type Database = {
                     gateway_response?: TransactionGatewayResponse | null
                     metadata?: TransactionMetadata | null
                     notes?: string | null
+                    user_email?: string | null
+                    customer_name?: string | null
+                    order_id?: string | null
+                    package_name?: string | null
+                    billing_period?: string | null
+                    gross_amount?: number | null
+                    verified_by?: string | null
+                    verified_at?: string | null
+                    processed_at?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -955,6 +978,7 @@ export type Database = {
                     amount?: number
                     currency?: string
                     status?: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded'
+                    transaction_status?: string | null
                     error_message?: string | null
                     transaction_id?: string | null
                     external_transaction_id?: string | null
@@ -963,6 +987,15 @@ export type Database = {
                     gateway_response?: TransactionGatewayResponse | null
                     metadata?: TransactionMetadata | null
                     notes?: string | null
+                    user_email?: string | null
+                    customer_name?: string | null
+                    order_id?: string | null
+                    package_name?: string | null
+                    billing_period?: string | null
+                    gross_amount?: number | null
+                    verified_by?: string | null
+                    verified_at?: string | null
+                    processed_at?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -1270,30 +1303,87 @@ export type Database = {
                 Row: {
                     id: string
                     user_id: string
-                    status: 'pending' | 'processing' | 'completed' | 'failed'
+                    name: string | null
+                    job_type: string | null
+                    status: 'pending' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'retrying'
+                    priority: number
                     config: EnrichmentJobConfig
+                    source_data: Json | null
+                    progress_data: Json | null
+                    result_data: Json | null
                     results: JobResult | null
                     error_message: string | null
+                    retry_count: number
+                    metadata: Json | null
+                    next_retry_at: string | null
+                    last_retry_at: string | null
+                    worker_id: string | null
+                    locked_at: string | null
+                    started_at: string | null
+                    completed_at: string | null
+                    cancelled_at: string | null
+                    total_keywords: number | null
+                    processed_keywords: number | null
+                    enriched_keywords: number | null
+                    failed_keywords: number | null
                     created_at: string
                     updated_at: string
                 }
                 Insert: {
                     id?: string
                     user_id: string
-                    status?: 'pending' | 'processing' | 'completed' | 'failed'
+                    name?: string | null
+                    job_type?: string | null
+                    status?: 'pending' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'retrying'
+                    priority?: number
                     config: EnrichmentJobConfig
+                    source_data?: Json | null
+                    progress_data?: Json | null
+                    result_data?: Json | null
                     results?: JobResult | null
                     error_message?: string | null
+                    retry_count?: number
+                    metadata?: Json | null
+                    next_retry_at?: string | null
+                    last_retry_at?: string | null
+                    worker_id?: string | null
+                    locked_at?: string | null
+                    started_at?: string | null
+                    completed_at?: string | null
+                    cancelled_at?: string | null
+                    total_keywords?: number | null
+                    processed_keywords?: number | null
+                    enriched_keywords?: number | null
+                    failed_keywords?: number | null
                     created_at?: string
                     updated_at?: string
                 }
                 Update: {
                     id?: string
                     user_id?: string
-                    status?: 'pending' | 'processing' | 'completed' | 'failed'
+                    name?: string | null
+                    job_type?: string | null
+                    status?: 'pending' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'retrying'
+                    priority?: number
                     config?: EnrichmentJobConfig
+                    source_data?: Json | null
+                    progress_data?: Json | null
+                    result_data?: Json | null
                     results?: JobResult | null
                     error_message?: string | null
+                    retry_count?: number
+                    metadata?: Json | null
+                    next_retry_at?: string | null
+                    last_retry_at?: string | null
+                    worker_id?: string | null
+                    locked_at?: string | null
+                    started_at?: string | null
+                    completed_at?: string | null
+                    cancelled_at?: string | null
+                    total_keywords?: number | null
+                    processed_keywords?: number | null
+                    enriched_keywords?: number | null
+                    failed_keywords?: number | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -1412,6 +1502,11 @@ export type Database = {
                     quota_limit: number
                     usage_percentage: number
                     session_id: string | null
+                    service_account_id: string | null
+                    endpoint: string | null
+                    country_code: string | null
+                    keywords_count: number | null
+                    cost_per_request: number | null
                     metadata: Json | null
                     created_at: string
                 }
@@ -1425,6 +1520,11 @@ export type Database = {
                     quota_limit: number
                     usage_percentage: number
                     session_id?: string | null
+                    service_account_id?: string | null
+                    endpoint?: string | null
+                    country_code?: string | null
+                    keywords_count?: number | null
+                    cost_per_request?: number | null
                     metadata?: Json | null
                     created_at?: string
                 }
@@ -1438,6 +1538,11 @@ export type Database = {
                     quota_limit?: number
                     usage_percentage?: number
                     session_id?: string | null
+                    service_account_id?: string | null
+                    endpoint?: string | null
+                    country_code?: string | null
+                    keywords_count?: number | null
+                    cost_per_request?: number | null
                     metadata?: Json | null
                     created_at?: string
                 }
@@ -1538,6 +1643,90 @@ export type Database = {
                     metadata?: Json | null
                     ip_address?: string | null
                     user_agent?: string | null
+                    created_at?: string
+                }
+                Relationships: never[]
+            }
+            indb_indexing_jobs: {
+                Row: {
+                    id: string
+                    user_id: string
+                    name: string | null
+                    status: string
+                    error_message: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    name?: string | null
+                    status?: string
+                    error_message?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    name?: string | null
+                    status?: string
+                    error_message?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: never[]
+            }
+            indb_google_service_accounts: {
+                Row: {
+                    id: string
+                    name: string
+                    email: string
+                    user_id: string
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    name: string
+                    email: string
+                    user_id: string
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    name?: string
+                    email?: string
+                    user_id?: string
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: never[]
+            }
+            indb_google_quota_usage: {
+                Row: {
+                    id: string
+                    service_account_id: string
+                    date: string
+                    requests_made: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    service_account_id: string
+                    date: string
+                    requests_made?: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    service_account_id?: string
+                    date?: string
+                    requests_made?: number
                     created_at?: string
                 }
                 Relationships: never[]

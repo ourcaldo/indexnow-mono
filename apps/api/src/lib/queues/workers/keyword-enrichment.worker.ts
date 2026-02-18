@@ -13,7 +13,7 @@ async function processKeywordEnrichment(job: Job<KeywordEnrichmentJob>): Promise
     const validatedData = KeywordEnrichmentJobSchema.parse(job.data)
 
     // Use the singleton instance
-    await keywordEnrichmentWorker.start() // Ensure it's started/initialized
+    await (await keywordEnrichmentWorker).start() // Ensure it's started/initialized
     // The worker runs on schedule, but we can also trigger manually if needed for this job
     // However, the original code imported the class dynamically. Here we import the singleton.
     
@@ -23,7 +23,7 @@ async function processKeywordEnrichment(job: Job<KeywordEnrichmentJob>): Promise
     // await worker.processEnrichmentJob() -> Wait, the original code had `processEnrichmentJob`?
     // My restored class has `processKeywords` (private) and `runManually` (public).
     
-    await keywordEnrichmentWorker.runManually()
+    await (await keywordEnrichmentWorker).runManually()
 
     logger.info({ jobId: job.id }, 'Keyword enrichment job completed')
 

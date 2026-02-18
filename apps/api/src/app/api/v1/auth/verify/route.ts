@@ -81,7 +81,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                 // Handle email confirmation for new registration using secure wrapper
                 try {
                     await SecureServiceRoleWrapper.executeWithUserSession(
-                        supabase,
+                        supabase as any,
                         {
                             userId: 'pending_verification',
                             operation: 'verify_otp_signup',
@@ -134,7 +134,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                 // Handle password reset verification using secure wrapper
                 try {
                     await SecureServiceRoleWrapper.executeWithUserSession(
-                        supabase,
+                        supabase as any,
                         {
                             userId: 'pending_verification',
                             operation: 'verify_otp_recovery',
@@ -187,7 +187,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
                 // Handle magic link authentication using secure wrapper
                 try {
                     await SecureServiceRoleWrapper.executeWithUserSession(
-                        supabase,
+                        supabase as any,
                         {
                             userId: 'pending_verification',
                             operation: 'verify_otp_magiclink',

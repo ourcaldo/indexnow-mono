@@ -665,7 +665,12 @@ export class JobProcessor extends EventEmitter {
     isRunning: boolean;
     workerCount: number;
     activeJobs: number;
-    metrics: typeof this.metrics;
+    metrics: {
+      totalJobsProcessed: number;
+      totalErrors: number;
+      averageProcessingTime: number;
+      startTime: Date;
+    };
     workerStatuses: WorkerStatus[];
   } {
     const workerStatuses = Array.from(this.workers.values()).map((worker) => worker.getStatus());

@@ -403,6 +403,7 @@ export class HealthChecker implements IHealthChecker {
       // Test database connectivity using SecureServiceRoleWrapper
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'test_database_connectivity',
           reason:
             'Health checker performing database connectivity test to verify database health status',
@@ -999,6 +1000,7 @@ export class HealthChecker implements IHealthChecker {
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'health_check_database_recovery',
           reason: 'SeRanking health checker verifying database connectivity for recovery',
           source: 'HealthChecker',
@@ -1034,9 +1036,9 @@ export class HealthChecker implements IHealthChecker {
     healthCheck: DetailedHealthCheck
   ): Promise<void> {
     if (!this.activeIncidents.has(serviceName)) {
-      const incident = {
+      const incident: HealthIncident = {
         id: `incident_${serviceName}_${Date.now()}`,
-        severity: healthCheck.status === 'unhealthy' ? 'high' : 'medium',
+        severity: (healthCheck.status === 'unhealthy' ? 'high' : 'medium') as HealthIncident['severity'],
         component: serviceName,
         description: healthCheck.error || `${serviceName} is ${healthCheck.status}`,
         started_at: new Date(),
@@ -1094,6 +1096,7 @@ export class HealthChecker implements IHealthChecker {
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'load_historical_health_data',
           reason: 'Loading historical health check data for trend analysis and comparison',
           source: 'HealthChecker.loadHistoricalHealthData',

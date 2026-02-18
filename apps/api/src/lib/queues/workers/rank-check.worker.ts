@@ -4,7 +4,7 @@ import { queueConfig } from '../config'
 import { ImmediateRankCheckJob, ImmediateRankCheckJobSchema } from '../types'
 import { RankTracker } from '@/lib/rank-tracking/rank-tracker'
 import { logger } from '@/lib/monitoring/error-handling'
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
+import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database'
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared'
 
 async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
@@ -26,7 +26,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
         operation: 'worker_get_keyword_for_rank_check',
         reason: 'Rank check worker fetching keyword details for rank check job',
         source: 'queues/workers/rank-check.worker',
-        metadata: { keywordId, jobId: job.id }
+        metadata: { keywordId, jobId: job.id ?? null }
       },
       { table: 'indb_rank_keywords', operationType: 'select' },
       async () => {
@@ -47,9 +47,9 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
     // 2. Check rank using Firecrawl (RankTracker class)
     const result = await RankTracker.checkRank(
       keyword.keyword,
-      keyword.domain,
-      keyword.country,
-      keyword.device
+      keyword.domain ?? '',
+      keyword.country ?? '',
+      (keyword.device ?? undefined) as 'desktop' | 'mobile' | undefined
     )
 
     // 3. Update DB — update keyword position + insert ranking history
@@ -59,7 +59,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
         operation: 'worker_save_rank_check_result',
         reason: 'Rank check worker saving rank check results to database',
         source: 'queues/workers/rank-check.worker',
-        metadata: { keywordId, jobId: job.id, position: result.position }
+        metadata: { keywordId, jobId: job.id ?? null, position: result.position }
       },
       { table: 'indb_rank_keywords', operationType: 'update' },
       async () => {
@@ -75,7 +75,6 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
 
         if (updateError) throw ErrorHandlingService.createError({ message: `Failed to update keyword position: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
 
-        // Insert ranking history
         const { error: insertError } = await supabaseAdmin
           .from('indb_keyword_rankings')
           .insert({
@@ -84,7 +83,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
             url: result.url,
             check_date: new Date().toISOString().split('T')[0],
             device_type: keyword.device,
-            metadata: result
+            metadata: toJson(result)
           })
 
         if (insertError) throw ErrorHandlingService.createError({ message: `Failed to insert ranking history: ${insertError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
@@ -95,7 +94,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
 
     logger.info({ jobId: job.id, keywordId, rank: result.position }, 'Rank check completed successfully')
 
-    return { success: true, rank: result.position }
+    return { success: true, rank: result.position ?? undefined }
   } catch (error) {
     logger.error(
       { jobId: job.id, keywordId, error: error instanceof Error ? error.message : 'Unknown error' },

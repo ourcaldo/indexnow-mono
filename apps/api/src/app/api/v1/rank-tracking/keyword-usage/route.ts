@@ -32,7 +32,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/keyword-usage',
                 reason: 'User checking keyword usage against quota',
                 metadata: { endpoint: '/api/v1/rank-tracking/keyword-usage' },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_rank_keywords', operationType: 'select' },
@@ -53,11 +53,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 return {
                     count: countResult.count || 0,
                     quota: profileResult.data?.package
-                        ? fromJson<PackageQuota>(profileResult.data.package)?.quota_limits ?? null
+                        ? fromJson<PackageQuota>(profileResult.data.package as any)?.quota_limits ?? null
                         : null
                 };
             }
-        );
+        ) as { count: number; quota: { keywords_limit: number; [key: string]: number | undefined } | null };
 
         const limit = usageData.quota?.keywords_limit || 10; // Default fallback
         const isUnlimited = limit === -1;

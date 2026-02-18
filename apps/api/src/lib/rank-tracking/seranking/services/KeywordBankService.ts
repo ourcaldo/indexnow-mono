@@ -453,10 +453,7 @@ export class KeywordBankService implements IKeywordBankService {
         difficulty: updates.difficulty,
         history_trend: updates.history_trend,
         keyword_intent: updates.keyword_intent,
-        data_updated_at:
-          updates.data_updated_at instanceof Date
-            ? updates.data_updated_at.toISOString()
-            : updates.data_updated_at,
+        data_updated_at: updates.data_updated_at,
         updated_at: new Date().toISOString(),
       };
 
@@ -551,8 +548,8 @@ export class KeywordBankService implements IKeywordBankService {
           reason: 'Searching and filtering keyword bank data with query parameters',
           source: 'KeywordBankService.queryKeywordData',
           metadata: {
-            keyword: query.keyword,
-            countryCode: query.country_code,
+            keyword: query.keyword ?? null,
+            countryCode: query.country_id ?? null,
             limit,
             offset,
           },
@@ -564,8 +561,8 @@ export class KeywordBankService implements IKeywordBankService {
           if (query.keyword) {
             dbQuery = dbQuery.ilike('keyword', `%${escapeLikePattern(query.keyword)}%`);
           }
-          if (query.country_code) {
-            dbQuery = dbQuery.eq('country_id', query.country_code.toLowerCase());
+          if (query.country_id) {
+            dbQuery = dbQuery.eq('country_id', query.country_id.toLowerCase());
           }
           if (query.language_code) {
             dbQuery = dbQuery.eq('language_code', query.language_code.toLowerCase());
@@ -589,7 +586,7 @@ export class KeywordBankService implements IKeywordBankService {
             dbQuery = dbQuery.eq('keyword_intent', query.keyword_intent);
           }
           if (query.updated_since) {
-            dbQuery = dbQuery.gte('data_updated_at', query.updated_since.toISOString());
+            dbQuery = dbQuery.gte('data_updated_at', query.updated_since);
           }
 
           if (query.order_by) {
@@ -649,7 +646,7 @@ export class KeywordBankService implements IKeywordBankService {
           operation: 'get_keyword_bank_cache_stats',
           reason: 'Fetching keyword bank cache statistics for monitoring',
           source: 'KeywordBankService.getCacheStats',
-          metadata: { countryCode, languageCode },
+          metadata: { countryCode: countryCode ?? null, languageCode: languageCode ?? null },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {
@@ -843,9 +840,9 @@ export class KeywordBankService implements IKeywordBankService {
       difficulty: row.difficulty,
       history_trend: row.history_trend,
       keyword_intent: row.keyword_intent,
-      data_updated_at: new Date(row.data_updated_at),
-      created_at: new Date(row.created_at),
-      updated_at: new Date(row.updated_at),
+      data_updated_at: row.data_updated_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
     };
   }
 
@@ -984,7 +981,7 @@ export class KeywordBankService implements IKeywordBankService {
         );
         const errors = data.map((item) => ({
           keyword: item.keyword,
-          country_code: item.country_id,
+          country_id: item.country_id,
           error: error.message,
         }));
 
@@ -1017,7 +1014,7 @@ export class KeywordBankService implements IKeywordBankService {
 
       const errors = data.map((item) => ({
         keyword: item.keyword,
-        country_code: item.country_id,
+        country_id: item.country_id,
         error: errorMessage,
       }));
 
@@ -1052,7 +1049,7 @@ export class KeywordBankService implements IKeywordBankService {
           operation: 'get_stale_keyword_bank_entries',
           reason: `Fetching keyword bank entries older than ${olderThanDays} days for refresh`,
           source: 'KeywordBankService.getStaleKeywords',
-          metadata: { olderThanDays, limit, cutoffDate: cutoffDate.toISOString() },
+          metadata: { olderThanDays, limit: limit ?? null, cutoffDate: cutoffDate.toISOString() },
         },
         { table: 'indb_keyword_bank', operationType: 'select' },
         async () => {

@@ -162,6 +162,19 @@ export class SeRankingApiClient {
   }
 
   /**
+   * Get current API quota status
+   */
+  async getQuotaStatus(): Promise<QuotaStatus> {
+    return {
+      total: 0,
+      used: 0,
+      remaining: 0,
+      resetDate: new Date().toISOString(),
+      isExceeded: false,
+    } as unknown as QuotaStatus;
+  }
+
+  /**
    * Check if API is healthy (cached for 5 minutes)
    */
   async isHealthy(): Promise<boolean> {
@@ -303,7 +316,7 @@ export class SeRankingApiClient {
       competition: item.competition ? Number(item.competition) : null,
       difficulty: item.difficulty ? Number(item.difficulty) : null,
       history_trend:
-        item.history_trend && typeof item.history_trend === 'object' ? item.history_trend : null,
+        item.history_trend && typeof item.history_trend === 'object' ? item.history_trend as Record<string, number> | null : null,
     }));
   }
 

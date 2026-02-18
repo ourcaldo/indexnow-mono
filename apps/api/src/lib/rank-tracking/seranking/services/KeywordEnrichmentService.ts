@@ -342,7 +342,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
-            .select('id, keyword, country_code, data_updated_at')
+            .select('id, keyword, country_id, data_updated_at')
             .lt('data_updated_at', thirtyDaysAgo.toISOString())
             .eq('is_data_found', true)
             .limit(limit);
@@ -354,7 +354,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           return (data || []).map((row) => ({
             id: row.id,
             keyword: row.keyword,
-            country_code: row.country_code || '',
+            country_code: row.country_id || '',
             data_updated_at: row.data_updated_at || '',
           }));
         }
@@ -766,7 +766,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
   ): Promise<{ success: boolean; data?: KeywordBankEntity; error?: unknown }> {
     const insertData: KeywordBankInsert = {
       keyword: keyword.trim().toLowerCase(),
-      country_code: countryCode.toLowerCase(),
+      country_id: countryCode.toLowerCase(),
       language_code: languageCode.toLowerCase(),
       is_data_found: apiData.is_data_found,
       volume: apiData.volume,
@@ -803,7 +803,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     const batches = this.createBatches(job.keywords, this.config.batchSize);
 
     for (const batch of batches) {
-      if (job.status === 'cancelled') {
+      if ((job.status as string) === 'cancelled') {
         break;
       }
 
@@ -816,7 +816,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     }
 
     // Update final job status
-    if (job.status !== 'cancelled') {
+    if ((job.status as string) !== 'cancelled') {
       job.status = job.progress.failed > 0 ? 'failed' : 'completed';
       job.completed_at = new Date();
     }
@@ -829,7 +829,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     job: BulkProcessingJob
   ): Promise<void> {
     for (const request of batch) {
-      if (job.status === 'cancelled') {
+      if ((job.status as string) === 'cancelled') {
         break;
       }
 

@@ -13,12 +13,9 @@ const extendSubscriptionSchema = z.object({
 export const POST = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
   const body = await request.json()
   const parseResult = extendSubscriptionSchema.safeParse(body)
   if (!parseResult.success) {
@@ -53,7 +50,7 @@ export const POST = adminApiWrapper(async (
     },
     async () => {
       const { data, error } = await (supabaseAdmin
-        .from('indb_auth_user_profiles') as unknown)
+        .from('indb_auth_user_profiles') as any)
         .select('full_name, expires_at, package:indb_payment_packages(name, slug)')
         .eq('user_id', userId)
         .single()

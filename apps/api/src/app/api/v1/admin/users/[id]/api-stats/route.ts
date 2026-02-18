@@ -14,12 +14,9 @@ interface UsageLog {
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
 
   const { searchParams } = new URL(request.url)
   const parsedPage = parseInt(searchParams.get('page') || '1')

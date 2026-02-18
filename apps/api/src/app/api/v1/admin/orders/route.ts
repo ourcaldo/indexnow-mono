@@ -209,8 +209,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const verifierIds = new Set<string>();
 
   orders.forEach(order => {
-    if (order.user_id) userIds.add(order.user_id);
-    if (order.verified_by) verifierIds.add(order.verified_by);
+    if (order.user_id) userIds.add(order.user_id as string);
+    if (order.verified_by) verifierIds.add(order.verified_by as string);
   });
 
   const allProfileIds = [...new Set([...userIds, ...verifierIds])];
@@ -250,29 +250,29 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
 
   // 4. Build enriched orders
   for (const order of orders) {
-    const userProfile = order.user_id ? profileMap.get(order.user_id) : null;
-    const verifierProfile = order.verified_by ? profileMap.get(order.verified_by) : null;
-    const userEmail = order.user_id ? emailMap.get(order.user_id) : null;
+    const userProfile = order.user_id ? profileMap.get(order.user_id as string) : null;
+    const verifierProfile = order.verified_by ? profileMap.get(order.verified_by as string) : null;
+    const userEmail = order.user_id ? emailMap.get(order.user_id as string) : null;
 
     const enrichedOrder: AdminOrderTransaction = {
-      ...order,
-      transaction_status: order.status, // Map status to transaction_status
-      transaction_type: order.transaction_type || 'payment', // Default if missing
-      gateway_transaction_id: order.external_transaction_id || order.gateway_transaction_id, // Map external id
+      ...order as any,
+      transaction_status: order.status as string, // Map status to transaction_status
+      transaction_type: (order.transaction_type as string) || 'payment', // Default if missing
+      gateway_transaction_id: (order.external_transaction_id as string) || (order.gateway_transaction_id as string), // Map external id
       user: {
-        user_id: order.user_id,
-        full_name: userProfile?.full_name || 'Unknown User',
-        role: userProfile?.role || 'user',
+        user_id: order.user_id as string,
+        full_name: (userProfile?.full_name as string) || 'Unknown User',
+        role: (userProfile?.role as string) || 'user',
         email: userEmail || 'N/A',
-        created_at: userProfile?.created_at || order.created_at
+        created_at: (userProfile?.created_at as string) || (order.created_at as string)
       },
       verifier: verifierProfile ? {
-        user_id: order.verified_by,
-        full_name: verifierProfile.full_name || 'Unknown',
-        role: verifierProfile.role || 'admin'
+        user_id: order.verified_by as string,
+        full_name: (verifierProfile.full_name as string) || 'Unknown',
+        role: (verifierProfile.role as string) || 'admin'
       } : null,
-      package: order.package,
-      gateway: order.gateway
+      package: order.package as AdminOrderTransaction['package'],
+      gateway: order.gateway as AdminOrderTransaction['gateway']
     };
 
     enrichedOrders.push(enrichedOrder);

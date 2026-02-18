@@ -63,7 +63,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'dashboard',
                 reason: 'User fetching complete dashboard data',
                 metadata: { endpoint: '/api/v1/dashboard' },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -124,7 +124,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                         .limit(20)
                 ]);
             }
-        );
+        ) as any[];
 
         const [
             userProfileResult,
@@ -226,8 +226,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 };
             } else {
                 const trialPackages = (packagesResult.data || [])
-                    .filter((p) => ['premium', 'pro'].includes(p.slug))
-                    .sort((a, b) => a.sort_order - b.sort_order);
+                    .filter((p: any) => ['premium', 'pro'].includes(p.slug))
+                    .sort((a: any, b: any) => a.sort_order - b.sort_order);
 
                 trialEligibility = {
                     eligible: true,
@@ -238,7 +238,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         }
 
         // Process Recent Keywords (Manual mapping for FE compatibility)
-        const recentKeywords = (recentKeywordsResult.data || []).map((kw) => ({
+        const recentKeywords = (recentKeywordsResult.data || []).map((kw: any) => ({
             id: kw.id,
             keyword: kw.keyword,
             device_type: kw.device,

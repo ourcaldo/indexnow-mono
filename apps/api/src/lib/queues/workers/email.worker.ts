@@ -21,7 +21,7 @@ async function processEmail(job: Job<EmailJob>): Promise<{
       to: validatedData.to,
       subject: validatedData.subject,
       template: validatedData.template,
-      data: validatedData.data
+      context: validatedData.data
     }
 
     await getEmailService().sendEmail(emailOptions)

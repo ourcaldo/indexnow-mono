@@ -22,7 +22,7 @@ interface SystemStatsResult {
 export const GET = publicApiWrapper(async (request: NextRequest) => {
     try {
         // Require super admin authentication
-        await requireServerSuperAdminAuth(request);
+        await requireServerSuperAdminAuth(request as any);
 
         // Get system statistics using secure admin operation
         const systemStats = await SecureServiceRoleWrapper.executeSecureOperation<SystemStatsResult>(

@@ -16,5 +16,14 @@
       "@indexnow/supabase-client": ["../../packages/supabase-client/src"],
       "@indexnow/api-middleware": ["../../packages/api-middleware/src"]
     }
-  }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
 }

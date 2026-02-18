@@ -13,7 +13,7 @@ export type { ApiSuccessResponse, ApiErrorResponse } from './api-response-format
 export { validateUuidParam } from './validate-params';
 
 /** Route context type compatible with Next.js 16 (supports dynamic, catch-all & optional catch-all params) */
-type RouteContext = { params: Promise<Record<string, string | string[]>> };
+export type RouteContext = { params: Promise<Record<string, string | string[]>> };
 
 /**
  * UUID regex for validating route param IDs
@@ -94,7 +94,7 @@ export function adminApiWrapper<T = unknown>(
       // Verify super admin authentication
       let adminUser: AdminUser | null = null;
       try {
-        adminUser = await requireServerSuperAdminAuth(request);
+        adminUser = await requireServerSuperAdminAuth(request as any);
       } catch (error) {
         // If auth fails, requireServerSuperAdminAuth throws. 
         // We catch it here to allow the custom unauthorized handling below.
@@ -315,11 +315,11 @@ export async function withDatabaseOperation<T>(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Database operation failed';
     logger.error({ error: err instanceof Error ? err : undefined }, message);
-    const structuredError = ErrorHandlingService.createError({
+    const structuredError = await ErrorHandlingService.createError(
+      ErrorType.DATABASE,
       message,
-      type: ErrorType.DATABASE,
-      severity: ErrorSeverity.HIGH,
-    });
+      { severity: ErrorSeverity.HIGH }
+    );
     return NextResponse.json(formatError(structuredError), { status: 500 });
   }
 }

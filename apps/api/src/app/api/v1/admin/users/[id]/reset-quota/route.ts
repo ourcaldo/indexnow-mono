@@ -8,12 +8,9 @@ import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
 export const POST = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
 
   const quotaResetContext = {
     userId: adminUser.id,

@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 
 // Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
@@ -61,7 +61,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     // STUB(M-13): Restore PaddleCustomerService and integrate here
     // When PaddleCustomerService is restored, use:
     // const portalUrl = await PaddleCustomerService.getCustomerPortalUrl(customerId);
-    ErrorHandlingService.logError(new Error('STUB: Customer portal endpoint hit — returning placeholder URL'), 'paddle-customer-portal');
+    logger.warn('STUB: Customer portal endpoint hit — returning placeholder URL');
 
     const portalUrl = `https://checkout.paddle.com/subscription/manage?subscription=${subscription.paddle_subscription_id}`;
 

@@ -21,7 +21,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                 source: 'auth/user/quota',
                 reason: 'User retrieving their own quota information for dashboard display',
                 metadata: { endpoint: '/api/v1/auth/user/quota', method: 'GET' },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') ?? undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -49,7 +49,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
 
                 return profile;
             }
-        );
+        ) as { package: Record<string, any> | Record<string, any>[] | null; daily_quota_limit: number; daily_quota_used: number; quota_reset_date: string | null };
 
         // Extract package data safely
         const packageData = Array.isArray(quotaData.package) ? quotaData.package[0] : quotaData.package;
@@ -78,7 +78,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
                         newDate: today,
                         quotaReset: true
                     },
-                    ipAddress: getClientIP(request),
+                    ipAddress: getClientIP(request) ?? undefined,
                     userAgent: request.headers.get('user-agent') ?? undefined
                 },
                 { table: 'indb_auth_user_profiles', operationType: 'update' },

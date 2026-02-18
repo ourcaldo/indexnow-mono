@@ -100,7 +100,7 @@ export class ServerActivityLogger {
             success: data.success !== false,
             error_message: data.errorMessage || null,
             metadata: enhancedMetadata,
-          };
+          } as any;
 
           const { data: result, error } = await supabaseAdmin
             .from('indb_security_activity_logs')

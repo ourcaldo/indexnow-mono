@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const context: MiddlewareContext = { req: request };
+  const context: MiddlewareContext = { req: request as any };
   
   // Compose and execute middlewares
   const composed = composeMiddleware(
@@ -27,9 +27,9 @@ export async function middleware(request: NextRequest) {
     apiRateLimit
   );
 
-  return composed(context, async () => {
+  return composed(context, (async () => {
     return NextResponse.next();
-  });
+  }) as any) as any;
 }
 
 // See "Matching Paths" below to learn more

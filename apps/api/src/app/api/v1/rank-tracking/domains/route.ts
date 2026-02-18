@@ -43,7 +43,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                 source: 'rank-tracking/domains',
                 reason: 'User fetching their domains with keyword counts',
                 metadata: { endpoint: '/api/v1/rank-tracking/domains', method: 'GET', page, limit },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_keyword_domains', operationType: 'select' },
@@ -86,7 +86,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                     }
                 };
             }
-        );
+        ) as { domains: any[]; pagination: any };
 
         return formatSuccess({ data: result.domains, pagination: result.pagination });
     } catch (error) {
@@ -124,7 +124,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/domains',
                 reason: 'Checking user subscription before domain creation',
                 metadata: { endpoint: '/api/v1/rank-tracking/domains', operation: 'create_domain' },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_auth_user_profiles', operationType: 'select' },
@@ -138,7 +138,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 if (error) throw new Error('Failed to check subscription');
                 return data;
             }
-        );
+        ) as { is_active: boolean; package_id: string | null } | null;
 
         if (!profileCheck?.is_active || !profileCheck?.package_id) {
             const subscriptionError = await ErrorHandlingService.createError(
@@ -163,7 +163,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
                 source: 'rank-tracking/domains',
                 reason: 'User creating a new domain for rank tracking',
                 metadata: { domainName: cleanDomain, displayName: display_name || cleanDomain },
-                ipAddress: getClientIP(request),
+                ipAddress: getClientIP(request) ?? undefined,
                 userAgent: request.headers.get('user-agent') || undefined
             },
             { table: 'indb_keyword_domains', operationType: 'insert' },

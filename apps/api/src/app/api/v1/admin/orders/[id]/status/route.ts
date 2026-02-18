@@ -1,4 +1,4 @@
-import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin, toJson, type ServiceRoleOperationContext } from '@indexnow/database';
 import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
@@ -180,12 +180,9 @@ const orderStatusSchema = z.object({
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: orderId } = await context.params
+  const { id: orderId } = await context.params as Record<string, string>
 
   // Parse request body
   const body = await request.json()
@@ -234,7 +231,7 @@ export const PATCH = adminApiWrapper(async (
         throw new Error(error?.message || 'Transaction not found')
       }
 
-      return data as TransactionRow
+      return data as unknown as TransactionRow
     }
   )
 
@@ -283,7 +280,7 @@ export const PATCH = adminApiWrapper(async (
       operationType: 'update',
       columns: Object.keys(updateData),
       whereConditions: { id: orderId },
-      data: updateData
+      data: toJson(updateData)
     },
     async () => {
       const { data, error } = await supabaseAdmin
@@ -310,17 +307,17 @@ export const PATCH = adminApiWrapper(async (
     throw new Error('Failed to retrieve updated transaction')
   }
 
-  const updatedTransaction = updateResult as Record<string, unknown> // We know it has joined props, will map manually
+  const updatedTransaction = updateResult as unknown as TransactionRow // We know it has joined props, will map manually
 
   // Get updated user profile using secure wrapper
-  const updatedUserProfileContext = {
+  const updatedUserProfileContext: ServiceRoleOperationContext = {
     userId: adminUser.id,
     operation: 'admin_get_updated_user_profile',
     reason: 'Admin fetching updated user profile after transaction status change',
     source: 'admin/orders/[id]/status',
     metadata: {
       orderId,
-      targetUserId: updatedTransaction.user_id,
+      targetUserId: updatedTransaction.user_id ?? '',
       endpoint: '/api/v1/admin/orders/[id]/status'
     }
   }
@@ -350,14 +347,14 @@ export const PATCH = adminApiWrapper(async (
 
   let verifierProfile = null
   if (updatedTransaction.verified_by) {
-    const verifierProfileContext = {
+    const verifierProfileContext: ServiceRoleOperationContext = {
       userId: adminUser.id,
       operation: 'admin_get_verifier_profile',
       reason: 'Admin fetching verifier profile for transaction status change',
       source: 'admin/orders/[id]/status',
       metadata: {
         orderId,
-        verifierId: updatedTransaction.verified_by,
+        verifierId: updatedTransaction.verified_by ?? '',
         endpoint: '/api/v1/admin/orders/[id]/status'
       }
     }
@@ -374,7 +371,7 @@ export const PATCH = adminApiWrapper(async (
         const { data, error } = await supabaseAdmin
           .from('indb_auth_user_profiles')
           .select('user_id, full_name, role')
-          .eq('user_id', updatedTransaction.verified_by)
+          .eq('user_id', updatedTransaction.verified_by!)
           .single()
 
         if (error) {
@@ -428,8 +425,8 @@ export const PATCH = adminApiWrapper(async (
       email: 'N/A', // Email not available in profile join
       created_at: updatedUserProfile.created_at || new Date().toISOString(),
       package_id: updatedUserProfile.package_id,
-      subscribed_at: (updatedUserProfile as Record<string, unknown>).subscription_start_date || (updatedUserProfile as Record<string, unknown>).subscribed_at,
-      expires_at: (updatedUserProfile as Record<string, unknown>).subscription_end_date || (updatedUserProfile as Record<string, unknown>).expires_at,
+      subscribed_at: ((updatedUserProfile as Record<string, unknown>).subscription_start_date || (updatedUserProfile as Record<string, unknown>).subscribed_at) as string,
+      expires_at: ((updatedUserProfile as Record<string, unknown>).subscription_end_date || (updatedUserProfile as Record<string, unknown>).expires_at) as string,
       phone_number: updatedUserProfile.phone_number
     },
     verifier: verifierProfile ? {
@@ -442,7 +439,7 @@ export const PATCH = adminApiWrapper(async (
   // If approved, activate user plan
   if (status === 'completed') {
     try {
-      await activateUserPlan(updatedTransaction, adminUser.id)
+      await activateUserPlan(updatedTransaction as TransactionRow, adminUser.id)
     } catch (error) {
       const activationError = error instanceof Error ? error : new Error(String(error))
       logger.error({ error: activationError.message }, 'Plan activation error:')

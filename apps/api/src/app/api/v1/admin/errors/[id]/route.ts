@@ -14,12 +14,9 @@ type SystemErrorLogUpdate = Database['public']['Tables']['indb_system_error_logs
 export const GET = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: errorId } = await context.params;
+  const { id: errorId } = await context.params as Record<string, string>;
   const endpoint = new URL(request.url).pathname;
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -93,12 +90,9 @@ const errorActionSchema = z.object({
 export const PATCH = adminApiWrapper(async (
   request: NextRequest,
   adminUser,
-  context?: { params: Promise<Record<string, string>> }
+  context
 ) => {
-  if (!context) {
-    throw new Error('Missing context parameters')
-  }
-  const { id: errorId } = await context.params;
+  const { id: errorId } = await context.params as Record<string, string>;
   const endpoint = new URL(request.url).pathname;
   const body = await request.json();
   const parseResult = errorActionSchema.safeParse(body);

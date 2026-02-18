@@ -374,9 +374,8 @@ export class QuotaMonitor implements IQuotaMonitor {
           success: true,
           data: [],
           metadata: {
-            source: 'cache',
+            source: 'cache' as const,
             timestamp: new Date(),
-            message: 'Insufficient data for pattern analysis',
           },
         };
       }
@@ -413,9 +412,8 @@ export class QuotaMonitor implements IQuotaMonitor {
         success: true,
         data: patterns,
         metadata: {
-          source: 'api',
+          source: 'api' as const,
           timestamp: new Date(),
-          analysis_period_days: daysPeriod,
         },
       };
     } catch (error) {
@@ -582,7 +580,7 @@ export class QuotaMonitor implements IQuotaMonitor {
    * Get detailed usage history with analytics
    */
   async getUsageHistory(
-    startDate?: Date,
+    startDateOrDays?: Date | number,
     endDate?: Date,
     days: number = 7
   ): Promise<
@@ -596,11 +594,19 @@ export class QuotaMonitor implements IQuotaMonitor {
     }>
   > {
     try {
-      const end = endDate || new Date();
-      const start = startDate || new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+      let start: Date;
+      let end: Date;
+      if (typeof startDateOrDays === 'number') {
+        end = new Date();
+        start = new Date(end.getTime() - startDateOrDays * 24 * 60 * 60 * 1000);
+      } else {
+        end = endDate || new Date();
+        start = startDateOrDays || new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+      }
 
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'get_quota_usage_history',
           reason: 'Retrieving quota usage history for analytics and pattern analysis',
           source: 'QuotaMonitor',
@@ -730,12 +736,13 @@ export class QuotaMonitor implements IQuotaMonitor {
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'persist_quota_usage_entry',
           reason: 'Persisting quota usage entry for monitoring and analytics tracking',
           source: 'QuotaMonitor',
           metadata: {
-            user_id: entry.user_id,
-            service_account_id: entry.service_account_id,
+            user_id: entry.user_id ?? null,
+            service_account_id: entry.service_account_id ?? null,
             operation_type: entry.operation_type,
             quota_consumed: entry.quota_consumed,
             usage_percentage: entry.usage_percentage,

@@ -5,10 +5,9 @@ import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-resp
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
 
-export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context?: { params: Promise<Record<string, string>> }) => {
+export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context) => {
   // Extract ID from route params
-  if (!context) throw new Error('Missing route context');
-  const { id } = await context.params;
+  const { id } = await context.params as Record<string, string>;
 
   try {
     // Atomic RPC: unsets all other defaults + sets this one, in a single transaction

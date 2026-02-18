@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticatedApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
-import { SecureServiceRoleWrapper } from '@indexnow/database';
+import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Database , getClientIP} from '@indexnow/shared';
 

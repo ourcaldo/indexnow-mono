@@ -56,7 +56,7 @@ export async function processSubscriptionCreated(data: unknown) {
         throw new Error('Missing or invalid items array in subscription');
     }
 
-    const priceId = safeGet(fromJson<Record<string, unknown>>(items[0]), 'price.id', null);
+    const priceId = safeGet(fromJson<Record<string, unknown>>(items[0] as any), 'price.id', null);
     if (!priceId) {
         throw new Error('Missing price ID in subscription items');
     }

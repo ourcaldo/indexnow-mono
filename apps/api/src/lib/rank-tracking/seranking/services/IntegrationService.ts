@@ -257,7 +257,7 @@ export class IntegrationService implements IIntegrationService {
             .upsert({
               service_name: 'seranking_keyword_export',
               ...updateData
-            });
+            } as any);
 
           if (error) {
             throw error;
@@ -391,7 +391,7 @@ export class IntegrationService implements IIntegrationService {
               timestamp: new Date().toISOString(),
               date: today,
               metadata
-            }
+            } as unknown as import('@indexnow/shared').DbJson
           },
           async () => {
             const { error: logError } = await supabaseAdmin
@@ -405,7 +405,7 @@ export class IntegrationService implements IIntegrationService {
                 response_time_ms: responseTime,
                 timestamp: new Date().toISOString(),
                 date: today,
-                metadata
+                metadata: (metadata ?? null) as import('@indexnow/shared').DbJson | null
               })
 
             if (logError) {
@@ -805,7 +805,7 @@ export class IntegrationService implements IIntegrationService {
           async () => {
             const { data: usageLogs, error } = await supabaseAdmin
               .from('indb_seranking_usage_logs')
-              .select('id, user_id, service_name, api_key, api_url, api_quota_limit, api_quota_used, quota_reset_date, quota_reset_interval, is_active, rate_limits, alert_settings, last_health_check, health_status, created_at, updated_at')
+              .select('id, integration_id, operation_type, request_count, successful_requests, failed_requests, response_time_ms, timestamp, date, metadata, created_at')
               .eq('integration_id', 'seranking_keyword_export')
               .gte('timestamp', startDate.toISOString())
               .lte('timestamp', endDate.toISOString())

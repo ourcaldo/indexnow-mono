@@ -12,9 +12,9 @@ type TransactionWithPackage = TransactionRow & {
 export const GET = authenticatedApiWrapper(async (
   request: NextRequest,
   auth,
-  context?: { params: Promise<{ id: string }> }
+  context
 ) => {
-  const params = context?.params ? await context.params : null
+  const params = await context.params as Record<string, string>
   const id = params?.id
   
   if (!id) {
@@ -31,7 +31,7 @@ export const GET = authenticatedApiWrapper(async (
 
   logger.info({ data: [id, 'user_id:', auth.userId] }, '[ORDER-API] Searching for order ID:')
   
-  const transaction = await SecureServiceRoleWrapper.executeWithUserSession<TransactionWithPackage>(
+  const transaction = await SecureServiceRoleWrapper.executeWithUserSession<TransactionWithPackage | null>(
     auth.supabase,
     {
       userId: auth.userId,
@@ -43,7 +43,7 @@ export const GET = authenticatedApiWrapper(async (
         endpoint: '/api/v1/billing/orders/[id]',
         method: 'GET'
       },
-      ipAddress: getClientIP(request),
+      ipAddress: getClientIP(request) ?? undefined,
       userAgent: request.headers.get('user-agent') || undefined
     },
     { table: 'indb_payment_transactions', operationType: 'select' },
@@ -86,7 +86,7 @@ export const GET = authenticatedApiWrapper(async (
   
   const orderData = {
     order_id: transaction.id,
-    transaction_id: transaction.gateway_transaction_id,
+    transaction_id: (transaction as any).gateway_transaction_id,
     status: transaction.status, // transaction_status was likely a typo or alias, TransactionRow has 'status'
     payment_status: transaction.status,
     amount: transaction.amount,

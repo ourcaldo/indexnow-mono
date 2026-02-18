@@ -67,13 +67,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth: A
     keyword,
     domain,
     country,
-    device,
-    searchEngine,
+    device: device as 'desktop' | 'mobile' | undefined,
     targetUrl,
     tags,
   });
 
-  return formatSuccess(result, 201);
+  return formatSuccess(result, undefined, 201);
 });
 
 export const DELETE = authenticatedApiWrapper(async (request: NextRequest, auth: AuthenticatedRequest) => {

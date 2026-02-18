@@ -29,6 +29,7 @@ import {
   JobEvent,
   JobEventType,
   JobError,
+  JobResult,
   DEFAULT_JOB_CONFIG,
   EnrichmentJobInsert,
   EnrichmentJobUpdate,
@@ -161,7 +162,7 @@ export class EnrichmentQueue extends EventEmitter {
 
       // Create job record
       const jobId = uuidv4();
-      const job: EnrichmentJobInsert = {
+      const job = {
         id: jobId,
         user_id: userId,
         name: this.generateJobName(jobRequest.type, jobRequest.data),
@@ -173,7 +174,7 @@ export class EnrichmentQueue extends EventEmitter {
         progress_data: toJson(progress),
         retry_count: 0,
         metadata: toJson(jobRequest.metadata),
-        next_retry_at: scheduledFor?.toISOString(),
+        next_retry_at: scheduledFor?.toISOString() ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -181,6 +182,7 @@ export class EnrichmentQueue extends EventEmitter {
       // Insert job into database
       const data = await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: userId,
           operation: 'enqueue_enrichment_job',
           reason: 'Enqueueing new enrichment job for keyword processing queue management',
           source: 'EnrichmentQueue',
@@ -200,7 +202,7 @@ export class EnrichmentQueue extends EventEmitter {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .insert([job])
+            .insert([job as any])
             .select()
             .single();
 
@@ -295,6 +297,7 @@ export class EnrichmentQueue extends EventEmitter {
       // Get highest priority job that's ready to process
       const jobs = await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'dequeue_next_job',
           reason: 'Dequeuing next available job from enrichment queue for worker processing',
           source: 'EnrichmentQueue',
@@ -310,7 +313,7 @@ export class EnrichmentQueue extends EventEmitter {
         async () => {
           const { data: jobs, error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .select('id, user_id, status, config, results, error_message, created_at, updated_at')
+            .select('*')
             .eq('status', EnrichmentJobStatus.QUEUED)
             .is('locked_at', null)
             .or('next_retry_at.is.null,next_retry_at.lte.' + new Date().toISOString())
@@ -339,6 +342,7 @@ export class EnrichmentQueue extends EventEmitter {
       // Lock the job
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
+          userId: 'system',
           operation: 'lock_job_for_processing',
           reason:
             'Locking enrichment job for exclusive worker processing to prevent race conditions',
@@ -379,7 +383,7 @@ export class EnrichmentQueue extends EventEmitter {
       );
 
       // Convert to EnrichmentJob type
-      const job = this.recordToJob(fromJson<EnrichmentJobRecord>(jobRecord));
+      const job = this.recordToJob(jobRecord as unknown as EnrichmentJobRecord);
 
       // Emit event
       if (this.config.enableEvents) {
@@ -428,9 +432,9 @@ export class EnrichmentQueue extends EventEmitter {
 
           // Merge progress data
           const updatedProgress: JobProgress = {
-            ...job.progress_data,
+            ...(job.progress_data as unknown as Partial<JobProgress>),
             ...progress,
-          };
+          } as JobProgress;
 
           // Calculate estimated completion
           if (updatedProgress.processed > 0 && updatedProgress.total > 0) {
@@ -511,7 +515,7 @@ export class EnrichmentQueue extends EventEmitter {
         async () => {
           const { error } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .update(updates)
+            .update(updates as any)
             .eq('id', jobId);
 
           if (error) {
@@ -615,7 +619,7 @@ export class EnrichmentQueue extends EventEmitter {
 
           const { error: updateError } = await supabaseAdmin
             .from('indb_enrichment_jobs')
-            .update(updates)
+            .update(updates as any)
             .eq('id', jobId);
 
           if (updateError) {
@@ -666,7 +670,7 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'cancel_enrichment_job',
           reason: 'Cancelling enrichment job by user or system request',
           source: 'EnrichmentQueue.cancelJob',
-          metadata: { jobId, userId },
+          metadata: { jobId, userId: userId ?? null },
         },
         { table: 'indb_enrichment_jobs', operationType: 'update' },
         async () => {
@@ -734,13 +738,13 @@ export class EnrichmentQueue extends EventEmitter {
           operation: 'get_enrichment_job_status',
           reason: 'Fetching enrichment job status and details',
           source: 'EnrichmentQueue.getJobStatus',
-          metadata: { jobId, userId },
+          metadata: { jobId, userId: userId ?? null },
         },
         { table: 'indb_enrichment_jobs', operationType: 'select' },
         async () => {
           let query = supabaseAdmin
             .from('indb_enrichment_jobs')
-            .select('id, user_id, status, config, results, error_message, created_at, updated_at')
+            .select('*')
             .eq('id', jobId);
 
           if (userId) {
@@ -764,7 +768,7 @@ export class EnrichmentQueue extends EventEmitter {
         };
       }
 
-      const job = this.recordToJob(fromJson<EnrichmentJobRecord>(data));
+      const job = this.recordToJob(data as unknown as EnrichmentJobRecord);
 
       return {
         success: true,
@@ -1033,7 +1037,7 @@ export class EnrichmentQueue extends EventEmitter {
       }
 
       case EnrichmentJobType.BULK_ENRICHMENT: {
-        const bulkData = data as { keywords: string[] };
+        const bulkData = data as unknown as { keywords: string[] };
         return `Bulk: ${bulkData.keywords.length} keywords - ${timestamp}`;
       }
 

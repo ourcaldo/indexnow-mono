@@ -99,7 +99,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           await sleep(delay);
 
           try {
-            const checkResults = await SecureServiceRoleHelpers.secureSelect<{ id: string }>(
+            const checkResults = await SecureServiceRoleHelpers.secureSelect(
               { ...operationContext, operation: 'registration_check_profile_exists' },
               'indb_auth_user_profiles',
               ['id'],
@@ -150,6 +150,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         session: data.session,
         message: 'Registration successful. Please check your email to verify your account.',
       },
+      undefined,
       201
     );
   } catch (error) {

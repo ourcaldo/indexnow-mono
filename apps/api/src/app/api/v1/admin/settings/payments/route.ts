@@ -164,7 +164,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
                 }
 
                 const { data, error } = await (supabaseAdmin
-                    .from('indb_payment_gateways') as unknown)
+                    .from('indb_payment_gateways') as any)
                     .insert({
                         name: body.name,
                         slug: body.slug,

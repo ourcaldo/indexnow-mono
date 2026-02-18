@@ -27,7 +27,7 @@ export const GET = adminApiWrapper(async (
   if (!context) {
     throw new Error('Missing context parameters')
   }
-  const { id: userId } = await context.params
+  const { id: userId } = await context.params as Record<string, string>
 
   const searchParams = request.nextUrl.searchParams
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50))
