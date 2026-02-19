@@ -106,7 +106,7 @@ export async function processSubscriptionUpdated(data: unknown) {
         throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
       }
 
-      if (subscription) {
+      if (subscription && subscription.user_id) {
         const { error: profileError } = await supabaseAdmin
           .from('indb_auth_user_profiles')
           .update({

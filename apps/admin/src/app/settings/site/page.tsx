@@ -151,7 +151,7 @@ export default function SiteSettings() {
             <label className="text-foreground mb-2 block text-sm font-medium">Site Name</label>
             <input
               type="text"
-              value={settings.site_name}
+              value={settings.site_name ?? ''}
               onChange={(e) => updateSettings('site_name', e.target.value)}
               className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
               placeholder="IndexNow Studio"

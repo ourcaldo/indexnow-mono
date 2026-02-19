@@ -1223,6 +1223,7 @@ export class IntegrationService implements IIntegrationService {
 
       const now = new Date();
       for (const integration of integrations) {
+        if (!integration.quota_reset_date) continue;
         const resetDate = new Date(integration.quota_reset_date);
         if (now >= resetDate) {
           await this.resetQuotaUsage();

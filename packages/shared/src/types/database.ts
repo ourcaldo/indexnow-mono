@@ -297,8 +297,8 @@ export type Database = {
           id: string;
           name: string;
           iso2_code: string;
-          iso3_code: string;
-          numeric_code: string;
+          iso3_code: string | null;
+          numeric_code: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -307,8 +307,8 @@ export type Database = {
           id?: string;
           name: string;
           iso2_code: string;
-          iso3_code: string;
-          numeric_code: string;
+          iso3_code?: string | null;
+          numeric_code?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -329,7 +329,7 @@ export type Database = {
         Row: {
           id: string;
           keyword: string;
-          country_id: string;
+          country_id: string | null;
           language_code: string;
           is_data_found: boolean;
           volume: number | null;
@@ -338,14 +338,14 @@ export type Database = {
           difficulty: number | null;
           history_trend: Json | null;
           keyword_intent: string | null;
-          data_updated_at: string;
+          data_updated_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           keyword: string;
-          country_id: string;
+          country_id?: string | null;
           language_code?: string;
           is_data_found?: boolean;
           volume?: number | null;
@@ -354,7 +354,7 @@ export type Database = {
           difficulty?: number | null;
           history_trend?: Json | null;
           keyword_intent?: string | null;
-          data_updated_at?: string;
+          data_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -535,10 +535,10 @@ export type Database = {
           user_id: string;
           type: string;
           title: string;
-          message: string;
+          message: string | null;
           is_read: boolean;
           action_url: string | null;
-          metadata: Json;
+          metadata: Json | null;
           expires_at: string | null;
           created_at: string;
           updated_at: string;
@@ -548,10 +548,10 @@ export type Database = {
           user_id: string;
           type: string;
           title: string;
-          message: string;
+          message?: string | null;
           is_read?: boolean;
           action_url?: string | null;
-          metadata?: Json;
+          metadata?: Json | null;
           expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -561,10 +561,10 @@ export type Database = {
           user_id?: string;
           type?: string;
           title?: string;
-          message?: string;
+          message?: string | null;
           is_read?: boolean;
           action_url?: string | null;
-          metadata?: Json;
+          metadata?: Json | null;
           expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -574,17 +574,17 @@ export type Database = {
       indb_site_integration: {
         Row: {
           id: string;
-          user_id: string;
-          service_name: string;
-          api_key: string;
-          api_url: string;
+          user_id: string | null;
+          service_name: string | null;
+          api_key: string | null;
+          api_url: string | null;
           api_quota_limit: number;
           api_quota_used: number;
-          quota_reset_date: string;
-          quota_reset_interval: string;
+          quota_reset_date: string | null;
+          quota_reset_interval: string | null;
           is_active: boolean;
-          rate_limits: Json;
-          alert_settings: Json;
+          rate_limits: Json | null;
+          alert_settings: Json | null;
           last_health_check: string | null;
           health_status: string;
           created_at: string;
@@ -592,17 +592,17 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
-          service_name: string;
-          api_key?: string;
-          api_url?: string;
+          user_id?: string | null;
+          service_name?: string | null;
+          api_key?: string | null;
+          api_url?: string | null;
           api_quota_limit?: number;
           api_quota_used?: number;
-          quota_reset_date?: string;
-          quota_reset_interval?: string;
+          quota_reset_date?: string | null;
+          quota_reset_interval?: string | null;
           is_active?: boolean;
-          rate_limits?: SiteIntegrationRateLimits;
-          alert_settings?: SiteIntegrationAlertSettings;
+          rate_limits?: SiteIntegrationRateLimits | null;
+          alert_settings?: SiteIntegrationAlertSettings | null;
           last_health_check?: string | null;
           health_status?: string;
           created_at?: string;
@@ -610,17 +610,17 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
-          service_name?: string;
-          api_key?: string;
-          api_url?: string;
+          user_id?: string | null;
+          service_name?: string | null;
+          api_key?: string | null;
+          api_url?: string | null;
           api_quota_limit?: number;
           api_quota_used?: number;
-          quota_reset_date?: string;
-          quota_reset_interval?: string;
+          quota_reset_date?: string | null;
+          quota_reset_interval?: string | null;
           is_active?: boolean;
-          rate_limits?: Json;
-          alert_settings?: Json;
+          rate_limits?: Json | null;
+          alert_settings?: Json | null;
           last_health_check?: string | null;
           health_status?: string;
           created_at?: string;
@@ -633,7 +633,7 @@ export type Database = {
           id: string;
           admin_id: string;
           action_type: string;
-          action_description: string;
+          action_description: string | null;
           target_type: string | null;
           target_id: string | null;
           metadata: Json | null;
@@ -645,7 +645,7 @@ export type Database = {
           id?: string;
           admin_id: string;
           action_type: string;
-          action_description: string;
+          action_description?: string | null;
           target_type?: string | null;
           target_id?: string | null;
           metadata?: Json | null;
@@ -657,7 +657,7 @@ export type Database = {
           id?: string;
           admin_id?: string;
           action_type?: string;
-          action_description?: string;
+          action_description?: string | null;
           target_type?: string | null;
           target_id?: string | null;
           metadata?: Json | null;
@@ -716,7 +716,7 @@ export type Database = {
           success: boolean;
           error_message: string | null;
           metadata: Json | null;
-          details: Json;
+          details: Json | null;
           severity: string;
           ip_address: string | null;
           user_agent: string | null;
@@ -734,7 +734,7 @@ export type Database = {
           success?: boolean;
           error_message?: string | null;
           metadata?: Json | null;
-          details?: Json;
+          details?: Json | null;
           severity?: string;
           ip_address?: string | null;
           user_agent?: string | null;
@@ -752,7 +752,7 @@ export type Database = {
           success?: boolean;
           error_message?: string | null;
           metadata?: Json | null;
-          details?: Json;
+          details?: Json | null;
           severity?: string;
           ip_address?: string | null;
           user_agent?: string | null;
@@ -767,7 +767,7 @@ export type Database = {
           event_type: string;
           description: string;
           success: boolean | null;
-          metadata: Json;
+          metadata: Json | null;
           created_at: string;
         };
         Insert: {
@@ -776,7 +776,7 @@ export type Database = {
           event_type: string;
           description: string;
           success?: boolean | null;
-          metadata?: Json;
+          metadata?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -785,7 +785,7 @@ export type Database = {
           event_type?: string;
           description?: string;
           success?: boolean | null;
-          metadata?: Json;
+          metadata?: Json | null;
           created_at?: string;
         };
         Relationships: never[];
@@ -946,7 +946,7 @@ export type Database = {
       indb_payment_transactions: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           package_id: string | null;
           gateway_id: string | null;
           amount: number;
@@ -976,13 +976,14 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          user_id?: string | null;
           package_id?: string | null;
           gateway_id?: string | null;
           amount: number;
           currency?: string;
           status?: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded';
           transaction_status?: string | null;
+          payment_status?: string | null;
           error_message?: string | null;
           transaction_id?: string | null;
           external_transaction_id?: string | null;
@@ -1005,13 +1006,14 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           package_id?: string | null;
           gateway_id?: string | null;
           amount?: number;
           currency?: string;
           status?: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded';
           transaction_status?: string | null;
+          payment_status?: string | null;
           error_message?: string | null;
           transaction_id?: string | null;
           external_transaction_id?: string | null;
@@ -1059,7 +1061,7 @@ export type Database = {
       indb_payment_subscriptions: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           package_id: string | null;
           status: 'active' | 'cancelled' | 'past_due' | 'paused' | 'trialing' | 'expired';
           start_date: string;
@@ -1077,7 +1079,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          user_id?: string | null;
           package_id?: string | null;
           status?: 'active' | 'cancelled' | 'past_due' | 'paused' | 'trialing' | 'expired';
           start_date: string;
@@ -1095,7 +1097,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           package_id?: string | null;
           status?: 'active' | 'cancelled' | 'past_due' | 'paused' | 'trialing' | 'expired';
           start_date?: string;
@@ -1206,7 +1208,7 @@ export type Database = {
       indb_site_settings: {
         Row: {
           id: string;
-          site_name: string;
+          site_name: string | null;
           site_description: string | null;
           site_logo_url: string | null;
           site_icon_url: string | null;
@@ -1279,7 +1281,7 @@ export type Database = {
           error_type: string;
           severity: string;
           message: string;
-          user_message: string;
+          user_message: string | null;
           endpoint: string | null;
           http_method: string | null;
           status_code: number | null;
@@ -1298,7 +1300,7 @@ export type Database = {
           error_type: string;
           severity: string;
           message: string;
-          user_message: string;
+          user_message?: string | null;
           endpoint?: string | null;
           http_method?: string | null;
           status_code?: number | null;
@@ -1317,7 +1319,7 @@ export type Database = {
           error_type?: string;
           severity?: string;
           message?: string;
-          user_message?: string;
+          user_message?: string | null;
           endpoint?: string | null;
           http_method?: string | null;
           status_code?: number | null;
@@ -1335,9 +1337,9 @@ export type Database = {
       indb_enrichment_jobs: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           name: string | null;
-          job_type: string | null;
+          job_type: string;
           status:
             | 'pending'
             | 'queued'
@@ -1348,7 +1350,7 @@ export type Database = {
             | 'paused'
             | 'retrying';
           priority: number;
-          config: EnrichmentJobConfig;
+          config: EnrichmentJobConfig | null;
           source_data: Json | null;
           progress_data: Json | null;
           result_data: Json | null;
@@ -1372,9 +1374,9 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          user_id?: string | null;
           name?: string | null;
-          job_type?: string | null;
+          job_type: string;
           status?:
             | 'pending'
             | 'queued'
@@ -1385,7 +1387,7 @@ export type Database = {
             | 'paused'
             | 'retrying';
           priority?: number;
-          config: EnrichmentJobConfig;
+          config?: EnrichmentJobConfig | null;
           source_data?: Json | null;
           progress_data?: Json | null;
           result_data?: Json | null;
@@ -1409,9 +1411,9 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           name?: string | null;
-          job_type?: string | null;
+          job_type?: string;
           status?:
             | 'pending'
             | 'queued'
@@ -1422,7 +1424,7 @@ export type Database = {
             | 'paused'
             | 'retrying';
           priority?: number;
-          config?: EnrichmentJobConfig;
+          config?: EnrichmentJobConfig | null;
           source_data?: Json | null;
           progress_data?: Json | null;
           result_data?: Json | null;
@@ -1733,7 +1735,7 @@ export type Database = {
           action_type: string;
           action_description: string;
           changed_by?: string | null;
-          changed_by_type?: string;
+          changed_by_type: string;
           old_values?: Json | null;
           new_values?: Json | null;
           notes?: string | null;

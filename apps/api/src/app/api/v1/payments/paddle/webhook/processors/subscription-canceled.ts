@@ -6,86 +6,86 @@
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 
 interface ScheduledChange {
-    action?: string;
+  action?: string;
 }
 
 interface PaddleCanceledData {
-    id: string;
-    canceled_at?: string;
-    current_billing_period?: {
-        ends_at: string;
-    };
-    scheduled_change?: ScheduledChange;
+  id: string;
+  canceled_at?: string;
+  current_billing_period?: {
+    ends_at: string;
+  };
+  scheduled_change?: ScheduledChange;
 }
 
 export async function processSubscriptionCanceled(data: unknown) {
-    if (!data || typeof data !== 'object') {
-        throw new Error('Invalid subscription data received');
-    }
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid subscription data received');
+  }
 
-    const subData = data as PaddleCanceledData;
-    const subscription_id = subData.id;
-    const canceled_at = subData.canceled_at;
-    const current_billing_period = subData.current_billing_period;
-    const scheduled_change = subData.scheduled_change;
+  const subData = data as PaddleCanceledData;
+  const subscription_id = subData.id;
+  const canceled_at = subData.canceled_at;
+  const current_billing_period = subData.current_billing_period;
+  const scheduled_change = subData.scheduled_change;
 
-    if (!subscription_id) {
-        throw new Error('Missing subscription_id in cancel event');
-    }
+  if (!subscription_id) {
+    throw new Error('Missing subscription_id in cancel event');
+  }
 
-    const cancelAtPeriodEnd = scheduled_change?.action === 'cancel';
+  const cancelAtPeriodEnd = scheduled_change?.action === 'cancel';
 
-    await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-            userId: 'system',
-            operation: 'cancel_subscription',
-            reason: 'Paddle webhook subscription.canceled event',
-            source: 'webhook.processors.subscription-canceled',
-            metadata: { subscription_id, cancelAtPeriodEnd },
-        },
-        {
-            table: 'indb_payment_subscriptions',
-            operationType: 'update',
-            data: { status: cancelAtPeriodEnd ? 'active' : 'cancelled' },
-            whereConditions: { paddle_subscription_id: subscription_id },
-        },
-        async () => {
-            const { error: subscriptionError } = await supabaseAdmin
-                .from('indb_payment_subscriptions')
-                .update({
-                    status: cancelAtPeriodEnd ? 'active' : 'cancelled',
-                    canceled_at: canceled_at || new Date().toISOString(),
-                    cancel_at_period_end: cancelAtPeriodEnd,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('paddle_subscription_id', subscription_id);
+  await SecureServiceRoleWrapper.executeSecureOperation(
+    {
+      userId: 'system',
+      operation: 'cancel_subscription',
+      reason: 'Paddle webhook subscription.canceled event',
+      source: 'webhook.processors.subscription-canceled',
+      metadata: { subscription_id, cancelAtPeriodEnd },
+    },
+    {
+      table: 'indb_payment_subscriptions',
+      operationType: 'update',
+      data: { status: cancelAtPeriodEnd ? 'active' : 'cancelled' },
+      whereConditions: { paddle_subscription_id: subscription_id },
+    },
+    async () => {
+      const { error: subscriptionError } = await supabaseAdmin
+        .from('indb_payment_subscriptions')
+        .update({
+          status: cancelAtPeriodEnd ? 'active' : 'cancelled',
+          canceled_at: canceled_at || new Date().toISOString(),
+          cancel_at_period_end: cancelAtPeriodEnd,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('paddle_subscription_id', subscription_id);
 
-            if (subscriptionError) {
-                throw new Error(`Failed to update subscription cancellation: ${subscriptionError.message}`);
-            }
+      if (subscriptionError) {
+        throw new Error(`Failed to update subscription cancellation: ${subscriptionError.message}`);
+      }
 
-            const { data: subscription, error: fetchError } = await supabaseAdmin
-                .from('indb_payment_subscriptions')
-                .select('user_id')
-                .eq('paddle_subscription_id', subscription_id)
-                .maybeSingle();
+      const { data: subscription, error: fetchError } = await supabaseAdmin
+        .from('indb_payment_subscriptions')
+        .select('user_id')
+        .eq('paddle_subscription_id', subscription_id)
+        .maybeSingle();
 
-            if (fetchError) {
-                throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
-            }
+      if (fetchError) {
+        throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
+      }
 
-            if (subscription) {
-                const { error: profileError } = await supabaseAdmin
-                    .from('indb_auth_user_profiles')
-                    .update({
-                        subscription_end_date: current_billing_period?.ends_at || null,
-                    })
-                    .eq('user_id', subscription.user_id);
+      if (subscription && subscription.user_id) {
+        const { error: profileError } = await supabaseAdmin
+          .from('indb_auth_user_profiles')
+          .update({
+            subscription_end_date: current_billing_period?.ends_at || null,
+          })
+          .eq('user_id', subscription.user_id);
 
-                if (profileError) {
-                    throw new Error(`Failed to update user profile on cancellation: ${profileError.message}`);
-                }
-            }
+        if (profileError) {
+          throw new Error(`Failed to update user profile on cancellation: ${profileError.message}`);
         }
-    );
+      }
+    }
+  );
 }

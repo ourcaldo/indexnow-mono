@@ -9,7 +9,7 @@ import { Database, Json } from '@indexnow/shared';
 export interface KeywordBankEntity {
   id: string;
   keyword: string;
-  country_id: string; // UUID FK to indb_keyword_countries
+  country_id: string | null; // UUID FK to indb_keyword_countries
   language_code: string;
   is_data_found: boolean;
   volume: number | null;
@@ -18,7 +18,7 @@ export interface KeywordBankEntity {
   difficulty: number | null;
   history_trend: Json | null;
   keyword_intent: string | null;
-  data_updated_at: string; // Date -> string for API/DB compatibility
+  data_updated_at: string | null; // Date -> string for API/DB compatibility
   created_at: string;
   updated_at: string;
 }
@@ -189,7 +189,7 @@ export interface KeywordBankAnalytics {
   data_freshness: {
     fresh_data: number; // Last 30 days
     stale_data: number; // 30-90 days
-    old_data: number;   // 90+ days
+    old_data: number; // 90+ days
   };
   top_volume_keywords: Array<{
     keyword: string;

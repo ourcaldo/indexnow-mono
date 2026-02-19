@@ -171,8 +171,12 @@ export class KeywordBankService implements IKeywordBankService {
 
       // Filter fresh data (updated within last 7 days)
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const freshData = existingData.filter((d) => new Date(d.data_updated_at) > sevenDaysAgo);
-      const staleData = existingData.filter((d) => new Date(d.data_updated_at) <= sevenDaysAgo);
+      const freshData = existingData.filter(
+        (d) => d.data_updated_at && new Date(d.data_updated_at) > sevenDaysAgo
+      );
+      const staleData = existingData.filter(
+        (d) => !d.data_updated_at || new Date(d.data_updated_at) <= sevenDaysAgo
+      );
 
       return {
         total_keywords: keywords.length,

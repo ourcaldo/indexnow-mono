@@ -140,16 +140,20 @@ export async function processTransactionRefunded(data: unknown) {
               );
             }
 
-            const { error: profileError } = await supabaseAdmin
-              .from('indb_auth_user_profiles')
-              .update({
-                subscription_end_date: refundedAt,
-                package_id: null,
-              })
-              .eq('user_id', mainTransaction.user_id);
+            if (mainTransaction.user_id) {
+              const { error: profileError } = await supabaseAdmin
+                .from('indb_auth_user_profiles')
+                .update({
+                  subscription_end_date: refundedAt,
+                  package_id: null,
+                })
+                .eq('user_id', mainTransaction.user_id);
 
-            if (profileError) {
-              throw new Error(`Failed to revoke user access after refund: ${profileError.message}`);
+              if (profileError) {
+                throw new Error(
+                  `Failed to revoke user access after refund: ${profileError.message}`
+                );
+              }
             }
           }
 
