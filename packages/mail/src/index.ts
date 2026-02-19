@@ -5,6 +5,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { AppConfig, logger } from '@indexnow/shared';
 
+// C-04: Strict email validation to prevent SMTP header injection
+const EMAIL_REGEX = /^[^\s@<>"';{}|\\]+@[^\s@<>"';{}|\\]+\.[^\s@<>"';{}|\\]+$/;
+function validateEmail(email: string): void {
+  if (!email || !EMAIL_REGEX.test(email) || email.includes('\r') || email.includes('\n')) {
+    throw new Error(`Invalid email address: ${email.substring(0, 50)}`);
+  }
+}
+
 // Resolve template directory relative to this file (works after ESM bundling)
 const __filename = fileURLToPath(import.meta.url);
 const __templatesDir = path.join(path.dirname(__filename), 'templates');
@@ -36,6 +44,9 @@ export class EmailService {
   async sendEmail(options: EmailOptions): Promise<void> {
     const { to, subject, template, context } = options;
 
+    // C-04: Validate email address to prevent SMTP header injection
+    validateEmail(to);
+
     // (#51) Sanitize template name to prevent path traversal
     const safeName = path.basename(template).replace(/[^a-zA-Z0-9_-]/g, '');
     if (!safeName || safeName !== template) {
@@ -46,14 +57,17 @@ export class EmailService {
     let compiledTemplate = this.templateCache.get(safeName);
     if (!compiledTemplate) {
       const templatePath = path.join(__templatesDir, `${safeName}.html`);
-      
+
       try {
         const templateSource = fs.readFileSync(templatePath, 'utf8');
         compiledTemplate = handlebars.compile(templateSource);
         this.templateCache.set(safeName, compiledTemplate);
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ error: err, template: safeName }, `Failed to load email template: ${safeName}`);
+        logger.error(
+          { error: err, template: safeName },
+          `Failed to load email template: ${safeName}`
+        );
         throw new Error(`Email template not found: ${safeName}`);
       }
     }

@@ -16,6 +16,9 @@ COPY packages/auth/package.json       packages/auth/package.json
 COPY packages/mail/package.json       packages/mail/package.json
 COPY packages/services/package.json   packages/services/package.json
 COPY packages/ui/package.json         packages/ui/package.json
+COPY packages/analytics/package.json  packages/analytics/package.json
+COPY packages/supabase-client/package.json packages/supabase-client/package.json
+COPY packages/api-middleware/package.json  packages/api-middleware/package.json
 COPY apps/api/package.json            apps/api/package.json
 RUN pnpm install --frozen-lockfile
 
@@ -30,6 +33,9 @@ COPY --from=deps /app/packages/auth/node_modules       packages/auth/node_module
 COPY --from=deps /app/packages/mail/node_modules       packages/mail/node_modules
 COPY --from=deps /app/packages/services/node_modules   packages/services/node_modules
 COPY --from=deps /app/packages/ui/node_modules         packages/ui/node_modules
+COPY --from=deps /app/packages/analytics/node_modules  packages/analytics/node_modules
+COPY --from=deps /app/packages/supabase-client/node_modules packages/supabase-client/node_modules
+COPY --from=deps /app/packages/api-middleware/node_modules  packages/api-middleware/node_modules
 COPY --from=deps /app/apps/api/node_modules            apps/api/node_modules
 
 COPY packages/   packages/

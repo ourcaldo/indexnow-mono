@@ -64,9 +64,15 @@ export type {
   PostgrestError,
 } from '@supabase/supabase-js';
 
-/** Browser Supabase client with Database generic preserved */
+/**
+ * Browser Supabase client with Database generic preserved.
+ * C-01: The `as unknown as` cast is required because @supabase/ssr and @supabase/supabase-js
+ * resolve different generic arities for SupabaseClient across pnpm workspace dependency versions.
+ * The underlying clients ARE created with the correct Database generic in their respective
+ * factory functions — only the DTS nominal type is lost in the re-export chain.
+ */
 export const typedSupabaseBrowser = _supabaseBrowser as unknown as SupabaseClient<Database>;
-/** Admin (service role) Supabase client with Database generic preserved */
+/** Admin (service role) Supabase client with Database generic preserved (see C-01 note above) */
 export const typedSupabaseAdmin = _supabaseAdmin as unknown as SupabaseClient<Database>;
 
 // Server exports

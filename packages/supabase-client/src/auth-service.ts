@@ -41,6 +41,16 @@ export class AuthService {
         data: { user: validatedUser },
       } = await supabase.auth.getUser();
       if (!validatedUser) return 'user';
+
+      // C-03: Cross-check that the validated user matches the passed user
+      if (validatedUser.id !== user.id) {
+        logger.warn(
+          { expected: user.id, actual: validatedUser.id },
+          'getUserRole: user ID mismatch — possible impersonation attempt'
+        );
+        return 'user';
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();

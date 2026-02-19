@@ -1,11 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
+    "NEXT_PUBLIC_SENTRY_DSN",
     "SENTRY_DSN",
     "SENTRY_AUTH_TOKEN",
+    "ENCRYPTION_KEY",
     "ALLOWED_ORIGINS",
     "REDIS_HOST",
     "REDIS_PORT",
@@ -26,10 +30,7 @@
       "dependsOn": ["^build"],
       "inputs": ["src/**", "tsconfig.json", "package.json", "next.config.ts", "tsup.config.ts"],
       "outputs": ["dist/**", ".next/**"],
-      "env": [
-        "NODE_ENV",
-        "NEXT_PUBLIC_*"
-      ]
+      "env": ["NODE_ENV", "NEXT_PUBLIC_*"]
     },
     "dev": {
       "dependsOn": ["^build"],

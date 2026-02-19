@@ -293,11 +293,10 @@ export class IntegrationService implements IIntegrationService {
   /**
    * Record API usage
    *
-   * NOTE: This uses a read-then-write pattern which has a minor TOCTOU race
-   * under concurrent requests. For accurate quota tracking, create an
-   * `increment_integration_quota(service_name TEXT, amount INT)` RPC in
-   * PostgreSQL using `FOR UPDATE` row-level locking. The current approach
-   * is acceptable since SeRanking quota is a soft monitoring limit.
+   * C-06 KNOWN ISSUE: This uses a read-then-write pattern which has a TOCTOU race
+   * under concurrent requests. TODO: Create `increment_integration_quota(service_name TEXT, amount INT)`
+   * RPC in PostgreSQL using `UPDATE ... SET api_quota_used = api_quota_used + $2`
+   * with `FOR UPDATE` row-level locking. Tracked as V7 C-06.
    */
   async recordApiUsage(
     requestCount: number = 1,

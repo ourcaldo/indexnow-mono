@@ -25,10 +25,10 @@ type Tables = Database['public']['Tables'];
 /**
  * DatabaseService — Supabase-backed data access layer.
  *
- * DESIGN NOTE: Methods return null/false/[] on error (errors are logged but swallowed).
- * Callers cannot distinguish "not found" from "database error". This is a known
- * limitation; consider migrating to a discriminated result type like
- * `{ data: T | null; error: Error | null }` for better error propagation.
+ * C-02 KNOWN LIMITATION: Methods return null/false/[] on error (errors are logged but swallowed).
+ * Callers cannot distinguish "not found" from "database error". This is intentional for
+ * backward compatibility. New code should prefer SecureServiceRoleWrapper which uses
+ * discriminated ServiceResponse<T> results.
  *
  * TYPE CASTS (T-06): Methods use Supabase's `.returns<T>()` to type query
  * results without unsafe `as Type` casts. `.returns<T>()` is inserted before

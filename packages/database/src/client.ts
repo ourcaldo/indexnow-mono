@@ -56,6 +56,10 @@ export {
 } from '@indexnow/supabase-client';
 
 // Typed browser client
+// C-01: The `as unknown as` cast is required because @supabase/ssr and @supabase/supabase-js
+// resolve different generic arities for SupabaseClient across pnpm workspace dependency versions.
+// The underlying client IS created with `createBrowserClient<Database>(...)` in supabase-browser.ts,
+// so the runtime schema is correct — only the DTS nominal type is lost in the re-export chain.
 import { supabaseBrowser as _supabaseBrowser } from '@indexnow/supabase-client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 export const typedSupabaseBrowser = _supabaseBrowser as unknown as SupabaseClient<Database>;

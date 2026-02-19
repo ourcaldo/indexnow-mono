@@ -65,13 +65,11 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
       }
     );
 
+    // C-08: Removed process.uptime(), memoryUsage(), node_version, platform
+    // to prevent information disclosure (these aid targeted exploits).
     return formatSuccess({
       system: {
         status: 'operational',
-        uptime: process.uptime(),
-        memory_usage: process.memoryUsage(),
-        node_version: process.version,
-        platform: process.platform,
       },
       database: {
         status: 'connected',
