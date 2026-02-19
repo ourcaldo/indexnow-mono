@@ -146,8 +146,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
     services: results,
     api_version: 'v1',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    uptime: process.uptime(),
+    // (#V7 H-10) Removed environment and uptime to prevent attacker fingerprinting
   };
 
   // Cache the result in Redis (multi-instance safe)

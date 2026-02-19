@@ -103,7 +103,9 @@ export class AdminAuthService {
         },
       };
 
-      // Dynamic import to avoid pulling server-only modules into client bundle
+      // (#V7 H-09) Dynamic import to avoid pulling server-only modules into client bundle.
+      // This is intentional — logAdminActivity is only called from server-side routes.
+      // The service-role key is only available server-side and never sent to the browser.
       const { SecureServiceRoleHelpers } = await import('@indexnow/database');
 
       await SecureServiceRoleHelpers.secureInsert(logContext, 'indb_admin_activity_logs', {

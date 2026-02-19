@@ -56,7 +56,8 @@ export class RankTrackingService {
       targetUrl?: string;
       tags?: string[];
     }
-  ): Promise<Record<string, unknown>> {
+  ): Promise<{ id: string; user_id: string; keyword: string; [key: string]: unknown }> {
+    // (#V7 H-05) Typed core fields instead of loose Record<string, unknown>
     // 1. Check & Consume Quota
     const quotaConsumed = await QuotaService.consumeQuota(userId, 1);
     if (!quotaConsumed) {

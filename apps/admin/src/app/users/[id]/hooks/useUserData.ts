@@ -8,6 +8,7 @@ import {
   type Package,
   type Json,
 } from '@indexnow/shared';
+import { authenticatedFetch } from '@indexnow/supabase-client';
 import type { ActivityLog, SecurityData } from '../components';
 
 // Extends the shared AdminUserProfile shape to match what the API returns
@@ -58,9 +59,8 @@ export function useUserData(userId: string): UseUserDataReturn {
   const fetchUser = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(ADMIN_ENDPOINTS.USER_BY_ID(userId), {
-        credentials: 'include',
-      });
+      // (#V7 H-17) Use authenticatedFetch for cross-subdomain auth token handling
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
       if (response.ok) {
         const data = await response.json();
         setUser(data.data?.user);
@@ -75,9 +75,10 @@ export function useUserData(userId: string): UseUserDataReturn {
   const fetchUserActivity = useCallback(async () => {
     try {
       setActivityLoading(true);
-      const response = await fetch(`${ADMIN_ENDPOINTS.USER_BY_ID(userId)}/activity?limit=10`, {
-        credentials: 'include',
-      });
+      // (#V7 H-17) Use authenticatedFetch for cross-subdomain auth token handling
+      const response = await authenticatedFetch(
+        `${ADMIN_ENDPOINTS.USER_BY_ID(userId)}/activity?limit=10`
+      );
       if (response.ok) {
         const data = await response.json();
         setActivityLogs(data.data?.logs || []);
@@ -95,9 +96,8 @@ export function useUserData(userId: string): UseUserDataReturn {
   const fetchUserSecurity = useCallback(async () => {
     try {
       setSecurityLoading(true);
-      const response = await fetch(ADMIN_ENDPOINTS.USER_SECURITY(userId), {
-        credentials: 'include', // Essential for cross-subdomain authentication
-      });
+      // (#V7 H-17) Use authenticatedFetch for cross-subdomain auth token handling
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_SECURITY(userId));
       if (response.ok) {
         const data = await response.json();
         setSecurityData(data.data?.security);
@@ -114,9 +114,8 @@ export function useUserData(userId: string): UseUserDataReturn {
 
   const fetchAvailablePackages = useCallback(async () => {
     try {
-      const response = await fetch(ADMIN_ENDPOINTS.PACKAGES, {
-        credentials: 'include', // Essential for cross-subdomain authentication
-      });
+      // (#V7 H-17) Use authenticatedFetch for cross-subdomain auth token handling
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.PACKAGES);
       if (response.ok) {
         const data = await response.json();
         setAvailablePackages(data.data?.packages || []);

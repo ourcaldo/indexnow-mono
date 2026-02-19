@@ -3,10 +3,7 @@
  * API performance monitoring, metrics collection, and analysis
  */
 
-import {
-  ApiMetrics,
-  SeRankingErrorType,
-} from '../types/SeRankingTypes';
+import { ApiMetrics, SeRankingErrorType } from '../types/SeRankingTypes';
 import { IApiMetricsCollector } from '../types/ServiceTypes';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { logger } from '@/lib/monitoring/error-handling';
@@ -48,6 +45,8 @@ export interface ApiCallMetric {
 export class ApiMetricsCollector implements IApiMetricsCollector {
   private config: ApiMetricsConfig;
   private realtimeMetrics: ApiCallMetric[] = [];
+  // (#V7 H-13) Maximum number of in-memory metrics before eviction (prevents OOM)
+  private static readonly MAX_REALTIME_METRICS = 10_000;
 
   constructor(config: Partial<ApiMetricsConfig> = {}) {
     this.config = {
@@ -68,6 +67,10 @@ export class ApiMetricsCollector implements IApiMetricsCollector {
       cache_hit: false,
     };
     this.realtimeMetrics.push(metric);
+    // (#V7 H-13) Evict oldest entries when array exceeds cap
+    if (this.realtimeMetrics.length > ApiMetricsCollector.MAX_REALTIME_METRICS) {
+      this.realtimeMetrics = this.realtimeMetrics.slice(-ApiMetricsCollector.MAX_REALTIME_METRICS);
+    }
 
     if (this.config.enableDetailedLogging) {
       this.log('debug', `API call recorded: ${status} in ${duration}ms`);
@@ -84,6 +87,10 @@ export class ApiMetricsCollector implements IApiMetricsCollector {
       cache_hit: true,
     };
     this.realtimeMetrics.push(metric);
+    // (#V7 H-13) Evict oldest entries when array exceeds cap
+    if (this.realtimeMetrics.length > ApiMetricsCollector.MAX_REALTIME_METRICS) {
+      this.realtimeMetrics = this.realtimeMetrics.slice(-ApiMetricsCollector.MAX_REALTIME_METRICS);
+    }
   }
 
   async recordCacheMiss(): Promise<void> {
@@ -99,9 +106,7 @@ export class ApiMetricsCollector implements IApiMetricsCollector {
       month: 2592000000,
     };
     const cutoff = timeRange ? now - rangeMs[timeRange] : 0;
-    const filtered = this.realtimeMetrics.filter(
-      (m) => m.timestamp.getTime() >= cutoff
-    );
+    const filtered = this.realtimeMetrics.filter((m) => m.timestamp.getTime() >= cutoff);
 
     const successful = filtered.filter((m) => m.status === 'success').length;
     const failed = filtered.filter((m) => m.status === 'error').length;
@@ -127,10 +132,7 @@ export class ApiMetricsCollector implements IApiMetricsCollector {
     this.log('info', 'Metrics reset');
   }
 
-  private log(
-    level: 'debug' | 'info' | 'warn' | 'error',
-    message: string
-  ): void {
+  private log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
     const levels = { debug: 0, info: 1, warn: 2, error: 3 };
     if (levels[level] >= levels[this.config.logLevel]) {
       logger[level]({}, `[ApiMetricsCollector] ${message}`);

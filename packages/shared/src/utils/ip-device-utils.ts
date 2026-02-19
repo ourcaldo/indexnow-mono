@@ -131,6 +131,8 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
       // NOTE: Using HTTPS endpoint. For ip-api.com, HTTPS requires a paid plan.
       // If using the free tier, switch to an alternative like ipapi.co or ip-api.com with HTTP.
       // SECURITY: HTTP sends IP data unencrypted — always prefer HTTPS in production.
+      // (#V7 H-06) TODO: Add short-lived cache (e.g. 5 min TTL keyed by IP) to avoid
+      // external HTTP call on every request. Consider redis cacheService.getOrSet().
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);

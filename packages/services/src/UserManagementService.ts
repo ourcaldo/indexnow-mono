@@ -111,7 +111,7 @@ export interface IEmailService {
 export interface UserProfile {
   id: string;
   userId: string;
-  email: string;
+  email: string | null; // (#V7 H-04) Allow null when email unavailable from auth.users
   fullName: string;
   phoneNumber?: string;
   country?: string;
@@ -624,7 +624,7 @@ export class UserManagementService {
     return {
       id: data.id,
       userId: data.user_id,
-      email: email || '', // Email should be provided from auth.users
+      email: email ?? null, // (#V7 H-04) Use null instead of empty string when email unavailable
       fullName: data.full_name || '',
       phoneNumber: data.phone_number || undefined,
       country: data.country || undefined,
@@ -633,7 +633,15 @@ export class UserManagementService {
       isSuspended: data.is_suspended ?? false,
       isTrialActive: data.is_trial_active ?? false,
       trialEndsAt: data.trial_ends_at ? new Date(data.trial_ends_at) : undefined,
-      subscriptionStatus: 'active', // Default
+      // (#V7 H-03) Derive subscription status from DB fields instead of hardcoding 'active'
+      subscriptionStatus: (() => {
+        if (data.is_suspended) return 'suspended';
+        if (!data.is_active) return 'inactive';
+        if (data.subscription_end_date && new Date(data.subscription_end_date) < new Date())
+          return 'expired';
+        if (data.is_trial_active) return 'trialing';
+        return 'active';
+      })(),
       subscriptionEndsAt: data.subscription_end_date
         ? new Date(data.subscription_end_date)
         : undefined,

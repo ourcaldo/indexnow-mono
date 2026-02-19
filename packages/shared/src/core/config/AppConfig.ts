@@ -213,8 +213,9 @@ export const createAppConfig = (): AppConfigType => {
         '[AppConfig] Build-time config validation failed (non-fatal during build):',
         errorMsg
       );
-      // Return the raw config for build-time usage only. This is NOT validated —
+      // (#V7 H-02) Return the raw config for build-time usage only. This is NOT validated —
       // consumers must never rely on config values for security decisions at build time.
+      // The returned value is cast to the validated type but has NOT been validated.
       // The Proxy traps log a warning when deeply-nested properties are accessed,
       // making silent undefined-as-string bugs more visible.
       const buildStub = rawConfig as Record<string, unknown>;

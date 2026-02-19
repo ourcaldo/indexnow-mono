@@ -26,9 +26,26 @@ export function toJson<T>(value: T): Json {
 /**
  * Convert a Supabase `Json` column value back to a typed object.
  * The runtime value is unchanged — this is a compile-time bridge only.
+ *
+ * ⚠ TRUST CAST (#V7 H-01): No runtime validation is performed.
+ * The caller is responsible for ensuring the JSON structure matches `T`.
+ * For untrusted / user-supplied JSON, prefer `fromJsonSafe()` with a Zod schema.
  */
 export function fromJson<T>(value: Json | null | undefined): T {
   return value as unknown as T;
+}
+
+/**
+ * Convert a Supabase `Json` column value to a typed object with runtime validation.
+ * Returns `null` if parsing fails.
+ */
+export function fromJsonSafe<T>(
+  value: Json | null | undefined,
+  schema: { safeParse: (v: unknown) => { success: boolean; data?: T } }
+): T | null {
+  if (value === null || value === undefined) return null;
+  const result = schema.safeParse(value);
+  return result.success ? (result.data as T) : null;
 }
 
 /**

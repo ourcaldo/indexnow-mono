@@ -8,7 +8,8 @@ const securityHeaders = [
   { key: 'X-XSS-Protection', value: '1; mode=block' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
-  // TODO: Migrate to nonce-based CSP for script-src to remove 'unsafe-inline'
+  // (#V7 H-18) TODO: Migrate to nonce-based CSP for script-src to remove 'unsafe-inline'.
+  // Requires Next.js middleware nonce injection — see https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy
   {
     key: 'Content-Security-Policy',
     value:

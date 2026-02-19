@@ -119,6 +119,9 @@ export interface RateLimitResult {
 
 async function redisCheck(key: string, config: RateLimitConfig): Promise<RateLimitResult | null> {
   const client = getRedisClient();
+  // (#V7 H-16) Intentional fail-open: when Redis is unavailable, return null so the
+  // caller falls back to in-memory rate limiting. This prevents a Redis outage from
+  // blocking all requests. The trade-off is per-instance limits instead of global.
   if (!client) return null;
 
   try {

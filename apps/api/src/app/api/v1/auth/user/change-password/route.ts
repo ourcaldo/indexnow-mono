@@ -7,6 +7,7 @@ import {
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { checkRouteRateLimit } from '@/lib/rate-limiting/route-rate-limit';
 import { z } from 'zod';
 
 const changePasswordSchema = z.object({
@@ -19,6 +20,14 @@ const changePasswordSchema = z.object({
  * Change user password using admin API
  */
 export const POST = authenticatedApiWrapper(async (request, auth) => {
+  // (#V7 H-12) Rate limit password changes — 5 attempts per minute
+  const rateLimited = await checkRouteRateLimit(
+    request as unknown as NextRequest,
+    { maxAttempts: 5, windowMs: 60_000 },
+    'change_password'
+  );
+  if (rateLimited) return rateLimited;
+
   try {
     const body = await request.json();
     const parseResult = changePasswordSchema.safeParse(body);

@@ -11,6 +11,11 @@ interface RateLimitEntry {
  * Interface for a distributed rate-limit store (e.g. Redis).
  * Implement this and register via `setRateLimitStore()` to replace the
  * default in-memory Map with a distributed backend.
+ *
+ * ⚠ (#V7 H-07): The default in-memory store only works within a single process.
+ * In multi-instance deployments (e.g. multiple containers behind a load balancer),
+ * each instance maintains its own Map, so rate limits are per-instance, not global.
+ * Register a Redis-backed store at startup for correct cross-instance enforcement.
  */
 export interface RateLimitStore {
   /** Get the current entry for a key, or null if not found / expired */
@@ -39,8 +44,9 @@ const inMemoryRateLimitStore: RateLimitStore = {
     // Enforce max size
     if (inMemoryStore.size >= MAX_STORE_SIZE && !inMemoryStore.has(key)) {
       // Evict oldest entry
-      const oldest = Array.from(inMemoryStore.entries())
-        .sort((a, b) => a[1].resetTime - b[1].resetTime)[0];
+      const oldest = Array.from(inMemoryStore.entries()).sort(
+        (a, b) => a[1].resetTime - b[1].resetTime
+      )[0];
       if (oldest) inMemoryStore.delete(oldest[0]);
     }
     inMemoryStore.set(key, entry);
@@ -137,11 +143,7 @@ function getClientIp(request: RequestLike): string {
   const forwardedFor = getHeaderValue(request.headers, 'x-forwarded-for');
   const realIp = getHeaderValue(request.headers, 'x-real-ip');
 
-  return (
-    forwardedFor?.split(',')[0]?.trim() ||
-    realIp ||
-    'anonymous'
-  );
+  return forwardedFor?.split(',')[0]?.trim() || realIp || 'anonymous';
 }
 
 /**
@@ -174,13 +176,16 @@ export async function recordFailedAttempt(request: RequestLike): Promise<boolean
   await activeStore.set(ip, entry);
 
   if (entry.count > MAX_ATTEMPTS) {
-    logger.warn({
-      ipAddress: ip,
-      attemptCount: entry.count,
-      maxAttempts: MAX_ATTEMPTS,
-      userAgent: getHeaderValue(request.headers, 'user-agent') || 'unspecified',
-      endpoint: request.nextUrl?.pathname || 'unspecified',
-    }, 'Rate limit exceeded - potential brute force attack');
+    logger.warn(
+      {
+        ipAddress: ip,
+        attemptCount: entry.count,
+        maxAttempts: MAX_ATTEMPTS,
+        userAgent: getHeaderValue(request.headers, 'user-agent') || 'unspecified',
+        endpoint: request.nextUrl?.pathname || 'unspecified',
+      },
+      'Rate limit exceeded - potential brute force attack'
+    );
 
     return true;
   }

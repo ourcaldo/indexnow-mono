@@ -91,6 +91,7 @@
   },
   "peerDependencies": {
     "@indexnow/analytics": "workspace:*",
+    "@indexnow/auth": "workspace:*",
     "@indexnow/shared": "workspace:*",
     "@indexnow/supabase-client": "workspace:*",
     "@tanstack/react-query": ">=5.0.0",
