@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
@@ -31,7 +31,6 @@
     "react-day-picker": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
-
     "uuid": "catalog:",
     "zod": "catalog:"
   },
