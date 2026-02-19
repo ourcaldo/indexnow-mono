@@ -1,6 +1,6 @@
 import type { Json } from '@indexnow/shared';
 import * as Sentry from '@sentry/nextjs';
-import { replayIntegration } from '@sentry/browser';
+import { browserTracingIntegration, replayIntegration } from '@sentry/browser';
 import { getAnalyticsConfig, getSubdomainContext } from './config';
 
 export function initializeSentry() {
@@ -16,7 +16,7 @@ export function initializeSentry() {
     dsn: config.sentry.dsn,
     environment: config.sentry.environment,
     integrations: [
-      Sentry.browserTracingIntegration(),
+      browserTracingIntegration(),
       replayIntegration(),
     ],
     tracesSampleRate: config.sentry.traceSampleRate,
