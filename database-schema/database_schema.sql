@@ -888,6 +888,28 @@ CREATE TABLE IF NOT EXISTS indb_system_activity_logs (
 
 CREATE INDEX IF NOT EXISTS idx_system_activity_event ON indb_system_activity_logs(event_type);
 
+-- 18b. indb_api_keys: Admin-only access (sensitive credentials)
+ALTER TABLE indb_api_keys ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admin only for api keys" ON indb_api_keys
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM indb_auth_user_profiles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- 18c. indb_system_activity_logs: Admin read, system write
+ALTER TABLE indb_system_activity_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admin access system activity logs" ON indb_system_activity_logs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM indb_auth_user_profiles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- 20. indb_keyword_countries: Public read
 ALTER TABLE indb_keyword_countries ENABLE ROW LEVEL SECURITY;
 
@@ -1172,9 +1194,15 @@ CREATE POLICY "Users can view own security logs" ON indb_security_activity_logs
 CREATE POLICY "Users can view own error logs" ON indb_system_error_logs
   FOR SELECT USING (auth.uid() = user_id);
 
--- 13. indb_seranking_usage_logs: Users can view their own usage logs
+-- 13. indb_seranking_usage_logs: Users can view their own usage logs (via integration ownership)
 CREATE POLICY "Users can view own usage logs" ON indb_seranking_usage_logs
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM indb_site_integration si
+      WHERE si.id::text = indb_seranking_usage_logs.integration_id
+      AND si.user_id = auth.uid()
+    )
+  );
 
 -- 14. indb_seranking_metrics_raw: Users can view their own metrics
 CREATE POLICY "Users can view own metrics" ON indb_seranking_metrics_raw
