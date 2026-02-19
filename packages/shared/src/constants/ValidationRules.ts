@@ -33,7 +33,6 @@ export const FIELD_LIMITS = {
   KEYWORD: { min: 1, max: 100 },
   DOMAIN: { min: 3, max: 253 },
   JOB_NAME: { min: 1, max: 100 },
-  SERVICE_ACCOUNT_NAME: { min: 1, max: 100 },
   PACKAGE_NAME: { min: 1, max: 50 },
 } as const;
 
@@ -174,49 +173,6 @@ export const UserSchemas = {
   }),
 } as const;
 
-// Indexing validation schemas
-export const IndexingSchemas = {
-  job: z.object({
-    name: z
-      .string()
-      .min(FIELD_LIMITS.JOB_NAME.min, 'Job name is required')
-      .max(FIELD_LIMITS.JOB_NAME.max, 'Job name is too long'),
-    type: z.enum(['url-list', 'single-url', 'bulk-upload']),
-    scheduleType: z.enum(['one-time', 'hourly', 'daily', 'weekly', 'monthly', 'custom']),
-    cronExpression: BaseSchemas.cron.optional(),
-    sourceData: z.object({
-      urls: z.array(BaseSchemas.url).optional(),
-
-      content: z.string().optional(),
-    }),
-  }),
-
-  serviceAccount: z.object({
-    name: z
-      .string()
-      .min(FIELD_LIMITS.SERVICE_ACCOUNT_NAME.min, 'Service account name is required')
-      .max(FIELD_LIMITS.SERVICE_ACCOUNT_NAME.max, 'Service account name is too long'),
-    email: BaseSchemas.email,
-    credentials: z.string().min(1, 'Credentials are required'),
-    dailyQuotaLimit: z.number().min(1).max(NUMERIC_LIMITS.QUOTA.max).default(200),
-    minuteQuotaLimit: z.number().min(1).max(NUMERIC_LIMITS.QUOTA.max).default(60),
-    isActive: z.boolean().default(true),
-  }),
-
-  urlSubmission: z.object({
-    url: BaseSchemas.url,
-    type: z.enum(['URL_UPDATED', 'URL_DELETED']).default('URL_UPDATED'),
-  }),
-
-  bulkUrlSubmission: z.object({
-    urls: z
-      .array(BaseSchemas.url)
-      .min(1, 'At least one URL is required')
-      .max(NUMERIC_LIMITS.BULK_OPERATIONS.max, 'Too many URLs'),
-    type: z.enum(['URL_UPDATED', 'URL_DELETED']).default('URL_UPDATED'),
-  }),
-} as const;
-
 // Rank tracking validation schemas
 export const RankTrackingSchemas = {
   keyword: z.object({
@@ -340,7 +296,6 @@ export const AdminSchemas = {
     quotaLimits: z.object({
       dailyUrls: z.number().min(0),
       keywords: z.number().min(0),
-      serviceAccounts: z.number().min(0),
       concurrentJobs: z.number().min(0),
     }),
     features: z.array(z.string()),
@@ -369,23 +324,6 @@ export const FileValidation = {
 
   validateFileSize: (fileSize: number, maxSize: number = NUMERIC_LIMITS.FILE_SIZE.max): boolean => {
     return fileSize <= maxSize && fileSize >= NUMERIC_LIMITS.FILE_SIZE.min;
-  },
-
-  validateServiceAccountFile: (content: string): boolean => {
-    try {
-      const parsed = JSON.parse(content);
-      return (
-        parsed.type === 'service_account' &&
-        parsed.project_id &&
-        parsed.private_key_id &&
-        parsed.private_key &&
-        parsed.client_email &&
-        parsed.client_id
-      );
-    } catch {
-      /* Validation parse failure */
-      return false;
-    }
   },
 
   validateUrlList: (content: string): string[] => {

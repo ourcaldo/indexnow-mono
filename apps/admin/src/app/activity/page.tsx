@@ -210,7 +210,6 @@ export default function ActivityLogsPage() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="login">Login/Logout</SelectItem>
                     <SelectItem value="job_create">Job Management</SelectItem>
-                    <SelectItem value="service_account_add">Service Accounts</SelectItem>
                     <SelectItem value="profile_update">Profile Updates</SelectItem>
                     <SelectItem value="api_call">API Calls</SelectItem>
                   </SelectContent>

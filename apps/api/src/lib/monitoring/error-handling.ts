@@ -27,62 +27,61 @@ const USER_ERROR_MESSAGES: Record<ErrorType, Record<string, string>> = {
     default: 'Authentication failed. Please log in again.',
     invalid_credentials: 'Invalid email or password.',
     token_expired: 'Your session has expired. Please log in again.',
-    missing_token: 'Please log in to access this feature.'
+    missing_token: 'Please log in to access this feature.',
   },
   [ErrorType.AUTHORIZATION]: {
     default: 'You do not have permission to perform this action.',
     insufficient_permissions: 'Insufficient permissions for this operation.',
-    resource_not_found: 'The requested resource was not found.'
+    resource_not_found: 'The requested resource was not found.',
   },
   [ErrorType.VALIDATION]: {
     default: 'Please check your input and try again.',
     invalid_format: 'The provided data format is invalid.',
     missing_required: 'Required fields are missing.',
-    invalid_email: 'Please provide a valid email address.'
+    invalid_email: 'Please provide a valid email address.',
   },
   [ErrorType.DATABASE]: {
     default: 'A database error occurred. Please try again.',
     connection_failed: 'Database connection failed. Please try again later.',
-    query_failed: 'Failed to process your request. Please try again.'
+    query_failed: 'Failed to process your request. Please try again.',
   },
   [ErrorType.EXTERNAL_API]: {
     default: 'External service temporarily unavailable. Please try again.',
     quota_exceeded: 'API quota has been exceeded. Please try again later.',
-    rate_limited: 'Too many requests. Please wait before trying again.'
+    rate_limited: 'Too many requests. Please wait before trying again.',
   },
   [ErrorType.ENCRYPTION]: {
     default: 'Security processing error. Please try again.',
-    decryption_failed: 'Failed to decrypt service account credentials.',
-    encryption_failed: 'Failed to encrypt sensitive data.'
+    encryption_failed: 'Failed to encrypt sensitive data.',
   },
   [ErrorType.RATE_LIMIT]: {
     default: 'Too many requests. Please wait before trying again.',
-    quota_exceeded: 'Rate limit exceeded. Please try again later.'
+    quota_exceeded: 'Rate limit exceeded. Please try again later.',
   },
   [ErrorType.SYSTEM]: {
     default: 'System error occurred. Please try again.',
     service_unavailable: 'Service temporarily unavailable.',
-    maintenance: 'System is under maintenance. Please try again later.'
+    maintenance: 'System is under maintenance. Please try again later.',
   },
   [ErrorType.NETWORK]: {
     default: 'Network error occurred. Please check your connection.',
     timeout: 'Request timed out. Please try again.',
-    connection_failed: 'Connection failed. Please check your network.'
+    connection_failed: 'Connection failed. Please check your network.',
   },
   [ErrorType.BUSINESS_LOGIC]: {
     default: 'Unable to process your request.',
     invalid_operation: 'This operation is not allowed.',
-    resource_conflict: 'A conflict occurred with existing data.'
+    resource_conflict: 'A conflict occurred with existing data.',
   },
   [ErrorType.NOT_FOUND]: {
-    default: 'The requested resource was not found.'
+    default: 'The requested resource was not found.',
   },
   [ErrorType.INTERNAL]: {
-    default: 'An internal error occurred. Please try again later.'
+    default: 'An internal error occurred. Please try again later.',
   },
   [ErrorType.PAYMENT]: {
-    default: 'A payment processing error occurred. Please try again.'
-  }
+    default: 'A payment processing error occurred. Please try again.',
+  },
 };
 
 /**
@@ -128,7 +127,7 @@ export class ErrorHandlingService {
       statusCode: options.statusCode || 500,
       metadata: options.metadata as Record<string, Json> | undefined,
       stack,
-      timestamp
+      timestamp,
     };
 
     // Log the error based on severity
@@ -140,7 +139,7 @@ export class ErrorHandlingService {
       endpoint: options.endpoint,
       method: options.method,
       statusCode: structuredError.statusCode,
-      metadata: options.metadata
+      metadata: options.metadata,
     };
 
     switch (structuredError.severity) {
@@ -159,7 +158,7 @@ export class ErrorHandlingService {
     }
 
     // Record error in database (async, don't block response)
-    this.recordErrorInDatabase(structuredError).catch(dbError => {
+    this.recordErrorInDatabase(structuredError).catch((dbError) => {
       logger.error({ errorId, dbError: dbError.message }, 'Failed to record error in database');
     });
 
@@ -199,34 +198,33 @@ export class ErrorHandlingService {
           errorType: error.type,
           severity: error.severity,
           endpoint: error.endpoint,
-          statusCode: error.statusCode
-        } as Record<string, Json>
+          statusCode: error.statusCode,
+        } as Record<string, Json>,
       };
 
-      await SecureServiceRoleHelpers.secureInsert(
-        operationContext,
-        'indb_system_error_logs',
-        {
-          id: error.id,
-          user_id: error.userId || null,
-          error_type: error.type,
-          severity: error.severity,
-          message: error.message,
-          user_message: error.userMessage,
-          endpoint: error.endpoint || null,
-          http_method: error.method || null,
-          status_code: error.statusCode,
-          metadata: error.metadata || null,
-          stack_trace: error.stack || null,
-          created_at: error.timestamp.toISOString()
-        }
-      );
+      await SecureServiceRoleHelpers.secureInsert(operationContext, 'indb_system_error_logs', {
+        id: error.id,
+        user_id: error.userId || null,
+        error_type: error.type,
+        severity: error.severity,
+        message: error.message,
+        user_message: error.userMessage,
+        endpoint: error.endpoint || null,
+        http_method: error.method || null,
+        status_code: error.statusCode,
+        metadata: error.metadata || null,
+        stack_trace: error.stack || null,
+        created_at: error.timestamp.toISOString(),
+      });
     } catch (dbError) {
       // Don't throw here to avoid infinite loop
-      logger.error({
-        originalErrorId: error.id,
-        dbError: dbError instanceof Error ? dbError.message : 'Unknown database error'
-      }, 'Failed to record error in database');
+      logger.error(
+        {
+          originalErrorId: error.id,
+          dbError: dbError instanceof Error ? dbError.message : 'Unknown database error',
+        },
+        'Failed to record error in database'
+      );
     }
   }
 
@@ -279,7 +277,7 @@ export const HTTP_STATUS = {
   UNPROCESSABLE_ENTITY: 422,
   TOO_MANY_REQUESTS: 429,
   INTERNAL_SERVER_ERROR: 500,
-  SERVICE_UNAVAILABLE: 503
+  SERVICE_UNAVAILABLE: 503,
 } as const;
 
 /**
@@ -291,7 +289,12 @@ export function isTransientError(error: unknown): boolean {
   const err = error as Record<string, unknown>;
   const errorMessage = typeof err.message === 'string' ? err.message.toLowerCase() : '';
   const errorCode = typeof err.code === 'string' ? err.code.toLowerCase() : '';
-  const errorStatus = typeof err.status === 'number' ? err.status : (typeof err.statusCode === 'number' ? err.statusCode : 0);
+  const errorStatus =
+    typeof err.status === 'number'
+      ? err.status
+      : typeof err.statusCode === 'number'
+        ? err.statusCode
+        : 0;
 
   // Network and connection errors
   const networkErrors = [
@@ -303,7 +306,7 @@ export function isTransientError(error: unknown): boolean {
     'fetch failed',
     'connection',
     'socket',
-    'aborted'
+    'aborted',
   ];
 
   // Service availability errors
@@ -313,7 +316,7 @@ export function isTransientError(error: unknown): boolean {
     'server error',
     'internal server error',
     'bad gateway',
-    'gateway timeout'
+    'gateway timeout',
   ];
 
   if (errorStatus >= 500 && errorStatus < 600) {
@@ -346,97 +349,93 @@ export function isTransientError(error: unknown): boolean {
  * Common error patterns for consistent responses
  */
 export const CommonErrors = {
-  UNAUTHORIZED: (userId?: string) => ErrorHandlingService.createError(
-    ErrorType.AUTHENTICATION,
-    'Authentication required',
-    {
+  UNAUTHORIZED: (userId?: string) =>
+    ErrorHandlingService.createError(ErrorType.AUTHENTICATION, 'Authentication required', {
       severity: ErrorSeverity.MEDIUM,
       statusCode: HTTP_STATUS.UNAUTHORIZED,
       userId,
-      userMessageKey: 'missing_token'
-    }
-  ),
+      userMessageKey: 'missing_token',
+    }),
 
-  INVALID_TOKEN: (userId?: string) => ErrorHandlingService.createError(
-    ErrorType.AUTHENTICATION,
-    'Invalid or expired authentication token',
-    {
-      severity: ErrorSeverity.MEDIUM,
-      statusCode: HTTP_STATUS.UNAUTHORIZED,
-      userId,
-      userMessageKey: 'token_expired'
-    }
-  ),
+  INVALID_TOKEN: (userId?: string) =>
+    ErrorHandlingService.createError(
+      ErrorType.AUTHENTICATION,
+      'Invalid or expired authentication token',
+      {
+        severity: ErrorSeverity.MEDIUM,
+        statusCode: HTTP_STATUS.UNAUTHORIZED,
+        userId,
+        userMessageKey: 'token_expired',
+      }
+    ),
 
-  FORBIDDEN: (userId: string, resource?: string) => ErrorHandlingService.createError(
-    ErrorType.AUTHORIZATION,
-    `Access denied to resource: ${resource || 'unknown'}`,
-    {
-      severity: ErrorSeverity.HIGH,
-      statusCode: HTTP_STATUS.FORBIDDEN,
-      userId,
-      userMessageKey: 'insufficient_permissions',
-      metadata: { resource }
-    }
-  ),
+  FORBIDDEN: (userId: string, resource?: string) =>
+    ErrorHandlingService.createError(
+      ErrorType.AUTHORIZATION,
+      `Access denied to resource: ${resource || 'unknown'}`,
+      {
+        severity: ErrorSeverity.HIGH,
+        statusCode: HTTP_STATUS.FORBIDDEN,
+        userId,
+        userMessageKey: 'insufficient_permissions',
+        metadata: { resource },
+      }
+    ),
 
-  VALIDATION_ERROR: (details: string, userId?: string) => ErrorHandlingService.createError(
-    ErrorType.VALIDATION,
-    `Validation failed: ${details}`,
-    {
+  VALIDATION_ERROR: (details: string, userId?: string) =>
+    ErrorHandlingService.createError(ErrorType.VALIDATION, `Validation failed: ${details}`, {
       severity: ErrorSeverity.LOW,
       statusCode: HTTP_STATUS.BAD_REQUEST,
       userId,
       userMessageKey: 'invalid_format',
-      metadata: { validationDetails: details }
-    }
-  ),
+      metadata: { validationDetails: details },
+    }),
 
-  NOT_FOUND: (resource: string, userId?: string) => ErrorHandlingService.createError(
-    ErrorType.NOT_FOUND,
-    `Resource not found: ${resource}`,
-    {
+  NOT_FOUND: (resource: string, userId?: string) =>
+    ErrorHandlingService.createError(ErrorType.NOT_FOUND, `Resource not found: ${resource}`, {
       severity: ErrorSeverity.MEDIUM,
       statusCode: HTTP_STATUS.NOT_FOUND,
       userId,
       userMessageKey: 'resource_not_found',
-      metadata: { resource }
-    }
-  ),
+      metadata: { resource },
+    }),
 
-  DATABASE_ERROR: (operation: string, userId?: string) => ErrorHandlingService.createError(
-    ErrorType.DATABASE,
-    `Database operation failed: ${operation}`,
-    {
-      severity: ErrorSeverity.HIGH,
-      statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-      userId,
-      userMessageKey: 'query_failed',
-      metadata: { operation }
-    }
-  ),
+  DATABASE_ERROR: (operation: string, userId?: string) =>
+    ErrorHandlingService.createError(
+      ErrorType.DATABASE,
+      `Database operation failed: ${operation}`,
+      {
+        severity: ErrorSeverity.HIGH,
+        statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        userId,
+        userMessageKey: 'query_failed',
+        metadata: { operation },
+      }
+    ),
 
-  EXTERNAL_API_ERROR: (service: string, details?: string, userId?: string) => ErrorHandlingService.createError(
-    ErrorType.EXTERNAL_API,
-    `External API error from ${service}: ${details || 'Unknown error'}`,
-    {
-      severity: ErrorSeverity.HIGH,
-      statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
-      userId,
-      userMessageKey: 'default',
-      metadata: { service, details }
-    }
-  ),
+  EXTERNAL_API_ERROR: (service: string, details?: string, userId?: string) =>
+    ErrorHandlingService.createError(
+      ErrorType.EXTERNAL_API,
+      `External API error from ${service}: ${details || 'Unknown error'}`,
+      {
+        severity: ErrorSeverity.HIGH,
+        statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
+        userId,
+        userMessageKey: 'default',
+        metadata: { service, details },
+      }
+    ),
 
-  SERVICE_UNAVAILABLE: (service: string, details?: string, userId?: string) => ErrorHandlingService.createError(
-    ErrorType.EXTERNAL_API,
-    `Service temporarily unavailable: ${service}${details ? ` - ${details}` : ''}`,
-    {
-      severity: ErrorSeverity.HIGH,
-      statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
-      userId,
-      userMessageKey: 'default',
-      metadata: { service, details, transient: true }
-    }
-  )
+  SERVICE_UNAVAILABLE: (service: string, details?: string, userId?: string) =>
+    ErrorHandlingService.createError(
+      ErrorType.EXTERNAL_API,
+      `Service temporarily unavailable: ${service}${details ? ` - ${details}` : ''}`,
+      {
+        severity: ErrorSeverity.HIGH,
+        statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
+        userId,
+        userMessageKey: 'default',
+        metadata: { service, details, transient: true },
+      }
+    ),
 };

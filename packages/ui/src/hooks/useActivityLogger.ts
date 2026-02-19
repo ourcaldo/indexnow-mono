@@ -40,12 +40,6 @@ export interface UseActivityLoggerReturn {
     details?: string,
     metadata?: Record<string, Json>
   ) => Promise<void>;
-  logServiceAccountActivity: (
-    eventType: string,
-    serviceAccountId?: string,
-    details?: string,
-    metadata?: Record<string, Json>
-  ) => Promise<void>;
 }
 
 export const useActivityLogger = (): UseActivityLoggerReturn => {
@@ -137,34 +131,12 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
     [logActivity]
   );
 
-  const logServiceAccountActivity = useCallback(
-    async (
-      eventType: string,
-      serviceAccountId?: string,
-      details?: string,
-      metadata?: Record<string, Json>
-    ) => {
-      await logActivity({
-        eventType,
-        actionDescription: details || eventType,
-        targetType: serviceAccountId ? 'service_account' : undefined,
-        targetId: serviceAccountId,
-        metadata: {
-          serviceAccountActivity: true,
-          ...metadata,
-        },
-      });
-    },
-    [logActivity]
-  );
-
   return {
     logActivity,
     logPageView,
     logDashboardActivity,
     logBillingActivity,
     logJobActivity,
-    logServiceAccountActivity,
   };
 };
 

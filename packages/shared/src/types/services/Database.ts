@@ -469,50 +469,6 @@ export interface UserProfileTable {
   suspended_at?: Date;
 }
 
-export interface IndexingJobTable {
-  id: string;
-  user_id: string;
-  name: string;
-  type: string;
-  status: string;
-  schedule_type: string;
-  cron_expression?: string;
-  source_data: Json;
-  total_urls: number;
-  processed_urls: number;
-  successful_urls: number;
-  failed_urls: number;
-  service_account_id?: string;
-  tags: string[];
-  priority: number;
-  created_at: Date;
-  updated_at: Date;
-  scheduled_at?: Date;
-  started_at?: Date;
-  completed_at?: Date;
-  error_message?: string;
-  metadata: Json;
-}
-
-export interface ServiceAccountTable {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-  project_id: string;
-  credentials: string; // encrypted
-  daily_quota_limit: number;
-  minute_quota_limit: number;
-  daily_quota_used: number;
-  minute_quota_used: number;
-  quota_reset_at: Date;
-  is_active: boolean;
-  last_used_at?: Date;
-  created_at: Date;
-  updated_at: Date;
-  description?: string;
-}
-
 export interface TransactionTable {
   id: string;
   user_id: string;

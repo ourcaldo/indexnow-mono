@@ -5,12 +5,6 @@ import { initializePaymentWorker } from './payments.worker';
 import { initializeAutoCancelWorker } from './auto-cancel.worker';
 import { initializeKeywordEnrichmentWorker } from './keyword-enrichment.worker';
 
-// Note: The following workers have been removed as they depended on deleted indexing modules:
-// - initializeQuotaResetWorker (quota-reset.worker.ts — Google quota monitoring, deleted with indexing feature)
-// - initializeIndexingMonitorWorker (Google indexing no longer supported)
-// - initializeDailyRankCheckWorker (rank-schedule.worker.ts - refactored to use cron directly)
-// - initializeHourlyRankRetryWorker (hourly-rank-retry.worker.ts - refactored to use cron directly)
-
 export async function initializeAllWorkers(): Promise<void> {
   if (process.env.ENABLE_BULLMQ !== 'true') {
     logger.info({}, 'BullMQ disabled via feature flag - skipping worker initialization');

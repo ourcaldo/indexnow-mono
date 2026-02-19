@@ -116,7 +116,6 @@ export interface SecuritySettings {
 export interface UserQuotaUsage {
   dailyUrls: number;
   keywords: number;
-  serviceAccounts: number;
   rankChecks: number;
   apiCalls: number;
   storage: number; // in bytes
@@ -125,7 +124,6 @@ export interface UserQuotaUsage {
 export interface UserQuotaLimits {
   dailyUrls: number;
   keywords: number;
-  serviceAccounts: number;
   rankChecks: number;
   apiCalls: number;
   storage: number; // in bytes
@@ -136,7 +134,6 @@ export interface UserQuotaLimits {
 export interface UserQuota {
   dailyUrls: QuotaMetric;
   keywords: QuotaMetric;
-  serviceAccounts: QuotaMetric;
   rankChecks: QuotaMetric;
   apiCalls: QuotaMetric;
   storage: QuotaMetric;
@@ -275,7 +272,14 @@ export interface UpdateSettingsRequest {
 // Admin types
 export interface UserManagementAction {
   userId: string;
-  action: 'suspend' | 'activate' | 'reset_password' | 'reset_quota' | 'extend_subscription' | 'change_package' | 'delete';
+  action:
+    | 'suspend'
+    | 'activate'
+    | 'reset_password'
+    | 'reset_quota'
+    | 'extend_subscription'
+    | 'change_package'
+    | 'delete';
   reason: string;
   additionalData?: Record<string, unknown>;
   performedBy: string;

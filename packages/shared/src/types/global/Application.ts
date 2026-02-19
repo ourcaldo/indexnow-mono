@@ -35,7 +35,6 @@ export interface FeatureFlags {
 export interface ApplicationLimits {
   maxJobsPerUser: number;
   maxUrlsPerJob: number;
-  maxServiceAccountsPerUser: number;
   maxKeywordsPerUser: number;
   maxConcurrentJobs: number;
   rateLimitPerMinute: number;

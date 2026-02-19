@@ -9,7 +9,13 @@
 import { type Json } from '../common/Json';
 
 // Basic payment types
-export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+export type PaymentStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'refunded';
 export type PaymentMethod = 'paddle' | 'credit-card';
 export type BillingPeriod = 'monthly' | 'annual';
 export type Currency = 'USD';
@@ -28,7 +34,6 @@ export interface Package {
   quotas: {
     dailyUrls: number;
     keywords: number;
-    serviceAccounts: number;
     rankChecks: number;
     apiCalls: number;
     storage: number; // in bytes

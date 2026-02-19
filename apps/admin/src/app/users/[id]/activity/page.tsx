@@ -90,8 +90,6 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
       job_create: 'bg-primary/10 text-primary',
       job_update: 'bg-warning/10 text-warning',
       job_delete: 'bg-destructive/10 text-destructive',
-      service_account_add: 'bg-success/10 text-success',
-      service_account_delete: 'bg-destructive/10 text-destructive',
       profile_update: 'bg-primary/10 text-primary',
       api_call: 'bg-muted/10 text-muted-foreground',
     };

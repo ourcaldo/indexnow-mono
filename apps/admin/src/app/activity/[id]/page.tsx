@@ -75,8 +75,6 @@ export default function ActivityDetailPage() {
       job_update: Settings,
       job_delete: XCircle,
       job_start: CheckCircle,
-      service_account_add: Shield,
-      service_account_delete: XCircle,
       profile_update: User,
       admin_login: Shield,
       user_management: Settings,

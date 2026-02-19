@@ -73,7 +73,6 @@ export interface UserSettings {
 export interface UserQuota {
   dailyUrls: { used: number; limit: number; percentage: number; remaining: number };
   keywords: { used: number; limit: number; percentage: number; remaining: number };
-  serviceAccounts: { used: number; limit: number; percentage: number; remaining: number };
   rankChecks: { used: number; limit: number; percentage: number; remaining: number };
   apiCalls: { used: number; limit: number; percentage: number; remaining: number };
   storage: { used: number; limit: number; percentage: number; remaining: number };
@@ -127,7 +126,6 @@ export interface UserProfile {
   quotaUsage: {
     dailyUrls: number;
     keywords: number;
-    serviceAccounts: number;
     rankChecks: number;
     apiCalls: number;
     storage: number;
@@ -135,7 +133,6 @@ export interface UserProfile {
   quotaLimits: {
     dailyUrls: number;
     keywords: number;
-    serviceAccounts: number;
     rankChecks: number;
     apiCalls: number;
     storage: number;
@@ -644,7 +641,6 @@ export class UserManagementService {
       quotaUsage: {
         dailyUrls: data.daily_quota_used || 0,
         keywords: 0, // Should be fetched separately or cached
-        serviceAccounts: 0,
         rankChecks: 0,
         apiCalls: 0,
         storage: 0,
@@ -652,7 +648,6 @@ export class UserManagementService {
       quotaLimits: {
         dailyUrls: data.daily_quota_limit || quotas?.['pages'] || 100,
         keywords: quotas?.['keywords'] || 10,
-        serviceAccounts: quotas?.['service_accounts'] || 5,
         rankChecks: quotas?.['rank_checks'] || 100,
         apiCalls: quotas?.['api_calls'] || 1000,
         storage: quotas?.['storage_mb'] ? quotas['storage_mb'] * 1024 * 1024 : 1024 * 1024 * 100,

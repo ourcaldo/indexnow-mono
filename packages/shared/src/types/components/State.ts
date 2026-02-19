@@ -332,32 +332,6 @@ export interface PaymentState {
   error?: string;
 }
 
-// Indexing-specific state types
-export interface IndexingJobState {
-  jobs: Record<string, Json>[];
-  selectedJobs: string[];
-  filters: {
-    status: string[];
-    type: string[];
-    tags: string[];
-    dateRange?: {
-      from: Date;
-      to: Date;
-    };
-  };
-  sort: {
-    field: string;
-    order: 'asc' | 'desc';
-  };
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    itemsPerPage: number;
-    totalItems: number;
-  };
-  isLoading: boolean;
-}
-
 // Rank tracking state types
 export interface RankTrackingState {
   keywords: Record<string, Json>[];

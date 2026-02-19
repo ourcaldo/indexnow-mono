@@ -7,9 +7,9 @@ import { AppConfig } from '../core/config/AppConfig';
 
 // Base API paths - normalize URL to avoid double slashes
 const normalizeApiBaseUrl = (url: string): string => {
-  return url.replace(/\/+$/, '') // Remove trailing slashes
-}
-const API_BASE_URL = normalizeApiBaseUrl(AppConfig.app.baseUrl || '/api')
+  return url.replace(/\/+$/, ''); // Remove trailing slashes
+};
+const API_BASE_URL = normalizeApiBaseUrl(AppConfig.app.baseUrl || '/api');
 export const API_BASE = {
   V1: `${API_BASE_URL}/v1`,
   SYSTEM: `${API_BASE_URL}/system`,
@@ -32,7 +32,8 @@ export const AUTH_ENDPOINTS = {
   QUOTA: `${API_BASE.V1}/auth/user/quota`,
   QUOTA_HISTORY: (days: number) => `${API_BASE.V1}/auth/user/quota/history?days=${days}`,
   QUOTA_ALERTS: `${API_BASE.V1}/auth/user/quota/alerts`,
-  QUOTA_ALERT_ACKNOWLEDGE: (alertId: string) => `${API_BASE.V1}/auth/user/quota/alerts/${alertId}/acknowledge`,
+  QUOTA_ALERT_ACKNOWLEDGE: (alertId: string) =>
+    `${API_BASE.V1}/auth/user/quota/alerts/${alertId}/acknowledge`,
   QUOTA_INCREASE_REQUEST: `${API_BASE.V1}/auth/user/quota/increase-request`,
   TRIAL_ELIGIBILITY: `${API_BASE.V1}/auth/user/trial-eligibility`,
   TRIAL_STATUS: `${API_BASE.V1}/auth/user/trial-status`,
@@ -53,10 +54,8 @@ export const ADMIN_ENDPOINTS = {
   EXTEND_SUBSCRIPTION: (id: string) => `${API_BASE.V1}/admin/users/${id}/extend-subscription`,
   CHANGE_PACKAGE: (id: string) => `${API_BASE.V1}/admin/users/${id}/change-package`,
   USER_SECURITY: (id: string) => `${API_BASE.V1}/admin/users/${id}/security`,
-  USER_SERVICE_ACCOUNTS: (id: string) => `${API_BASE.V1}/admin/users/${id}/service-accounts`,
   USER_QUOTA_USAGE: (id: string) => `${API_BASE.V1}/admin/users/${id}/quota-usage`,
   USER_API_STATS: (id: string) => `${API_BASE.V1}/admin/users/${id}/api-stats`,
-
 
   // Order management
   ORDERS: `${API_BASE.V1}/admin/orders`,
@@ -81,7 +80,6 @@ export const ADMIN_ENDPOINTS = {
   QUOTA_STATUS: `${API_BASE.V1}/admin/quota/status`,
   QUOTA_HEALTH: `${API_BASE.V1}/admin/quota/health`,
   QUOTA_REPORT: `${API_BASE.V1}/admin/quota/report`,
-
 
   // Rank Tracker Admin
   RANK_TRACKER_TRIGGER_MANUAL_CHECK: `${API_BASE.V1}/admin/rank-tracker/trigger-manual-check`,
@@ -177,7 +175,6 @@ export const ERROR_ENDPOINTS = {
 
 // External API endpoints
 export const EXTERNAL_ENDPOINTS = {
-
   EXCHANGE_RATE_API: 'https://api.exchangerate-api.com/v4/latest/USD',
 } as const;
 
@@ -217,13 +214,13 @@ export const buildEndpoint = (
 // Helper function to validate endpoint
 export const isValidEndpoint = (endpoint: string): boolean => {
   const staticEndpoints: string[] = [
-    ...Object.values(AUTH_ENDPOINTS).filter(ep => typeof ep === 'string'),
-    ...Object.values(RANK_TRACKING_ENDPOINTS).filter(ep => typeof ep === 'string'),
-    ...Object.values(BILLING_ENDPOINTS).filter(ep => typeof ep === 'string'),
-    ...Object.values(PAYMENT_ENDPOINTS).filter(ep => typeof ep === 'string'),
-    ...Object.values(NOTIFICATION_ENDPOINTS).filter(ep => typeof ep === 'string'),
-    ...Object.values(SYSTEM_ENDPOINTS).filter(ep => typeof ep === 'string'),
-    ...Object.values(INTEGRATION_ENDPOINTS).filter(ep => typeof ep === 'string'),
+    ...Object.values(AUTH_ENDPOINTS).filter((ep) => typeof ep === 'string'),
+    ...Object.values(RANK_TRACKING_ENDPOINTS).filter((ep) => typeof ep === 'string'),
+    ...Object.values(BILLING_ENDPOINTS).filter((ep) => typeof ep === 'string'),
+    ...Object.values(PAYMENT_ENDPOINTS).filter((ep) => typeof ep === 'string'),
+    ...Object.values(NOTIFICATION_ENDPOINTS).filter((ep) => typeof ep === 'string'),
+    ...Object.values(SYSTEM_ENDPOINTS).filter((ep) => typeof ep === 'string'),
+    ...Object.values(INTEGRATION_ENDPOINTS).filter((ep) => typeof ep === 'string'),
   ];
 
   // Check static endpoints
@@ -234,13 +231,13 @@ export const isValidEndpoint = (endpoint: string): boolean => {
   // Check dynamic admin endpoints
   const adminPatterns = [
     /^\/api\/v1\/admin\/users\/[a-f0-9-]+$/,
-    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|reset-quota|extend-subscription|change-package|security|service-accounts|quota-usage)$/,
+    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|reset-quota|extend-subscription|change-package|security|quota-usage)$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+\/status$/,
     /^\/api\/v1\/admin\/activity\/[a-f0-9-]+$/,
   ];
 
-  return adminPatterns.some(pattern => pattern.test(endpoint));
+  return adminPatterns.some((pattern) => pattern.test(endpoint));
 };
 
 // Unified export for backward compatibility

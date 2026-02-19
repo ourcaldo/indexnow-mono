@@ -64,16 +64,6 @@ const EVENT_CONFIG_MAP: Record<string, (success: boolean) => EventConfig> = {
     icon: CheckCircle,
     label: 'Job Started',
   }),
-  service_account_add: () => ({
-    color: 'bg-success/10 text-success',
-    icon: Shield,
-    label: 'Service Added',
-  }),
-  service_account_delete: () => ({
-    color: 'bg-destructive/10 text-destructive',
-    icon: XCircle,
-    label: 'Service Removed',
-  }),
   profile_update: () => ({
     color: 'bg-accent/10 text-accent',
     icon: User,

@@ -5,21 +5,21 @@
  * Server-side logging uses `ServerActivityLogger` from the API app.
  */
 
-import { type Json } from '../../types'
+import { type Json } from '../../types';
 
 export interface ActivityLogData {
-  userId: string
-  eventType: string
-  actionDescription: string
-  targetType?: string
-  targetId?: string
-  ipAddress?: string
-  userAgent?: string
-  deviceInfo?: Record<string, Json>
-  locationData?: Record<string, Json>
-  success?: boolean
-  errorMessage?: string
-  metadata?: Record<string, Json>
+  userId: string;
+  eventType: string;
+  actionDescription: string;
+  targetType?: string;
+  targetId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  deviceInfo?: Record<string, Json>;
+  locationData?: Record<string, Json>;
+  success?: boolean;
+  errorMessage?: string;
+  metadata?: Record<string, Json>;
 }
 
 // Common event types for consistency
@@ -46,12 +46,6 @@ export const ActivityEventTypes = {
   JOB_RESUME: 'job_resume',
   JOB_CANCEL: 'job_cancel',
   JOB_VIEW: 'job_view',
-
-  // Service Account Management
-  SERVICE_ACCOUNT_ADD: 'service_account_add',
-  SERVICE_ACCOUNT_UPDATE: 'service_account_update',
-  SERVICE_ACCOUNT_DELETE: 'service_account_delete',
-  SERVICE_ACCOUNT_VIEW: 'service_account_view',
 
   // Billing & Payment Events
   CHECKOUT_INITIATED: 'checkout_initiated',
@@ -131,4 +125,4 @@ export const ActivityEventTypes = {
   ERROR_OCCURRED: 'error_occurred',
   SECURITY_VIOLATION: 'security_violation',
   QUOTA_EXCEEDED: 'quota_exceeded',
-} as const
+} as const;
