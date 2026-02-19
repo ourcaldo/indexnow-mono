@@ -174,7 +174,7 @@ export function adminApiWrapper<T = unknown>(
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
-        error as Error,
+        error instanceof Error ? error : new Error(String(error)),
         {
           severity: ErrorSeverity.HIGH,
           endpoint,
@@ -248,7 +248,7 @@ export function authenticatedApiWrapper<T = unknown>(
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
-        error as Error,
+        error instanceof Error ? error : new Error(String(error)),
         {
           severity: ErrorSeverity.HIGH,
           endpoint,
@@ -312,7 +312,7 @@ export function publicApiWrapper<T = unknown>(
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
-        error as Error,
+        error instanceof Error ? error : new Error(String(error)),
         {
           severity: ErrorSeverity.MEDIUM,
           endpoint,

@@ -82,7 +82,10 @@ const KeywordBankInsertSchema = z.object({
   competition: z.number().min(0).max(1).nullable().optional(),
   difficulty: z.number().int().min(0).max(100).nullable().optional(),
   history_trend: z.record(z.string(), z.number()).nullable().optional(),
-  keyword_intent: z.string().max(50).nullable().optional(),
+  keyword_intent: z
+    .enum(['commercial', 'informational', 'navigational', 'transactional'])
+    .nullable()
+    .optional(),
 });
 
 const KeywordBankUpdateSchema = z.object({
@@ -92,7 +95,10 @@ const KeywordBankUpdateSchema = z.object({
   competition: z.number().min(0).max(1).nullable().optional(),
   difficulty: z.number().int().min(0).max(100).nullable().optional(),
   history_trend: z.record(z.string(), z.number()).nullable().optional(),
-  keyword_intent: z.string().max(50).nullable().optional(),
+  keyword_intent: z
+    .enum(['commercial', 'informational', 'navigational', 'transactional'])
+    .nullable()
+    .optional(),
   data_updated_at: z.union([z.date(), z.string()]).optional(),
   updated_at: z.union([z.date(), z.string()]).optional(),
 });
@@ -114,7 +120,9 @@ const KeywordBankQuerySchema = z.object({
   max_volume: z.number().int().min(0).optional(),
   min_difficulty: z.number().int().min(0).max(100).optional(),
   max_difficulty: z.number().int().min(0).max(100).optional(),
-  keyword_intent: z.string().max(50).optional(),
+  keyword_intent: z
+    .enum(['commercial', 'informational', 'navigational', 'transactional'])
+    .optional(),
   updated_since: z.union([z.date(), z.string()]).optional(),
   limit: z.number().int().min(1).max(1000).default(50),
   offset: z.number().int().min(0).default(0),

@@ -302,7 +302,7 @@ export class IntegrationService implements IIntegrationService {
   async recordApiUsage(
     requestCount: number = 1,
     options: {
-      operationType?: string;
+      operationType?: import('@indexnow/shared').SeRankingOperationType;
       responseTime?: number;
       successful?: boolean;
       metadata?: Record<string, unknown>;

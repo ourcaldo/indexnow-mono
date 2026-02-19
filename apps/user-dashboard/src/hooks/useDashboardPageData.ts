@@ -6,6 +6,7 @@ import type { AppUserProfile, TrialEligibility, UserSubscription } from '@indexn
 import { usePageViewLogger, useActivityLogger, useDashboardData } from '@indexnow/ui/hooks';
 import { useDomain } from '@indexnow/ui/contexts';
 import type { ActivityItem } from '@indexnow/ui/dashboard';
+import type { DashboardRecentKeyword } from '@indexnow/shared';
 import type { KeywordData, PaymentPackage } from '../components/dashboard/types';
 
 /** Matches the shape accepted by LegacyRankingDistribution */
@@ -13,6 +14,31 @@ interface RankingDataItem {
   position: number | null;
   keyword: string;
   domain: string;
+}
+
+/** M-08: proper mapping from API type to local KeywordData (no double-cast). */
+function toKeywordData(src: DashboardRecentKeyword): KeywordData {
+  const latestRanking = Array.isArray(src.recent_ranking) ? src.recent_ranking[0] : undefined;
+  return {
+    id: src.id,
+    keyword: src.keyword,
+    current_position: latestRanking?.position ?? null,
+    position_1d: null,
+    position_3d: null,
+    position_7d: null,
+    domain: {
+      id: src.domain?.id,
+      display_name: src.domain?.display_name ?? src.domain?.domain_name ?? '',
+      domain_name: src.domain?.domain_name ?? '',
+    },
+    device_type: src.device_type,
+    country: {
+      name: src.country?.name ?? '',
+      iso2_code: src.country?.iso2_code ?? '',
+    },
+    recent_ranking: latestRanking ? { position: latestRanking.position } : undefined,
+    tags: [],
+  };
 }
 
 export function useDashboardPageData() {
@@ -46,9 +72,9 @@ export function useDashboardPageData() {
   } = useDashboardData();
 
   // Extract data from merged dashboard endpoint
-  // Cast to KeywordData[] — the API returns a superset of this shape at runtime
-  const recentKeywords = (dashboardData?.rankTracking?.recentKeywords ||
-    []) as unknown as KeywordData[];
+  const recentKeywords: KeywordData[] = (dashboardData?.rankTracking?.recentKeywords ?? []).map(
+    toKeywordData
+  );
 
   // Filter keywords by selected domain
   const getKeywordsForDomain = (domainId: string | null): KeywordData[] => {

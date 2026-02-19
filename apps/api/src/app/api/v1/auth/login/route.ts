@@ -147,24 +147,26 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     const requestInfo = await getRequestInfo(request);
     await ActivityLogger.logAuth(user.id, ActivityEventTypes.LOGIN, true, request);
 
-    // 7. Send login notification email (async)
-    loginNotificationService
-      .sendLoginNotification({
-        userId: user.id,
-        userEmail: user.email ?? 'unknown@missing-email',
-        userName: user.user_metadata?.full_name || (user.email ?? 'user').split('@')[0],
-        ipAddress: requestInfo.ipAddress || 'Unknown',
-        userAgent: requestInfo.userAgent || 'Unknown',
-        deviceInfo: requestInfo.deviceInfo,
-        locationData: requestInfo.locationData,
-        loginTime: new Date().toISOString(),
-      })
-      .catch((emailError) => {
-        logger.error(
-          { error: emailError instanceof Error ? emailError : undefined },
-          'Failed to send login notification email'
-        );
-      });
+    // 7. Send login notification email (async) — skip if no email on the user
+    if (user.email) {
+      loginNotificationService
+        .sendLoginNotification({
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.user_metadata?.full_name || user.email.split('@')[0],
+          ipAddress: requestInfo.ipAddress || 'Unknown',
+          userAgent: requestInfo.userAgent || 'Unknown',
+          deviceInfo: requestInfo.deviceInfo,
+          locationData: requestInfo.locationData,
+          loginTime: new Date().toISOString(),
+        })
+        .catch((emailError) => {
+          logger.error(
+            { error: emailError instanceof Error ? emailError : undefined },
+            'Failed to send login notification email'
+          );
+        });
+    }
 
     // 8. Return success response with session data
     return formatSuccess({
@@ -174,6 +176,7 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
         role: user.role,
         last_sign_in_at: user.last_sign_in_at,
       },
+      mustChangePassword: false,
       session: {
         access_token: authData.session.access_token,
         refresh_token: authData.session.refresh_token,

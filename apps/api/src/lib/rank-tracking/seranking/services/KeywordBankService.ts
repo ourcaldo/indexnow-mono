@@ -1190,7 +1190,9 @@ export class KeywordBankService implements IKeywordBankService {
   /**
    * Extract keyword intent from API data (basic implementation)
    */
-  private extractKeywordIntent(apiData: SeRankingKeywordData): string | null {
+  private extractKeywordIntent(
+    apiData: SeRankingKeywordData
+  ): import('@indexnow/shared').KeywordIntentType | null {
     if (!apiData.is_data_found || !apiData.keyword) return null;
 
     const keyword = apiData.keyword.toLowerCase();

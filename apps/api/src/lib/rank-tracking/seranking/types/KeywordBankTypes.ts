@@ -3,7 +3,7 @@
  * Types for keyword bank table and related database operations
  */
 
-import { Database, Json } from '@indexnow/shared';
+import { Database, Json, KeywordIntentType } from '@indexnow/shared';
 
 // Keyword Bank Database Entity
 export interface KeywordBankEntity {
@@ -17,7 +17,7 @@ export interface KeywordBankEntity {
   competition: number | null;
   difficulty: number | null;
   history_trend: Json | null;
-  keyword_intent: string | null;
+  keyword_intent: KeywordIntentType | null;
   data_updated_at: string | null; // Date -> string for API/DB compatibility
   created_at: string;
   updated_at: string;
@@ -34,7 +34,7 @@ export interface KeywordBankInsert {
   competition?: number | null;
   difficulty?: number | null;
   history_trend?: Json | null;
-  keyword_intent?: string | null;
+  keyword_intent?: KeywordIntentType | null;
 }
 
 export interface KeywordBankUpdate {
@@ -44,7 +44,7 @@ export interface KeywordBankUpdate {
   competition?: number | null;
   difficulty?: number | null;
   history_trend?: Json | null;
-  keyword_intent?: string | null;
+  keyword_intent?: KeywordIntentType | null;
   data_updated_at?: string;
   updated_at?: string;
 }
@@ -68,7 +68,7 @@ export interface EnhancedKeywordEntity {
   cpc: number | null;
   competition: number | null;
   difficulty: number | null;
-  keyword_intent: string | null;
+  keyword_intent: KeywordIntentType | null;
   history_trend: Json | null;
   intelligence_updated_at: string | null;
 }
@@ -83,7 +83,7 @@ export interface KeywordBankQuery {
   max_volume?: number;
   min_difficulty?: number;
   max_difficulty?: number;
-  keyword_intent?: string;
+  keyword_intent?: KeywordIntentType;
   updated_since?: string;
   limit?: number;
   offset?: number;

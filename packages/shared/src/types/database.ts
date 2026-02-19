@@ -146,6 +146,164 @@ export interface TransactionMetadata {
   [key: string]: Json | undefined;
 }
 
+// ── Column union types (M-01 … M-06) ────────────────────────────────────────
+
+/** M-01: indb_notifications_dashboard.type */
+export type NotificationDashboardType =
+  | 'info'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'reminder'
+  | 'system'
+  | 'marketing';
+
+/** M-02: indb_security_activity_logs.event_type — extensive list, see ActivityEventTypes constant. */
+export type SecurityActivityEventType =
+  | 'login'
+  | 'logout'
+  | 'register'
+  | 'password_reset'
+  | 'password_change'
+  | 'profile_update'
+  | 'settings_change'
+  | 'settings_view'
+  | 'settings_update'
+  | 'notification_settings_update'
+  | 'job_create'
+  | 'job_update'
+  | 'job_delete'
+  | 'job_start'
+  | 'job_pause'
+  | 'job_resume'
+  | 'job_cancel'
+  | 'job_view'
+  | 'checkout_initiated'
+  | 'order_created'
+  | 'payment_proof_uploaded'
+  | 'subscription_upgrade'
+  | 'billing_view'
+  | 'billing_history_view'
+  | 'order_view'
+  | 'package_selection'
+  | 'subscription_success'
+  | 'subscription_failed'
+  | 'subscription_cancelled'
+  | 'dashboard_view'
+  | 'dashboard_stats_view'
+  | 'dashboard_data_loaded_from_merged_api'
+  | 'dashboard_data_error'
+  | 'quota_view'
+  | 'indexnow_page_view'
+  | 'manage_jobs_view'
+  | 'api_call'
+  | 'google_api_call'
+  | 'admin_login'
+  | 'admin_dashboard_view'
+  | 'admin_stats_view'
+  | 'admin_page_view'
+  | 'user_management'
+  | 'user_suspend'
+  | 'user_unsuspend'
+  | 'user_password_reset'
+  | 'user_profile_update'
+  | 'user_role_change'
+  | 'user_quota_reset'
+  | 'user_package_change'
+  | 'user_subscription_extend'
+  | 'admin_settings'
+  | 'site_settings_update'
+  | 'site_settings_view'
+  | 'payment_gateway_create'
+  | 'payment_gateway_update'
+  | 'payment_gateway_delete'
+  | 'payment_gateway_view'
+  | 'package_create'
+  | 'package_update'
+  | 'package_delete'
+  | 'package_view'
+  | 'order_management'
+  | 'order_status_update'
+  | 'admin_order_view'
+  | 'order_approve'
+  | 'order_reject'
+  | 'page_view'
+  | 'admin_panel_access'
+  | 'user_security_view'
+  | 'user_activity_view'
+  | 'keyword_add'
+  | 'keyword_delete'
+  | 'keyword_update'
+  | 'keyword_bulk_delete'
+  | 'keyword_tag_add'
+  | 'keyword_tag_remove'
+  | 'domain_add'
+  | 'domain_delete'
+  | 'domain_update'
+  | 'keyword_tracker_view'
+  | 'rank_history_view'
+  | 'error_occurred'
+  | 'security_violation'
+  | 'quota_exceeded'
+  | 'unauthorized_access'
+  | 'session_established'
+  | 'system_action'
+  | 'paddle_overlay_opened'
+  | 'checkout_error'
+  | (string & {}); // extensible — frontend and future events
+
+/** M-03: indb_security_audit_logs.event_type */
+export type SecurityAuditEventType = 'service_role_operation' | 'user_operation';
+
+/** M-04: indb_admin_activity_logs.action_type — mirrors ActivityEventTypes admin subset. */
+export type AdminActionType =
+  | 'admin_page_view'
+  | 'admin_dashboard_view'
+  | 'admin_stats_view'
+  | 'admin_order_view'
+  | 'order_status_update'
+  | 'order_approve'
+  | 'order_reject'
+  | 'package_create'
+  | 'package_update'
+  | 'payment_gateway_create'
+  | 'user_management'
+  | 'user_role_change'
+  | 'user_suspend'
+  | 'user_quota_reset'
+  | (string & {}); // extensible — includes dynamic `${settingsType}_settings_view` patterns
+
+/** M-04: indb_admin_activity_logs.target_type */
+export type AdminTargetType = 'order' | 'user' | (string & {});
+
+/** M-05: indb_site_integration.quota_reset_interval */
+export type QuotaResetInterval = 'daily' | 'monthly';
+
+/** M-06: indb_seranking_usage_logs.operation_type */
+export type SeRankingOperationType =
+  | 'quota_usage_tracking'
+  | 'quota_reset'
+  | 'usage_report_generation'
+  | 'api_request'
+  | 'connectivity_test'
+  | 'stale_keyword_lookup'
+  | 'keyword_data_update'
+  | 'job_enqueue'
+  | 'job_dequeue'
+  | 'job_lock'
+  | 'integration_config_lookup'
+  | 'keyword_enrichment_lookup'
+  | 'keyword_enrichment_update'
+  | 'smtp_config_lookup'
+  | 'quota_usage_history_lookup'
+  | 'keyword_export';
+
+/** L-01: indb_keyword_bank.keyword_intent */
+export type KeywordIntentType = 'commercial' | 'informational' | 'navigational' | 'transactional';
+
+/** L-02: indb_rank_keywords.search_engine */
+export type SearchEngineType = 'google' | 'bing' | 'yahoo';
+
 export type Database = {
   public: {
     Tables: {
@@ -337,7 +495,7 @@ export type Database = {
           competition: number | null;
           difficulty: number | null;
           history_trend: Json | null;
-          keyword_intent: string | null;
+          keyword_intent: KeywordIntentType | null;
           data_updated_at: string | null;
           created_at: string;
           updated_at: string;
@@ -353,7 +511,7 @@ export type Database = {
           competition?: number | null;
           difficulty?: number | null;
           history_trend?: Json | null;
-          keyword_intent?: string | null;
+          keyword_intent?: KeywordIntentType | null;
           data_updated_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -369,7 +527,7 @@ export type Database = {
           competition?: number | null;
           difficulty?: number | null;
           history_trend?: Json | null;
-          keyword_intent?: string | null;
+          keyword_intent?: KeywordIntentType | null;
           data_updated_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -469,7 +627,7 @@ export type Database = {
           domain: string | null;
           device: 'desktop' | 'mobile' | 'tablet' | null;
           country: string | null;
-          search_engine: string | null;
+          search_engine: SearchEngineType | null;
           target_url: string | null;
           tags: string[] | null;
           position: number | null;
@@ -488,7 +646,7 @@ export type Database = {
           domain?: string | null;
           device?: 'desktop' | 'mobile' | 'tablet' | null;
           country?: string | null;
-          search_engine?: string | null;
+          search_engine?: SearchEngineType | null;
           target_url?: string | null;
           tags?: string[] | null;
           position?: number | null;
@@ -513,7 +671,7 @@ export type Database = {
           created_at?: string;
           tags?: string[] | null;
           target_url?: string | null;
-          search_engine?: string | null;
+          search_engine?: SearchEngineType | null;
           is_active?: boolean;
           keyword_bank_id?: string | null;
           intelligence_updated_at?: string | null;
@@ -533,7 +691,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          type: string;
+          type: NotificationDashboardType;
           title: string;
           message: string | null;
           is_read: boolean;
@@ -546,7 +704,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
-          type: string;
+          type: NotificationDashboardType;
           title: string;
           message?: string | null;
           is_read?: boolean;
@@ -559,7 +717,7 @@ export type Database = {
         Update: {
           id?: string;
           user_id?: string;
-          type?: string;
+          type?: NotificationDashboardType;
           title?: string;
           message?: string | null;
           is_read?: boolean;
@@ -581,7 +739,7 @@ export type Database = {
           api_quota_limit: number;
           api_quota_used: number;
           quota_reset_date: string | null;
-          quota_reset_interval: string | null;
+          quota_reset_interval: QuotaResetInterval | null;
           is_active: boolean;
           rate_limits: Json | null;
           alert_settings: Json | null;
@@ -599,7 +757,7 @@ export type Database = {
           api_quota_limit?: number;
           api_quota_used?: number;
           quota_reset_date?: string | null;
-          quota_reset_interval?: string | null;
+          quota_reset_interval?: QuotaResetInterval | null;
           is_active?: boolean;
           rate_limits?: SiteIntegrationRateLimits | null;
           alert_settings?: SiteIntegrationAlertSettings | null;
@@ -617,10 +775,10 @@ export type Database = {
           api_quota_limit?: number;
           api_quota_used?: number;
           quota_reset_date?: string | null;
-          quota_reset_interval?: string | null;
+          quota_reset_interval?: QuotaResetInterval | null;
           is_active?: boolean;
-          rate_limits?: Json | null;
-          alert_settings?: Json | null;
+          rate_limits?: SiteIntegrationRateLimits | null;
+          alert_settings?: SiteIntegrationAlertSettings | null;
           last_health_check?: string | null;
           health_status?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
           created_at?: string;
@@ -632,9 +790,9 @@ export type Database = {
         Row: {
           id: string;
           admin_id: string;
-          action_type: string;
+          action_type: AdminActionType;
           action_description: string | null;
-          target_type: string | null;
+          target_type: AdminTargetType | null;
           target_id: string | null;
           metadata: Json | null;
           ip_address: string | null;
@@ -644,9 +802,9 @@ export type Database = {
         Insert: {
           id?: string;
           admin_id: string;
-          action_type: string;
+          action_type: AdminActionType;
           action_description?: string | null;
-          target_type?: string | null;
+          target_type?: AdminTargetType | null;
           target_id?: string | null;
           metadata?: Json | null;
           ip_address?: string | null;
@@ -656,9 +814,9 @@ export type Database = {
         Update: {
           id?: string;
           admin_id?: string;
-          action_type?: string;
+          action_type?: AdminActionType;
           action_description?: string | null;
-          target_type?: string | null;
+          target_type?: AdminTargetType | null;
           target_id?: string | null;
           metadata?: Json | null;
           ip_address?: string | null;
@@ -707,7 +865,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string | null;
-          event_type: string;
+          event_type: SecurityActivityEventType;
           action_description: string | null;
           target_type: string | null;
           target_id: string | null;
@@ -725,7 +883,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id?: string | null;
-          event_type: string;
+          event_type: SecurityActivityEventType;
           action_description?: string | null;
           target_type?: string | null;
           target_id?: string | null;
@@ -743,7 +901,7 @@ export type Database = {
         Update: {
           id?: string;
           user_id?: string | null;
-          event_type?: string;
+          event_type?: SecurityActivityEventType;
           action_description?: string | null;
           target_type?: string | null;
           target_id?: string | null;
@@ -764,7 +922,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string | null;
-          event_type: string;
+          event_type: SecurityAuditEventType;
           description: string;
           success: boolean | null;
           metadata: Json | null;
@@ -773,7 +931,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id?: string | null;
-          event_type: string;
+          event_type: SecurityAuditEventType;
           description: string;
           success?: boolean | null;
           metadata?: Json | null;
@@ -782,7 +940,7 @@ export type Database = {
         Update: {
           id?: string;
           user_id?: string | null;
-          event_type?: string;
+          event_type?: SecurityAuditEventType;
           description?: string;
           success?: boolean | null;
           metadata?: Json | null;
@@ -794,7 +952,7 @@ export type Database = {
         Row: {
           id: string;
           integration_id: string;
-          operation_type: string;
+          operation_type: SeRankingOperationType;
           request_count: number;
           successful_requests: number;
           failed_requests: number;
@@ -807,7 +965,7 @@ export type Database = {
         Insert: {
           id?: string;
           integration_id: string;
-          operation_type: string;
+          operation_type: SeRankingOperationType;
           request_count?: number;
           successful_requests?: number;
           failed_requests?: number;
@@ -820,7 +978,7 @@ export type Database = {
         Update: {
           id?: string;
           integration_id?: string;
-          operation_type?: string;
+          operation_type?: SeRankingOperationType;
           request_count?: number;
           successful_requests?: number;
           failed_requests?: number;

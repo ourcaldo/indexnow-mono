@@ -17,13 +17,13 @@ interface LogContext extends Record<string, Json | Error | object | undefined> {
 
 // Logger transport interface — allows pino or other structured loggers to receive shared package logs
 export interface LoggerTransport {
-  debug(obj: object, msg: string): void
-  info(obj: object, msg: string): void
-  warn(obj: object, msg: string): void
-  error(obj: object, msg: string): void
+  debug(obj: object, msg: string): void;
+  info(obj: object, msg: string): void;
+  warn(obj: object, msg: string): void;
+  error(obj: object, msg: string): void;
 }
 
-let _transport: LoggerTransport | null = null
+let _transport: LoggerTransport | null = null;
 
 /**
  * Set an external logger transport (e.g., pino) to receive all shared package log calls.
@@ -31,7 +31,7 @@ let _transport: LoggerTransport | null = null
  * from @indexnow/shared packages will route through the transport instead of console.
  */
 export function setLoggerTransport(transport: LoggerTransport): void {
-  _transport = transport
+  _transport = transport;
 }
 
 class Logger {
@@ -100,22 +100,31 @@ import { ErrorSeverity, ErrorType } from '../types/common/ErrorTypes';
 
 export const ErrorHandlingService = {
   handle: (error: Error | string | object | null | undefined, context?: LogContext) => {
-    const message = error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : 'An unexpected error occurred';
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : 'An unexpected error occurred';
 
     // Safely convert non-Error objects to Json for logging
-    const safeErrorMetadata = error instanceof Error
-      ? { message: error.message, stack: error.stack }
-      : typeof error === 'object' && error !== null
-        ? JSON.parse(JSON.stringify(error)) // Deep copy to ensure serializability
-        : { rawError: String(error) };
+    let safeErrorMetadata: Record<string, unknown>;
+    if (error instanceof Error) {
+      safeErrorMetadata = { message: error.message, stack: error.stack };
+    } else if (typeof error === 'object' && error !== null) {
+      // L-08: guard against circular references / non-serializable values
+      try {
+        safeErrorMetadata = JSON.parse(JSON.stringify(error));
+      } catch {
+        safeErrorMetadata = { rawError: String(error) };
+      }
+    } else {
+      safeErrorMetadata = { rawError: String(error) };
+    }
 
     const logContext: LogContext = {
       ...(context || {}),
-      error: safeErrorMetadata
+      error: safeErrorMetadata,
     };
 
     logger.error(logContext, message);
@@ -137,7 +146,7 @@ export const ErrorHandlingService = {
     (error as Error & { type?: ErrorType; severity?: ErrorSeverity }).type = config.type;
     (error as Error & { type?: ErrorType; severity?: ErrorSeverity }).severity = config.severity;
     return error;
-  }
+  },
 };
 
 export const logger = new Logger();

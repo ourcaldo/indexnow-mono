@@ -1,33 +1,47 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
-import { NextRequest } from 'next/server'
-import { z } from 'zod'
-import { adminApiWrapper, createStandardError, formatError } from '@/lib/core/api-response-middleware'
-import { formatSuccess } from '@/lib/core/api-response-formatter'
-import { ActivityLogger } from '@/lib/monitoring/activity-logger'
-import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared'
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import {
+  adminApiWrapper,
+  createStandardError,
+  formatError,
+} from '@/lib/core/api-response-middleware';
+import { formatSuccess } from '@/lib/core/api-response-formatter';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 
-const changePackageSchema = z.object({
-  packageId: z.string().uuid('Invalid package ID format'),
-  reason: z.string().max(500).optional(),
-  effectiveDate: z.string().datetime({ message: 'Invalid date format' }).optional(),
-  notifyUser: z.boolean().optional().default(false),
-}).strict();
+const changePackageSchema = z
+  .object({
+    packageId: z.string().uuid('Invalid package ID format'),
+    reason: z.string().max(500).optional(),
+    effectiveDate: z.string().datetime({ message: 'Invalid date format' }).optional(),
+    notifyUser: z.boolean().optional().default(false),
+  })
+  .strict();
 
-export const POST = adminApiWrapper(async (
-  request: NextRequest,
-  adminUser,
-  context
-) => {
-  const { id: userId } = await context.params as Record<string, string>
-  const body = await request.json()
+export const POST = adminApiWrapper(async (request: NextRequest, adminUser, context) => {
+  const { id: userId } = (await context.params) as Record<string, string>;
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return formatError(
+      await createStandardError(ErrorType.VALIDATION, 'Invalid JSON body', {
+        statusCode: 400,
+        severity: ErrorSeverity.LOW,
+      })
+    );
+  }
 
   const validation = changePackageSchema.safeParse(body);
   if (!validation.success) {
-    return formatError(await createStandardError(
-      ErrorType.VALIDATION,
-      validation.error.issues[0]?.message || 'Invalid request body',
-      { statusCode: 400, severity: ErrorSeverity.LOW }
-    ))
+    return formatError(
+      await createStandardError(
+        ErrorType.VALIDATION,
+        validation.error.issues[0]?.message || 'Invalid request body',
+        { statusCode: 400, severity: ErrorSeverity.LOW }
+      )
+    );
   }
 
   const { packageId, reason, effectiveDate, notifyUser } = validation.data;
@@ -41,16 +55,16 @@ export const POST = adminApiWrapper(async (
       metadata: {
         targetUserId: userId,
         packageId: packageId,
-        endpoint: '/api/v1/admin/users/[id]/change-package'
+        endpoint: '/api/v1/admin/users/[id]/change-package',
       },
       ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
+      userAgent: request.headers.get('user-agent') || undefined,
     },
     {
       table: 'indb_payment_packages',
       operationType: 'select',
       columns: ['id', 'name', 'slug'],
-      whereConditions: { id: packageId, is_active: true }
+      whereConditions: { id: packageId, is_active: true },
     },
     async () => {
       const { data, error } = await supabaseAdmin
@@ -59,19 +73,21 @@ export const POST = adminApiWrapper(async (
         .eq('id', packageId)
         .eq('is_active', true)
         .is('deleted_at', null)
-        .single()
-      return { data, error }
+        .single();
+      return { data, error };
     }
-  )
+  );
 
-  const { data: packageData, error: packageError } = packageResult
+  const { data: packageData, error: packageError } = packageResult;
 
   if (packageError || !packageData) {
-    return formatError(await createStandardError(
-      ErrorType.VALIDATION,
-      'Invalid package selected',
-      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { packageId } }
-    ))
+    return formatError(
+      await createStandardError(ErrorType.VALIDATION, 'Invalid package selected', {
+        statusCode: 400,
+        severity: ErrorSeverity.LOW,
+        metadata: { packageId },
+      })
+    );
   }
 
   const userResult = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -83,52 +99,56 @@ export const POST = adminApiWrapper(async (
       metadata: {
         targetUserId: userId,
         newPackageId: packageId,
-        endpoint: '/api/v1/admin/users/[id]/change-package'
+        endpoint: '/api/v1/admin/users/[id]/change-package',
       },
       ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
+      userAgent: request.headers.get('user-agent') || undefined,
     },
     {
       table: 'indb_auth_user_profiles',
       operationType: 'select',
       columns: ['full_name', 'package_id', 'package'],
-      whereConditions: { user_id: userId }
+      whereConditions: { user_id: userId },
     },
     async () => {
       const { data, error } = await supabaseAdmin
         .from('indb_auth_user_profiles')
         .select('full_name, package_id, package:indb_payment_packages(name)')
         .eq('user_id', userId)
-        .single()
+        .single();
 
       return {
         data: data as {
           full_name: string | null;
           package_id: string | null;
-          package: { name: string } | Array<{ name: string }> | null
+          package: { name: string } | Array<{ name: string }> | null;
         } | null,
-        error
-      }
+        error,
+      };
     }
-  )
+  );
 
-  const { data: currentUser, error: userError } = userResult
+  const { data: currentUser, error: userError } = userResult;
 
   if (userError || !currentUser) {
-    return formatError(await createStandardError(
-      ErrorType.NOT_FOUND,
-      'User not found',
-      { statusCode: 404, severity: ErrorSeverity.MEDIUM, metadata: { userId } }
-    ))
+    return formatError(
+      await createStandardError(ErrorType.NOT_FOUND, 'User not found', {
+        statusCode: 404,
+        severity: ErrorSeverity.MEDIUM,
+        metadata: { userId },
+      })
+    );
   }
 
   // Guard: prevent assigning the same package the user already has
   if (currentUser.package_id === packageId) {
-    return formatError(await createStandardError(
-      ErrorType.VALIDATION,
-      'User already has this package assigned',
-      { statusCode: 400, severity: ErrorSeverity.LOW, metadata: { userId, packageId } }
-    ))
+    return formatError(
+      await createStandardError(ErrorType.VALIDATION, 'User already has this package assigned', {
+        statusCode: 400,
+        severity: ErrorSeverity.LOW,
+        metadata: { userId, packageId },
+      })
+    );
   }
 
   const updateResult = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -145,24 +165,34 @@ export const POST = adminApiWrapper(async (
         newPackageName: packageData.name,
         newPackageSlug: packageData.slug,
         resetQuota: true,
-        endpoint: '/api/v1/admin/users/[id]/change-package'
+        endpoint: '/api/v1/admin/users/[id]/change-package',
       },
       ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
+      userAgent: request.headers.get('user-agent') || undefined,
     },
     {
       table: 'indb_auth_user_profiles',
       operationType: 'update',
-      columns: ['package_id', 'subscribed_at', 'expires_at', 'daily_quota_used', 'daily_quota_reset_date', 'updated_at'],
+      columns: [
+        'package_id',
+        'subscribed_at',
+        'expires_at',
+        'daily_quota_used',
+        'daily_quota_reset_date',
+        'updated_at',
+      ],
       whereConditions: { user_id: userId },
       data: {
         package_id: packageId,
         subscribed_at: new Date().toISOString(),
-        expires_at: packageData.slug === 'free' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        expires_at:
+          packageData.slug === 'free'
+            ? null
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         daily_quota_used: 0,
         daily_quota_reset_date: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString()
-      }
+        updated_at: new Date().toISOString(),
+      },
     },
     async () => {
       const { error } = await supabaseAdmin
@@ -170,28 +200,34 @@ export const POST = adminApiWrapper(async (
         .update({
           package_id: packageId,
           subscribed_at: new Date().toISOString(),
-          expires_at: packageData.slug === 'free' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          expires_at:
+            packageData.slug === 'free'
+              ? null
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           daily_quota_used: 0,
           daily_quota_reset_date: new Date().toISOString().split('T')[0],
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('user_id', userId)
-      return { error }
+        .eq('user_id', userId);
+      return { error };
     }
-  )
+  );
 
-  const { error: updateError } = updateResult
+  const { error: updateError } = updateResult;
 
   if (updateError) {
-    return formatError(await createStandardError(
-      ErrorType.DATABASE,
-      'Failed to change package',
-      { statusCode: 500, severity: ErrorSeverity.HIGH, metadata: { userId, packageId } }
-    ))
+    return formatError(
+      await createStandardError(ErrorType.DATABASE, 'Failed to change package', {
+        statusCode: 500,
+        severity: ErrorSeverity.HIGH,
+        metadata: { userId, packageId },
+      })
+    );
   }
 
-  const oldPackageName = Array.isArray(currentUser.package) ?
-    currentUser.package[0]?.name : currentUser.package?.name || 'No Package'
+  const oldPackageName = Array.isArray(currentUser.package)
+    ? currentUser.package[0]?.name
+    : currentUser.package?.name || 'No Package';
 
   await ActivityLogger.logAdminAction(
     adminUser.id,
@@ -205,13 +241,16 @@ export const POST = adminApiWrapper(async (
       newPackageId: packageId,
       oldPackageName,
       newPackageName: packageData.name,
-      userFullName: currentUser.full_name
+      userFullName: currentUser.full_name,
     }
-  )
+  );
 
-  return formatSuccess({
-    message: `Package successfully changed to ${packageData.name}`,
-    package: packageData
-  }, undefined, 201)
-})
-
+  return formatSuccess(
+    {
+      message: `Package successfully changed to ${packageData.name}`,
+      package: packageData,
+    },
+    undefined,
+    201
+  );
+});

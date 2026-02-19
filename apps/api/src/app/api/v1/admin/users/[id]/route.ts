@@ -174,7 +174,17 @@ const updateUserSchema = z
 
 export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, context) => {
   const { id: userId } = (await context.params) as Record<string, string>;
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return formatError(
+      await createStandardError(ErrorType.VALIDATION, 'Invalid JSON body', {
+        statusCode: 400,
+        severity: ErrorSeverity.LOW,
+      })
+    );
+  }
   const parseResult = updateUserSchema.safeParse(body);
   if (!parseResult.success) {
     return formatError(

@@ -5,9 +5,12 @@
  *
  * For server-only code (supabaseAdmin, createServerClient, etc.),
  * import from '@indexnow/database' instead.
+ *
+ * M-14: Types are re-exported from @indexnow/shared (single source of truth)
+ * to avoid duplicating declarations that already exist in index.ts.
  */
 
-// Types from shared package
+// Types from shared package (same source as index.ts — no duplication)
 import type { Database } from '@indexnow/shared';
 
 export type {
@@ -30,7 +33,7 @@ export type {
   SiteIntegrationAlertSettings,
 } from '@indexnow/shared';
 
-// Derived types
+// Derived types — re-exported from index.ts via shared Database type
 export type InsertUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Insert'];
 export type UpdateUserProfile = Database['public']['Tables']['indb_auth_user_profiles']['Update'];
 export type InsertUserSettings = Database['public']['Tables']['indb_auth_user_settings']['Insert'];

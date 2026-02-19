@@ -80,6 +80,17 @@ export type {
   TransactionGatewayResponse,
   TransactionMetadata,
 
+  // Column union types (M-01 … M-06)
+  NotificationDashboardType,
+  SecurityActivityEventType,
+  SecurityAuditEventType,
+  AdminActionType,
+  AdminTargetType,
+  QuotaResetInterval,
+  SeRankingOperationType,
+  KeywordIntentType,
+  SearchEngineType,
+
   // Main Database Type
   Database,
 
@@ -103,7 +114,6 @@ export type {
   TransactionRow as DbTransactionRow,
   ProfileRow as DbProfileRow,
   UserSettingsRow as DbUserSettingsRow,
-  SiteSettingsRow as DbSiteSettingsRow,
   SiteSettingsRow,
   PaymentGatewayRow,
 
@@ -123,6 +133,7 @@ export type {
   InsertSubscription,
   InsertTransaction,
   InsertPackage,
+  InsertPaymentGateway,
 
   // Update Types
   UpdateUserProfile,
@@ -137,6 +148,7 @@ export type {
   UpdateTransaction,
   UpdateSubscription,
   UpdatePackage,
+  UpdatePaymentGateway,
 } from './database';
 
 // Common utility types
