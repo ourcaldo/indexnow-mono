@@ -31,7 +31,8 @@ interface TransactionRow {
   user_id: string;
   package_id: string | null;
   gateway_id: string | null;
-  transaction_status: string;
+  status: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+  transaction_status: string | null;
   amount: number;
   currency: string;
   payment_method: string | null;
@@ -135,10 +136,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   }
 
   // Validate current status - can't update if already completed or failed
-  if (
-    currentTransaction.transaction_status === 'completed' ||
-    currentTransaction.transaction_status === 'failed'
-  ) {
+  if (currentTransaction.status === 'completed' || currentTransaction.status === 'failed') {
     return formatError(
       await createStandardError(
         ErrorType.VALIDATION,
@@ -146,7 +144,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
         {
           statusCode: 400,
           severity: ErrorSeverity.LOW,
-          metadata: { orderId, currentStatus: currentTransaction.transaction_status },
+          metadata: { orderId, currentStatus: currentTransaction.status },
         }
       )
     );
@@ -195,7 +193,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   // Merge RPC result (DB column names) with pre-fetched join data
   const updatedTransaction: TransactionRow = {
     ...currentTransaction,
-    transaction_status: rpcData.status as string,
+    status: rpcData.status as TransactionRow['status'],
     verified_by: (rpcData.verified_by as string) ?? null,
     verified_at: (rpcData.verified_at as string) ?? null,
     processed_at: (rpcData.processed_at as string) ?? null,
@@ -284,7 +282,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
     package_id: updatedTransaction.package_id || '',
     gateway_id: updatedTransaction.gateway_id || '',
     transaction_type: 'payment', // Default for now, could be derived from package or metadata
-    transaction_status: updatedTransaction.transaction_status,
+    transaction_status: updatedTransaction.status,
     amount: updatedTransaction.amount,
     currency: updatedTransaction.currency,
     payment_method: updatedTransaction.payment_method,
@@ -344,10 +342,10 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
       adminUser.id,
       'order_status_update',
       orderId,
-      `Updated order ${currentTransaction.id} status from ${currentTransaction.transaction_status} to ${status}`,
+      `Updated order ${currentTransaction.id} status from ${currentTransaction.status} to ${status}`,
       request,
       {
-        previousStatus: currentTransaction.transaction_status,
+        previousStatus: currentTransaction.status,
         newStatus: status,
         orderId,
         customerId: currentTransaction.user_id,

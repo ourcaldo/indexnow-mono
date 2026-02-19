@@ -151,8 +151,8 @@ export const POST = publicApiWrapper<any>(async (request: NextRequest, _context:
     loginNotificationService
       .sendLoginNotification({
         userId: user.id,
-        userEmail: user.email!,
-        userName: user.user_metadata?.full_name || user.email!.split('@')[0],
+        userEmail: user.email ?? 'unknown@missing-email',
+        userName: user.user_metadata?.full_name || (user.email ?? 'user').split('@')[0],
         ipAddress: requestInfo.ipAddress || 'Unknown',
         userAgent: requestInfo.userAgent || 'Unknown',
         deviceInfo: requestInfo.deviceInfo,

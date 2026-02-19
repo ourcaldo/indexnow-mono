@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
 import { createTokenClient, type Database } from '@indexnow/database';
 import type { SupabaseClient } from '@indexnow/database';
-import { 
-  ErrorHandlingService, 
-  ErrorType, 
-  ErrorSeverity, 
-  CommonErrors, 
-  logger, 
-  isTransientError 
+import {
+  ErrorHandlingService,
+  ErrorType,
+  ErrorSeverity,
+  CommonErrors,
+  logger,
+  isTransientError,
 } from '../monitoring/error-handling';
 import { formatSuccess, formatError } from './api-response-formatter';
 import { StructuredError } from '@indexnow/shared';
@@ -31,6 +31,11 @@ export interface AuthenticatedRequest {
   supabase: SupabaseClient<Database>;
 }
 
+/** Safely extract email from Supabase user (email is string | undefined) */
+function safeUserEmail(user: { email?: string | null }): string {
+  return user.email ?? 'unknown@missing-email';
+}
+
 /**
  * Enhanced authentication middleware with comprehensive error handling
  */
@@ -38,7 +43,9 @@ export async function authenticateRequest(
   request: NextRequest,
   endpoint?: string,
   method?: string
-): Promise<{ success: true; data: AuthenticatedRequest } | { success: false; error: StructuredError }> {
+): Promise<
+  { success: true; data: AuthenticatedRequest } | { success: false; error: StructuredError }
+> {
   try {
     // Get auth token from header
     const authHeader = request.headers.get('authorization');
@@ -48,58 +55,70 @@ export async function authenticateRequest(
     }
 
     const token = authHeader.substring(7);
-    
+
     // Create user-authenticated Supabase client
     const supabase = createTokenClient(token);
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError) {
       if (isTransientError(authError)) {
-        logger.warn({
-          endpoint,
-          method,
-          errorMessage: authError.message,
-          errorCode: authError.code,
-          errorStatus: authError.status
-        }, 'Transient error during authentication - service/network issue detected');
-        
+        logger.warn(
+          {
+            endpoint,
+            method,
+            errorMessage: authError.message,
+            errorCode: authError.code,
+            errorStatus: authError.status,
+          },
+          'Transient error during authentication - service/network issue detected'
+        );
+
         const structuredError = await CommonErrors.SERVICE_UNAVAILABLE(
           'Supabase Auth',
           authError.message
         );
         return { success: false, error: structuredError };
       }
-      
-      logger.info({
-        endpoint,
-        method,
-        errorMessage: authError.message,
-        errorCode: authError.code
-      }, 'Authentication failed - invalid or expired token');
-      
+
+      logger.info(
+        {
+          endpoint,
+          method,
+          errorMessage: authError.message,
+          errorCode: authError.code,
+        },
+        'Authentication failed - invalid or expired token'
+      );
+
       throw new Error('Invalid authentication token');
     }
-    
+
     if (!user) {
       logger.info({ endpoint, method }, 'Authentication failed - no user found');
       throw new Error('Invalid authentication token');
     }
 
-    logger.debug({
-      userId: user.id,
-      email: user.email,
-      endpoint,
-      method
-    }, 'User authenticated successfully');
-
-    return { 
-      success: true, 
-      data: { 
-        user: { id: user.id, email: user.email! },
+    logger.debug(
+      {
         userId: user.id,
-        supabase: supabase as unknown as SupabaseClient<Database>
-      } 
+        email: user.email,
+        endpoint,
+        method,
+      },
+      'User authenticated successfully'
+    );
+
+    return {
+      success: true,
+      data: {
+        user: { id: user.id, email: safeUserEmail(user) },
+        userId: user.id,
+        supabase: supabase as unknown as SupabaseClient<Database>,
+      },
     };
   } catch (error) {
     const structuredError = await ErrorHandlingService.createError(
@@ -110,7 +129,7 @@ export async function authenticateRequest(
         endpoint,
         method,
         statusCode: 401,
-        userMessageKey: 'default'
+        userMessageKey: 'default',
       }
     );
     return { success: false, error: structuredError };
@@ -122,19 +141,29 @@ export async function authenticateRequest(
  */
 export async function validateRequest<T = unknown>(
   request: NextRequest,
-  schema: { safeParse: (data: unknown) => { success: boolean; data?: T; error?: { errors: { path: (string | number)[]; message: string }[] } } },
+  schema: {
+    safeParse: (data: unknown) => {
+      success: boolean;
+      data?: T;
+      error?: { errors: { path: (string | number)[]; message: string }[] };
+    };
+  },
   userId?: string,
   endpoint?: string
 ): Promise<{ success: true; data: T } | { success: false; error: unknown }> {
   try {
     const body = await request.json();
     const result = schema.safeParse(body);
-    
+
     if (!result.success) {
-      const validationDetails = result.error?.errors
-        ?.map((err: { path: (string | number)[]; message: string }) => `${err.path.join('.')}: ${err.message}`)
-        ?.join(', ') ?? 'Unknown validation error';
-      
+      const validationDetails =
+        result.error?.errors
+          ?.map(
+            (err: { path: (string | number)[]; message: string }) =>
+              `${err.path.join('.')}: ${err.message}`
+          )
+          ?.join(', ') ?? 'Unknown validation error';
+
       const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
         `Validation failed: ${validationDetails}`,
@@ -144,7 +173,7 @@ export async function validateRequest<T = unknown>(
           endpoint,
           statusCode: 400,
           userMessageKey: 'invalid_format',
-          metadata: { validationErrors: result.error?.errors }
+          metadata: { validationErrors: result.error?.errors },
         }
       );
       return { success: false, error };
@@ -160,7 +189,7 @@ export async function validateRequest<T = unknown>(
         userId,
         endpoint,
         statusCode: 400,
-        userMessageKey: 'invalid_format'
+        userMessageKey: 'invalid_format',
       }
     );
     return { success: false, error: structuredError };
@@ -189,7 +218,7 @@ export async function withDatabaseErrorHandling<T>(
         endpoint,
         statusCode: 500,
         userMessageKey: 'query_failed',
-        metadata: { operation: operationName }
+        metadata: { operation: operationName },
       }
     );
     return { success: false, error: structuredError };
@@ -202,7 +231,7 @@ export async function withDatabaseErrorHandling<T>(
 export function createApiResponse(data: unknown, status: number = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
