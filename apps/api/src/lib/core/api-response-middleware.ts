@@ -99,7 +99,7 @@ export function adminApiWrapper<T = unknown>(
       // Verify super admin authentication
       let adminUser: AdminUser | null = null;
       try {
-        // @ts-expect-error — NextRequest resolved from different pnpm paths
+        // @ts-expect-error — NextRequest from @indexnow/auth resolves to a different pnpm physical path. Fix: pnpm overrides or shared next singleton.
         adminUser = await requireServerSuperAdminAuth(request);
       } catch (error) {
         // If auth fails, requireServerSuperAdminAuth throws.

@@ -175,9 +175,7 @@ export function useDashboardPageData() {
         description: `Tracking ${domainKeywords.length} keywords`,
         timestamp: domainActivityTime.toISOString(),
         metadata: {
-          domain:
-            ((domains.find((d) => d.id === selectedDomainId) as unknown as Record<string, unknown>)
-              ?.display_name as string) || 'Domain',
+          domain: domains.find((d) => d.id === selectedDomainId)?.name || 'Domain',
         },
       });
     }

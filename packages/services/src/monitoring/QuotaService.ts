@@ -1,15 +1,14 @@
 /**
- * QuotaService — Client-side quota management utility.
+ * QuotaService — Server-side quota management utility.
  *
- * NOTE (#43): This service uses `supabaseBrowser` (client-side anon-key client).
- * It is intentionally placed in the `services` package as an internal utility
- * consumed by `RankTrackingService`. It is NOT exported from the package barrel.
+ * NOTE (#43): This service uses `supabaseAdmin` (service-role key client).
+ * It is consumed exclusively by `RankTrackingService` which runs in
+ * server-side API routes. It is NOT exported from the package barrel.
  *
- * For server-side quota operations, use the quota hooks in `@indexnow/ui`
- * (useQuotaValidation, useGlobalQuotaManager) or direct DB queries via
- * service-role client in API routes.
+ * For client-side quota checks, use the quota hooks in `@indexnow/ui`
+ * (useQuotaValidation, useGlobalQuotaManager).
  */
-import { typedSupabaseBrowser as supabaseBrowser } from '@indexnow/database/client';
+import { typedSupabaseAdmin as supabaseBrowser } from '@indexnow/database';
 
 import { logger } from '@indexnow/shared';
 

@@ -586,7 +586,7 @@ export type Database = {
           rate_limits: Json | null;
           alert_settings: Json | null;
           last_health_check: string | null;
-          health_status: string;
+          health_status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
           created_at: string;
           updated_at: string;
         };
@@ -604,7 +604,7 @@ export type Database = {
           rate_limits?: SiteIntegrationRateLimits | null;
           alert_settings?: SiteIntegrationAlertSettings | null;
           last_health_check?: string | null;
-          health_status?: string;
+          health_status?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
           created_at?: string;
           updated_at?: string;
         };
@@ -622,7 +622,7 @@ export type Database = {
           rate_limits?: Json | null;
           alert_settings?: Json | null;
           last_health_check?: string | null;
-          health_status?: string;
+          health_status?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
           created_at?: string;
           updated_at?: string;
         };
@@ -952,7 +952,9 @@ export type Database = {
           amount: number;
           currency: string;
           status: 'pending' | 'proof_uploaded' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+          /** Gateway-specific status string (e.g. Paddle/Stripe raw status). Unconstrained VARCHAR(100) — no SQL CHECK. */
           transaction_status: string | null;
+          /** Gateway-specific payment state (e.g. 'paid', 'refunded'). Unconstrained VARCHAR(100) — no SQL CHECK. */
           payment_status: string | null;
           error_message: string | null;
           transaction_id: string | null;

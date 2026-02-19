@@ -213,8 +213,20 @@ export const createAppConfig = (): AppConfigType => {
         '[AppConfig] Build-time config validation failed (non-fatal during build):',
         errorMsg
       );
-      // Return a minimal config stub for build-time usage
-      return rawConfig as unknown as ReturnType<typeof ConfigSchema.parse>;
+      // Return the raw config for build-time usage only. This is NOT validated —
+      // consumers must never rely on config values for security decisions at build time.
+      // The Proxy traps log a warning when deeply-nested properties are accessed,
+      // making silent undefined-as-string bugs more visible.
+      const buildStub = rawConfig as Record<string, unknown>;
+      return new Proxy(buildStub, {
+        get(target, prop) {
+          const value = target[prop as string];
+          if (value === undefined && typeof prop === 'string' && prop !== 'then') {
+            console.warn(`[AppConfig] Build-time access to missing config key: ${prop}`);
+          }
+          return value;
+        },
+      }) as unknown as ReturnType<typeof ConfigSchema.parse>;
     }
     if (typeof window === 'undefined') {
       console.error(errorMsg);

@@ -27,7 +27,7 @@ const LOGIN_RATE_LIMIT = {
  * POST /api/v1/auth/login
  * Handles user authentication via Supabase and logs activity
  */
-export const POST = publicApiWrapper<any>(async (request: NextRequest, _context: RouteContext) => {
+export const POST = publicApiWrapper(async (request: NextRequest, _context: RouteContext) => {
   const endpoint = '/api/v1/auth/login';
   const method = 'POST';
 

@@ -189,7 +189,10 @@ async function redisIncrement(key: string, config: RateLimitConfig): Promise<voi
       return;
     }
 
-    const entry: { count: number; resetTime: number; blocked?: boolean } = JSON.parse(raw!);
+    // raw is guaranteed non-null here because needsReset handled the null/expired cases above
+    const entry: { count: number; resetTime: number; blocked?: boolean } = JSON.parse(
+      raw as string
+    );
     entry.count++;
 
     // If exceeded and block duration specified, block for extended period

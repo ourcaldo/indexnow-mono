@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   // Compose and execute middlewares
   const composed = composeMiddleware(requestLogger, corsMiddleware, securityHeaders, apiRateLimit);
 
-  // @ts-expect-error — NextResponse resolved from different pnpm paths
+  // @ts-expect-error — NextResponse from @indexnow/api-middleware resolves to a different pnpm physical path than apps/api's next. Fix: align pnpm overrides or use a shared next singleton.
   return (await composed(context, async () => {
     return NextResponse.next();
   })) as unknown as NextResponse;

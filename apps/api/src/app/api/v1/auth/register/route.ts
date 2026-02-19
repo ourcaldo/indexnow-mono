@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { supabase, SecureServiceRoleHelpers } from '@indexnow/database';
+import { createAnonServerClient, SecureServiceRoleHelpers } from '@indexnow/database';
 import { registerSchema, ErrorType, ErrorSeverity, getClientIP, sleep } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
@@ -43,6 +43,9 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     }
 
     const { name, email, password, phoneNumber, country } = validation.data;
+
+    // Initialize server-side anon client (no browser localStorage dependency)
+    const supabase = createAnonServerClient();
 
     const { data, error } = await supabase.auth.signUp({
       email,

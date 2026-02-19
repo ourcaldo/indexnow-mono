@@ -18,7 +18,7 @@ interface SystemStatsResult {
 export const GET = publicApiWrapper(async (request: NextRequest) => {
   try {
     // Require super admin authentication
-    // @ts-expect-error — NextRequest resolved from different pnpm paths
+    // @ts-expect-error — NextRequest from @indexnow/auth resolves to a different pnpm physical path. Fix: pnpm overrides or shared next singleton.
     await requireServerSuperAdminAuth(request);
 
     // Get system statistics using secure admin operation

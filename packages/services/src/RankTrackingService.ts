@@ -1,10 +1,17 @@
-import { typedSupabaseBrowser } from '@indexnow/database/client';
-import { type RankTrackingDomain, type Database, logger, ErrorHandlingService, ErrorType, ErrorSeverity } from '@indexnow/shared';
-import type { SupabaseClient } from '@indexnow/database/client'
+import { typedSupabaseAdmin } from '@indexnow/database';
+import {
+  type RankTrackingDomain,
+  type Database,
+  logger,
+  ErrorHandlingService,
+  ErrorType,
+  ErrorSeverity,
+} from '@indexnow/shared';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { QuotaService } from './monitoring/QuotaService';
 
-// Use typed client that preserves the Database generic through the re-export chain
-const supabase = typedSupabaseBrowser;
+// Use service-role admin client — this service is only consumed by server-side API routes
+const supabase = typedSupabaseAdmin;
 
 export class RankTrackingService {
   /**
@@ -12,15 +19,18 @@ export class RankTrackingService {
    */
   async getUserDomains(userId: string): Promise<RankTrackingDomain[]> {
     const { data, error } = await supabase.rpc('get_user_domain_stats', {
-      target_user_id: userId
+      target_user_id: userId,
     });
 
     if (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error fetching user domains');
+      logger.error(
+        { error: error instanceof Error ? error : undefined },
+        'Error fetching user domains'
+      );
       throw error;
     }
 
-    return (data || []).map(item => ({
+    return (data || []).map((item) => ({
       id: item.domain,
       userId: userId,
       domain: item.domain,
@@ -28,7 +38,7 @@ export class RankTrackingService {
       isActive: true,
       keywordCount: item.keyword_count,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     }));
   }
 
@@ -36,18 +46,25 @@ export class RankTrackingService {
    * Create a new keyword for tracking
    * Enforces Quota Consumption
    */
-  async createKeyword(userId: string, keywordData: {
-    keyword: string;
-    domain: string;
-    country: string;
-    device?: 'desktop' | 'mobile';
-    targetUrl?: string;
-    tags?: string[];
-  }): Promise<Record<string, unknown>> {
+  async createKeyword(
+    userId: string,
+    keywordData: {
+      keyword: string;
+      domain: string;
+      country: string;
+      device?: 'desktop' | 'mobile';
+      targetUrl?: string;
+      tags?: string[];
+    }
+  ): Promise<Record<string, unknown>> {
     // 1. Check & Consume Quota
     const quotaConsumed = await QuotaService.consumeQuota(userId, 1);
     if (!quotaConsumed) {
-      throw ErrorHandlingService.createError({ message: 'Insufficient quota to track new keyword', type: ErrorType.VALIDATION, severity: ErrorSeverity.MEDIUM });
+      throw ErrorHandlingService.createError({
+        message: 'Insufficient quota to track new keyword',
+        type: ErrorType.VALIDATION,
+        severity: ErrorSeverity.MEDIUM,
+      });
     }
 
     const data = {
@@ -68,8 +85,15 @@ export class RankTrackingService {
       .single();
 
     if (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to create keyword');
-      throw ErrorHandlingService.createError({ message: `Failed to create keyword: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      logger.error(
+        { error: error instanceof Error ? error : undefined },
+        'Failed to create keyword'
+      );
+      throw ErrorHandlingService.createError({
+        message: `Failed to create keyword: ${error.message}`,
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return keyword;
@@ -86,7 +110,11 @@ export class RankTrackingService {
       .in('id', keywordIds);
 
     if (error) {
-      throw ErrorHandlingService.createError({ message: `Failed to delete keywords: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: `Failed to delete keywords: ${error.message}`,
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return count || 0;
@@ -95,7 +123,10 @@ export class RankTrackingService {
   /**
    * Get user keywords with filtering
    */
-  async getUserKeywords(userId: string, options: { domain?: string; limit?: number } = {}): Promise<{ keywords: Record<string, unknown>[]; total: number }> {
+  async getUserKeywords(
+    userId: string,
+    options: { domain?: string; limit?: number } = {}
+  ): Promise<{ keywords: Record<string, unknown>[]; total: number }> {
     let query = supabase
       .from('indb_rank_keywords')
       .select('*', { count: 'exact' })
@@ -107,7 +138,11 @@ export class RankTrackingService {
     const { data, count, error } = await query;
 
     if (error) {
-      throw ErrorHandlingService.createError({ message: `Failed to fetch keywords: ${error.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH });
+      throw ErrorHandlingService.createError({
+        message: `Failed to fetch keywords: ${error.message}`,
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      });
     }
 
     return { keywords: data || [], total: count || 0 };
@@ -121,12 +156,15 @@ export class RankTrackingService {
     // Perform atomic update using RPC if available, or direct update with minimal RTT
     const { error } = await supabase.rpc('update_keyword_position_atomic', {
       target_keyword_id: keywordId,
-      new_rank_position: newPosition
+      new_rank_position: newPosition,
     });
 
     if (error) {
       // Fallback to standard update if RPC fails or doesn't exist
-      logger.warn({ error: error instanceof Error ? error : undefined }, 'Atomic update failed, falling back to standard update');
+      logger.warn(
+        { error: error instanceof Error ? error : undefined },
+        'Atomic update failed, falling back to standard update'
+      );
 
       const { data: currentKeyword } = await supabase
         .from('indb_rank_keywords')
@@ -151,22 +189,21 @@ export class RankTrackingService {
    * Add tags to keywords
    * OPTIMIZED: Uses atomic array append
    */
-  async addTagsToKeywords(
-    keywordIds: string[],
-    userId: string,
-    tags: string[]
-  ): Promise<number> {
+  async addTagsToKeywords(keywordIds: string[], userId: string, tags: string[]): Promise<number> {
     if (!tags || tags.length === 0) return 0;
 
     // Use Postgres array concatenation operator via RPC for atomicity
     const { data: updatedCount, error } = await supabase.rpc('add_tags_to_keywords_atomic', {
       target_keyword_ids: keywordIds,
       target_user_id: userId,
-      new_tags: tags
+      new_tags: tags,
     });
 
     if (error) {
-      logger.warn({ error: error instanceof Error ? error : undefined }, 'Atomic tag update failed, falling back to standard update');
+      logger.warn(
+        { error: error instanceof Error ? error : undefined },
+        'Atomic tag update failed, falling back to standard update'
+      );
       // Fallback to original read-modify-write logic
       const { data: keywords, error: fetchError } = await supabase
         .from('indb_rank_keywords')
@@ -183,10 +220,7 @@ export class RankTrackingService {
         const newTags = Array.from(new Set([...existingTags, ...tags]));
 
         if (newTags.length !== existingTags.length) {
-          await supabase
-            .from('indb_rank_keywords')
-            .update({ tags: newTags })
-            .eq('id', keyword.id);
+          await supabase.from('indb_rank_keywords').update({ tags: newTags }).eq('id', keyword.id);
           count++;
         }
       }
