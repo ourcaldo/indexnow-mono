@@ -168,10 +168,25 @@ CREATE TABLE IF NOT EXISTS indb_payment_transactions (
   amount DECIMAL(10,2) NOT NULL,
   currency VARCHAR(10) DEFAULT 'USD',
   status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'proof_uploaded', 'completed', 'failed', 'cancelled', 'refunded')),
+  transaction_status VARCHAR(100),
+  payment_status VARCHAR(100),
+  error_message TEXT,
   
   -- External references
   external_transaction_id VARCHAR(255),
+  transaction_id VARCHAR(255),
+  order_id VARCHAR(255),
   payment_method VARCHAR(50),
+  
+  -- Gateway response
+  gateway_response JSONB,
+  
+  -- Customer info (denormalized for reporting)
+  user_email VARCHAR(255),
+  customer_name VARCHAR(255),
+  package_name VARCHAR(255),
+  billing_period VARCHAR(50),
+  gross_amount DECIMAL(10,2),
   
   -- Proof of payment
   proof_url TEXT,
@@ -202,8 +217,16 @@ CREATE TABLE IF NOT EXISTS indb_payment_transactions_history (
   transaction_id UUID NOT NULL REFERENCES indb_payment_transactions(id) ON DELETE CASCADE,
   old_status VARCHAR(50),
   new_status VARCHAR(50) NOT NULL,
+  action_type VARCHAR(100) NOT NULL,
+  action_description TEXT NOT NULL,
   changed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  reason TEXT,
+  changed_by_type VARCHAR(50) NOT NULL,
+  old_values JSONB,
+  new_values JSONB,
+  notes TEXT,
+  metadata JSONB,
+  ip_address VARCHAR(50),
+  user_agent TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -249,14 +272,18 @@ CREATE TABLE IF NOT EXISTS indb_payment_subscriptions (
   -- Dates
   start_date TIMESTAMPTZ NOT NULL,
   end_date TIMESTAMPTZ,
-  cancelled_at TIMESTAMPTZ,
+  canceled_at TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  paused_at TIMESTAMPTZ,
   
   -- External IDs
   paddle_subscription_id VARCHAR(100),
+  paddle_price_id VARCHAR(100),
   stripe_subscription_id VARCHAR(100),
   
   -- Cancellation details
   cancel_reason TEXT,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
   
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -280,8 +307,9 @@ CREATE TABLE IF NOT EXISTS indb_paddle_transactions (
   event_type VARCHAR(100),
   event_data JSONB,
   
-  -- Status
+  -- Status & amount
   status VARCHAR(50),
+  amount DECIMAL(10,2),
   
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -367,13 +395,17 @@ CREATE INDEX IF NOT EXISTS idx_keyword_bank_updated ON indb_keyword_bank(data_up
 CREATE TABLE IF NOT EXISTS indb_keyword_domains (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  domain VARCHAR(255) NOT NULL,
-  is_verified BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  domain_name VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255),
+  is_active BOOLEAN DEFAULT TRUE,
+  verification_status VARCHAR(20) DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified', 'failed')),
+  verification_code TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_keyword_domains_user ON indb_keyword_domains(user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_keyword_domains_user_domain ON indb_keyword_domains(user_id, domain);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_keyword_domains_user_domain ON indb_keyword_domains(user_id, domain_name);
 
 
 -- Rank keywords (user's tracked keywords for rank monitoring)
@@ -465,8 +497,6 @@ CREATE INDEX IF NOT EXISTS idx_keyword_rankings_keyword_date ON indb_keyword_ran
 CREATE TABLE IF NOT EXISTS indb_site_integration (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  domain VARCHAR(255),
-  integration_type VARCHAR(50),
   
   -- API Configuration
   service_name VARCHAR(100),
@@ -474,7 +504,6 @@ CREATE TABLE IF NOT EXISTS indb_site_integration (
   api_url TEXT,
   
   -- Status
-  is_verified BOOLEAN DEFAULT FALSE,
   is_active BOOLEAN DEFAULT TRUE,
   health_status VARCHAR(50) DEFAULT 'unknown',
   last_health_check TIMESTAMPTZ,
@@ -483,9 +512,9 @@ CREATE TABLE IF NOT EXISTS indb_site_integration (
   api_quota_limit INTEGER DEFAULT 10000,
   api_quota_used INTEGER DEFAULT 0,
   quota_reset_date TIMESTAMPTZ,
+  quota_reset_interval VARCHAR(50),
   
   -- Settings
-  settings JSONB,
   rate_limits JSONB,
   alert_settings JSONB,
   
@@ -506,17 +535,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_site_integration_service_unique ON indb_si
 CREATE TABLE IF NOT EXISTS indb_site_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   site_name VARCHAR(255),
-  site_tagline VARCHAR(500),
   site_description TEXT,
   site_logo_url TEXT,
-  white_logo TEXT,
   site_icon_url TEXT,
   site_favicon_url TEXT,
   contact_email VARCHAR(255),
   support_email VARCHAR(255),
   maintenance_mode BOOLEAN DEFAULT FALSE,
   registration_enabled BOOLEAN DEFAULT TRUE,
-  default_package_id UUID REFERENCES indb_payment_packages(id) ON DELETE SET NULL,
+  
+  -- SMTP configuration
+  smtp_host VARCHAR(255),
+  smtp_port INTEGER,
+  smtp_user VARCHAR(255),
+  smtp_pass TEXT,
+  smtp_from_name VARCHAR(255),
+  smtp_from_email VARCHAR(255),
+  smtp_secure BOOLEAN DEFAULT TRUE,
+  smtp_enabled BOOLEAN DEFAULT FALSE,
+  
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -619,18 +656,14 @@ CREATE INDEX IF NOT EXISTS idx_security_activity_event ON indb_security_activity
 CREATE TABLE IF NOT EXISTS indb_security_audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  operation VARCHAR(100) NOT NULL,
-  table_name VARCHAR(100),
-  record_id UUID,
-  reason TEXT,
-  source VARCHAR(50),
-  ip_address VARCHAR(50),
-  user_agent TEXT,
+  event_type VARCHAR(100) NOT NULL,
+  description TEXT NOT NULL,
+  success BOOLEAN,
   metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_audit_logs_operation ON indb_security_audit_logs(operation);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON indb_security_audit_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON indb_security_audit_logs(user_id);
 
 -- System error logs
@@ -645,7 +678,6 @@ CREATE TABLE IF NOT EXISTS indb_system_error_logs (
   endpoint VARCHAR(255),
   http_method VARCHAR(10),
   status_code INTEGER,
-  request_data JSONB,
   metadata JSONB,
   
   -- Resolution tracking
@@ -671,20 +703,14 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_unresolved ON indb_system_error_logs(c
 -- SeRanking usage logs
 CREATE TABLE IF NOT EXISTS indb_seranking_usage_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   -- DESIGN NOTE (#224): integration_id is VARCHAR for flexibility with external IDs.
   -- If only internal UUIDs are used, consider changing to UUID FK to indb_site_integration.
-  integration_id VARCHAR(100),
-  operation VARCHAR(100) NOT NULL,
-  operation_type VARCHAR(100),
-  keywords_count INTEGER,
-  quota_used INTEGER,
+  integration_id VARCHAR(100) NOT NULL,
+  operation_type VARCHAR(100) NOT NULL,
   request_count INTEGER DEFAULT 1,
   successful_requests INTEGER DEFAULT 0,
   failed_requests INTEGER DEFAULT 0,
   response_time_ms INTEGER,
-  status VARCHAR(50),
-  error_message TEXT,
   metadata JSONB,
   -- DESIGN NOTE (#236): date, timestamp, and created_at are intentionally separate:
   -- date = calendar day for aggregation, timestamp = event precision, created_at = audit.
@@ -693,7 +719,6 @@ CREATE TABLE IF NOT EXISTS indb_seranking_usage_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_seranking_usage_user ON indb_seranking_usage_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_seranking_usage_created ON indb_seranking_usage_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_seranking_usage_integration ON indb_seranking_usage_logs(integration_id);
 CREATE INDEX IF NOT EXISTS idx_seranking_usage_date ON indb_seranking_usage_logs(date);
@@ -758,6 +783,11 @@ CREATE TABLE IF NOT EXISTS indb_seranking_quota_usage (
   quota_limit INTEGER NOT NULL,
   usage_percentage DECIMAL(6,4) NOT NULL,
   session_id VARCHAR(100),
+  service_account_id VARCHAR(100),
+  endpoint VARCHAR(255),
+  country_code VARCHAR(10),
+  keywords_count INTEGER,
+  cost_per_request DECIMAL(10,4),
   metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -776,6 +806,8 @@ CREATE TABLE IF NOT EXISTS indb_seranking_health_checks (
   response_time INTEGER NOT NULL,
   error_message TEXT,
   metrics JSONB NOT NULL DEFAULT '{}',
+  diagnostics JSONB NOT NULL DEFAULT '{}',
+  recommendations JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -790,7 +822,7 @@ CREATE TABLE IF NOT EXISTS indb_enrichment_jobs (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name VARCHAR(255),
   job_type VARCHAR(50) NOT NULL, -- e.g. 'single_keyword', 'bulk_enrichment'
-  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled', 'retrying')),
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'queued', 'processing', 'completed', 'failed', 'cancelled', 'retrying', 'paused')),
   priority INTEGER DEFAULT 2,
   
   -- Job Data
@@ -798,6 +830,7 @@ CREATE TABLE IF NOT EXISTS indb_enrichment_jobs (
   source_data JSONB,
   progress_data JSONB,
   result_data JSONB,
+  results JSONB,
   
   -- Execution Control
   worker_id VARCHAR(100),
@@ -1190,7 +1223,7 @@ CREATE POLICY "Users can view own security audit logs" ON indb_security_audit_lo
 -- ============================================================
 
 -- Insert default site settings
-INSERT INTO indb_site_settings (site_name, site_tagline, registration_enabled, maintenance_mode)
+INSERT INTO indb_site_settings (site_name, site_description, registration_enabled, maintenance_mode)
 VALUES ('IndexNow Studio', 'Professional URL Indexing Service', true, false)
 ON CONFLICT DO NOTHING;
 
@@ -1563,7 +1596,7 @@ WHERE status IN ('pending', 'retrying');
 
 -- Usage analytics aggregation (for dashboard stats)
 CREATE INDEX IF NOT EXISTS idx_usage_logs_analytics 
-ON indb_seranking_usage_logs(user_id, operation, date);
+ON indb_seranking_usage_logs(integration_id, operation_type, date);
 
 -- Subscription status lookup (for billing/expiry checks)
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status_end_date 
@@ -1644,9 +1677,12 @@ CREATE POLICY "indb_seranking_metrics_aggregated_admin_write" ON indb_seranking_
 CREATE INDEX IF NOT EXISTS idx_indb_payment_packages_features_gin 
 ON indb_payment_packages USING GIN (features);
 
--- Site Integration: settings column (lookup integration configurations)
-CREATE INDEX IF NOT EXISTS idx_indb_site_integration_settings_gin
-ON indb_site_integration USING GIN (settings);
+-- Site Integration: JSONB columns (lookup integration configurations)
+CREATE INDEX IF NOT EXISTS idx_indb_site_integration_rate_limits_gin
+ON indb_site_integration USING GIN (rate_limits);
+
+CREATE INDEX IF NOT EXISTS idx_indb_site_integration_alert_settings_gin
+ON indb_site_integration USING GIN (alert_settings);
 
 -- Keyword Bank: history_trend column (trend analysis queries)
 CREATE INDEX IF NOT EXISTS idx_indb_keyword_bank_history_trend_gin
