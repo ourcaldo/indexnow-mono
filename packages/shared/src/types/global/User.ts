@@ -8,7 +8,13 @@ import { type Package } from '../business/PaymentTypes';
 
 // Core user types - defining them here as the authoritative source
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'banned';
-export type SubscriptionStatus = 'active' | 'inactive' | 'expired' | 'trial' | 'cancelled';
+export type SubscriptionStatus =
+  | 'active'
+  | 'cancelled'
+  | 'past_due'
+  | 'paused'
+  | 'trialing'
+  | 'expired';
 
 export interface User {
   id: string;

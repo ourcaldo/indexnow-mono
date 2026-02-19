@@ -6,7 +6,7 @@ export const ImmediateRankCheckJobSchema = z.object({
   domainId: z.string().uuid(),
   keyword: z.string(),
   countryCode: z.string(),
-  device: z.enum(['desktop', 'mobile']),
+  device: z.enum(['desktop', 'mobile', 'tablet']),
 });
 
 export type ImmediateRankCheckJob = z.infer<typeof ImmediateRankCheckJobSchema>;

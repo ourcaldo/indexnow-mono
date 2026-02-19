@@ -6,9 +6,15 @@ import { type Json } from '../common/Json';
 
 // Payment types - consolidated from business layer
 export type PaymentMethod = 'paddle' | 'credit-card';
-export type BillingPeriod = 'monthly' | 'quarterly' | 'biannual' | 'annual';
+export type BillingPeriod = 'monthly' | 'annual' | 'lifetime' | 'one-time';
 export type Currency = 'USD';
-export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'expired';
+export type PaymentStatus =
+  | 'pending'
+  | 'proof_uploaded'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'refunded';
 
 export interface PricingTier {
   promo_price: number;
@@ -356,7 +362,10 @@ export interface ComplianceReporting {
   generateTaxReport: (period: { start: Date; end: Date }) => Promise<TaxReport>;
   generateRevenueReport: (period: { start: Date; end: Date }) => Promise<RevenueReport>;
   getRefundReport: (period: { start: Date; end: Date }) => Promise<RefundReport>;
-  exportTransactions: (filters: TransactionFilters, format: 'csv' | 'xlsx' | 'pdf') => Promise<Buffer>;
+  exportTransactions: (
+    filters: TransactionFilters,
+    format: 'csv' | 'xlsx' | 'pdf'
+  ) => Promise<Buffer>;
 }
 
 export interface TaxReport {

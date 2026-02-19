@@ -12,7 +12,7 @@ export interface CustomData {
   billingPeriod?: string;
 }
 
-export const PADDLE_GATEWAY_ID = 'e24339a4-ec2c-44f7-a6d5-41836025fd47';
+// Legacy Paddle gateway UUID removed — gateway ID must be fetched from indb_payment_gateways
 
 export function validateCustomData(customData: unknown, eventId: string): CustomData | null {
   if (!customData || typeof customData !== 'object') {
@@ -194,7 +194,14 @@ export async function getPaddleGatewayId(): Promise<string> {
   );
 
   if (!gateway) {
-    return PADDLE_GATEWAY_ID;
+    logger.error(
+      {
+        type: ErrorType.DATABASE,
+        severity: ErrorSeverity.HIGH,
+      } as Record<string, unknown>,
+      '[PADDLE] Paddle payment gateway not found in database — ensure indb_payment_gateways has an active "paddle" row'
+    );
+    throw new Error('Paddle payment gateway not found in database');
   }
 
   return gateway.id;

@@ -170,13 +170,26 @@ async function redisIncrement(key: string, config: RateLimitConfig): Promise<voi
     const raw = await client.get(key);
     const now = Date.now();
 
-    if (!raw || now > JSON.parse(raw).resetTime) {
+    let needsReset = !raw;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (now > parsed.resetTime) {
+          needsReset = true;
+        }
+      } catch {
+        // Corrupted Redis data — treat as expired and reset
+        needsReset = true;
+      }
+    }
+
+    if (needsReset) {
       const entry = { count: 1, resetTime: now + config.windowMs };
       await client.setex(key, ttlSeconds, JSON.stringify(entry));
       return;
     }
 
-    const entry: { count: number; resetTime: number; blocked?: boolean } = JSON.parse(raw);
+    const entry: { count: number; resetTime: number; blocked?: boolean } = JSON.parse(raw!);
     entry.count++;
 
     // If exceeded and block duration specified, block for extended period

@@ -3,4 +3,3 @@
  */
 
 export * from './Payments';
-export * from './Database';

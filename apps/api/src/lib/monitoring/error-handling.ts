@@ -3,6 +3,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin, SecureServiceRoleHelpers } from '@indexnow/database';
 import { trackServerError } from '@indexnow/analytics';
 import { ErrorType, ErrorSeverity, type StructuredError, type Json } from '@indexnow/shared';
+
+/** Map application ErrorSeverity enum to database severity column values */
+type DbSeverity = 'debug' | 'info' | 'warning' | 'error' | 'critical';
+const SEVERITY_TO_DB: Record<ErrorSeverity, DbSeverity> = {
+  [ErrorSeverity.LOW]: 'info',
+  [ErrorSeverity.MEDIUM]: 'warning',
+  [ErrorSeverity.HIGH]: 'error',
+  [ErrorSeverity.CRITICAL]: 'critical',
+};
 import { formatError } from '../core/api-response-formatter';
 
 // Re-export shared types that consumers expect from this module
@@ -206,7 +215,7 @@ export class ErrorHandlingService {
         id: error.id,
         user_id: error.userId || null,
         error_type: error.type,
-        severity: error.severity,
+        severity: SEVERITY_TO_DB[error.severity] ?? 'error',
         message: error.message,
         user_message: error.userMessage,
         endpoint: error.endpoint || null,

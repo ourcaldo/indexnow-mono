@@ -5,7 +5,13 @@
 // Basic types
 export type UserRole = 'user' | 'admin' | 'super_admin';
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending_verification';
-export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'cancelled' | 'past_due';
+export type SubscriptionStatus =
+  | 'active'
+  | 'cancelled'
+  | 'past_due'
+  | 'paused'
+  | 'trialing'
+  | 'expired';
 
 // Core user interfaces
 export interface User {

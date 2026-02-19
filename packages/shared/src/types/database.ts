@@ -64,7 +64,7 @@ export interface PackagePricingTier {
   name: string;
   price: number;
   currency: string;
-  billing_period: 'monthly' | 'yearly';
+  billing_period: 'monthly' | 'annual' | 'lifetime' | 'one-time';
   paddle_price_id?: string;
 }
 
@@ -128,7 +128,7 @@ export interface TransactionMetadata {
   user_id?: string;
   user_email?: string;
   package_id?: string;
-  billing_period?: string;
+  billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time';
   created_at?: string;
   payment_type?: string;
 
@@ -421,7 +421,7 @@ export type Database = {
           search_volume: number | null;
           difficulty_score: number | null;
           check_date: string;
-          device_type: string | null;
+          device_type: 'desktop' | 'mobile' | 'tablet' | null;
           country_id: string | null;
           tags: string[] | null;
           metadata: Json | null;
@@ -436,7 +436,7 @@ export type Database = {
           search_volume?: number | null;
           difficulty_score?: number | null;
           check_date?: string;
-          device_type?: string | null;
+          device_type?: 'desktop' | 'mobile' | 'tablet' | null;
           country_id?: string | null;
           tags?: string[] | null;
           metadata?: Json | null;
@@ -451,7 +451,7 @@ export type Database = {
           search_volume?: number | null;
           difficulty_score?: number | null;
           check_date?: string;
-          device_type?: string | null;
+          device_type?: 'desktop' | 'mobile' | 'tablet' | null;
           country_id?: string | null;
           tags?: string[] | null;
           metadata?: Json | null;
@@ -467,7 +467,7 @@ export type Database = {
           user_id: string;
           keyword: string;
           domain: string | null;
-          device: string | null;
+          device: 'desktop' | 'mobile' | 'tablet' | null;
           country: string | null;
           search_engine: string | null;
           target_url: string | null;
@@ -486,7 +486,7 @@ export type Database = {
           user_id: string;
           keyword: string;
           domain?: string | null;
-          device?: string | null;
+          device?: 'desktop' | 'mobile' | 'tablet' | null;
           country?: string | null;
           search_engine?: string | null;
           target_url?: string | null;
@@ -505,7 +505,7 @@ export type Database = {
           user_id?: string;
           keyword?: string;
           domain?: string | null;
-          device?: string | null;
+          device?: 'desktop' | 'mobile' | 'tablet' | null;
           country?: string | null;
           position?: number | null;
           previous_position?: number | null;
@@ -717,7 +717,7 @@ export type Database = {
           error_message: string | null;
           metadata: Json | null;
           details: Json | null;
-          severity: string;
+          severity: 'debug' | 'info' | 'warning' | 'error' | 'critical';
           ip_address: string | null;
           user_agent: string | null;
           created_at: string;
@@ -735,7 +735,7 @@ export type Database = {
           error_message?: string | null;
           metadata?: Json | null;
           details?: Json | null;
-          severity?: string;
+          severity?: 'debug' | 'info' | 'warning' | 'error' | 'critical';
           ip_address?: string | null;
           user_agent?: string | null;
           created_at?: string;
@@ -753,7 +753,7 @@ export type Database = {
           error_message?: string | null;
           metadata?: Json | null;
           details?: Json | null;
-          severity?: string;
+          severity?: 'debug' | 'info' | 'warning' | 'error' | 'critical';
           ip_address?: string | null;
           user_agent?: string | null;
           created_at?: string;
@@ -879,7 +879,7 @@ export type Database = {
           description: string | null;
           price: number;
           currency: string;
-          billing_period: string;
+          billing_period: 'monthly' | 'annual' | 'lifetime' | 'one-time';
           daily_quota: number;
           monthly_quota: number | null;
           features: PackageFeatures | null;
@@ -902,7 +902,7 @@ export type Database = {
           description?: string | null;
           price: number;
           currency?: string;
-          billing_period?: string;
+          billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time';
           daily_quota: number;
           monthly_quota?: number | null;
           features?: PackageFeatures | null;
@@ -925,7 +925,7 @@ export type Database = {
           description?: string | null;
           price?: number;
           currency?: string;
-          billing_period?: string;
+          billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time';
           daily_quota?: number;
           monthly_quota?: number | null;
           features?: PackageFeatures | null;
@@ -966,7 +966,7 @@ export type Database = {
           customer_name: string | null;
           order_id: string | null;
           package_name: string | null;
-          billing_period: string | null;
+          billing_period: 'monthly' | 'annual' | 'lifetime' | 'one-time' | null;
           gross_amount: number | null;
           verified_by: string | null;
           verified_at: string | null;
@@ -996,7 +996,7 @@ export type Database = {
           customer_name?: string | null;
           order_id?: string | null;
           package_name?: string | null;
-          billing_period?: string | null;
+          billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time' | null;
           gross_amount?: number | null;
           verified_by?: string | null;
           verified_at?: string | null;
@@ -1026,7 +1026,7 @@ export type Database = {
           customer_name?: string | null;
           order_id?: string | null;
           package_name?: string | null;
-          billing_period?: string | null;
+          billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time' | null;
           gross_amount?: number | null;
           verified_by?: string | null;
           verified_at?: string | null;
@@ -1279,7 +1279,7 @@ export type Database = {
           id: string;
           user_id: string | null;
           error_type: string;
-          severity: string;
+          severity: 'debug' | 'info' | 'warning' | 'error' | 'critical';
           message: string;
           user_message: string | null;
           endpoint: string | null;
@@ -1298,7 +1298,7 @@ export type Database = {
           id?: string;
           user_id?: string | null;
           error_type: string;
-          severity: string;
+          severity: 'debug' | 'info' | 'warning' | 'error' | 'critical';
           message: string;
           user_message?: string | null;
           endpoint?: string | null;
@@ -1317,7 +1317,7 @@ export type Database = {
           id?: string;
           user_id?: string | null;
           error_type?: string;
-          severity?: string;
+          severity?: 'debug' | 'info' | 'warning' | 'error' | 'critical';
           message?: string;
           user_message?: string | null;
           endpoint?: string | null;
@@ -1874,7 +1874,7 @@ export type Database = {
           p_position: number;
           p_url: string | null;
           p_check_date: string;
-          p_device_type: string | null;
+          p_device_type: 'desktop' | 'mobile' | 'tablet' | null;
           p_country_iso: string | null;
         };
         Returns: undefined;
