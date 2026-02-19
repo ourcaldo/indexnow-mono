@@ -2,6 +2,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle, Skeleton, PricingTable } from '@indexnow/ui';
 
+// (#V7 L-21) Props use `any` for hasActivePackage, packagesData, trialEligible,
+// and isTrialEligiblePackage because these come from a dynamic API response
+// (PlansBillingContent) and typing them fully would couple this component
+// to the billing API shape. Consider creating a BillingContext type.
 export interface NoPlanSectionProps {
   isDataLoading: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

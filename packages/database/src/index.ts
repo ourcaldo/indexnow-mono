@@ -40,7 +40,10 @@ export type UpdateRankKeywordRow = Database['public']['Tables']['indb_rank_keywo
 export type InsertSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Insert'];
 export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Update'];
 
-// Client exports
+// (#V7 L-05) Client/browser modules intentionally re-exported from the database package entry.
+// This allows consumers (e.g. apps) to import everything from @indexnow/database
+// instead of depending on @indexnow/supabase-client directly. Server-only code should
+// import from '@indexnow/database/server' or use SecureServiceRoleHelpers.
 export {
   createBrowserClient,
   getBrowserClient,

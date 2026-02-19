@@ -15,6 +15,9 @@
         "name": "next"
       }
     ],
+    // (#V7 L-34) Paths below provide IDE resolution for `@indexnow/*` imports.
+    // Each app's own tsconfig overrides these with its specific paths.
+    // These exist so editors can resolve types before a build when extending this preset.
     "paths": {
       "@/*": ["./src/*"],
       "@indexnow/shared": ["../../packages/shared/src"],

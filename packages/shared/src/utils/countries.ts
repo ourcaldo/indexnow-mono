@@ -1,4 +1,6 @@
-// Comprehensive list of countries for registration form
+// (#V7 L-04) Comprehensive list of countries for registration form.
+// Uses ISO 3166-1 alpha-2 codes. This list is used client-side only (registration dropdown).
+// The database seed for indb_keyword_countries is a separate list maintained in database-schema/.
 export interface RegistrationCountry {
   code: string;
   name: string;

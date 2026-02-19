@@ -8,7 +8,9 @@
  * For client-side quota checks, use the quota hooks in `@indexnow/ui`
  * (useQuotaValidation, useGlobalQuotaManager).
  */
-import { typedSupabaseAdmin as supabaseBrowser } from '@indexnow/database';
+// (#V7 L-08) Alias is misleading: `supabaseBrowser` is actually the admin/service-role client
+// re-exported as `typedSupabaseAdmin`. Renaming the import for clarity.
+import { typedSupabaseAdmin as supabaseServiceRole } from '@indexnow/database';
 
 import { logger } from '@indexnow/shared';
 
@@ -18,7 +20,7 @@ export class QuotaService {
    * Returns true if successful, false if insufficient quota.
    */
   static async consumeQuota(userId: string, count: number): Promise<boolean> {
-    const { data, error } = await supabaseBrowser.rpc('consume_user_quota', {
+    const { data, error } = await supabaseServiceRole.rpc('consume_user_quota', {
       target_user_id: userId,
       quota_amount: count,
     });
@@ -38,7 +40,7 @@ export class QuotaService {
    * Always rely on consumeQuota() for the actual operation.
    */
   static async checkQuota(userId: string, count: number): Promise<boolean> {
-    const { data: profile, error } = await supabaseBrowser
+    const { data: profile, error } = await supabaseServiceRole
       .from('indb_auth_user_profiles')
       .select('daily_quota_used, daily_quota_limit')
       .eq('user_id', userId)

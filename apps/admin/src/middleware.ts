@@ -18,7 +18,8 @@ const ROLE_CACHE_TTL_SECONDS = 60; // 1 minute — short TTL balances performanc
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // 1. Skip middleware for public routes
+  // (#V7 L-27) 1. Skip middleware for public routes.
+  // Uses exact match — new public sub-routes must be added to PUBLIC_ROUTES.
   if (PUBLIC_ROUTES.some((route) => pathname === route)) {
     return NextResponse.next();
   }
@@ -32,7 +33,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. Check cached role verification first (avoids DB query on every request)
+  // (#V7 L-28) 3. Check cached role verification first (avoids DB query on every request).
+  // WARNING: This cookie has no HMAC signature. It only stores the user ID (not the role),
+  // so a forged cookie merely skips the DB lookup — the actual role is still from the
+  // authenticated session. The DB query in step 4 runs when cache misses.
   const cachedRole = request.cookies.get(ROLE_CACHE_COOKIE)?.value;
   if (cachedRole === user.id) {
     // Role was recently verified for this user — skip DB query

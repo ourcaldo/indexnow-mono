@@ -250,7 +250,9 @@ export function getSecurityRiskLevel(
     riskScore += 1;
   }
 
-  // Location-based risk (if available)
+  // (#V7 L-09) Location-based risk: compares locationData.country against ISO 3166-1
+  // alpha-2 codes. The highRiskCountries list uses ISO codes which matches the
+  // geolocation service output. Extend this list or move to config as needed.
   if (locationData?.country) {
     // Add logic for high-risk countries if needed
     const highRiskCountries = ['CN', 'RU', 'KP', 'IR']; // Example

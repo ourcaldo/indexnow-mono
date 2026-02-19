@@ -3,6 +3,9 @@ import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+// (#V7 L-10) Template resolution: __filename is derived from import.meta.url.
+// In production (tsup bundle), templates must be in the same relative path as the
+// built output. The Dockerfiles copy templates/ alongside the dist/ output.
 import { AppConfig, logger } from '@indexnow/shared';
 
 // C-04: Strict email validation to prevent SMTP header injection

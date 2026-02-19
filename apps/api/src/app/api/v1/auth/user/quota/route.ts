@@ -8,8 +8,8 @@ import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 
-// Derived types from Database schema
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
+// (#V7 L-13) UserProfileRow removed — was unused (query uses RPC, not direct table select)
+type _UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
 
 /**
  * GET /api/v1/auth/user/quota

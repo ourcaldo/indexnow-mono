@@ -1,6 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    // (#V7 L-33) target/module intentionally omitted from base: packages use ES2020/ESNext
+    // while apps use esnext. Each extends this and adds its own target/module.
+    // (#V7 L-39) noUnusedLocals/noUnusedParameters intentionally omitted from base:
+    // apps have these via Next.js tsconfig; packages opt in individually.
     "strict": true,
     "useUnknownInCatchVariables": true,
     "esModuleInterop": true,

@@ -1,15 +1,15 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-        "target": "ES2020",
-        "module": "ESNext",
-        "lib": ["ES2020"],
-        "jsx": "react-jsx",
-        "declaration": true,
-        "declarationMap": true,
-        "outDir": "./dist",
-        "rootDir": "./src"
-    },
-    "include": ["src"],
-    "exclude": ["node_modules", "dist"]
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020"],
+    // (#V7 L-36) jsx removed — mail is a server-only package with no React/JSX files
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

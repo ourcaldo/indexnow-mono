@@ -22,7 +22,7 @@ services:
     ports:
       - '5000:5000'
     env_file:
-      - .env
+      - .env # (#V7 L-43) Create from .env.example before running docker-compose
     environment:
       - NODE_ENV=production
       - PORT=5000

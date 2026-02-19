@@ -83,7 +83,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* System Status */}
+      {/* (#V7 L-24) System Status: Currently hardcoded. TODO: Wire to /api/v1/system/health */}
       <div className="bg-background border-border rounded-lg border p-6">
         <h2 className="text-foreground mb-4 text-lg font-semibold">System Status</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

@@ -2,5 +2,8 @@
   "name": "@indexnow/tsconfig",
   "version": "1.0.0",
   "private": true,
-  "files": ["nextjs.json"]
+  "description": "Shared TypeScript configs. (#V7 L-40) Only ships nextjs.json; library packages extend ../../tsconfig.base.json directly instead of a separate preset.",
+  "files": [
+    "nextjs.json"
+  ]
 }

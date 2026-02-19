@@ -73,7 +73,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
       endpoint: '/api/v1/admin/orders/[id]',
     },
     ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || undefined || 'unknown',
+    userAgent: request.headers.get('user-agent') || 'unknown',
   };
 
   const order = await SecureServiceRoleWrapper.executeSecureOperation<OrderWithRelations>(

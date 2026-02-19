@@ -12,6 +12,9 @@ import {
 } from '@indexnow/shared';
 
 // Default anon client — used by the singleton for backward compatibility.
+// (#V7 L-12) Module-level client: created at import time using environment variables.
+// If NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY are missing, this throws.
+// This is intentional — database access should fail-fast during startup, not silently.
 // NOTE (#20): Uses anon key intentionally — all operations go through RLS.
 // For admin/service-role operations, use SecureServiceRoleHelpers from this package.
 const defaultAnonClient = createClient<Database>(

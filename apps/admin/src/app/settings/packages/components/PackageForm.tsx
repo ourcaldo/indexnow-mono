@@ -1,3 +1,6 @@
+// (#V7 L-23) This form relies on native HTML validation (required attributes)
+// and server-side Zod validation in the packages API route. Client-side Zod
+// validation would improve UX with inline errors but is not critical.
 'use client';
 
 import { useState, useEffect } from 'react';

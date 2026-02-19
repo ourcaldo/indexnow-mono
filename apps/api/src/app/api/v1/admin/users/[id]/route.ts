@@ -30,7 +30,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
       endpoint: '/api/v1/admin/users/[id]',
     },
     ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || undefined || 'unknown',
+    userAgent: request.headers.get('user-agent') || 'unknown',
   };
 
   const profileWithPackage = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -224,7 +224,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
         endpoint: '/api/v1/admin/users/[id]',
       },
       ipAddress: getClientIP(request) ?? 'unknown',
-      userAgent: request.headers.get('user-agent') || undefined || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
     };
 
     await SecureServiceRoleWrapper.executeSecureOperation(
@@ -282,7 +282,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
       endpoint: '/api/v1/admin/users/[id]',
     } as Record<string, Json>,
     ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || undefined || 'unknown',
+    userAgent: request.headers.get('user-agent') || 'unknown',
   };
 
   const updateData = {

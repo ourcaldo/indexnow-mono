@@ -74,7 +74,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     return formatError(structuredError);
   }
 
-  // STUB(M-13): Restore PaddleCustomerService and integrate here
+  // (#V7 L-14) STUB(M-13): Restore PaddleCustomerService and integrate here
+  // The URL below is a best-effort placeholder using the subscription management pattern.
   // When PaddleCustomerService is restored, use:
   // const portalUrl = await PaddleCustomerService.getCustomerPortalUrl(customerId);
   logger.warn('STUB: Customer portal endpoint hit — returning placeholder URL');

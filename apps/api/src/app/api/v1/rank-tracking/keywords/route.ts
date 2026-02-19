@@ -7,6 +7,9 @@
 
 import { NextRequest } from 'next/server';
 import { RankTrackingService } from '@indexnow/services';
+// (#V7 L-17) Module-level instantiation: Next.js caches route modules, so this service
+// instance is shared across requests within the same Lambda/container lifetime.
+// This is intentional for connection pooling and caching; the service is stateless.
 const rankTrackingService = new RankTrackingService();
 import {
   authenticatedApiWrapper,
@@ -23,6 +26,8 @@ const createKeywordSchema = z.object({
   domain: z.string().min(1),
   country: z.string().min(1),
   device: z.string().optional(),
+  // (#V7 L-15) searchEngine is accepted in the schema but not passed to createKeyword.
+  // Currently all rank checks use SE Ranking's default engine. Reserved for multi-engine support.
   searchEngine: z.string().optional(),
   targetUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),

@@ -1,3 +1,5 @@
+# (#V7 L-38) This .gitignore is largely redundant with root .gitignore.
+# Kept for Next.js scaffolding compatibility and IDE file watcher optimization.
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies

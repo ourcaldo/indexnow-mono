@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import { checkRouteRateLimit } from '@/lib/rate-limiting/route-rate-limit';
 import {
@@ -341,7 +341,8 @@ async function routeWebhookEvent(eventType: string, data: unknown, eventId: stri
         await processTransactionRefunded(data);
         break;
       default:
-      // Unknown event type, ignore
+        // (#V7 L-19) Log unknown event types so new Paddle events are visible in observability
+        logger.warn({ eventType, eventId }, 'Unhandled Paddle webhook event type — ignoring');
     }
   } catch (error) {
     // Log error to webhook event using SecureServiceRoleWrapper

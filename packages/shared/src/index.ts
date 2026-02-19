@@ -1,4 +1,5 @@
-// Main exports
+// (#V7 L-02) SchemaPaginatedResponse is an intentional public alias of PaginatedResponse
+// from the schema module, kept for backward compatibility with existing consumers.
 export {
   type PaginatedResponse as SchemaPaginatedResponse,
   loginSchema,
