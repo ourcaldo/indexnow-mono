@@ -1,4 +1,4 @@
-import { supabaseAdmin, untypedFrom } from '@indexnow/database';
+import { supabaseAdmin, toJson } from '@indexnow/database';
 import { logger } from '../monitoring/error-handling';
 import { RankTracker, RankResult } from './rank-tracker';
 import { removeUrlParameters } from '@indexnow/shared';
@@ -7,11 +7,13 @@ const adminClient = supabaseAdmin;
 
 export class RankTrackerService {
   /**
-   * Process a single rank check job and update database
+   * Process a single rank check job and update database.
+   *
+   * Uses real table names: indb_rank_keywords, indb_keyword_rankings, indb_keyword_domains.
    */
   static async processRankCheck(
     keywordId: string,
-    userId: string,
+    _userId: string,
     domainId: string,
     keyword: string,
     country: string,
@@ -29,30 +31,35 @@ export class RankTrackerService {
         throw new Error(`Domain not found: ${domainId}`);
       }
 
-      // 2. Perform rank check
+      // 2. Get current position for previous_position tracking
+      const { data: currentKeyword } = await adminClient
+        .from('indb_rank_keywords')
+        .select('position')
+        .eq('id', keywordId)
+        .single();
+
+      // 3. Perform rank check
       const result = await RankTracker.checkRank(keyword, domainData.domain_name, country, device);
 
-      // 3. Update keyword status and last check timestamp
-      await untypedFrom(adminClient, 'indb_keywords')
+      // 4. Update keyword position and last check timestamp
+      await adminClient
+        .from('indb_rank_keywords')
         .update({
-          last_check_at: new Date().toISOString(),
-          status: 'active',
-          last_position: result.position,
-          error_message: result.error || null,
+          last_checked: new Date().toISOString(),
+          is_active: true,
+          position: result.position,
+          previous_position: currentKeyword?.position ?? null,
         })
         .eq('id', keywordId);
 
-      // 4. Store rank history
-      await untypedFrom(adminClient, 'indb_rank_history').insert({
+      // 5. Store rank history in indb_keyword_rankings
+      await adminClient.from('indb_keyword_rankings').insert({
         keyword_id: keywordId,
-        user_id: userId,
-        domain_id: domainId,
         position: result.position,
-        found_url: removeUrlParameters(result.url),
-        found_title: result.title,
-        device: device,
-        country: country,
-        checked_at: new Date().toISOString(),
+        url: removeUrlParameters(result.url),
+        check_date: new Date().toISOString().split('T')[0],
+        device_type: device,
+        metadata: toJson(result),
       });
 
       return result;
@@ -63,11 +70,11 @@ export class RankTrackerService {
         'RankTrackerService: Failed to process rank check'
       );
 
-      // Update keyword with error status
-      await untypedFrom(adminClient, 'indb_keywords')
+      // Update keyword — mark inactive on error
+      await adminClient
+        .from('indb_rank_keywords')
         .update({
-          status: 'error',
-          error_message: errorMessage,
+          is_active: false,
         })
         .eq('id', keywordId);
 

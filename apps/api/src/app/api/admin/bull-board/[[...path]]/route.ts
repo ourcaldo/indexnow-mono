@@ -1,62 +1,67 @@
-import { NextRequest, NextResponse } from 'next/server'
-import type { Queue } from 'bullmq'
-import { queueManager } from '@/lib/queues/QueueManager'
-import { logger } from '@/lib/monitoring/error-handling'
-import { 
-  adminApiWrapper, 
-  createStandardError, 
-  formatSuccess, 
-  formatError 
-} from '@/lib/core/api-response-middleware'
-import { ErrorType, ErrorSeverity, type Json } from '@indexnow/shared'
-import { toJson } from '@indexnow/database'
-import { z } from 'zod'
+import { NextRequest, NextResponse } from 'next/server';
+import type { Queue } from 'bullmq';
+import { queueManager } from '@/lib/queues/QueueManager';
+import { logger } from '@/lib/monitoring/error-handling';
+import {
+  adminApiWrapper,
+  createStandardError,
+  formatSuccess,
+  formatError,
+} from '@/lib/core/api-response-middleware';
+import { ErrorType, ErrorSeverity, type Json } from '@indexnow/shared';
+import { toJson } from '@indexnow/database';
+import { z } from 'zod';
 
-const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME
-const BULL_BOARD_PASSWORD = process.env.BULL_BOARD_PASSWORD
+const BULL_BOARD_USERNAME = process.env.BULL_BOARD_USERNAME;
+const BULL_BOARD_PASSWORD = process.env.BULL_BOARD_PASSWORD;
 
 // Zod Schema for Actions
 const ActionSchema = z.object({
   action: z.enum(['retry', 'remove', 'pause', 'resume']),
   queue: z.string().min(1),
   jobId: z.string().optional(),
-})
+});
 
 function checkSecurityRequirements(): { valid: boolean; error?: string } {
   if (process.env.ENABLE_BULLMQ !== 'true') {
-    return { valid: false, error: 'BullMQ is not enabled. Set ENABLE_BULLMQ=true to use Bull Board.' }
+    return {
+      valid: false,
+      error: 'BullMQ is not enabled. Set ENABLE_BULLMQ=true to use Bull Board.',
+    };
   }
 
   if (!BULL_BOARD_USERNAME || !BULL_BOARD_PASSWORD) {
-    return { 
-      valid: false, 
-      error: 'Bull Board credentials not configured. Set BULL_BOARD_USERNAME and BULL_BOARD_PASSWORD environment variables.' 
-    }
+    return {
+      valid: false,
+      error:
+        'Bull Board credentials not configured. Set BULL_BOARD_USERNAME and BULL_BOARD_PASSWORD environment variables.',
+    };
   }
 
   // Enforce minimum password length for Bull Board
   if (BULL_BOARD_PASSWORD.length < 12) {
     return {
       valid: false,
-      error: 'Bull Board password is too weak. Please set a BULL_BOARD_PASSWORD with at least 12 characters.'
-    }
+      error:
+        'Bull Board password is too weak. Please set a BULL_BOARD_PASSWORD with at least 12 characters.',
+    };
   }
 
-  return { valid: true }
+  return { valid: true };
 }
 
 function checkAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization')
-  
+  const authHeader = request.headers.get('authorization');
+
   if (!authHeader || !authHeader.startsWith('Basic ')) {
-    return false
+    return false;
   }
 
-  const base64Credentials = authHeader.slice(6)
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8')
-  const [username, password] = credentials.split(':')
+  const base64Credentials = authHeader.slice(6);
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+  const [username, password] = credentials.split(':');
 
-  return username === BULL_BOARD_USERNAME && password === BULL_BOARD_PASSWORD
+  return username === BULL_BOARD_USERNAME && password === BULL_BOARD_PASSWORD;
 }
 
 function createUnauthorizedResponse(): NextResponse {
@@ -65,7 +70,7 @@ function createUnauthorizedResponse(): NextResponse {
     headers: {
       'WWW-Authenticate': 'Basic realm="Bull Board"',
     },
-  })
+  });
 }
 
 const QUEUE_NAMES = [
@@ -75,15 +80,14 @@ const QUEUE_NAMES = [
   'payments',
   'trial-monitor',
   'keyword-enrichment',
-  'quota-reset',
-  'indexing-monitor',
-  'auto-cancel',
-] as const
 
-let cachedQueues: { name: string; queue: Queue }[] | null = null
+  'auto-cancel',
+] as const;
+
+let cachedQueues: { name: string; queue: Queue }[] | null = null;
 
 async function getQueues(): Promise<{ name: string; queue: Queue }[]> {
-  if (cachedQueues) return cachedQueues
+  if (cachedQueues) return cachedQueues;
 
   try {
     cachedQueues = await Promise.all(
@@ -91,39 +95,39 @@ async function getQueues(): Promise<{ name: string; queue: Queue }[]> {
         name,
         queue: await queueManager.getQueue(name),
       }))
-    )
+    );
 
-    logger.info({ queueCount: QUEUE_NAMES.length }, 'Bull Board queues initialized')
-    return cachedQueues
+    logger.info({ queueCount: QUEUE_NAMES.length }, 'Bull Board queues initialized');
+    return cachedQueues;
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       'Failed to initialize Bull Board queues'
-    )
-    throw error
+    );
+    throw error;
   }
 }
 
 export const GET = adminApiWrapper(async (request: NextRequest) => {
-  const securityCheck = checkSecurityRequirements()
+  const securityCheck = checkSecurityRequirements();
   if (!securityCheck.valid) {
-    logger.error({ error: securityCheck.error }, 'Bull Board security check failed')
+    logger.error({ error: securityCheck.error }, 'Bull Board security check failed');
     const error = await createStandardError(
       ErrorType.SYSTEM,
       securityCheck.error || 'Security check failed',
       { statusCode: 503, severity: ErrorSeverity.HIGH }
-    )
-    return formatError(error)
+    );
+    return formatError(error);
   }
 
   // Double layer: System Admin Auth (via wrapper) + Optional Basic Auth
   if (BULL_BOARD_USERNAME && BULL_BOARD_PASSWORD && !checkAuth(request)) {
-    return createUnauthorizedResponse()
+    return createUnauthorizedResponse();
   }
 
   try {
-    const queues = await getQueues()
-    
+    const queues = await getQueues();
+
     const queuesData = await Promise.all(
       queues.map(async ({ name, queue }) => {
         const [waiting, active, completed, failed, delayed] = await Promise.all([
@@ -132,7 +136,7 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
           queue.getCompletedCount(),
           queue.getFailedCount(),
           queue.getDelayedCount(),
-        ])
+        ]);
 
         return {
           name,
@@ -143,113 +147,108 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
             failed,
             delayed,
           },
-        }
+        };
       })
-    )
+    );
 
     return formatSuccess({
-      queues: queuesData
-    })
+      queues: queuesData,
+    });
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       'Bull Board API error'
-    )
-    
+    );
+
     const structuredError = await createStandardError(
       ErrorType.SYSTEM,
       error instanceof Error ? error : 'Internal server error',
       { statusCode: 500, severity: ErrorSeverity.HIGH }
-    )
-    return formatError(structuredError)
+    );
+    return formatError(structuredError);
   }
-})
+});
 
 export const POST = adminApiWrapper(async (request: NextRequest) => {
-  const securityCheck = checkSecurityRequirements()
+  const securityCheck = checkSecurityRequirements();
   if (!securityCheck.valid) {
-    logger.error({ error: securityCheck.error }, 'Bull Board security check failed')
+    logger.error({ error: securityCheck.error }, 'Bull Board security check failed');
     const error = await createStandardError(
       ErrorType.SYSTEM,
       securityCheck.error || 'Security check failed',
       { statusCode: 503, severity: ErrorSeverity.HIGH }
-    )
-    return formatError(error)
+    );
+    return formatError(error);
   }
 
   // Double layer: System Admin Auth (via wrapper) + Optional Basic Auth
   if (BULL_BOARD_USERNAME && BULL_BOARD_PASSWORD && !checkAuth(request)) {
-    return createUnauthorizedResponse()
+    return createUnauthorizedResponse();
   }
 
   try {
-    const body = await request.json()
-    
-    const validation = ActionSchema.safeParse(body)
+    const body = await request.json();
+
+    const validation = ActionSchema.safeParse(body);
     if (!validation.success) {
-      const error = await createStandardError(
-        ErrorType.VALIDATION,
-        'Invalid request body',
-        { 
-          statusCode: 400, 
-          severity: ErrorSeverity.LOW,
-          metadata: { issues: toJson(validation.error.issues) }
-        }
-      )
-      return formatError(error)
+      const error = await createStandardError(ErrorType.VALIDATION, 'Invalid request body', {
+        statusCode: 400,
+        severity: ErrorSeverity.LOW,
+        metadata: { issues: toJson(validation.error.issues) },
+      });
+      return formatError(error);
     }
 
-    const { action, queue: queueName, jobId } = validation.data
-    const queue = await queueManager.getQueue(queueName)
+    const { action, queue: queueName, jobId } = validation.data;
+    const queue = await queueManager.getQueue(queueName);
 
     switch (action) {
       case 'retry':
         if (jobId) {
-          const job = await queue.getJob(jobId)
+          const job = await queue.getJob(jobId);
           if (job) {
-            await job.retry()
-            return formatSuccess({ message: 'Job retried' })
+            await job.retry();
+            return formatSuccess({ message: 'Job retried' });
           }
         }
-        break
-      
+        break;
+
       case 'remove':
         if (jobId) {
-          const job = await queue.getJob(jobId)
+          const job = await queue.getJob(jobId);
           if (job) {
-            await job.remove()
-            return formatSuccess({ message: 'Job removed' })
+            await job.remove();
+            return formatSuccess({ message: 'Job removed' });
           }
         }
-        break
-      
+        break;
+
       case 'pause':
-        await queue.pause()
-        return formatSuccess({ message: 'Queue paused' })
-      
+        await queue.pause();
+        return formatSuccess({ message: 'Queue paused' });
+
       case 'resume':
-        await queue.resume()
-        return formatSuccess({ message: 'Queue resumed' })
+        await queue.resume();
+        return formatSuccess({ message: 'Queue resumed' });
     }
 
     const error = await createStandardError(
       ErrorType.NOT_FOUND,
       'Job not found or invalid action',
       { statusCode: 404, severity: ErrorSeverity.LOW }
-    )
-    return formatError(error)
-
+    );
+    return formatError(error);
   } catch (error) {
     logger.error(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       'Bull Board action error'
-    )
-    
+    );
+
     const structuredError = await createStandardError(
       ErrorType.SYSTEM,
       error instanceof Error ? error : 'Internal server error',
       { statusCode: 500, severity: ErrorSeverity.HIGH }
-    )
-    return formatError(structuredError)
+    );
+    return formatError(structuredError);
   }
-})
+});

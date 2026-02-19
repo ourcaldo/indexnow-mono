@@ -1,4 +1,4 @@
-import { ConnectionOptions } from 'bullmq'
+import { ConnectionOptions } from 'bullmq';
 
 export const redisConnection: ConnectionOptions = {
   host: process.env.REDIS_HOST || 'localhost',
@@ -7,7 +7,7 @@ export const redisConnection: ConnectionOptions = {
   username: process.env.REDIS_USER || undefined,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
-}
+};
 
 export const defaultJobOptions = {
   attempts: 3,
@@ -22,7 +22,7 @@ export const defaultJobOptions = {
   removeOnFail: {
     age: 7 * 24 * 3600,
   },
-}
+};
 
 export const queueConfig = {
   rankCheck: {
@@ -53,14 +53,7 @@ export const queueConfig = {
     name: 'keyword-enrichment',
     concurrency: 1,
   },
-  quotaReset: {
-    name: 'quota-reset',
-    concurrency: 1,
-  },
-  indexingMonitor: {
-    name: 'indexing-monitor',
-    concurrency: 2,
-  },
+
   autoCancel: {
     name: 'auto-cancel',
     concurrency: 1,
@@ -69,4 +62,4 @@ export const queueConfig = {
     name: 'hourly-rank-retry',
     concurrency: 1,
   },
-}
+};
