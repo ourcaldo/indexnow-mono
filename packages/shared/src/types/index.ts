@@ -22,7 +22,9 @@ export type {
   Domain,
   RankKeyword,
   RankHistory,
-  SerchResult,
+  RankSearchResult,
+  SerchResult, // deprecated alias — use RankSearchResult
+  SearchResult as RankTrackingSearchResult, // deprecated, renamed to avoid CommonTypes clash
   SearchFeature,
   RankTrackingDomain,
   CreateKeywordRequest,

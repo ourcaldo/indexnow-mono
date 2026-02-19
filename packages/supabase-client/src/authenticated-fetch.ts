@@ -90,7 +90,9 @@ export async function authenticatedFetch(
     credentials: 'include',
   });
 
-  // On 401, try refreshing the session and retry once
+  // (#V7 M-10) On 401, try refreshing the session and retry once.
+  // Note: `headers` object is mutated with the new token — this is safe because
+  // the headers object was cloned at the top of this function.
   if (response.status === 401 && retryOn401 && !skipAuth) {
     try {
       logger.info('Got 401 — attempting session refresh and retry');

@@ -52,6 +52,17 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
     const keywordIds = keywordIdsParam.split(',').filter((id) => id.trim().length > 0);
 
+    // (#V7 M-27) Validate each ID is a UUID to prevent injection via crafted strings
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (keywordIds.some((id) => !UUID_RE.test(id.trim()))) {
+      const validationError = await ErrorHandlingService.createError(
+        ErrorType.VALIDATION,
+        'All keywordIds must be valid UUIDs',
+        { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 400 }
+      );
+      return formatError(validationError);
+    }
+
     // Cap at 100 IDs to prevent unbounded queries
     if (keywordIds.length > 100) {
       const validationError = await ErrorHandlingService.createError(

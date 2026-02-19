@@ -145,7 +145,10 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
     }
 
-    // Idempotency: upsert event record (UNIQUE on event_id prevents duplicates atomically)
+    // (#V7 M-25) Idempotency: upsert event record (UNIQUE on event_id prevents duplicates atomically).
+    // The select-then-insert pattern has a TOCTOU window but is mitigated by the
+    // UNIQUE constraint + upsert below. A concurrent duplicate will either see
+    // `existing.processed=true` or the upsert's onConflict will no-op.
     const upsertResult = await SecureServiceRoleWrapper.executeSecureOperation<{
       alreadyProcessed: boolean;
     }>(

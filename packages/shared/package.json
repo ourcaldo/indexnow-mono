@@ -20,13 +20,22 @@
       "default": "./dist/schema.js"
     },
     "./types": {
-      "types": "./src/types/index.ts"
+      "types": "./src/types/index.ts",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
     },
     "./constants": {
-      "types": "./src/constants/ApiEndpoints.ts"
+      "types": "./src/constants/ApiEndpoints.ts",
+      "import": "./dist/constants/ApiEndpoints.mjs",
+      "require": "./dist/constants/ApiEndpoints.js",
+      "default": "./dist/constants/ApiEndpoints.js"
     },
     "./utils": {
-      "types": "./src/utils/index.ts"
+      "types": "./src/utils/index.ts",
+      "import": "./dist/utils/index.mjs",
+      "require": "./dist/utils/index.js",
+      "default": "./dist/utils/index.js"
     }
   },
   "scripts": {

@@ -61,8 +61,19 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const status = searchParams.get('status') || undefined;
   const search = searchParams.get('search') || undefined;
 
-  // Parse sort parameters
-  const sortBy = searchParams.get('sortBy') || 'created_at';
+  // (#V7 M-19) Parse sort parameters with column allowlist to prevent SQL injection
+  const ALLOWED_SORT_COLUMNS = [
+    'created_at',
+    'error_type',
+    'severity',
+    'source',
+    'status',
+    'endpoint',
+  ] as const;
+  const rawSortBy = searchParams.get('sortBy') || 'created_at';
+  const sortBy = (ALLOWED_SORT_COLUMNS as readonly string[]).includes(rawSortBy)
+    ? rawSortBy
+    : 'created_at';
   const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
   interface QueryResult {

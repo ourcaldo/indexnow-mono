@@ -156,9 +156,16 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       }
     }
 
+    // (#V7 M-17) Only return minimal user fields — never expose full auth user object
     return formatSuccess(
       {
-        user: data.user,
+        user: data.user
+          ? {
+              id: data.user.id,
+              email: data.user.email,
+              email_confirmed_at: data.user.email_confirmed_at,
+            }
+          : null,
         session: data.session,
         message: 'Registration successful. Please check your email to verify your account.',
       },

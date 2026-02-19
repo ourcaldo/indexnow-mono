@@ -8,7 +8,10 @@
  * @param includeRelative - If true, appends a relative time suffix (optional, default false)
  */
 export function formatDate(dateString: string | Date, includeRelative?: boolean): string {
-  const formatted = new Date(dateString).toLocaleDateString('en-US', {
+  const date = new Date(dateString);
+  // (#V7 M-06) Guard against invalid input
+  if (isNaN(date.getTime())) return 'Invalid date';
+  const formatted = date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

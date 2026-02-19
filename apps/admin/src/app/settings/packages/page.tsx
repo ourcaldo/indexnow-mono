@@ -17,6 +17,7 @@ import {
   Search,
 } from 'lucide-react';
 import { AdminPageSkeleton } from '@indexnow/ui';
+import { logger } from '@indexnow/shared';
 import { ConfirmationDialog } from '@indexnow/ui/modals';
 import { PackageForm } from './components/PackageForm';
 import { useAdminPackages, useSavePackage, useDeletePackage, type PaymentPackage } from '@/hooks';
@@ -53,7 +54,8 @@ export default function PackageManagement() {
       setEditingPackage(null);
       setIsCreating(false);
     } catch (err) {
-      console.error('Failed to save package:', err);
+      // (#V7 M-31) Use structured logger instead of console.error
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Failed to save package');
       setMessage({ type: 'error', text: 'Failed to save package' });
     }
   };
@@ -70,7 +72,11 @@ export default function PackageManagement() {
           await deletePackageMutation.mutateAsync(id);
           setMessage({ type: 'success', text: 'Package deleted successfully!' });
         } catch (err) {
-          console.error('Failed to delete package:', err);
+          // (#V7 M-31) Use structured logger instead of console.error
+          logger.error(
+            { error: err instanceof Error ? err : undefined },
+            'Failed to delete package'
+          );
           setMessage({ type: 'error', text: 'Failed to delete package' });
         } finally {
           setConfirmConfig((prev) => ({ ...prev, isOpen: false }));

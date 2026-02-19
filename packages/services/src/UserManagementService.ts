@@ -215,7 +215,9 @@ export class UserManagementService {
   async updateUserProfile(userId: string, updates: UpdateProfileRequest): Promise<UserProfile> {
     const updateData: UpdateUserProfile = {};
 
-    if (updates.fullName) updateData.full_name = updates.fullName;
+    // (#V7 M-13) Use strict comparison to allow empty string '' as valid update
+    if (updates.fullName !== undefined && updates.fullName !== null)
+      updateData.full_name = updates.fullName;
     if (updates.phoneNumber !== undefined) updateData.phone_number = updates.phoneNumber;
     if (updates.country !== undefined) updateData.country = updates.country;
     if (updates.role) updateData.role = updates.role as 'user' | 'admin' | 'super_admin';
@@ -238,6 +240,9 @@ export class UserManagementService {
 
   /**
    * Update user login information
+   * (#V7 M-15) Currently only updates updated_at. The original schema had
+   * last_login_at and last_login_ip columns which were removed during migration.
+   * TODO: Add last_login_at column to indb_auth_user_profiles if login tracking needed.
    */
   async updateLastLogin(userId: string, ipAddress?: string): Promise<void> {
     await supabaseAdmin
@@ -512,6 +517,8 @@ export class UserManagementService {
    *   6. Prevent re-login by revoking all sessions
    */
   async deleteUser(userId: string): Promise<void> {
+    // (#V7 M-14) Soft-delete only — does not revoke active sessions.
+    // TODO: Call supabaseAdmin.auth.admin.signOut(userId) or invalidate tokens.
     // This should be a soft delete in production
     await db.updateUserProfile(userId, {
       is_active: false,

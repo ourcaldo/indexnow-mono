@@ -1,42 +1,42 @@
-import { supabaseAdmin } from '../server'
-import { logger, type Json } from '@indexnow/shared'
-import { type PostgrestError } from '@supabase/supabase-js'
-import { toJson } from '../utils/json-helpers'
+import { supabaseAdmin } from '../server';
+import { logger, type Json } from '@indexnow/shared';
+import { type PostgrestError } from '@supabase/supabase-js';
+import { toJson } from '../utils/json-helpers';
 
 // Table name constant
-const AUDIT_TABLE = 'indb_security_audit_logs' as const
+const AUDIT_TABLE = 'indb_security_audit_logs' as const;
 
 /**
  * Isolated interface for the audit log table to avoid recursion issues.
  */
 export interface AuditLogTable {
   Row: {
-    id: string
-    user_id: string | null
-    event_type: string
-    description: string
-    success: boolean | null
-    metadata: Json
-    created_at: string
-  }
+    id: string;
+    user_id: string | null;
+    event_type: string;
+    description: string;
+    success: boolean | null;
+    metadata: Json;
+    created_at: string;
+  };
   Insert: {
-    id?: string
-    user_id?: string | null
-    event_type: string
-    description: string
-    success?: boolean | null
-    metadata?: Json
-    created_at?: string
-  }
+    id?: string;
+    user_id?: string | null;
+    event_type: string;
+    description: string;
+    success?: boolean | null;
+    metadata?: Json;
+    created_at?: string;
+  };
   Update: {
-    id?: string
-    user_id?: string | null
-    event_type?: string
-    description?: string
-    success?: boolean | null
-    metadata?: Json
-    created_at?: string
-  }
+    id?: string;
+    user_id?: string | null;
+    event_type?: string;
+    description?: string;
+    success?: boolean | null;
+    metadata?: Json;
+    created_at?: string;
+  };
 }
 
 /**
@@ -47,61 +47,66 @@ interface SimpleAuditClient {
   from: (table: typeof AUDIT_TABLE) => {
     insert: (values: AuditLogTable['Insert']) => {
       select: (columns: string) => {
-        single: () => Promise<{ data: { id: string } | null; error: PostgrestError | null }>
-      }
-    }
+        single: () => Promise<{ data: { id: string } | null; error: PostgrestError | null }>;
+      };
+    };
     update: (values: AuditLogTable['Update']) => {
-      eq: (column: string, value: string) => Promise<{ error: PostgrestError | null }>
-    }
-  }
+      eq: (column: string, value: string) => Promise<{ error: PostgrestError | null }>;
+    };
+  };
   auth: {
     admin: {
-      getUserById: (uid: string) => Promise<{ data: { user: { id: string } | null } | null; error: PostgrestError | null }>
-    }
-  }
+      getUserById: (
+        uid: string
+      ) => Promise<{ data: { user: { id: string } | null } | null; error: PostgrestError | null }>;
+    };
+  };
 }
 
 /**
  * Context for service role operations.
  */
 export interface ServiceRoleOperationContext {
-  userId: string
-  operation: string
-  reason: string
-  source: string
-  metadata?: Record<string, Json>
-  ipAddress?: string | null
-  userAgent?: string
+  userId: string;
+  operation: string;
+  reason: string;
+  source: string;
+  metadata?: Record<string, Json>;
+  ipAddress?: string | null;
+  userAgent?: string;
 }
 
 /**
  * Context for user operations.
  */
 export interface UserOperationContext {
-  userId: string
-  operation: string
-  source: string
-  reason: string
-  metadata?: Record<string, Json>
-  ipAddress?: string | null
-  userAgent?: string
+  userId: string;
+  operation: string;
+  source: string;
+  reason: string;
+  metadata?: Record<string, Json>;
+  ipAddress?: string | null;
+  userAgent?: string;
 }
 
 /**
  * Options for secure queries.
  */
 export interface SecureQueryOptions<TTable = string> {
-  table: TTable
-  operationType: 'select' | 'insert' | 'update' | 'delete'
-  columns?: string[]
-  whereConditions?: Record<string, Json>
-  data?: Json
+  table: TTable;
+  operationType: 'select' | 'insert' | 'update' | 'delete';
+  columns?: string[];
+  whereConditions?: Record<string, Json>;
+  data?: Json;
 }
 
 export class SecurityViolationError extends Error {
-  constructor(message: string, public details: Record<string, Json>) {
-    super(message)
-    this.name = 'SecurityViolationError'
+  constructor(
+    message: string,
+    public details: Record<string, Json>
+  ) {
+    super(message);
+    this.name = 'SecurityViolationError';
   }
 }
 
@@ -111,7 +116,7 @@ export class SecurityViolationError extends Error {
  * Encapsulating it here avoids scattering `as unknown as` throughout the codebase.
  */
 function asAuditClient(): SimpleAuditClient {
-  return supabaseAdmin as unknown as SimpleAuditClient
+  return supabaseAdmin as unknown as SimpleAuditClient;
 }
 
 export class SecurityService {
@@ -125,40 +130,48 @@ export class SecurityService {
     if (!context.userId || !context.operation || !context.reason || !context.source) {
       throw new SecurityViolationError(
         'Invalid service role operation context - missing required fields',
-        { 
+        {
           userId: context.userId,
           operation: context.operation,
           source: context.source,
           table: queryOptions.table,
-          operationType: queryOptions.operationType
+          operationType: queryOptions.operationType,
         }
-      )
+      );
     }
 
+    // (#V7 M-11) User existence check via Supabase admin API.
+    // This runs on every secure operation for non-system users to prevent
+    // privilege escalation with forged user IDs. Consider caching valid user IDs
+    // with short TTL (e.g. 60s) to reduce API overhead under high throughput.
     if (context.userId !== 'system' && context.userId !== 'anonymous') {
-      const { data: authUser, error } = await asAuditClient().auth.admin.getUserById(context.userId)
+      const { data: authUser, error } = await asAuditClient().auth.admin.getUserById(
+        context.userId
+      );
       if (error || !authUser?.user) {
         throw new SecurityViolationError(
           'Service role operation requested by invalid or non-existent user',
           { userId: context.userId, source: context.source }
-        )
+        );
       }
     }
 
-    const allowedOperations = ['select', 'insert', 'update', 'delete']
+    const allowedOperations = ['select', 'insert', 'update', 'delete'];
     if (!allowedOperations.includes(queryOptions.operationType)) {
-      throw new SecurityViolationError(
-        'Invalid service role operation type',
-        { operationType: queryOptions.operationType }
-      )
+      throw new SecurityViolationError('Invalid service role operation type', {
+        operationType: queryOptions.operationType,
+      });
     }
 
-    logger.info({
-      userId: context.userId,
-      operation: context.operation,
-      table: queryOptions.table,
-      operationType: queryOptions.operationType
-    }, 'Service role operation context validated successfully')
+    logger.info(
+      {
+        userId: context.userId,
+        operation: context.operation,
+        table: queryOptions.table,
+        operationType: queryOptions.operationType,
+      },
+      'Service role operation context validated successfully'
+    );
   }
 
   /**
@@ -170,66 +183,78 @@ export class SecurityService {
       operation: context.operation.replace(/[^a-zA-Z0-9_]/g, ''),
       source: context.source.replace(/[^a-zA-Z0-9/_-]/g, ''),
       reason: context.reason.substring(0, 500),
-      metadata: context.metadata ? (this.sanitizeDataObject(context.metadata) as Record<string, Json>) : undefined,
+      metadata: context.metadata
+        ? (this.sanitizeDataObject(context.metadata) as Record<string, Json>)
+        : undefined,
       ipAddress: context.ipAddress?.substring(0, 45),
-      userAgent: context.userAgent?.substring(0, 500)
-    }
+      userAgent: context.userAgent?.substring(0, 500),
+    };
   }
 
   /**
    * Sanitizes query options to prevent injection.
    */
   static sanitizeQueryOptions(queryOptions: SecureQueryOptions): SecureQueryOptions {
-    const sanitized = { ...queryOptions }
+    const sanitized = { ...queryOptions };
     if (queryOptions.columns) {
-      sanitized.columns = queryOptions.columns.map(col => col.replace(/[^a-zA-Z0-9_]/g, ''))
+      sanitized.columns = queryOptions.columns.map((col) => col.replace(/[^a-zA-Z0-9_]/g, ''));
     }
     if (queryOptions.data) {
       if (Array.isArray(queryOptions.data)) {
-        sanitized.data = queryOptions.data.map(item => this.sanitizeDataObject(item as Record<string, Json | undefined>)) as Json
+        sanitized.data = queryOptions.data.map((item) =>
+          this.sanitizeDataObject(item as Record<string, Json | undefined>)
+        ) as Json;
       } else if (typeof queryOptions.data === 'object' && queryOptions.data !== null) {
-        sanitized.data = this.sanitizeDataObject(queryOptions.data as Record<string, Json | undefined>) as Json
+        sanitized.data = this.sanitizeDataObject(
+          queryOptions.data as Record<string, Json | undefined>
+        ) as Json;
       }
     }
     if (queryOptions.whereConditions && typeof queryOptions.whereConditions === 'object') {
-      sanitized.whereConditions = this.sanitizeDataObject(queryOptions.whereConditions as Record<string, Json | undefined>) as Record<string, Json>
+      sanitized.whereConditions = this.sanitizeDataObject(
+        queryOptions.whereConditions as Record<string, Json | undefined>
+      ) as Record<string, Json>;
     }
-    return sanitized
+    return sanitized;
   }
 
   /**
    * Generic sanitizer for data objects.
    * Recursively sanitizes nested objects instead of stringifying them.
    */
-  static sanitizeDataObject(data: Record<string, Json | undefined>): Record<string, Json | undefined> {
-    const sanitized: Record<string, Json | undefined> = {}
-    
+  static sanitizeDataObject(
+    data: Record<string, Json | undefined>
+  ): Record<string, Json | undefined> {
+    const sanitized: Record<string, Json | undefined> = {};
+
     for (const [key, value] of Object.entries(data)) {
-      const cleanKey = key.replace(/[^a-zA-Z0-9_]/g, '')
+      const cleanKey = key.replace(/[^a-zA-Z0-9_]/g, '');
       if (value === undefined) {
-        sanitized[cleanKey] = undefined
+        sanitized[cleanKey] = undefined;
       } else if (typeof value === 'string') {
         // Only truncate strings — do NOT strip quotes/apostrophes.
         // Supabase uses parameterized queries so SQL injection via values is not possible.
-        sanitized[cleanKey] = value.substring(0, 5000)
+        sanitized[cleanKey] = value.substring(0, 5000);
       } else if (typeof value === 'number') {
-        sanitized[cleanKey] = isNaN(value) ? 0 : value
+        sanitized[cleanKey] = isNaN(value) ? 0 : value;
       } else if (typeof value === 'boolean' || value === null) {
-        sanitized[cleanKey] = value
+        sanitized[cleanKey] = value;
       } else if (Array.isArray(value)) {
-        sanitized[cleanKey] = value.map(item => {
+        sanitized[cleanKey] = value.map((item) => {
           if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
-            return toJson(this.sanitizeDataObject(item as Record<string, Json | undefined>))
+            return toJson(this.sanitizeDataObject(item as Record<string, Json | undefined>));
           }
-          return item
-        })
+          return item;
+        });
       } else if (typeof value === 'object') {
-        sanitized[cleanKey] = toJson(this.sanitizeDataObject(value as Record<string, Json | undefined>))
+        sanitized[cleanKey] = toJson(
+          this.sanitizeDataObject(value as Record<string, Json | undefined>)
+        );
       } else {
-        sanitized[cleanKey] = String(value).substring(0, 1000)
+        sanitized[cleanKey] = String(value).substring(0, 1000);
       }
     }
-    return sanitized
+    return sanitized;
   }
 
   /**
@@ -251,8 +276,8 @@ export class SecurityService {
         hasData: !!queryOptions.data,
         hasWhereConditions: !!queryOptions.whereConditions,
         ipAddress: context.ipAddress ?? null,
-        userAgent: context.userAgent ?? null
-      }
+        userAgent: context.userAgent ?? null,
+      };
 
       const { data, error } = await asAuditClient()
         .from(AUDIT_TABLE)
@@ -261,20 +286,20 @@ export class SecurityService {
           event_type: 'service_role_operation',
           description: `Service role operation: ${context.operation} on ${queryOptions.table}`,
           success: null,
-          metadata: metadata as Json
+          metadata: metadata as Json,
         })
         .select('id')
-        .single()
+        .single();
 
       if (error || !data) {
-        logger.error({ error: error || undefined }, 'Failed to log service role operation start')
-        return 'unknown'
+        logger.error({ error: error || undefined }, 'Failed to log service role operation start');
+        return 'unknown';
       }
-      return data.id
+      return data.id;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      logger.error({ error: errorMessage }, 'Failed to create service role audit log')
-      return 'unknown'
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage }, 'Failed to create service role audit log');
+      return 'unknown';
     }
   }
 
@@ -282,30 +307,30 @@ export class SecurityService {
    * Safely converts any result to a Json compatible format.
    */
   private static sanitizeResult(result: unknown): Json {
-    if (result === undefined) return null
-    if (result === null) return null
-    if (typeof result === 'string') return result.substring(0, 5000)
-    if (typeof result === 'number') return isNaN(result) ? 0 : result
-    if (typeof result === 'boolean') return result
-    
+    if (result === undefined) return null;
+    if (result === null) return null;
+    if (typeof result === 'string') return result.substring(0, 5000);
+    if (typeof result === 'number') return isNaN(result) ? 0 : result;
+    if (typeof result === 'boolean') return result;
+
     if (Array.isArray(result)) {
-      return result.map(item => this.sanitizeResult(item))
+      return result.map((item) => this.sanitizeResult(item));
     }
-    
+
     if (typeof result === 'object') {
-      const sanitized: Record<string, Json> = {}
+      const sanitized: Record<string, Json> = {};
       try {
         // Handle simple objects
         for (const [key, value] of Object.entries(result)) {
-           sanitized[key] = this.sanitizeResult(value)
+          sanitized[key] = this.sanitizeResult(value);
         }
-        return sanitized
+        return sanitized;
       } catch (e) {
-        return { error: 'Failed to sanitize object' }
+        return { error: 'Failed to sanitize object' };
       }
     }
-    
-    return String(result).substring(0, 1000)
+
+    return String(result).substring(0, 1000);
   }
 
   /**
@@ -316,30 +341,36 @@ export class SecurityService {
     context: ServiceRoleOperationContext,
     result: unknown
   ): Promise<void> {
-    if (auditId === 'unknown') return
+    if (auditId === 'unknown') return;
     try {
-      const sanitizedResult = this.sanitizeResult(result)
+      const sanitizedResult = this.sanitizeResult(result);
       const metadata: Record<string, Json | undefined> = {
         ...(context.metadata || {}),
         result: sanitizedResult,
         resultType: typeof result,
         resultLength: Array.isArray(result) ? result.length : 1,
-        completedAt: new Date().toISOString()
-      }
+        completedAt: new Date().toISOString(),
+      };
 
       const { error } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: true,
-          metadata: metadata as Json
+          metadata: metadata as Json,
         })
-        .eq('id', auditId)
+        .eq('id', auditId);
 
-      if (error) throw error
-      logger.info({ auditId, operation: context.operation }, 'Service role operation completed successfully')
+      if (error) throw error;
+      logger.info(
+        { auditId, operation: context.operation },
+        'Service role operation completed successfully'
+      );
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      logger.error({ error: errorMessage, auditId }, 'Failed to log service role operation success')
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(
+        { error: errorMessage, auditId },
+        'Failed to log service role operation success'
+      );
     }
   }
 
@@ -351,28 +382,34 @@ export class SecurityService {
     context: ServiceRoleOperationContext,
     error: Error
   ): Promise<void> {
-    if (auditId === 'unknown') return
+    if (auditId === 'unknown') return;
     try {
       const metadata: Record<string, Json | undefined> = {
         ...(context.metadata || {}),
         error: error.message || String(error),
         errorType: error.name || 'Unknown',
-        failedAt: new Date().toISOString()
-      }
+        failedAt: new Date().toISOString(),
+      };
 
       const { error: updateError } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: false,
-          metadata: metadata as Json
+          metadata: metadata as Json,
         })
-        .eq('id', auditId)
+        .eq('id', auditId);
 
-      if (updateError) throw updateError
-      logger.error({ auditId, operation: context.operation, error: error.message }, 'Service role operation failed')
+      if (updateError) throw updateError;
+      logger.error(
+        { auditId, operation: context.operation, error: error.message },
+        'Service role operation failed'
+      );
     } catch (logError) {
-      const logErrorMessage = logError instanceof Error ? logError.message : String(logError)
-      logger.error({ logError: logErrorMessage, auditId, originalError: error.message }, 'Failed to log service role operation failure')
+      const logErrorMessage = logError instanceof Error ? logError.message : String(logError);
+      logger.error(
+        { logError: logErrorMessage, auditId, originalError: error.message },
+        'Failed to log service role operation failure'
+      );
     }
   }
 
@@ -395,8 +432,8 @@ export class SecurityService {
         hasData: !!queryOptions.data,
         hasWhereConditions: !!queryOptions.whereConditions,
         ipAddress: context.ipAddress ?? null,
-        userAgent: context.userAgent ?? null
-      }
+        userAgent: context.userAgent ?? null,
+      };
 
       const { data, error } = await asAuditClient()
         .from(AUDIT_TABLE)
@@ -405,20 +442,20 @@ export class SecurityService {
           event_type: 'user_operation',
           description: `User operation: ${context.operation} on ${queryOptions.table}`,
           success: null,
-          metadata: metadata as Json
+          metadata: metadata as Json,
         })
         .select('id')
-        .single()
+        .single();
 
       if (error || !data) {
-        logger.error({ error: error || undefined }, 'Failed to log user operation start')
-        return 'unknown'
+        logger.error({ error: error || undefined }, 'Failed to log user operation start');
+        return 'unknown';
       }
-      return data.id
+      return data.id;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      logger.error({ error: errorMessage }, 'Failed to create user operation audit log')
-      return 'unknown'
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage }, 'Failed to create user operation audit log');
+      return 'unknown';
     }
   }
 
@@ -430,30 +467,33 @@ export class SecurityService {
     context: UserOperationContext,
     result: unknown
   ): Promise<void> {
-    if (auditId === 'unknown') return
+    if (auditId === 'unknown') return;
     try {
-      const sanitizedResult = this.sanitizeResult(result)
+      const sanitizedResult = this.sanitizeResult(result);
       const metadata: Record<string, Json | undefined> = {
         ...(context.metadata || {}),
         result: sanitizedResult,
         resultType: typeof result,
         resultLength: Array.isArray(result) ? result.length : 1,
-        completedAt: new Date().toISOString()
-      }
+        completedAt: new Date().toISOString(),
+      };
 
       const { error } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: true,
-          metadata: metadata as Json
+          metadata: metadata as Json,
         })
-        .eq('id', auditId)
+        .eq('id', auditId);
 
-      if (error) throw error
-      logger.info({ auditId, operation: context.operation }, 'User operation completed successfully')
+      if (error) throw error;
+      logger.info(
+        { auditId, operation: context.operation },
+        'User operation completed successfully'
+      );
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      logger.error({ error: errorMessage, auditId }, 'Failed to log user operation success')
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage, auditId }, 'Failed to log user operation success');
     }
   }
 
@@ -465,28 +505,34 @@ export class SecurityService {
     context: UserOperationContext,
     error: Error
   ): Promise<void> {
-    if (auditId === 'unknown') return
+    if (auditId === 'unknown') return;
     try {
       const metadata: Record<string, Json | undefined> = {
         ...(context.metadata || {}),
         error: error.message || String(error),
         errorType: error.name || 'Unknown',
-        failedAt: new Date().toISOString()
-      }
+        failedAt: new Date().toISOString(),
+      };
 
       const { error: updateError } = await asAuditClient()
         .from(AUDIT_TABLE)
         .update({
           success: false,
-          metadata: metadata as Json
+          metadata: metadata as Json,
         })
-        .eq('id', auditId)
+        .eq('id', auditId);
 
-      if (updateError) throw updateError
-      logger.error({ auditId, operation: context.operation, error: error.message }, 'User operation failed')
+      if (updateError) throw updateError;
+      logger.error(
+        { auditId, operation: context.operation, error: error.message },
+        'User operation failed'
+      );
     } catch (logError) {
-      const logErrorMessage = logError instanceof Error ? logError.message : String(logError)
-      logger.error({ logError: logErrorMessage, auditId, originalError: error.message }, 'Failed to log user operation failure')
+      const logErrorMessage = logError instanceof Error ? logError.message : String(logError);
+      logger.error(
+        { logError: logErrorMessage, auditId, originalError: error.message },
+        'Failed to log user operation failure'
+      );
     }
   }
 }

@@ -19,6 +19,7 @@ import {
   Map,
 } from 'lucide-react';
 import { SettingsPageSkeleton, ErrorState } from '@indexnow/ui';
+import { logger } from '@indexnow/shared';
 import {
   useAdminSiteSettings,
   useSaveSiteSettings,
@@ -49,7 +50,11 @@ export default function SiteSettings() {
       await saveMutation.mutateAsync(settings);
       setMessage({ type: 'success', text: 'Site settings saved successfully!' });
     } catch (err) {
-      console.error('Failed to save site settings:', err);
+      // (#V7 M-31) Use structured logger instead of console.error
+      logger.error(
+        { error: err instanceof Error ? err : undefined },
+        'Failed to save site settings'
+      );
       setMessage({ type: 'error', text: 'Failed to save site settings' });
     }
   };

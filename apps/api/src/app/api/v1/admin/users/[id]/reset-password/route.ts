@@ -63,22 +63,27 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
     const specialChars = '!@#$%^&*';
     const allChars = upperChars + lowerChars + digitChars + specialChars;
 
-    // Use cryptographically secure random bytes
-    const randomBytes = crypto.randomBytes(16);
-    const pick = (charset: string, byteIndex: number): string =>
-      charset[randomBytes[byteIndex] % charset.length];
+    // (#V7 M-21) Use rejection sampling to eliminate modulo bias
+    const securePick = (charset: string): string => {
+      const max = 256 - (256 % charset.length); // largest fair value
+      let byte: number;
+      do {
+        byte = crypto.randomBytes(1)[0];
+      } while (byte >= max);
+      return charset[byte % charset.length];
+    };
 
     // Guarantee at least one of each category
     const chars: string[] = [
-      pick(upperChars, 0),
-      pick(lowerChars, 1),
-      pick(digitChars, 2),
-      pick(specialChars, 3),
+      securePick(upperChars),
+      securePick(lowerChars),
+      securePick(digitChars),
+      securePick(specialChars),
     ];
 
     // Fill remaining 8 characters from full charset
     for (let i = 4; i < 12; i++) {
-      chars.push(pick(allChars, i));
+      chars.push(securePick(allChars));
     }
 
     // Fisher-Yates shuffle using crypto-safe randomness

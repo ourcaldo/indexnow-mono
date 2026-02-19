@@ -1,15 +1,17 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-        "target": "ES2020",
-        "module": "ESNext",
-        "lib": ["ES2022", "DOM", "DOM.Iterable"],
-        "jsx": "react-jsx",
-        "declaration": true,
-        "declarationMap": true,
-        "outDir": "./dist",
-        "rootDir": "./src"
-    },
-    "include": ["src"],
-    "exclude": ["node_modules", "dist"]
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    // (#V7 M-38) ES2022 lib intentional: auth package uses Array.at(), Object.hasOwn()
+    // and structuredClone which are ES2022+ features. Other packages use ES2020.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

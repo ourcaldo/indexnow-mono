@@ -53,7 +53,7 @@ export interface RankHistory {
   keywordId: string;
   position: number;
   checkedAt: Date;
-  searchResults?: SerchResult[];
+  searchResults?: RankSearchResult[];
   features?: SearchFeature[];
   metadata?: {
     totalResults?: number;
@@ -62,7 +62,8 @@ export interface RankHistory {
   };
 }
 
-export interface SerchResult {
+/** A single search engine result entry for rank tracking. */
+export interface RankSearchResult {
   position: number;
   url: string;
   title: string;
@@ -70,6 +71,11 @@ export interface SerchResult {
   domain: string;
   isTargetDomain: boolean;
 }
+
+/** @deprecated Use RankSearchResult instead (#V7 M-05 typo fix) */
+export type SerchResult = RankSearchResult;
+/** @deprecated Use RankSearchResult instead (#V7 M-05 name clash with CommonTypes.SearchResult) */
+export type SearchResult = RankSearchResult;
 
 // ...
 
@@ -138,7 +144,7 @@ export interface RankCheckResult {
   checkedAt: Date;
   success: boolean;
   error?: string;
-  searchResults?: SerchResult[];
+  searchResults?: RankSearchResult[];
   features?: SearchFeature[];
 }
 
@@ -155,10 +161,12 @@ export interface DashboardRecentKeyword {
     name: string;
     iso2_code: string;
   } | null;
-  recent_ranking: {
-    position: number | null;
-    check_date: string;
-  }[] | null;
+  recent_ranking:
+    | {
+        position: number | null;
+        check_date: string;
+      }[]
+    | null;
 }
 
 // Analytics types

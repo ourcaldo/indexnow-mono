@@ -37,6 +37,9 @@ export default function BillingHistoryPage() {
 
   useEffect(() => {
     loadBillingHistory();
+    // (#V7 M-32) loadBillingHistory depends on state setters which are stable.
+    // Listing it would cause infinite re-renders because it's not memoized.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter, typeFilter]);
 
   const loadBillingHistory = async () => {

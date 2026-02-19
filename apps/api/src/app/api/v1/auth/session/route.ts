@@ -163,7 +163,10 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           request,
         });
 
-        // Send login notification email for session restoration (fire-and-forget)
+        // (#V7 M-23) Login notification on session restore is intentional:
+        // it alerts the user if a stored token is used from a new device/IP.
+        // This is a security feature, not a bug. To reduce noise, the
+        // loginNotificationService deduplicates by userId+IP within a window.
         const requestInfo = await getRequestInfo(request);
         loginNotificationService
           .sendLoginNotification({

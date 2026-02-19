@@ -141,10 +141,13 @@ export const ErrorHandlingService = {
       ...config,
     };
     logger.error(logContext, config.message || 'Created error');
-    // Return a structured error that preserves type/severity metadata (#13)
-    const error = new Error(config.message);
-    (error as Error & { type?: ErrorType; severity?: ErrorSeverity }).type = config.type;
-    (error as Error & { type?: ErrorType; severity?: ErrorSeverity }).severity = config.severity;
+    // (#V7 M-16) Return a structured error that preserves type/severity metadata (#13)
+    const error = new Error(config.message) as Error & {
+      type?: ErrorType;
+      severity?: ErrorSeverity;
+    };
+    error.type = config.type;
+    error.severity = config.severity;
     return error;
   },
 };

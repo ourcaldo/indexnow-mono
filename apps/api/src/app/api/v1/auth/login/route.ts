@@ -169,6 +169,9 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     }
 
     // 8. Return success response with session data
+    // (#V7 M-18) user.role is intentionally included — frontend uses it for
+    // route-level guards (admin panel vs user dashboard). This is not a secret;
+    // server-side middleware re-validates the role on every protected request.
     return formatSuccess({
       user: {
         id: user.id,

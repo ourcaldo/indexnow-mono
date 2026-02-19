@@ -46,8 +46,9 @@ function DashboardContent() {
     calculatePositionChange,
   } = useDashboardPageData();
 
-  // Runtime domain objects from Supabase have DB column names (display_name, domain_name)
-  // which differ from the RankTrackingDomain TS interface (name, domain).
+  // (#V7 M-36) Runtime Supabase rows use DB column names (display_name, domain_name)
+  // which don't match the TS RankTrackingDomain interface (name, domain).
+  // The Record cast is intentional to bridge this mismatch without a mapping layer.
   const domainRecord = selectedDomain as Record<string, unknown> | undefined;
   const selectedDomainName =
     (domainRecord?.display_name as string) ||

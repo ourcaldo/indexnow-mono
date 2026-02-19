@@ -91,7 +91,20 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
           },
         };
       }
-    )) as { domains: any[]; pagination: any };
+      // (#V7 M-22) Type the result instead of using `any`
+    )) as {
+      domains: Array<
+        { domain_name: string; keyword_count: Array<{ count: number }> } & Record<string, unknown>
+      >;
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+      };
+    };
 
     return formatSuccess({ data: result.domains, pagination: result.pagination });
   } catch (error) {

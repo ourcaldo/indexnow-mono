@@ -255,7 +255,10 @@ export type SecurityActivityEventType =
 /** M-03: indb_security_audit_logs.event_type */
 export type SecurityAuditEventType = 'service_role_operation' | 'user_operation';
 
-/** M-04: indb_admin_activity_logs.action_type — mirrors ActivityEventTypes admin subset. */
+/** M-04: indb_admin_activity_logs.action_type — mirrors ActivityEventTypes admin subset.
+ * (#V7 M-01) Uses `(string & {})` intentionally for extensibility, allowing dynamic patterns
+ * like `${settingsType}_settings_view` while providing IntelliSense for known values.
+ */
 export type AdminActionType =
   | 'admin_page_view'
   | 'admin_dashboard_view'
@@ -273,7 +276,9 @@ export type AdminActionType =
   | 'user_quota_reset'
   | (string & {}); // extensible — includes dynamic `${settingsType}_settings_view` patterns
 
-/** M-04: indb_admin_activity_logs.target_type */
+/** M-04: indb_admin_activity_logs.target_type
+ * (#V7 M-01) Uses `(string & {})` intentionally — same extensibility pattern as AdminActionType.
+ */
 export type AdminTargetType = 'order' | 'user' | (string & {});
 
 /** M-05: indb_site_integration.quota_reset_interval */
@@ -475,8 +480,8 @@ export type Database = {
           id?: string;
           name?: string;
           iso2_code?: string;
-          iso3_code?: string;
-          numeric_code?: string;
+          iso3_code?: string | null; // (#V7 M-02) Matches Row nullable type
+          numeric_code?: string | null; // (#V7 M-02) Matches Row nullable type
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -2091,10 +2096,12 @@ export type DashboardNotification =
   Database['public']['Tables']['indb_notifications_dashboard']['Row'];
 export type KeywordCountry = Database['public']['Tables']['indb_keyword_countries']['Row'];
 export type KeywordDomain = Database['public']['Tables']['indb_keyword_domains']['Row'];
-export type KeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Row']; // DEPRECATED: use RankKeywordRow
+/** @deprecated (#V7 M-03) Use RankKeywordRow instead */
+export type KeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Row'];
 export type KeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Row'];
 export type RankKeywordRow = Database['public']['Tables']['indb_rank_keywords']['Row'];
 export type SiteIntegration = Database['public']['Tables']['indb_site_integration']['Row'];
+/** (#V7 M-04) Maps to indb_site_integration, not a separate SE Ranking table */
 export type SeRankingIntegration = Database['public']['Tables']['indb_site_integration']['Row'];
 export type SeRankingUsageLog = Database['public']['Tables']['indb_seranking_usage_logs']['Row'];
 export type SecurityAuditLog = Database['public']['Tables']['indb_security_audit_logs']['Row'];
@@ -2118,7 +2125,8 @@ export type InsertDashboardNotification =
   Database['public']['Tables']['indb_notifications_dashboard']['Insert'];
 export type InsertKeywordCountry = Database['public']['Tables']['indb_keyword_countries']['Insert'];
 export type InsertKeywordDomain = Database['public']['Tables']['indb_keyword_domains']['Insert'];
-export type InsertKeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Insert']; // DEPRECATED: use InsertRankKeyword
+/** @deprecated (#V7 M-03) Use InsertRankKeyword instead */
+export type InsertKeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Insert'];
 export type InsertKeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Insert'];
 export type InsertSiteIntegration = Database['public']['Tables']['indb_site_integration']['Insert'];
 export type InsertSeRankingIntegration =
@@ -2140,7 +2148,8 @@ export type UpdateUserProfile = Database['public']['Tables']['indb_auth_user_pro
 export type UpdateUserSettings = Database['public']['Tables']['indb_auth_user_settings']['Update'];
 
 export type UpdateKeywordDomain = Database['public']['Tables']['indb_keyword_domains']['Update'];
-export type UpdateKeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Update']; // DEPRECATED: use UpdateRankKeyword
+/** @deprecated (#V7 M-03) Use UpdateRankKeyword instead */
+export type UpdateKeywordKeyword = Database['public']['Tables']['indb_rank_keywords']['Update'];
 export type UpdateKeywordRanking = Database['public']['Tables']['indb_keyword_rankings']['Update'];
 export type UpdateSiteIntegration = Database['public']['Tables']['indb_site_integration']['Update'];
 export type UpdateSeRankingIntegration =

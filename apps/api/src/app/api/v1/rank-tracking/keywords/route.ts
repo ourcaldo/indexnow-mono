@@ -82,6 +82,8 @@ export const POST = authenticatedApiWrapper(
     }
     const { keyword, domain, country, device, searchEngine, targetUrl, tags } = parseResult.data;
 
+    // (#V7 M-28) Cast is safe: Zod schema `createKeywordSchema` validates device
+    // as z.enum(['desktop', 'mobile']).optional() before this point.
     const result = await rankTrackingService.createKeyword(auth.userId, {
       keyword,
       domain,

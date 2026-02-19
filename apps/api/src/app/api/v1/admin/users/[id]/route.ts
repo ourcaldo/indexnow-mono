@@ -197,6 +197,16 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   }
   const { full_name, role, email_notifications, phone_number, status } = parseResult.data;
 
+  // (#V7 M-20) Prevent admins from escalating their own role
+  if (role && userId === adminUser.id) {
+    return formatError(
+      await createStandardError(ErrorType.AUTHORIZATION, 'Cannot change your own role', {
+        statusCode: 403,
+        severity: ErrorSeverity.MEDIUM,
+      })
+    );
+  }
+
   if (status === 'suspended' || status === 'active') {
     const isSuspending = status === 'suspended';
     const banDuration = isSuspending ? '10000h' : 'none';

@@ -30,7 +30,8 @@ export default function AdminError({
         severity: 'high',
         context: {
           digest: error.digest || null,
-          url: window.location.href,
+          // (#V7 M-30) Safe: useEffect only runs client-side where window exists
+          url: typeof window !== 'undefined' ? window.location.href : 'ssr',
         },
       })
       .catch((err) =>

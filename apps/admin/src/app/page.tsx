@@ -23,7 +23,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     logDashboardView();
-  }, []);
+    // (#V7 M-29) logDashboardView is stable (no deps) — listed for exhaustive-deps compliance
+  }, [logDashboardView]);
 
   if (isLoading) {
     return <AdminPageSkeleton />;

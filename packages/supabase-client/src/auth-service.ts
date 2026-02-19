@@ -109,7 +109,10 @@ export class AuthService {
           const refreshToken = authData?.refresh_token;
 
           if (accessToken && refreshToken) {
-            // Send tokens to server for secure cookie setting
+            // (#V7 M-09) Send tokens to server for secure cookie setting.
+            // CSRF protection relies on SameSite=Lax cookies + Supabase's built-in
+            // PKCE flow. No additional CSRF token is used because the session endpoint
+            // only accepts POST with JSON body (not form-submittable).
             await fetch(AUTH_ENDPOINTS.SESSION, {
               method: 'POST',
               headers: {

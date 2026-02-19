@@ -67,6 +67,9 @@ export default function OrderCompletedPage() {
 
   useEffect(() => {
     fetchTransactionDetails();
+    // (#V7 M-33) fetchTransactionDetails depends on params.id (listed) and stable
+    // refs (router, addToast). Not memoized, so listing it would cause infinite loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const fetchTransactionDetails = async () => {

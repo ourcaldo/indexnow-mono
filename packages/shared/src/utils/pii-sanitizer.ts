@@ -21,9 +21,10 @@ const SENSITIVE_KEYS = [
 ];
 
 /**
- * Sanitizes an object by recursively replacing sensitive values
+ * Sanitizes an object by recursively replacing sensitive values.
+ * (#V7 M-07) Uses a WeakSet to guard against circular references.
  */
-export function sanitizePII(data: unknown): unknown {
+export function sanitizePII(data: unknown, _seen?: WeakSet<object>): unknown {
   if (data === null || data === undefined) {
     return data;
   }
@@ -46,10 +47,16 @@ export function sanitizePII(data: unknown): unknown {
   }
 
   if (Array.isArray(data)) {
-    return data.map((item) => sanitizePII(item));
+    const seen = _seen || new WeakSet();
+    if (seen.has(data)) return '[Circular]';
+    seen.add(data);
+    return data.map((item) => sanitizePII(item, seen));
   }
 
   if (typeof data === 'object') {
+    const seen = _seen || new WeakSet();
+    if (seen.has(data as object)) return '[Circular]';
+    seen.add(data as object);
     const sanitized: Record<string, unknown> = {};
     const record = data as Record<string, unknown>;
 
@@ -58,7 +65,7 @@ export function sanitizePII(data: unknown): unknown {
       if (SENSITIVE_KEYS.some((sensitiveKey) => lowerKey.includes(sensitiveKey))) {
         sanitized[key] = '[REDACTED]';
       } else {
-        sanitized[key] = sanitizePII(value);
+        sanitized[key] = sanitizePII(value, seen);
       }
     }
     return sanitized;

@@ -103,7 +103,12 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
       }
     );
 
-    return formatSuccess({ gateways });
+    // (#V7 M-26) Strip api_credentials before returning — they contain secrets
+    const safeGateways = (gateways as PaymentGatewayRow[]).map(
+      ({ api_credentials: _creds, ...rest }) => rest
+    );
+
+    return formatSuccess({ gateways: safeGateways });
   } catch (error) {
     const systemError = await ErrorHandlingService.createError(
       ErrorType.SYSTEM,

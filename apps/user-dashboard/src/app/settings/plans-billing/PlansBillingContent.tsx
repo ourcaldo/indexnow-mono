@@ -117,6 +117,9 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
+    // (#V7 M-34) loadBillingData, loadBillingHistory, loadDashboardData, loadSubscriptionData
+    // are not memoized with useCallback and depend on state setters. Listing them would
+    // create infinite re-render loops. The deps that actually change are captured via handleApiError.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleApiError]);
 
