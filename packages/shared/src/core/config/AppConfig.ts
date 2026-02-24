@@ -60,7 +60,7 @@ const BullMQSchema = z.object({
 const PaddleSchema = z.object({
   apiKey: z.string().min(1).optional(),
   webhookSecret: z.string().min(1).optional(),
-  clientToken: z.string().min(1),
+  clientToken: z.string().min(1).optional(),
   environment: z.enum(['sandbox', 'production']).default('sandbox'),
 });
 

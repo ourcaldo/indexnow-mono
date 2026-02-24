@@ -7,6 +7,11 @@
 -- ============================================================
 
 -- ============================================================
+-- EXTENSIONS (must be created before any dependent objects)
+-- ============================================================
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ============================================================
 -- UTILITY FUNCTIONS & TRIGGERS
 -- ============================================================
 
@@ -1359,9 +1364,6 @@ CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_active_dedup_note
 -- 5. Index for last_checked to optimize stale keyword queries
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_last_checked 
 ON indb_rank_keywords(last_checked);
-
--- 6. Add pg_trgm extension if not exists (required for GIN trgm ops)
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ============================================================
 -- IndexNow Studio - Domain Stats RPC
