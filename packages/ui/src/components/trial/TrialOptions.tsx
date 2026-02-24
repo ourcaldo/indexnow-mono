@@ -57,7 +57,7 @@ export function TrialOptions({}: TrialOptionsProps) {
     
     try {
       // Redirect to checkout with trial parameter
-      router.push(`/dashboard/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`)
+      router.push(`/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`)
     } catch (error) {
       addToast({
         title: "Error",

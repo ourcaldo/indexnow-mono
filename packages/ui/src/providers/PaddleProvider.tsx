@@ -51,13 +51,13 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
 
               case 'checkout.closed':
                 if (typeof window !== 'undefined') {
-                  window.location.href = '/dashboard?subscription=cancelled'
+                  window.location.href = '/?subscription=cancelled'
                 }
                 break
 
               case 'checkout.error':
                 if (typeof window !== 'undefined') {
-                  window.location.href = '/dashboard?subscription=failed'
+                  window.location.href = '/?subscription=failed'
                 }
                 break
 

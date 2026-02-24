@@ -98,7 +98,7 @@ export default function BillingPage() {
   const { addToast } = useToast();
   const { handleApiError } = useApiError();
   const { logBillingActivity } = useActivityLogger();
-  usePageViewLogger('/dashboard/settings/plans-billing', 'Billing & Subscriptions', {
+  usePageViewLogger('/settings/plans-billing', 'Billing & Subscriptions', {
     section: 'billing_management',
   });
 
@@ -470,7 +470,7 @@ export default function BillingPage() {
             formatCurrency={formatCurrency}
             formatDate={formatDate}
             onRowClick={(id: string) =>
-              (window.location.href = `/dashboard/settings/plans-billing/order/${id}`)
+              (window.location.href = `/settings/plans-billing/order/${id}`)
             }
           />
         </div>

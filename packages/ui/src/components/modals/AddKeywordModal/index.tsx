@@ -89,7 +89,7 @@ export function AddKeywordModal({ open, onClose, onSuccess }: AddKeywordModalPro
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push('/dashboard/indexnow/overview');
+        router.push('/indexnow/overview');
       }
     },
     onError: (error: Error) => handleApiError(error),

@@ -43,7 +43,7 @@ export default function Login() {
       try {
         const currentUser = await authService.getCurrentUser()
         if (currentUser) {
-          router.replace('/dashboard')
+          router.replace('/')
           return
         }
       } catch (error) {
@@ -150,7 +150,7 @@ export default function Login() {
           setIsLoading(false)
           return
         }
-        await authService.createMagicLink(email, `${window.location.origin}/auth/callback?next=/dashboard`)
+        await authService.createMagicLink(email, `${window.location.origin}/auth/callback?next=/`)
         setMagicLinkSent(true)
         setError("")
       } else {
@@ -182,7 +182,7 @@ export default function Login() {
             router.push(redirectUrl)
           }
         } else {
-          router.push("/dashboard") // Fallback
+          router.push("/") // Fallback
         }
       }
     } catch (error: unknown) {

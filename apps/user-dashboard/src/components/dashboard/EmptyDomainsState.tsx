@@ -17,7 +17,7 @@ export function EmptyDomainsState() {
           track your SEO progress.
         </p>
         <Button
-          onClick={() => router.push('/dashboard/indexnow/add')}
+          onClick={() => router.push('/indexnow/add')}
           className="inline-flex items-center"
           data-testid="button-add-first-domain"
         >

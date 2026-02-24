@@ -67,7 +67,7 @@ export function DashboardHeader({
   const isIndexNowPage = (pathname?.includes('/indexnow/overview') || pathname?.includes('/indexnow/rank-history'))
   
   // Show notification icon only on main dashboard page
-  const showNotification = pathname === '/dashboard' || pathname === '/'
+  const showNotification = pathname === '/'
 
   return (
     <>
@@ -86,7 +86,7 @@ export function DashboardHeader({
               getDomainKeywordCount={getDomainKeywordCount}
               showKeywordCount={true}
               className="w-[320px]"
-              addDomainRoute="/dashboard/indexnow/add"
+              addDomainRoute="/indexnow/add"
               placeholder="Select domain"
             />
           )}

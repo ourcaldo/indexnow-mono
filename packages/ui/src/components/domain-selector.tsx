@@ -34,7 +34,7 @@ export const SharedDomainSelector = ({
   getDomainKeywordCount,
   showKeywordCount = true,
   className = '',
-  addDomainRoute = '/dashboard/indexnow/add',
+  addDomainRoute = '/indexnow/add',
   placeholder = 'Select Domain'
 }: SharedDomainSelectorProps) => {
   const router = useRouter()

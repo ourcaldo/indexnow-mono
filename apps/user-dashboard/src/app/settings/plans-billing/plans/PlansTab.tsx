@@ -59,7 +59,7 @@ export default function PlansTab() {
     if (searchParams?.get('checkout') === 'success') {
       setShowSuccessNotification(true);
       // Remove the query parameter
-      window.history.replaceState({}, '', '/dashboard/settings/plans-billing');
+      window.history.replaceState({}, '', '/settings/plans-billing');
     }
   }, [searchParams]);
 

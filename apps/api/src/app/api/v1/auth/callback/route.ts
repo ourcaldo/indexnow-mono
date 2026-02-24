@@ -24,9 +24,9 @@ function getBaseDomain(): string {
 export const GET = publicApiWrapper(async (request: NextRequest) => {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const rawNext = searchParams.get('next') ?? '/dashboard';
+  const rawNext = searchParams.get('next') ?? '/';
   // Ensure redirect URL is a safe path (starts with /) to prevent open redirects
-  const next = rawNext.startsWith('/') ? rawNext : '/dashboard';
+  const next = rawNext.startsWith('/') ? rawNext : '/';
   const error_code = searchParams.get('error');
   const error_description = searchParams.get('error_description');
 

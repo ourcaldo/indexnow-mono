@@ -50,7 +50,7 @@ export function getBillingPeriodPrice(
  * Build checkout redirect URL for a subscription purchase.
  */
 export function buildCheckoutUrl(packageId: string, period: string, trial = false): string {
-  const base = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=${period}`
+  const base = `/settings/plans-billing/checkout?package=${packageId}&period=${period}`
   return trial ? `${base}&trial=true` : base
 }
 

@@ -22,7 +22,7 @@ export function QuickActions({ domainKeywordsCount }: QuickActionsProps) {
       <CardContent className="space-y-2">
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 w-full justify-start transition-colors duration-150"
-          onClick={() => router.push('/dashboard/indexnow/add')}
+          onClick={() => router.push('/indexnow/add')}
           data-testid="action-add-keywords"
         >
           <Plus className="mr-3 h-4 w-4" />
@@ -35,7 +35,7 @@ export function QuickActions({ domainKeywordsCount }: QuickActionsProps) {
         <Button
           variant="outline"
           className="hover:text-foreground dark:hover:text-foreground h-11 w-full justify-start transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-800"
-          onClick={() => router.push('/dashboard/indexnow/overview')}
+          onClick={() => router.push('/indexnow/overview')}
           data-testid="action-view-keywords"
         >
           <Search className="mr-3 h-4 w-4" />
@@ -50,7 +50,7 @@ export function QuickActions({ domainKeywordsCount }: QuickActionsProps) {
         <Button
           variant="outline"
           className="hover:text-foreground dark:hover:text-foreground h-11 w-full justify-start transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-800"
-          onClick={() => router.push('/dashboard/indexnow/rank-history')}
+          onClick={() => router.push('/indexnow/rank-history')}
           data-testid="action-rank-history"
         >
           <BarChart3 className="mr-3 h-4 w-4" />
@@ -63,7 +63,7 @@ export function QuickActions({ domainKeywordsCount }: QuickActionsProps) {
         <Button
           variant="outline"
           className="hover:text-foreground dark:hover:text-foreground h-11 w-full justify-start transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-800"
-          onClick={() => router.push('/dashboard/settings/plans-billing')}
+          onClick={() => router.push('/settings/plans-billing')}
           data-testid="action-manage-billing"
         >
           <Settings className="mr-3 h-4 w-4" />

@@ -288,7 +288,7 @@ export default function OrderCompletedPage() {
             The order you're looking for doesn't exist or you don't have access to it.
           </p>
           <Button
-            onClick={() => router.push('/dashboard/settings?tab=plans-billing')}
+            onClick={() => router.push('/settings?tab=plans-billing')}
             className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             Back to Billing
@@ -305,7 +305,7 @@ export default function OrderCompletedPage() {
         <div className="mb-8">
           <Button
             variant="ghost"
-            onClick={() => router.push('/dashboard/settings?tab=plans-billing')}
+            onClick={() => router.push('/settings?tab=plans-billing')}
             className="text-muted-foreground hover:text-foreground hover:bg-secondary mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />

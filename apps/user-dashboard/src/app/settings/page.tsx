@@ -22,7 +22,7 @@ function SettingsPageContent() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('general')
 
-  usePageViewLogger('/dashboard/settings', 'Settings', { section: 'user_settings' })
+  usePageViewLogger('/settings', 'Settings', { section: 'user_settings' })
 
   useEffect(() => {
     const tab = searchParams?.get('tab')
@@ -33,7 +33,7 @@ function SettingsPageContent() {
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
-    router.push(`/dashboard/settings?tab=${tabId}`, { scroll: false })
+    router.push(`/settings?tab=${tabId}`, { scroll: false })
   }
 
   const renderTabContent = () => {

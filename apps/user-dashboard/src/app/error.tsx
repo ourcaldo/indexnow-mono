@@ -73,7 +73,7 @@ export default function DashboardError({
             asChild
             className="border-border text-muted-foreground hover:bg-secondary w-full sm:w-auto"
           >
-            <Link href="/dashboard">
+            <Link href="/">
               <Home className="mr-2 h-4 w-4" />
               Go to Dashboard
             </Link>

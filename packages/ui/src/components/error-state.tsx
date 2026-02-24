@@ -155,7 +155,7 @@ export function ErrorState({
             
             {showHomeButton && (
               <Button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/')}
                 variant="outline"
                 className="w-full sm:w-auto"
                 data-testid="button-home"

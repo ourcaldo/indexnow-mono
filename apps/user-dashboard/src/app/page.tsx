@@ -121,7 +121,7 @@ function DashboardContent() {
                 maxItems={3}
                 showViewAll={true}
                 showUpdateBadge={false}
-                onViewAll={() => router.push('/dashboard/indexnow/rank-history')}
+                onViewAll={() => router.push('/indexnow/rank-history')}
               />
             </div>
           </div>

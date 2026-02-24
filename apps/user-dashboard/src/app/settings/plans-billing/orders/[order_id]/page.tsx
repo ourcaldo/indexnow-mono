@@ -65,7 +65,7 @@ export default function OrderSuccessPage() {
 
   // Activity logging
   usePageViewLogger(
-    '/dashboard/settings/plans-billing/orders/success',
+    '/settings/plans-billing/orders/success',
     'Order Success',
     { section: 'billing_success', order_id }
   )
@@ -91,7 +91,7 @@ export default function OrderSuccessPage() {
             'Could not load order details. Please try again.',
           type: 'error'
         })
-        router.push('/dashboard/settings/plans-billing')
+        router.push('/settings/plans-billing')
       } finally {
         setLoading(false)
       }
@@ -112,7 +112,7 @@ export default function OrderSuccessPage() {
     }
 
     if (countdown === 0) {
-      router.push('/dashboard/settings/plans-billing')
+      router.push('/settings/plans-billing')
     }
   }, [countdown, loading, orderData, router])
 
@@ -143,7 +143,7 @@ export default function OrderSuccessPage() {
           <p className="text-muted-foreground">Order not found</p>
           <Button
             onClick={() =>
-              router.push('/dashboard/settings/plans-billing')
+              router.push('/settings/plans-billing')
             }
             className="mt-4 bg-accent hover:bg-accent/90 text-accent-foreground"
           >
@@ -329,7 +329,7 @@ export default function OrderSuccessPage() {
             </p>
             <Button
               onClick={() =>
-                router.push('/dashboard/settings/plans-billing')
+                router.push('/settings/plans-billing')
               }
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-lg px-6 py-2"
             >

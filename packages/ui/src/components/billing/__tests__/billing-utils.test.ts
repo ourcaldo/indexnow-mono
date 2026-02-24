@@ -89,7 +89,7 @@ describe('getBillingPeriodPrice', () => {
 describe('buildCheckoutUrl', () => {
   it('builds standard checkout URL', () => {
     const url = buildCheckoutUrl('pkg-123', 'monthly')
-    expect(url).toBe('/dashboard/settings/plans-billing/checkout?package=pkg-123&period=monthly')
+    expect(url).toBe('/settings/plans-billing/checkout?package=pkg-123&period=monthly')
   })
 
   it('appends trial parameter when trial=true', () => {

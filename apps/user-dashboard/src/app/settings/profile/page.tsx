@@ -30,7 +30,7 @@ export default function ProfileSettingsPage() {
     handleChangePassword,
   } = useAccountSettings()
 
-  usePageViewLogger('/dashboard/settings/profile', 'Profile Settings', { section: 'profile_settings' })
+  usePageViewLogger('/settings/profile', 'Profile Settings', { section: 'profile_settings' })
   const [showPassword, setShowPassword] = useState(false)
 
   if (loading) {

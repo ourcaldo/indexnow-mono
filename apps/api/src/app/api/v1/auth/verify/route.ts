@@ -31,9 +31,9 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
   const { searchParams, origin } = new URL(request.url);
   const token = searchParams.get('token_hash') ?? searchParams.get('token');
   const type = searchParams.get('type');
-  const rawRedirectTo = searchParams.get('redirect_to') ?? '/dashboard';
+  const rawRedirectTo = searchParams.get('redirect_to') ?? '/';
   // Ensure redirect URL is a safe path (starts with /) to prevent open redirects
-  const redirectTo = rawRedirectTo.startsWith('/') ? rawRedirectTo : '/dashboard';
+  const redirectTo = rawRedirectTo.startsWith('/') ? rawRedirectTo : '/';
 
   // Validate required parameters
   if (!token) {
@@ -105,7 +105,7 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
           );
 
           // Successful email verification - redirect to dashboard
-          return NextResponse.redirect(`${origin}/dashboard?message=email_verified`);
+          return NextResponse.redirect(`${origin}/?message=email_verified`);
         } catch (error) {
           await ErrorHandlingService.createError(
             ErrorType.AUTHENTICATION,

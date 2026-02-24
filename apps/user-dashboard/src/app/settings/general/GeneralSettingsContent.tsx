@@ -23,7 +23,7 @@ export default function GeneralSettingsPage() {
   } = useAccountSettings();
   const [savingNotifications, setSavingNotifications] = useState(false);
 
-  usePageViewLogger('/dashboard/settings/general', 'Account Settings', {
+  usePageViewLogger('/settings/general', 'Account Settings', {
     section: 'account_settings',
   });
   const { logDashboardActivity } = useActivityLogger();

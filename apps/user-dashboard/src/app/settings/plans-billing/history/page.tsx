@@ -146,7 +146,7 @@ export default function BillingHistoryPage() {
         formatCurrency={formatCurrency}
         formatDate={formatDate}
         onRowClick={(id: string) =>
-          (window.location.href = `/dashboard/settings/plans-billing/order/${id}`)
+          (window.location.href = `/settings/plans-billing/order/${id}`)
         }
       />
     </div>

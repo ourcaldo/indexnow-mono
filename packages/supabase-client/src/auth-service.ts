@@ -79,7 +79,7 @@ export class AuthService {
   }
 
   getSubdomainRedirectUrl(role: string): string {
-    if (typeof window === 'undefined') return '/dashboard';
+    if (typeof window === 'undefined') return '/';
 
     // Determine target URL based on role using environment variables
     const targetUrl =
@@ -88,7 +88,7 @@ export class AuthService {
         : process.env.NEXT_PUBLIC_DASHBOARD_URL;
 
     // Return environment URL if available, otherwise fallback to path
-    return targetUrl || '/dashboard';
+    return targetUrl || '/';
   }
 
   private async initializeAuth() {

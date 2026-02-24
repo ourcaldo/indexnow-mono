@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
 
   // 1. If user is authenticated and tries to access auth pages, redirect to dashboard
   if (user && isPublicRoute) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   // 2. If user is NOT authenticated and tries to access any non-public route, redirect to login

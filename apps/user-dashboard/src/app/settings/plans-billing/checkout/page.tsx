@@ -69,7 +69,7 @@ function CheckoutPageContent() {
   });
 
   // Activity logging
-  usePageViewLogger('/dashboard/settings/plans-billing/checkout', 'Checkout', {
+  usePageViewLogger('/settings/plans-billing/checkout', 'Checkout', {
     section: 'billing_checkout',
   });
   const { logBillingActivity } = useActivityLogger();
@@ -167,7 +167,7 @@ function CheckoutPageContent() {
     if (package_id) {
       fetchData();
     } else {
-      router.push('/dashboard/settings/plans-billing');
+      router.push('/settings/plans-billing');
     }
   }, [package_id, router, addToast, isTrialFlow]);
 
@@ -273,7 +273,7 @@ function CheckoutPageContent() {
         },
         settings: {
           displayMode: 'overlay',
-          successUrl: `${window.location.origin}/dashboard?subscription=success`,
+          successUrl: `${window.location.origin}/?subscription=success`,
           theme: 'light',
           locale: 'en',
         },
@@ -316,7 +316,7 @@ function CheckoutPageContent() {
 
   // Package not found state
   if (!selectedPackage) {
-    return <PackageNotFound onBack={() => router.push('/dashboard/settings/plans-billing')} />;
+    return <PackageNotFound onBack={() => router.push('/settings/plans-billing')} />;
   }
 
   const { price, discount, originalPrice } = calculatePrice();
@@ -327,7 +327,7 @@ function CheckoutPageContent() {
         <div className="mx-auto max-w-7xl">
           <CheckoutHeader
             selectedPackage={selectedPackage}
-            onBack={() => router.push('/dashboard/settings/plans-billing')}
+            onBack={() => router.push('/settings/plans-billing')}
           />
 
           <div className="grid gap-8 lg:grid-cols-3">

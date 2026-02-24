@@ -76,12 +76,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!currentUser && typeof window !== 'undefined') {
         const currentPath = window.location.pathname
         
-        // Define protected routes that require authentication
-        const protectedRoutes = ['/dashboard']
-        const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route))
+        // Public routes that don't require authentication
+        const publicRoutes = ['/login', '/register', '/auth', '/resend-verification', '/forgot-password', '/reset-password']
+        const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route))
         
         // Admin app handles its own auth via middleware
-        if (isProtectedRoute) {
+        if (!isPublicRoute) {
           router.push('/login')
         }
       }
@@ -111,12 +111,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname
           
-          // Define protected routes that require authentication
-          const protectedRoutes = ['/dashboard']
-          const isProtectedRoute = protectedRoutes.some(route => currentPath.startsWith(route))
+          // Public routes that don't require authentication
+          const publicRoutes = ['/login', '/register', '/auth', '/resend-verification', '/forgot-password', '/reset-password']
+          const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route))
           
           // Admin app handles its own auth via middleware
-          if (isProtectedRoute) {
+          if (!isPublicRoute) {
             router.push('/login')
           }
         }

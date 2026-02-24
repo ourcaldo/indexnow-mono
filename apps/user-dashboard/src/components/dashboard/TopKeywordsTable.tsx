@@ -32,7 +32,7 @@ export function TopKeywordsTable({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push('/dashboard/indexnow/overview')}
+            onClick={() => router.push('/indexnow/overview')}
             data-testid="button-view-all-keywords"
             className="btn-hover shrink-0"
           >
@@ -52,7 +52,7 @@ export function TopKeywordsTable({
               Start tracking keywords for this domain to see performance data here.
             </p>
             <Button
-              onClick={() => router.push('/dashboard/indexnow/add')}
+              onClick={() => router.push('/indexnow/add')}
               size="sm"
               className="btn-hover"
             >

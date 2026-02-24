@@ -129,9 +129,9 @@ export function Sidebar({
       items: [
         {
           label: 'Dashboard',
-          href: '/dashboard',
+          href: '/',
           icon: LayoutDashboard,
-          active: pathname === '/dashboard'
+          active: pathname === '/'
         }
       ]
     },
@@ -140,15 +140,15 @@ export function Sidebar({
       items: [
         {
           label: 'Overview',
-          href: '/dashboard/indexnow/overview',
+          href: '/indexnow/overview',
           icon: Activity,
-          active: pathname === '/dashboard/indexnow/overview'
+          active: pathname === '/indexnow/overview'
         },
         {
           label: 'Rank History',
-          href: '/dashboard/indexnow/rank-history',
+          href: '/indexnow/rank-history',
           icon: TrendingUp,
-          active: pathname === '/dashboard/indexnow/rank-history'
+          active: pathname === '/indexnow/rank-history'
         }
       ]
     }
@@ -351,7 +351,7 @@ export function Sidebar({
                             }`}
                         >
                           <a
-                            href="/dashboard/settings/plans-billing"
+                            href="/settings/plans-billing"
                             className="w-full bg-background text-primary text-sm font-semibold py-2 px-3 rounded-lg hover:bg-secondary transition-colors block text-center"
                           >
                             {!hasActivePackage ? 'Subscribe now →' : 'Upgrade plan →'}
@@ -372,15 +372,15 @@ export function Sidebar({
             ) : (
               <div className="relative group">
                 <a
-                  href="/dashboard/settings"
-                  className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${pathname === '/dashboard/settings'
+                  href="/settings"
+                  className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${pathname === '/settings'
                       ? isCollapsed
                         ? 'bg-primary/10 text-primary'
                         : 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                     }`}
                 >
-                  <Settings className={`${isCollapsed ? 'mr-0' : 'mr-3'} h-5 w-5 flex-shrink-0 ${pathname === '/dashboard/settings'
+                  <Settings className={`${isCollapsed ? 'mr-0' : 'mr-3'} h-5 w-5 flex-shrink-0 ${pathname === '/settings'
                       ? isCollapsed
                         ? 'text-primary'
                         : 'text-primary-foreground'
@@ -454,7 +454,7 @@ export function Sidebar({
                   onDomainSelect={onDomainSelect}
                   getDomainKeywordCount={getDomainKeywordCount}
                   showKeywordCount={true}
-                  addDomainRoute="/dashboard/indexnow/add"
+                  addDomainRoute="/indexnow/add"
                   placeholder="Select Domain"
                   className="w-full"
                 />
@@ -500,14 +500,14 @@ export function Sidebar({
               <div className="h-10 bg-muted animate-pulse rounded-lg"></div>
             ) : (
               <a
-                href="/dashboard/settings"
+                href="/settings"
                 onClick={onToggle}
-                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${pathname === '/dashboard/settings'
+                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${pathname === '/settings'
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-slate-50'
                   }`}
               >
-                <Settings className={`mr-3 h-5 w-5 flex-shrink-0 ${pathname === '/dashboard/settings'
+                <Settings className={`mr-3 h-5 w-5 flex-shrink-0 ${pathname === '/settings'
                     ? 'text-primary-foreground'
                     : 'text-muted-foreground'
                   }`} />
@@ -576,7 +576,7 @@ export function Sidebar({
                           }`}
                       >
                         <a
-                          href="/dashboard/settings/plans-billing"
+                          href="/settings/plans-billing"
                           onClick={onToggle}
                           className="w-full bg-background text-primary text-sm font-semibold py-2 px-3 rounded-lg hover:bg-secondary transition-colors block text-center"
                         >

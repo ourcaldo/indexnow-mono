@@ -50,7 +50,7 @@ export function useDashboardPageData() {
   const [trialEligible, setTrialEligible] = useState<TrialEligibility | null>(null);
 
   // Log page view and dashboard activities
-  usePageViewLogger('/dashboard', 'Dashboard', { section: 'main_dashboard' });
+  usePageViewLogger('/', 'Dashboard', { section: 'main_dashboard' });
   const { logDashboardActivity } = useActivityLogger();
 
   // Use domain context for domain-related state and data
@@ -88,7 +88,7 @@ export function useDashboardPageData() {
   const handleSubscribe = async (packageId: string, period: string) => {
     try {
       setSubscribing(packageId);
-      const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=${period}`;
+      const checkoutUrl = `/settings/plans-billing/checkout?package=${packageId}&period=${period}`;
       window.location.href = checkoutUrl;
     } catch (error) {
       logger.error(
@@ -109,7 +109,7 @@ export function useDashboardPageData() {
   const handleStartTrial = async (packageId: string) => {
     try {
       setStartingTrial(packageId);
-      const checkoutUrl = `/dashboard/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`;
+      const checkoutUrl = `/settings/plans-billing/checkout?package=${packageId}&period=monthly&trial=true`;
       window.location.href = checkoutUrl;
     } catch (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Error starting trial');
