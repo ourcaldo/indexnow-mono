@@ -1,6 +1,16 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
+// Build CSP connect-src dynamically to include the API server
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const connectSrc = [
+  "'self'",
+  'https://*.supabase.co',
+  'https://*.sentry.io',
+  'https://*.posthog.com',
+  ...(apiBaseUrl ? [new URL(apiBaseUrl).origin] : []),
+].join(' ');
+
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -13,7 +23,7 @@ const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.sentry.io https://*.posthog.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';",
+      `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src ${connectSrc}; frame-ancestors 'none'; object-src 'none'; base-uri 'self';`,
   },
 ];
 

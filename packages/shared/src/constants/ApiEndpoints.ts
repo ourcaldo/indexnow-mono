@@ -9,7 +9,11 @@ import { AppConfig } from '../core/config/AppConfig';
 const normalizeApiBaseUrl = (url: string): string => {
   return url.replace(/\/+$/, ''); // Remove trailing slashes
 };
-const API_BASE_URL = normalizeApiBaseUrl(AppConfig.app.baseUrl || '/api');
+// Use apiBaseUrl (dedicated API server URL) when available,
+// otherwise fall back to baseUrl + /api (same-origin deployment)
+const API_BASE_URL = normalizeApiBaseUrl(
+  AppConfig.app.apiBaseUrl || `${AppConfig.app.baseUrl || ''}/api`
+);
 export const API_BASE = {
   V1: `${API_BASE_URL}/v1`,
   SYSTEM: `${API_BASE_URL}/system`,

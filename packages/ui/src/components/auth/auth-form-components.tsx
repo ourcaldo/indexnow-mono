@@ -52,13 +52,14 @@ export function PasswordInput({
             {label}
           </label>
         )}
-        <div className="relative">
+        <div style={{ position: 'relative' }}>
           <input
             id={id}
             type={showPassword ? 'text' : 'password'}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="form-field-default form-field-focus w-full px-4 py-3 pr-12 text-base"
+            className="form-field-default form-field-focus w-full text-base"
+            style={{ paddingLeft: '1rem', paddingRight: '3rem', paddingTop: '0.75rem', paddingBottom: '0.75rem' }}
             placeholder={placeholder}
             required
             disabled={disabled}
@@ -66,7 +67,8 @@ export function PasswordInput({
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-0 text-muted-foreground cursor-pointer text-sm p-1 flex items-center justify-center hover:text-foreground transition-colors"
+            style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)' }}
+            className="bg-transparent border-0 text-muted-foreground cursor-pointer text-sm p-1 flex items-center justify-center hover:text-foreground transition-colors"
             disabled={disabled}
           >
             {showPassword ? (

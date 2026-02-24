@@ -4,14 +4,20 @@ import { z } from 'zod';
  * Zod schemas for configuration validation
  */
 
+/** Coerce empty strings to undefined so optional .url() fields don't fail */
+const optionalUrl = z.preprocess(
+  (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+  z.string().url().optional(),
+);
+
 const AppSchema = z.object({
   name: z.string().default('IndexNow Studio'),
   version: z.string().default('1.0.0'),
   environment: z.enum(['development', 'staging', 'production']).default('production'),
   baseUrl: z.string().url().default('http://localhost:3000'),
-  dashboardUrl: z.string().url().optional(),
-  backendUrl: z.string().url().optional(),
-  apiBaseUrl: z.string().url().optional(),
+  dashboardUrl: optionalUrl,
+  backendUrl: optionalUrl,
+  apiBaseUrl: optionalUrl,
   port: z.coerce.number().default(3000),
   allowedOrigins: z.array(z.string()).default([]),
 });
@@ -66,7 +72,7 @@ const PaddleSchema = z.object({
 
 const MonitoringSchema = z.object({
   sentry: z.object({
-    dsn: z.string().url().optional(),
+    dsn: optionalUrl,
     environment: z.string().default('development'),
     traceSampleRate: z.coerce.number().default(0.1),
     replaysSessionRate: z.coerce.number().default(0.1),

@@ -113,6 +113,8 @@ export const securityHeaders: MiddlewareFunction = async (context, next) => {
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
   // CSP: restrict resource loading to same origin + known CDNs
+  // NOTE: In dev, cross-origin API calls are allowed via next.config.ts CSP.
+  // This middleware CSP applies to API responses; frontend CSP is in next.config.ts.
   response.headers.set(
     'Content-Security-Policy',
     [
@@ -121,7 +123,7 @@ export const securityHeaders: MiddlewareFunction = async (context, next) => {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co https://*.paddle.com https://*.google-analytics.com https://*.posthog.com https://*.sentry.io",
+      "connect-src 'self' https://*.supabase.co https://*.paddle.com https://*.google-analytics.com https://*.posthog.com https://*.sentry.io http://localhost:*",
       "frame-src 'self' https://*.paddle.com",
       "object-src 'none'",
       "base-uri 'self'",

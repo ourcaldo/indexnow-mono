@@ -261,7 +261,7 @@ export default function Register() {
                 <option value="">Select your country</option>
                 {countries.map((countryOption) => (
                   <option key={countryOption.code} value={countryOption.name}>
-                    {countryOption.flag} {countryOption.name}
+                    {countryOption.name}
                   </option>
                 ))}
               </select>
@@ -274,9 +274,9 @@ export default function Register() {
               onChange={setPassword}
               placeholder="Create a password"
               variant="native"
-              className="mb-6"
+              className="mb-4"
             />
-            {fieldErrors.password && <p className="text-sm text-destructive -mt-4 mb-6">{fieldErrors.password}</p>}
+            {fieldErrors.password && <p className="text-sm text-destructive -mt-2 mb-4">{fieldErrors.password}</p>}
 
             {/* Confirm Password Field */}
             <PasswordInput
@@ -286,9 +286,9 @@ export default function Register() {
               onChange={setConfirmPassword}
               placeholder="Confirm your password"
               variant="native"
-              className="mb-8"
+              className="mb-6"
             />
-            {fieldErrors.confirmPassword && <p className="text-sm text-destructive -mt-6 mb-8">{fieldErrors.confirmPassword}</p>}
+            {fieldErrors.confirmPassword && <p className="text-sm text-destructive -mt-4 mb-6">{fieldErrors.confirmPassword}</p>}
 
             {/* Error Message */}
             <AuthErrorAlert error={error || null} className="mb-6" />
