@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createAnonServerClient, SecureServiceRoleHelpers } from '@indexnow/database';
-import { registerSchema, ErrorType, ErrorSeverity, getClientIP, sleep } from '@indexnow/shared';
+import { registerSchema, ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
@@ -82,64 +82,36 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       return formatError(authError);
     }
 
-    // If user was created, update their profile with additional data
+    // If user was created, create their profile row directly
     if (data.user?.id) {
       // Record successful registration for rate limiting
       await redisRateLimiter.increment(`register_ip_${clientIP}`, REGISTER_RATE_LIMIT);
       try {
         const operationContext = {
           userId: data.user.id,
-          operation: 'registration_profile_update',
-          reason: 'Complete user profile after successful registration',
+          operation: 'registration_profile_create',
+          reason: 'Create user profile after successful registration',
           source: 'auth/register',
           metadata: { hasPhoneNumber: !!phoneNumber, hasCountry: !!country, hasName: !!name },
           ipAddress: getClientIP(request) || 'unknown',
           userAgent: request.headers.get('user-agent') || 'unknown',
         };
 
-        // Wait for the user profile to be created by the database trigger
-        // Poll with exponential backoff instead of fixed delay
-        let profileReady = false;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const delay = Math.min(500 * Math.pow(2, attempt), 4000); // 500ms, 1s, 2s, 4s, 4s
-          await sleep(delay);
-
-          try {
-            const checkResults = await SecureServiceRoleHelpers.secureSelect(
-              { ...operationContext, operation: 'registration_check_profile_exists' },
-              'indb_auth_user_profiles',
-              ['id'],
-              { user_id: data.user.id }
-            );
-
-            if (Array.isArray(checkResults) && checkResults.length > 0) {
-              profileReady = true;
-              break;
-            }
-          } catch {
-            /* Retry: profile not ready yet */
-          }
-        }
-
-        // Update profile if it exists
-        if (profileReady) {
-          const updateData = {
+        // Directly insert the profile row — no trigger dependency, no polling delay
+        await SecureServiceRoleHelpers.secureInsert(
+          operationContext,
+          'indb_auth_user_profiles',
+          {
+            user_id: data.user.id,
+            full_name: name?.toString().substring(0, 255) || null,
             phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
             country: country?.toString().substring(0, 100) || null,
-            full_name: name?.toString().substring(0, 255) || null,
-          };
-
-          await SecureServiceRoleHelpers.secureUpdate(
-            operationContext,
-            'indb_auth_user_profiles',
-            updateData,
-            { user_id: data.user.id }
-          );
-        }
+          }
+        );
       } catch (err) {
         logger.warn(
           { error: err instanceof Error ? err : undefined },
-          'Failed to update user full_name during registration'
+          'Failed to create user profile during registration'
         );
       }
     }
