@@ -31,10 +31,11 @@ export { SecurityViolationError as ServiceRoleSecurityViolationError }
 
 /**
  * Backward compatible wrapper class.
+ * Methods are bound to SecureDatabaseHelpers to preserve the correct `this` context.
  */
 export class SecureServiceRoleWrapper {
-  static executeWithUserSession = SecureDatabaseHelpers.executeWithUserSession
-  static executeSecureOperation = SecureDatabaseHelpers.executeSecureOperation
+  static executeWithUserSession = SecureDatabaseHelpers.executeWithUserSession.bind(SecureDatabaseHelpers)
+  static executeSecureOperation = SecureDatabaseHelpers.executeSecureOperation.bind(SecureDatabaseHelpers)
   
   // Internal logging methods remain accessible if needed, routed to the new service
   private static sanitizeUserContext = SecurityService.sanitizeUserContext
@@ -49,10 +50,12 @@ export class SecureServiceRoleWrapper {
 
 /**
  * Backward compatible helpers class.
+ * Methods are bound to SecureDatabaseHelpers to preserve the correct `this` context,
+ * since static methods reference `this.executeSecureOperation` internally.
  */
 export class SecureServiceRoleHelpers {
-  static secureSelect = SecureDatabaseHelpers.secureSelect
-  static secureInsert = SecureDatabaseHelpers.secureInsert
-  static secureUpdate = SecureDatabaseHelpers.secureUpdate
-  static secureDelete = SecureDatabaseHelpers.secureDelete
+  static secureSelect = SecureDatabaseHelpers.secureSelect.bind(SecureDatabaseHelpers)
+  static secureInsert = SecureDatabaseHelpers.secureInsert.bind(SecureDatabaseHelpers)
+  static secureUpdate = SecureDatabaseHelpers.secureUpdate.bind(SecureDatabaseHelpers)
+  static secureDelete = SecureDatabaseHelpers.secureDelete.bind(SecureDatabaseHelpers)
 }
