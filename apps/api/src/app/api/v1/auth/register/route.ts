@@ -54,13 +54,31 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     });
 
     if (error) {
+      // Map Supabase error codes to user-friendly messages and appropriate error types
+      const errorCode = error.code || 'unknown';
+      let userMessageKey: string | undefined;
+      let errorType = ErrorType.AUTHENTICATION;
+      let statusCode = 400;
+
+      if (errorCode === 'over_email_send_rate_limit') {
+        errorType = ErrorType.RATE_LIMIT;
+        userMessageKey = 'default'; // "Too many requests. Please wait before trying again."
+        statusCode = 429;
+      } else if (errorCode === 'user_already_exists' || error.message?.includes('already registered')) {
+        userMessageKey = 'invalid_credentials';
+      } else if (errorCode === 'weak_password') {
+        errorType = ErrorType.VALIDATION;
+        userMessageKey = 'default';
+      }
+
       const authError = await ErrorHandlingService.createError(
-        ErrorType.AUTHENTICATION,
+        errorType,
         `Registration failed for ${email}: ${error.message}`,
         {
           severity: ErrorSeverity.MEDIUM,
-          statusCode: 400,
-          metadata: { email, errorCode: error.code || 'unknown', operation: 'user_registration' },
+          statusCode,
+          metadata: { email, errorCode, operation: 'user_registration' },
+          userMessageKey,
         }
       );
 
