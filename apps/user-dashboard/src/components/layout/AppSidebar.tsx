@@ -9,8 +9,6 @@ import {
   LogOut,
   ChevronsLeft,
   ChevronsRight,
-  CreditCard,
-  User,
   BarChart3,
   ArrowUpRight,
 } from 'lucide-react'
@@ -41,8 +39,6 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Account',
     items: [
-      { label: 'Plans & Billing', href: '/settings?tab=plans-billing', icon: CreditCard },
-      { label: 'Profile', href: '/settings/profile', icon: User },
       { label: 'Settings', href: '/settings', icon: Settings },
     ],
   },
