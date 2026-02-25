@@ -14,10 +14,18 @@ export class AuthService {
   private isInitialized = false;
   private userCache: { user: AuthUser | null; timestamp: number } | null = null;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  // Negative cache: prevent cascading retries when getCurrentUser fails
+  private failureTimestamp: number | null = null;
+  private readonly FAILURE_COOLDOWN = 10 * 1000; // 10 seconds
 
   private isUserCacheValid(): boolean {
     if (!this.userCache) return false;
     return Date.now() - this.userCache.timestamp < this.CACHE_DURATION;
+  }
+
+  private isInFailureCooldown(): boolean {
+    if (!this.failureTimestamp) return false;
+    return Date.now() - this.failureTimestamp < this.FAILURE_COOLDOWN;
   }
 
   private setCacheUser(user: AuthUser | null): void {
@@ -25,6 +33,8 @@ export class AuthService {
       user,
       timestamp: Date.now(),
     };
+    // Clear failure state on successful cache
+    if (user) this.failureTimestamp = null;
   }
 
   private clearUserCache(): void {
@@ -150,6 +160,11 @@ export class AuthService {
         return this.userCache.user;
       }
 
+      // If we recently failed, return null without retrying (negative cache)
+      if (useCache && this.isInFailureCooldown()) {
+        return null;
+      }
+
       await this.initializeAuth();
 
       const {
@@ -175,6 +190,7 @@ export class AuthService {
     } catch (error) {
       logger.error({ error: error instanceof Error ? error : undefined }, 'Get current user error');
       this.clearUserCache();
+      this.failureTimestamp = Date.now();
       return null;
     }
   }

@@ -16,7 +16,6 @@ import {
   Button,
   Input,
   Label,
-  DashboardPreview,
 } from '@indexnow/ui';
 import { AUTH_ENDPOINTS } from '@indexnow/shared';
 
@@ -183,8 +182,9 @@ export default function ResendVerification() {
       {/* Right Side - Dashboard Preview (Desktop Only) */}
       {!isMobile && (
         <div className="bg-brand-primary relative flex w-1/2 flex-col items-center justify-center p-[60px] text-white">
-          <div className="relative h-full w-full overflow-hidden">
-            <DashboardPreview />
+          <div className="relative h-full w-full overflow-hidden flex flex-col items-center justify-center gap-6">
+            <div className="text-4xl font-bold">IndexNow</div>
+            <p className="text-lg opacity-80 text-center max-w-md">Verify your email to get started with keyword rank tracking.</p>
           </div>
         </div>
       )}

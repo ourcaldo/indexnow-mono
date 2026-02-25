@@ -48,37 +48,35 @@ function SettingsPageContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="space-y-6">
       {/* Page Header */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your account, services, and billing preferences.</p>
-      </header>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">Settings</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your account, services, and billing preferences.</p>
+      </div>
 
       {/* Tab Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs" role="tablist" data-testid="nav-settings-tabs">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${isActive
-                      ? 'text-gray-900 border-gray-900'
-                      : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  aria-selected={isActive}
-                  data-testid={`tab-${tab.id}`}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
-        </div>
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs" role="tablist" data-testid="nav-settings-tabs">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                onClick={() => handleTabChange(tab.id)}
+                className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${isActive
+                    ? 'text-gray-900 dark:text-white border-blue-600'
+                    : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                aria-selected={isActive}
+                data-testid={`tab-${tab.id}`}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
       </div>
 
       {/* Tab Content Panels */}

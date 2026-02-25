@@ -928,34 +928,19 @@ CREATE POLICY "Public read site settings" ON indb_site_settings
   FOR SELECT USING (true);
 
 CREATE POLICY "Admins can manage site settings" ON indb_site_settings
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles
-      WHERE user_id = auth.uid()
-      AND role IN ('admin', 'super_admin')
-    )
-  );
+  FOR ALL USING (public.is_admin());
 
 -- 22. indb_admin_user_summary: Admins only
 ALTER TABLE indb_admin_user_summary ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Admins can view user summary" ON indb_admin_user_summary
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles
-      WHERE user_id = auth.uid()
-      AND role IN ('admin', 'super_admin')
-    )
-  );
+  FOR SELECT USING (public.is_admin());
 
 CREATE OR REPLACE FUNCTION increment_user_quota(target_user_id UUID, resource_type TEXT, amount INTEGER)
 RETURNS VOID AS $$
 BEGIN
   -- Security Check: Only allow if user is modifying their own quota OR is an admin
-  IF auth.uid() != target_user_id AND NOT EXISTS (
-    SELECT 1 FROM indb_auth_user_profiles 
-    WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
-  ) THEN
+  IF auth.uid() != target_user_id AND NOT public.is_admin() THEN
     RAISE EXCEPTION 'Unauthorized: You can only modify your own quota or must be an admin';
   END IF;
 
@@ -972,6 +957,18 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+
+-- Helper: Check if current user is admin (SECURITY DEFINER bypasses RLS to prevent infinite recursion)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM indb_auth_user_profiles
+    WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE
 SET search_path = public;
 
 -- ============================================================
@@ -1022,35 +1019,15 @@ CREATE POLICY "Users can update own profile fields" ON indb_auth_user_profiles
     subscription_start_date IS NOT DISTINCT FROM (SELECT subscription_start_date FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
     subscription_end_date IS NOT DISTINCT FROM (SELECT subscription_end_date FROM indb_auth_user_profiles WHERE user_id = auth.uid())
   );
--- Admin policies for user profile management
+-- Admin policies for user profile management (use is_admin() to avoid infinite recursion)
 CREATE POLICY "Admins can view all profiles" ON indb_auth_user_profiles
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles AS admin_check
-      WHERE admin_check.user_id = auth.uid() AND admin_check.role IN ('admin', 'super_admin')
-    )
-  );
+  FOR SELECT USING (public.is_admin());
 CREATE POLICY "Admins can update all profiles" ON indb_auth_user_profiles
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles AS admin_check
-      WHERE admin_check.user_id = auth.uid() AND admin_check.role IN ('admin', 'super_admin')
-    )
-  );
+  FOR UPDATE USING (public.is_admin());
 CREATE POLICY "Admins can insert profiles" ON indb_auth_user_profiles
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles AS admin_check
-      WHERE admin_check.user_id = auth.uid() AND admin_check.role IN ('admin', 'super_admin')
-    )
-  );
+  FOR INSERT WITH CHECK (public.is_admin());
 CREATE POLICY "Admins can delete profiles" ON indb_auth_user_profiles
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles AS admin_check
-      WHERE admin_check.user_id = auth.uid() AND admin_check.role IN ('admin', 'super_admin')
-    )
-  );
+  FOR DELETE USING (public.is_admin());
 
 -- Users can insert their own profile (needed for registration flow)
 CREATE POLICY "Users can insert own profile" ON indb_auth_user_profiles
@@ -1059,95 +1036,63 @@ CREATE POLICY "Users can insert own profile" ON indb_auth_user_profiles
 -- Admin override policies for tables that need admin access (#225)
 -- Transactions: Admins can view/manage all
 CREATE POLICY "Admins can view all transactions" ON indb_payment_transactions
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 CREATE POLICY "Admins can manage all transactions" ON indb_payment_transactions
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Subscriptions: Admins can view/manage all
 CREATE POLICY "Admins can view all subscriptions" ON indb_payment_subscriptions
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 CREATE POLICY "Admins can manage all subscriptions" ON indb_payment_subscriptions
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Keyword bank: Admins can manage
 CREATE POLICY "Admins can manage keyword bank" ON indb_keyword_bank
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Keyword domains: Admins can manage all
 CREATE POLICY "Admins can manage all keyword domains" ON indb_keyword_domains
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Rank keywords: Admins can manage all
 CREATE POLICY "Admins can manage all rank keywords" ON indb_rank_keywords
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Keyword rankings: Admins can manage all
 CREATE POLICY "Admins can manage all keyword rankings" ON indb_keyword_rankings
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Site integration: Admins can manage all (including system integrations)
 CREATE POLICY "Admins can manage all integrations" ON indb_site_integration
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Notifications: Admins can manage all
 CREATE POLICY "Admins can manage all notifications" ON indb_notifications_dashboard
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Security activity logs: Admins can view all
 CREATE POLICY "Admins can view all security activity logs" ON indb_security_activity_logs
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- System error logs: Admins can manage all
 CREATE POLICY "Admins can manage all error logs" ON indb_system_error_logs
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- SeRanking usage logs: Admins can view all
 CREATE POLICY "Admins can view all seranking usage" ON indb_seranking_usage_logs
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- SeRanking metrics: Admins can manage all
 CREATE POLICY "Admins can manage all seranking metrics" ON indb_seranking_metrics_raw
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- SeRanking quota: Admins can manage all
 CREATE POLICY "Admins can manage all seranking quota" ON indb_seranking_quota_usage
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Enrichment jobs: Admins can manage all
 CREATE POLICY "Admins can manage all enrichment jobs" ON indb_enrichment_jobs
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- 2. indb_auth_user_settings: Users can only see and update their own settings
 CREATE POLICY "Users can view own settings" ON indb_auth_user_settings
@@ -1645,9 +1590,7 @@ ALTER TABLE indb_payment_gateways ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "indb_payment_gateways_select_active" ON indb_payment_gateways
   FOR SELECT USING (is_active = TRUE AND deleted_at IS NULL);
 CREATE POLICY "indb_payment_gateways_admin_all" ON indb_payment_gateways
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Public-safe view for payment gateways (excludes api_credentials)
 CREATE OR REPLACE VIEW indb_payment_gateways_public AS
@@ -1660,9 +1603,7 @@ ALTER TABLE indb_payment_packages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "indb_payment_packages_select_active" ON indb_payment_packages
   FOR SELECT USING (is_active = TRUE);
 CREATE POLICY "indb_payment_packages_admin_all" ON indb_payment_packages
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- Paddle Transactions: Users see own, Admins see all
 ALTER TABLE indb_paddle_transactions ENABLE ROW LEVEL SECURITY;
@@ -1671,32 +1612,24 @@ CREATE POLICY "indb_paddle_transactions_user_own" ON indb_paddle_transactions
     EXISTS (SELECT 1 FROM indb_payment_transactions pt WHERE pt.id = indb_paddle_transactions.transaction_id AND pt.user_id = auth.uid())
   );
 CREATE POLICY "indb_paddle_transactions_admin_select" ON indb_paddle_transactions
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- Paddle Webhook Events: Admin-only
 ALTER TABLE indb_paddle_webhook_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "indb_paddle_webhook_events_admin_only" ON indb_paddle_webhook_events
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- SeRanking Health Checks: Admin-only
 ALTER TABLE indb_seranking_health_checks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "indb_seranking_health_checks_admin_only" ON indb_seranking_health_checks
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- SeRanking Metrics Aggregated: Authenticated users can read
 ALTER TABLE indb_seranking_metrics_aggregated ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "indb_seranking_metrics_aggregated_auth_read" ON indb_seranking_metrics_aggregated
   FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "indb_seranking_metrics_aggregated_admin_write" ON indb_seranking_metrics_aggregated
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM indb_auth_user_profiles WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
+  FOR ALL USING (public.is_admin());
 
 -- ============================================================
 -- JSONB GIN INDEXES FOR QUERY PERFORMANCE

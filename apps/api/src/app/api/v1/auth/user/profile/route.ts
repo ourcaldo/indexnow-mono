@@ -37,7 +37,9 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
           )
           .eq('user_id', auth.userId)
           .single();
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
         return data;
       }
     );

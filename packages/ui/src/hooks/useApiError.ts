@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useToast } from '../components/toast';
 import type { ApiError } from '@indexnow/shared';
 
@@ -36,7 +37,7 @@ export function useApiError(): UseApiErrorReturn {
   /**
    * Handle API errors with toast notifications
    */
-  const handleApiError = (error: unknown, options?: HandleApiErrorOptions) => {
+  const handleApiError = useCallback((error: unknown, options?: HandleApiErrorOptions) => {
     // Extract error details from different error types
     let message = 'An unexpected error occurred';
     let errorId: string | undefined;
@@ -82,7 +83,7 @@ export function useApiError(): UseApiErrorReturn {
         },
       }),
     });
-  };
+  }, [addToast]);
 
   return { handleApiError };
 }

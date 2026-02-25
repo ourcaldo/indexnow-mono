@@ -9,6 +9,9 @@ import { useCallback, useEffect, useRef } from 'react';
 import { type Json, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared';
 import { authService, authenticatedFetch } from '@indexnow/supabase-client';
 
+// Module-level dedup: prevents duplicate page views across multiple hook instances
+const loggedPageViews = new Set<string>();
+
 interface ActivityLogRequest {
   eventType: string;
   actionDescription: string;
@@ -62,11 +65,13 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
 
   const logPageView = useCallback(
     async (pagePath: string, pageTitle?: string, metadata?: Record<string, Json>) => {
-      // Avoid duplicate page view logs for the same page
+      // Avoid duplicate page view logs for the same page — check both instance ref and module-level set
       const currentPage = `${pagePath}-${pageTitle || ''}`;
       if (pageViewLogged.current === currentPage) return;
+      if (loggedPageViews.has(currentPage)) return;
 
       pageViewLogged.current = currentPage;
+      loggedPageViews.add(currentPage);
 
       await logActivity({
         eventType: 'page_view',

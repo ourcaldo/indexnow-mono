@@ -1,87 +1,55 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useState, useCallback } from 'react'
-import { Sidebar, DashboardHeader } from '@indexnow/ui'
-import { useDomain } from '@indexnow/ui/contexts'
+import { useState, useCallback, useEffect } from 'react'
+import { AppSidebar } from './AppSidebar'
+import { AppHeader } from './AppHeader'
 
-/**
- * Auth routes that should NOT have the dashboard sidebar/chrome.
- * These render their own full-page layouts (centered login form, etc.).
- */
 const AUTH_ROUTES = ['/login', '/register', '/resend-verification']
+const COLLAPSED_KEY = 'sidebar-collapsed'
 
-/**
- * DashboardLayoutWrapper — conditionally wraps authenticated pages with
- * Sidebar + DashboardHeader.
- *
- * Auth pages (/login, /register, /resend-verification) render without any chrome.
- * All other pages get the full dashboard shell.
- */
 export function DashboardLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
-  // Domain context — provides all domain-related state for the header
-  const {
-    domains,
-    selectedDomainId,
-    selectedDomainInfo,
-    setSelectedDomainId,
-    getDomainKeywordCount,
-    isDomainSelectorOpen,
-    setIsDomainSelectorOpen,
-  } = useDomain()
+  // Persist collapsed state
+  useEffect(() => {
+    const saved = localStorage.getItem(COLLAPSED_KEY)
+    if (saved === 'true') setIsCollapsed(true)
+  }, [])
 
-  const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), [])
-  const toggleCollapse = useCallback(() => setSidebarCollapsed(prev => !prev), [])
-  const toggleDomainSelector = useCallback(
-    () => setIsDomainSelectorOpen(!isDomainSelectorOpen),
-    [isDomainSelectorOpen, setIsDomainSelectorOpen]
-  )
+  const openSidebar = useCallback(() => setSidebarOpen(true), [])
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+  const toggleCollapse = useCallback(() => {
+    setIsCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem(COLLAPSED_KEY, String(next))
+      return next
+    })
+  }, [])
 
   const isAuthPage = AUTH_ROUTES.some(route => pathname?.startsWith(route))
 
-  // Auth pages — no sidebar/header, render children directly
   if (isAuthPage) {
     return <>{children}</>
   }
 
+  const marginLeft = isCollapsed ? 'lg:ml-[68px]' : 'lg:ml-[252px]'
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Sidebar — self-contained: fetches its own data, navigation, logout */}
-      <Sidebar
+    <div className="min-h-screen bg-[#f7f8fa] dark:bg-[#090a0f]">
+      <AppSidebar
         isOpen={sidebarOpen}
-        isCollapsed={sidebarCollapsed}
-        onToggle={toggleSidebar}
-        onCollapse={toggleCollapse}
+        onClose={closeSidebar}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={toggleCollapse}
       />
 
-      {/* Main content area — shifts right based on sidebar width */}
-      <div
-        className={`transition-all duration-300 ${
-          sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
-        }`}
-      >
-        {/* Dashboard header — domain selector, add keywords, notifications */}
-        <DashboardHeader
-          domains={domains.map(d => ({ id: d.id, domain_name: d.domain, display_name: d.name }))}
-          selectedDomainId={selectedDomainId}
-          selectedDomainInfo={
-            selectedDomainInfo
-              ? { id: selectedDomainInfo.id, domain_name: selectedDomainInfo.domain, display_name: selectedDomainInfo.name }
-              : { id: '', domain_name: '', display_name: '' }
-          }
-          isDomainSelectorOpen={isDomainSelectorOpen}
-          onDomainSelectorToggle={toggleDomainSelector}
-          onDomainSelect={setSelectedDomainId}
-          getDomainKeywordCount={getDomainKeywordCount}
-          onToggleSidebar={toggleSidebar}
-        />
+      <div className={`${marginLeft} min-h-screen flex flex-col transition-all duration-200`}>
+        <AppHeader onMenuClick={openSidebar} />
 
-        {/* Page content */}
-        <main className="p-4 lg:p-6">
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">
           {children}
         </main>
       </div>

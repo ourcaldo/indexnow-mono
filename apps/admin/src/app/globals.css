@@ -1,1 +1,5 @@
 @import "@indexnow/ui/styles.css";
+
+/* Tailwind v4: tell the scanner where to look for class usage */
+@source "..";
+@source "../../../../packages/ui/src";

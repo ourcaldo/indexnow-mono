@@ -107,11 +107,11 @@ export default function GeneralSettingsPage() {
     return (
       <div className="animate-pulse space-y-6">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5">
-            <div className="mb-4 h-5 w-32 rounded bg-gray-200" />
+          <div key={i} className="rounded-xl bg-white dark:bg-[#141520] p-6 border border-gray-200 dark:border-gray-800">
+            <div className="mb-4 h-5 w-32 rounded bg-gray-200 dark:bg-gray-800" />
             <div className="space-y-3">
-              <div className="h-10 w-full rounded bg-gray-200" />
-              <div className="h-10 w-full rounded bg-gray-200" />
+              <div className="h-10 w-full rounded bg-gray-200 dark:bg-gray-800" />
+              <div className="h-10 w-full rounded bg-gray-200 dark:bg-gray-800" />
             </div>
           </div>
         ))}
@@ -122,15 +122,15 @@ export default function GeneralSettingsPage() {
   return (
     <div className="space-y-8">
       {/* Personal Information */}
-      <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+      <div className="rounded-xl bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800">
         <div className="px-6 py-5">
-          <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
-          <p className="mt-1 text-sm text-gray-500">Update your account details.</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Personal Information</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Update your account details.</p>
         </div>
-        <div className="border-t border-gray-200 px-6 py-6">
+        <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <label htmlFor="full-name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Full name
               </label>
               <input
@@ -138,12 +138,12 @@ export default function GeneralSettingsPage() {
                 id="full-name"
                 value={profileForm.full_name}
                 onChange={(e) => setProfileForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm"
+                className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 data-testid="input-full-name"
               />
             </div>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email address
               </label>
               <input
@@ -151,12 +151,12 @@ export default function GeneralSettingsPage() {
                 id="email"
                 value={userEmail || ''}
                 readOnly
-                className="mt-1 block w-full cursor-not-allowed rounded-md border-gray-300 bg-gray-50 text-gray-500 shadow-sm sm:text-sm"
+                className="mt-1 block w-full cursor-not-allowed rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 px-3 py-2 text-sm"
                 data-testid="input-email"
               />
             </div>
             <div className="md:col-span-2">
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Phone number
               </label>
               <input
@@ -167,17 +167,17 @@ export default function GeneralSettingsPage() {
                 onChange={(e) =>
                   setProfileForm((prev) => ({ ...prev, phone_number: e.target.value }))
                 }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm"
+                className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 data-testid="input-phone"
               />
             </div>
           </div>
         </div>
-        <div className="rounded-b-xl bg-gray-50 px-6 py-4 text-right">
+        <div className="rounded-b-xl bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800 px-6 py-4 text-right">
           <button
             onClick={handleSaveProfile}
             disabled={savingProfile}
-            className="inline-flex justify-center rounded-md border border-transparent bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+            className="inline-flex justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50 transition-colors"
             data-testid="button-save-profile"
           >
             {savingProfile ? (
@@ -193,15 +193,15 @@ export default function GeneralSettingsPage() {
       </div>
 
       {/* Security & Password */}
-      <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+      <div className="rounded-xl bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800">
         <div className="px-6 py-5">
-          <h2 className="text-lg font-semibold text-gray-900">Security & Password</h2>
-          <p className="mt-1 text-sm text-gray-500">Keep your account secure.</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Security & Password</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Keep your account secure.</p>
         </div>
-        <div className="border-t border-gray-200 px-6 py-6">
+        <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-6">
           <div className="max-w-md space-y-4">
             <div>
-              <label htmlFor="current-password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Current password
               </label>
               <input
@@ -211,12 +211,12 @@ export default function GeneralSettingsPage() {
                 onChange={(e) =>
                   setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))
                 }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm"
+                className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 data-testid="input-current-password"
               />
             </div>
             <div>
-              <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 New password
               </label>
               <input
@@ -226,12 +226,12 @@ export default function GeneralSettingsPage() {
                 onChange={(e) =>
                   setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))
                 }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm"
+                className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 data-testid="input-new-password"
               />
             </div>
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Confirm new password
               </label>
               <input
@@ -241,17 +241,17 @@ export default function GeneralSettingsPage() {
                 onChange={(e) =>
                   setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
                 }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900 sm:text-sm"
+                className="mt-1 block w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 data-testid="input-confirm-password"
               />
             </div>
           </div>
         </div>
-        <div className="rounded-b-xl bg-gray-50 px-6 py-4 text-right">
+        <div className="rounded-b-xl bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800 px-6 py-4 text-right">
           <button
             onClick={handleChangePassword}
             disabled={savingPassword}
-            className="inline-flex justify-center rounded-md border border-transparent bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+            className="inline-flex justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50 transition-colors"
             data-testid="button-update-password"
           >
             {savingPassword ? (
@@ -267,16 +267,16 @@ export default function GeneralSettingsPage() {
       </div>
 
       {/* Email Notifications */}
-      <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+      <div className="rounded-xl bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800">
         <div className="px-6 py-5">
-          <h2 className="text-lg font-semibold text-gray-900">Email Notifications</h2>
-          <p className="mt-1 text-sm text-gray-500">Choose what updates you want to receive.</p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Email Notifications</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose what updates you want to receive.</p>
         </div>
-        <ul className="divide-y divide-gray-200">
+        <ul className="divide-y divide-gray-200 dark:divide-gray-800">
           <li className="flex items-center justify-between px-6 py-4">
             <div>
-              <h3 className="font-medium text-gray-800">Rank tracking updates</h3>
-              <p className="text-sm text-gray-500">
+              <h3 className="font-medium text-gray-800 dark:text-gray-200">Rank tracking updates</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Get notified when rank tracking checks complete.
               </p>
             </div>
@@ -291,7 +291,7 @@ export default function GeneralSettingsPage() {
                 data-testid="switch-jobCompletion"
               />
               <div
-                className={`h-6 w-11 rounded-full border border-gray-200 transition-colors duration-200 ease-in-out ${notifications.jobCompletion ? 'bg-gray-900' : 'bg-gray-200'}`}
+                className={`h-6 w-11 rounded-full border border-gray-200 dark:border-gray-700 transition-colors duration-200 ease-in-out ${notifications.jobCompletion ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
               >
                 <div
                   className={`h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${notifications.jobCompletion ? 'translate-x-5' : 'translate-x-0'}`}
@@ -301,8 +301,8 @@ export default function GeneralSettingsPage() {
           </li>
           <li className="flex items-center justify-between px-6 py-4">
             <div>
-              <h3 className="font-medium text-gray-800">Failure alerts</h3>
-              <p className="text-sm text-gray-500">Immediate notifications for failed jobs.</p>
+              <h3 className="font-medium text-gray-800 dark:text-gray-200">Failure alerts</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Immediate notifications for failed jobs.</p>
             </div>
             <label className="relative inline-flex cursor-pointer items-center">
               <input
@@ -315,7 +315,7 @@ export default function GeneralSettingsPage() {
                 data-testid="switch-failures"
               />
               <div
-                className={`h-6 w-11 rounded-full border border-gray-200 transition-colors duration-200 ease-in-out ${notifications.failures ? 'bg-gray-900' : 'bg-gray-200'}`}
+                className={`h-6 w-11 rounded-full border border-gray-200 dark:border-gray-700 transition-colors duration-200 ease-in-out ${notifications.failures ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
               >
                 <div
                   className={`h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${notifications.failures ? 'translate-x-5' : 'translate-x-0'}`}
@@ -325,8 +325,8 @@ export default function GeneralSettingsPage() {
           </li>
           <li className="flex items-center justify-between px-6 py-4">
             <div>
-              <h3 className="font-medium text-gray-800">Daily summaries</h3>
-              <p className="text-sm text-gray-500">Digest of your account activity.</p>
+              <h3 className="font-medium text-gray-800 dark:text-gray-200">Daily summaries</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Digest of your account activity.</p>
             </div>
             <label className="relative inline-flex cursor-pointer items-center">
               <input
@@ -339,7 +339,7 @@ export default function GeneralSettingsPage() {
                 data-testid="switch-dailyReports"
               />
               <div
-                className={`h-6 w-11 rounded-full border border-gray-200 transition-colors duration-200 ease-in-out ${notifications.dailyReports ? 'bg-gray-900' : 'bg-gray-200'}`}
+                className={`h-6 w-11 rounded-full border border-gray-200 dark:border-gray-700 transition-colors duration-200 ease-in-out ${notifications.dailyReports ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
               >
                 <div
                   className={`h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out ${notifications.dailyReports ? 'translate-x-5' : 'translate-x-0'}`}
@@ -348,11 +348,11 @@ export default function GeneralSettingsPage() {
             </label>
           </li>
         </ul>
-        <div className="rounded-b-xl bg-gray-50 px-6 py-4 text-right">
+        <div className="rounded-b-xl bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800 px-6 py-4 text-right">
           <button
             onClick={handleSaveNotifications}
             disabled={savingNotifications}
-            className="inline-flex justify-center rounded-md border border-transparent bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+            className="inline-flex justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50 transition-colors"
             data-testid="button-save-notifications"
           >
             {savingNotifications ? (

@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useDomain } from '@indexnow/ui/contexts'
-import { useDashboardData } from '@indexnow/ui/hooks'
 import {
   Search,
   ArrowUpDown,
@@ -11,13 +9,18 @@ import {
   Monitor,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Target,
-  BarChart3,
+  Plus,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react'
-import type { DashboardRecentKeyword } from '@indexnow/shared'
+import {
+  useDomains,
+  useKeywords,
+  useCheckRank,
+  useDeleteKeywords,
+  type Keyword,
+} from '../../lib/hooks'
+import { AddKeywordsModal } from '../../components/modals/AddKeywordsModal'
 
 const ITEMS_PER_PAGE = 20
 
@@ -25,49 +28,37 @@ type SortField = 'keyword' | 'position' | 'domain' | 'country' | 'device'
 type SortDirection = 'asc' | 'desc'
 
 export default function OverviewPage() {
-  const {
-    domains,
-    selectedDomainId,
-    setSelectedDomainId,
-  } = useDomain()
+  const { data: domains } = useDomains()
 
-  const { data: dashboardData, isLoading } = useDashboardData()
-
+  const [selectedDomainId, setSelectedDomainId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [sortField, setSortField] = useState<SortField>('position')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [deviceFilter, setDeviceFilter] = useState<string>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [addKeywordsOpen, setAddKeywordsOpen] = useState(false)
 
-  const allKeywords: DashboardRecentKeyword[] = dashboardData?.rankTracking?.recentKeywords ?? []
+  const { data: keywordsData, isLoading } = useKeywords({
+    domain: selectedDomainId || undefined,
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    search: searchQuery || undefined,
+  })
 
-  // Filter keywords by selected domain
-  const domainKeywords = useMemo(() => {
-    if (!selectedDomainId) return allKeywords
-    return allKeywords.filter(k => k.domain?.id === selectedDomainId)
-  }, [allKeywords, selectedDomainId])
+  const checkRank = useCheckRank()
+  const deleteKeywords = useDeleteKeywords()
 
-  // Apply search, device filter
+  const allKeywords: Keyword[] = keywordsData?.keywords ?? []
+  const totalKeywordsCount = keywordsData?.total ?? 0
+
+  // Client-side device filter (API may not support it)
   const filteredKeywords = useMemo(() => {
-    let result = domainKeywords
+    if (deviceFilter === 'all') return allKeywords
+    return allKeywords.filter(k => k.device_type === deviceFilter)
+  }, [allKeywords, deviceFilter])
 
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(k =>
-        k.keyword.toLowerCase().includes(q) ||
-        k.domain?.domain_name?.toLowerCase().includes(q) ||
-        k.country?.name?.toLowerCase().includes(q)
-      )
-    }
-
-    if (deviceFilter !== 'all') {
-      result = result.filter(k => k.device_type === deviceFilter)
-    }
-
-    return result
-  }, [domainKeywords, searchQuery, deviceFilter])
-
-  // Sort
+  // Client-side sort
   const sortedKeywords = useMemo(() => {
     const sorted = [...filteredKeywords]
     sorted.sort((a, b) => {
@@ -77,8 +68,8 @@ export default function OverviewPage() {
           cmp = a.keyword.localeCompare(b.keyword)
           break
         case 'position': {
-          const posA = a.recent_ranking?.[0]?.position ?? 999
-          const posB = b.recent_ranking?.[0]?.position ?? 999
+          const posA = getPos(a) ?? 999
+          const posB = getPos(b) ?? 999
           cmp = posA - posB
           break
         }
@@ -97,12 +88,7 @@ export default function OverviewPage() {
     return sorted
   }, [filteredKeywords, sortField, sortDirection])
 
-  // Pagination
-  const totalPages = Math.ceil(sortedKeywords.length / ITEMS_PER_PAGE)
-  const paginatedKeywords = sortedKeywords.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  )
+  const totalPages = Math.ceil(totalKeywordsCount / ITEMS_PER_PAGE) || Math.ceil(sortedKeywords.length / ITEMS_PER_PAGE)
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -111,13 +97,37 @@ export default function OverviewPage() {
       setSortField(field)
       setSortDirection('asc')
     }
-    setCurrentPage(1)
   }
 
-  // Stats
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    if (selectedIds.size === sortedKeywords.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(sortedKeywords.map(k => k.id)))
+    }
+  }
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Delete ${selectedIds.size} keyword(s)?`)) return
+    deleteKeywords.mutate(Array.from(selectedIds), {
+      onSuccess: () => setSelectedIds(new Set()),
+    })
+  }
+
+  // Stats from current page data
   const stats = useMemo(() => {
-    const positions = domainKeywords
-      .map(k => k.recent_ranking?.[0]?.position)
+    const positions = sortedKeywords
+      .map(k => getPos(k))
       .filter((p): p is number => p !== null && p !== undefined)
 
     const avgPos = positions.length > 0
@@ -125,13 +135,13 @@ export default function OverviewPage() {
       : '—'
 
     return {
-      total: domainKeywords.length,
+      total: totalKeywordsCount || sortedKeywords.length,
       top3: positions.filter(p => p <= 3).length,
       top10: positions.filter(p => p <= 10).length,
       top20: positions.filter(p => p <= 20).length,
       avgPosition: avgPos,
     }
-  }, [domainKeywords])
+  }, [sortedKeywords, totalKeywordsCount])
 
   if (isLoading) {
     return (
@@ -139,13 +149,13 @@ export default function OverviewPage() {
         <div className="h-7 w-48 bg-gray-200 dark:bg-gray-800 rounded-lg" />
         <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+            <div key={i} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
               <div className="h-7 w-10 bg-gray-200 dark:bg-gray-800 rounded mx-auto mb-1" />
               <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
             </div>
           ))}
         </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800/60 rounded mb-2" />
           ))}
@@ -157,36 +167,44 @@ export default function OverviewPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
-          Keyword Overview
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Track and manage all your keywords across domains
-        </p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+            Keyword Overview
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Track and manage all your keywords across domains
+          </p>
+        </div>
+        <button
+          onClick={() => setAddKeywordsOpen(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add Keywords
+        </button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         {[
-          { value: stats.total, label: 'Total Keywords', icon: <Search className="w-4 h-4" />, color: 'text-gray-900 dark:text-gray-50' },
-          { value: stats.top3, label: 'Top 3', icon: <Target className="w-4 h-4" />, color: 'text-emerald-600 dark:text-emerald-400' },
-          { value: stats.top10, label: 'Top 10', icon: <TrendingUp className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400' },
-          { value: stats.top20, label: 'Top 20', icon: <BarChart3 className="w-4 h-4" />, color: 'text-amber-600 dark:text-amber-400' },
-          { value: stats.avgPosition, label: 'Avg Position', icon: <Globe className="w-4 h-4" />, color: 'text-gray-900 dark:text-gray-50' },
+          { value: stats.total, label: 'Total Keywords', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
+          { value: stats.top3, label: 'Top 3', color: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+          { value: stats.top10, label: 'Top 10', color: 'text-blue-600 dark:text-blue-400', dot: 'bg-blue-500' },
+          { value: stats.top20, label: 'Top 20', color: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500' },
+          { value: stats.avgPosition, label: 'Avg Position', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
         ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-center"
-          >
+          <div key={stat.label} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
             <div className={`text-2xl font-bold ${stat.color} tracking-tight`}>{stat.value}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</div>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${stat.dot}`} />
+              <span className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</span>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {/* Search */}
           <div className="relative flex-1">
@@ -202,19 +220,14 @@ export default function OverviewPage() {
 
           {/* Domain Filter */}
           <select
-            value={selectedDomainId || ''}
-            onChange={(e) => { setSelectedDomainId(e.target.value || ''); setCurrentPage(1) }}
+            value={selectedDomainId}
+            onChange={(e) => { setSelectedDomainId(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Domains</option>
-            {domains.map(d => {
-              const dr = d as unknown as Record<string, unknown>
-              return (
-                <option key={d.id} value={d.id}>
-                  {(dr.display_name as string) || (dr.domain_name as string) || d.name || d.domain}
-                </option>
-              )
-            })}
+            {(domains ?? []).map(d => (
+              <option key={d.id} value={d.id}>{d.display_name || d.domain_name}</option>
+            ))}
           </select>
 
           {/* Device Filter */}
@@ -227,20 +240,34 @@ export default function OverviewPage() {
             <option value="desktop">Desktop</option>
             <option value="mobile">Mobile</option>
           </select>
+
+          {/* Bulk delete */}
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={deleteKeywords.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Keywords Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        {filteredKeywords.length === 0 ? (
+      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        {sortedKeywords.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <Search className="h-6 w-6 text-gray-400" />
-            </div>
+            <Search className="h-7 w-7 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-50">No Keywords Found</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {searchQuery ? 'Try a different search term.' : 'Start tracking keywords to see them here.'}
             </p>
+            {!searchQuery && (
+              <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-blue-600 dark:text-blue-400">
+                Add keywords →
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -248,6 +275,14 @@ export default function OverviewPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === sortedKeywords.length && sortedKeywords.length > 0}
+                        onChange={toggleAll}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                      />
+                    </th>
                     {([
                       { field: 'keyword' as SortField, label: 'Keyword', align: 'left' },
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
@@ -267,27 +302,46 @@ export default function OverviewPage() {
                       </th>
                     ))}
                     <th className="px-4 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Last Check
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedKeywords.map((kw) => {
-                    const pos = kw.recent_ranking?.[0]?.position ?? null
-                    const checkDate = kw.recent_ranking?.[0]?.check_date
-                      ? new Date(kw.recent_ranking[0].check_date).toLocaleDateString()
-                      : '—'
+                  {sortedKeywords.map((kw) => {
+                    const pos = getPos(kw)
+                    const ranking = Array.isArray(kw.recent_ranking) ? kw.recent_ranking[0] : kw.recent_ranking
+                    const checkDate = ranking?.check_date
+                      ? new Date(ranking.check_date).toLocaleDateString()
+                      : null
 
                     return (
                       <tr
                         key={kw.id}
-                        className="border-b border-gray-50 dark:border-gray-800/50 last:border-b-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors"
+                        className={`border-b border-gray-50 dark:border-gray-800/50 last:border-b-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors ${selectedIds.has(kw.id) ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''}`}
                       >
                         <td className="px-4 py-3">
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{kw.keyword}</span>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(kw.id)}
+                            onChange={() => toggleSelect(kw.id)}
+                            className="rounded border-gray-300 dark:border-gray-600"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{kw.keyword}</span>
+                            {kw.tags && kw.tags.length > 0 && (
+                              <div className="flex gap-1 mt-1">
+                                {kw.tags.slice(0, 3).map(tag => (
+                                  <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <PositionBadge position={pos} />
+                          {checkDate && <div className="text-[10px] text-gray-400 mt-0.5">{checkDate}</div>}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -296,9 +350,7 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {kw.country?.iso2_code && (
-                              <Globe className="h-3 w-3 text-gray-400" />
-                            )}
+                            {kw.country?.iso2_code && <Globe className="h-3 w-3 text-gray-400" />}
                             <span className="text-sm text-gray-500 dark:text-gray-400">
                               {kw.country?.name || kw.country?.iso2_code || '—'}
                             </span>
@@ -311,7 +363,14 @@ export default function OverviewPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="text-xs text-gray-400 dark:text-gray-500">{checkDate}</span>
+                          <button
+                            onClick={() => checkRank.mutate(kw.id)}
+                            disabled={checkRank.isPending}
+                            title="Check rank now"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${checkRank.isPending ? 'animate-spin' : ''}`} />
+                          </button>
                         </td>
                       </tr>
                     )
@@ -324,7 +383,7 @@ export default function OverviewPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 px-4 py-3">
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sortedKeywords.length)} of {sortedKeywords.length}
+                  Page {currentPage} of {totalPages} ({totalKeywordsCount || sortedKeywords.length} total)
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -350,8 +409,15 @@ export default function OverviewPage() {
           </>
         )}
       </div>
+
+      <AddKeywordsModal open={addKeywordsOpen} onClose={() => setAddKeywordsOpen(false)} />
     </div>
   )
+}
+
+function getPos(kw: Keyword): number | null {
+  const r = Array.isArray(kw.recent_ranking) ? kw.recent_ranking[0] : kw.recent_ranking
+  return r?.position ?? kw.current_position ?? null
 }
 
 function PositionBadge({ position }: { position: number | null }) {

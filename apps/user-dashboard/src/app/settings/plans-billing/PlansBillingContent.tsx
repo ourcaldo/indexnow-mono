@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Check, Download } from 'lucide-react';
 import {
-  AppConfig,
+  API_BASE,
   BILLING_ENDPOINTS,
   PUBLIC_ENDPOINTS,
   type Json,
@@ -141,7 +141,7 @@ export default function BillingPage() {
   const loadSubscriptionData = async () => {
     try {
       const response = await authenticatedFetch(
-        `${AppConfig.app.baseUrl}/api/v1/payments/paddle/subscription/my-subscription`
+        `${API_BASE.V1}/payments/paddle/subscription/my-subscription`
       );
 
       if (!response.ok) return;
@@ -178,8 +178,8 @@ export default function BillingPage() {
       const user = await authService.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Fetch packages from public endpoint
-      const packagesResponse = await fetch(PUBLIC_ENDPOINTS.PACKAGES, {
+      // Fetch packages from public settings endpoint (includes packages data)
+      const packagesResponse = await fetch(PUBLIC_ENDPOINTS.SETTINGS, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -188,10 +188,11 @@ export default function BillingPage() {
       if (!packagesResponse.ok) throw new Error('Failed to load packages');
 
       const packagesResult = await packagesResponse.json();
-      const packages = packagesResult?.data?.packages || [];
+      const settingsData = packagesResult?.success === true && packagesResult.data ? packagesResult.data : packagesResult;
+      const packages = settingsData?.packages?.packages || [];
 
       // Fetch dashboard data to get current package and usage data
-      const dashboardResponse = await authenticatedFetch(`${AppConfig.app.baseUrl}/v1/dashboard`);
+      const dashboardResponse = await authenticatedFetch(`${API_BASE.V1}/dashboard`);
 
       if (!dashboardResponse.ok) throw new Error('Failed to load dashboard data');
 
@@ -224,7 +225,7 @@ export default function BillingPage() {
       // Fetch total keywords count across all domains
       try {
         const keywordsResponse = await authenticatedFetch(
-          `${AppConfig.app.baseUrl}/v1/rank-tracking/keywords`
+          `${API_BASE.V1}/rank-tracking/keywords`
         );
 
         if (keywordsResponse.ok) {

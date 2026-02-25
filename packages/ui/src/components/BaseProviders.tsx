@@ -5,7 +5,6 @@ import { AuthProvider } from '@indexnow/auth'
 import { AnalyticsProvider } from '../providers/AnalyticsProvider'
 import { QueryProvider } from './query-provider'
 import { ToastContainer } from './toast'
-import { FaviconProvider } from './favicon-provider'
 
 interface BaseProvidersProps {
   children: React.ReactNode
@@ -15,8 +14,6 @@ interface BaseProvidersProps {
    * Example: PaddleProvider for user-dashboard.
    */
   outerProviders?: React.ComponentType<{ children: React.ReactNode }>[]
-  /** Whether to include FaviconProvider (default: true) */
-  includeFavicon?: boolean
 }
 
 /**
@@ -32,14 +29,12 @@ interface BaseProvidersProps {
 export function BaseProviders({
   children,
   outerProviders = [],
-  includeFavicon = true,
 }: BaseProvidersProps) {
   // Build the inner core: QueryProvider > AuthProvider > ToastContainer > children
   let content = (
     <QueryProvider>
       <AuthProvider>
         <ToastContainer>
-          {includeFavicon && <FaviconProvider />}
           {children}
         </ToastContainer>
       </AuthProvider>

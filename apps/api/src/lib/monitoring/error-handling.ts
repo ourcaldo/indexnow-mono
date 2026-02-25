@@ -42,6 +42,7 @@ const USER_ERROR_MESSAGES: Record<ErrorType, Record<string, string>> = {
     default: 'You do not have permission to perform this action.',
     insufficient_permissions: 'Insufficient permissions for this operation.',
     resource_not_found: 'The requested resource was not found.',
+    no_active_plan: 'You need an active subscription plan to perform this action. Please subscribe to a plan first.',
   },
   [ErrorType.VALIDATION]: {
     default: 'Please check your input and try again.',

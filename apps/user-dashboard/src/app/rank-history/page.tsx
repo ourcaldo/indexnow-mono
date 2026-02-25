@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useDomain } from '@indexnow/ui/contexts'
-import { useDashboardData } from '@indexnow/ui/hooks'
 import {
   Search,
   Calendar,
@@ -12,54 +10,68 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
-  Clock,
-  BarChart3,
-  Hash,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react'
-import type { DashboardRecentKeyword } from '@indexnow/shared'
+import {
+  useDomains,
+  useKeywords,
+  useWeeklyTrends,
+  type Keyword,
+  type WeeklyTrend,
+} from '../../lib/hooks'
 
 const ITEMS_PER_PAGE = 25
 
 type SortField = 'keyword' | 'position' | 'date' | 'domain'
 type SortDirection = 'asc' | 'desc'
 
+interface HistoryRow {
+  id: string
+  keyword: string
+  domain: string
+  domainId: string | undefined
+  country: string
+  device: string
+  position: number | null
+  previousPosition: number | null
+  change: number | null
+  checkDate: string
+  checkDateRaw: string
+}
+
 export default function RankHistoryPage() {
-  const {
-    domains,
-    selectedDomainId,
-    setSelectedDomainId,
-  } = useDomain()
+  const { data: domains } = useDomains()
+  const { data: trends, isLoading: trendsLoading } = useWeeklyTrends()
+  const { data: keywordsData, isLoading: kwLoading } = useKeywords({ limit: 100 })
 
-  const { data: dashboardData, isLoading } = useDashboardData()
-
+  const [selectedDomainId, setSelectedDomainId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
-  const allKeywords: DashboardRecentKeyword[] = dashboardData?.rankTracking?.recentKeywords ?? []
+  const isLoading = trendsLoading || kwLoading
 
-  // Build history rows from recent keywords
+  const allKeywords: Keyword[] = keywordsData?.keywords ?? []
+
+  // Build history rows from keywords' recent_ranking + weekly trends
   const historyRows = useMemo(() => {
-    const rows: Array<{
-      id: string
-      keyword: string
-      domain: string
-      domainId: string | undefined
-      country: string
-      device: string
-      position: number | null
-      checkDate: string
-      checkDateRaw: string
-    }> = []
+    const rows: HistoryRow[] = []
 
     const keywords = selectedDomainId
       ? allKeywords.filter(k => k.domain?.id === selectedDomainId)
       : allKeywords
 
     for (const kw of keywords) {
-      if (kw.recent_ranking && kw.recent_ranking.length > 0) {
-        for (const ranking of kw.recent_ranking) {
+      const rankings = Array.isArray(kw.recent_ranking) ? kw.recent_ranking : kw.recent_ranking ? [kw.recent_ranking] : []
+      if (rankings.length > 0) {
+        for (let i = 0; i < rankings.length; i++) {
+          const ranking = rankings[i]
+          const prevRanking = rankings[i + 1]
+          const change = ranking.position !== null && prevRanking?.position !== null && ranking.position !== undefined && prevRanking?.position !== undefined
+            ? prevRanking.position - ranking.position
+            : null
           rows.push({
             id: `${kw.id}-${ranking.check_date}`,
             keyword: kw.keyword,
@@ -68,6 +80,8 @@ export default function RankHistoryPage() {
             country: kw.country?.name || kw.country?.iso2_code || '—',
             device: kw.device_type || 'desktop',
             position: ranking.position,
+            previousPosition: prevRanking?.position ?? null,
+            change,
             checkDate: ranking.check_date
               ? new Date(ranking.check_date).toLocaleDateString('en-US', {
                   year: 'numeric',
@@ -87,14 +101,37 @@ export default function RankHistoryPage() {
           country: kw.country?.name || kw.country?.iso2_code || '—',
           device: kw.device_type || 'desktop',
           position: null,
+          previousPosition: null,
+          change: null,
           checkDate: '—',
           checkDateRaw: '',
         })
       }
     }
 
+    // Also include weekly trends that might have data not in keywords list
+    if (trends) {
+      for (const t of trends) {
+        if (!rows.find(r => r.keyword === t.keyword && r.domain === t.domain)) {
+          rows.push({
+            id: `trend-${t.id}`,
+            keyword: t.keyword,
+            domain: t.domain,
+            domainId: undefined,
+            country: '—',
+            device: 'desktop',
+            position: t.current_position,
+            previousPosition: t.previous_position,
+            change: t.change,
+            checkDate: 'This week',
+            checkDateRaw: new Date().toISOString(),
+          })
+        }
+      }
+    }
+
     return rows
-  }, [allKeywords, selectedDomainId])
+  }, [allKeywords, selectedDomainId, trends])
 
   // Search filter
   const filteredRows = useMemo(() => {
@@ -155,6 +192,8 @@ export default function RankHistoryPage() {
   const stats = useMemo(() => {
     const checksWithPosition = historyRows.filter(r => r.position !== null)
     const uniqueKeywords = new Set(historyRows.map(r => r.keyword)).size
+    const improved = historyRows.filter(r => r.change !== null && r.change > 0).length
+    const declined = historyRows.filter(r => r.change !== null && r.change < 0).length
     const latestCheck = historyRows
       .filter(r => r.checkDateRaw)
       .sort((a, b) => b.checkDateRaw.localeCompare(a.checkDateRaw))[0]?.checkDate || '—'
@@ -162,8 +201,9 @@ export default function RankHistoryPage() {
     return {
       totalChecks: historyRows.length,
       uniqueKeywords,
+      improved,
+      declined,
       latestCheck,
-      rankedChecks: checksWithPosition.length,
     }
   }, [historyRows])
 
@@ -171,15 +211,15 @@ export default function RankHistoryPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-7 w-40 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
               <div className="h-7 w-10 bg-gray-200 dark:bg-gray-800 rounded mx-auto mb-1" />
               <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
             </div>
           ))}
         </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800/60 rounded mb-2" />
           ))}
@@ -201,25 +241,26 @@ export default function RankHistoryPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         {[
-          { value: stats.totalChecks, label: 'Total Checks', icon: <BarChart3 className="w-4 h-4" /> },
-          { value: stats.uniqueKeywords, label: 'Keywords Tracked', icon: <Hash className="w-4 h-4" /> },
-          { value: stats.rankedChecks, label: 'Ranked Results', icon: <Globe className="w-4 h-4" /> },
-          { value: stats.latestCheck, label: 'Latest Check', icon: <Clock className="w-4 h-4" /> },
+          { value: stats.totalChecks, label: 'Total Checks', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
+          { value: stats.uniqueKeywords, label: 'Keywords', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-blue-500' },
+          { value: stats.improved, label: 'Improved', color: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+          { value: stats.declined, label: 'Declined', color: 'text-red-500 dark:text-red-400', dot: 'bg-red-500' },
+          { value: stats.latestCheck, label: 'Latest Check', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
         ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-center"
-          >
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">{stat.value}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</div>
+          <div key={stat.label} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+            <div className={`text-2xl font-bold ${stat.color} tracking-tight`}>{stat.value}</div>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${stat.dot}`} />
+              <span className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</span>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -233,30 +274,23 @@ export default function RankHistoryPage() {
           </div>
 
           <select
-            value={selectedDomainId || ''}
-            onChange={(e) => { setSelectedDomainId(e.target.value || ''); setCurrentPage(1) }}
+            value={selectedDomainId}
+            onChange={(e) => { setSelectedDomainId(e.target.value); setCurrentPage(1) }}
             className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Domains</option>
-            {domains.map(d => {
-              const dr = d as unknown as Record<string, unknown>
-              return (
-                <option key={d.id} value={d.id}>
-                  {(dr.display_name as string) || (dr.domain_name as string) || d.name || d.domain}
-                </option>
-              )
-            })}
+            {(domains ?? []).map(d => (
+              <option key={d.id} value={d.id}>{d.display_name || d.domain_name}</option>
+            ))}
           </select>
         </div>
       </div>
 
       {/* History Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         {filteredRows.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <Calendar className="h-6 w-6 text-gray-400" />
-            </div>
+            <Calendar className="h-7 w-7 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-50">No Rank History</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {searchQuery ? 'Try a different search term.' : 'Ranking data will appear here after your first keyword check.'}
@@ -271,7 +305,6 @@ export default function RankHistoryPage() {
                     {([
                       { field: 'keyword' as SortField, label: 'Keyword', align: 'left' },
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
-                      { field: 'domain' as SortField, label: 'Domain', align: 'center' },
                     ]).map(col => (
                       <th
                         key={col.field}
@@ -285,6 +318,17 @@ export default function RankHistoryPage() {
                       </th>
                     ))}
                     <th className="px-4 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Change
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+                      onClick={() => handleSort('domain')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Domain <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Country
                     </th>
                     <th className="px-4 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -295,8 +339,7 @@ export default function RankHistoryPage() {
                       onClick={() => handleSort('date')}
                     >
                       <div className="flex items-center justify-center gap-1">
-                        Check Date
-                        <ArrowUpDown className="h-3 w-3" />
+                        Check Date <ArrowUpDown className="h-3 w-3" />
                       </div>
                     </th>
                   </tr>
@@ -312,6 +355,9 @@ export default function RankHistoryPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <PositionBadge position={row.position} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <ChangeBadge change={row.change} />
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm text-gray-500 dark:text-gray-400">{row.domain}</span>
@@ -384,6 +430,23 @@ function PositionBadge({ position }: { position: number | null }) {
   return (
     <span className={`inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 text-xs font-bold rounded-full ${cls}`}>
       {position}
+    </span>
+  )
+}
+
+function ChangeBadge({ change }: { change: number | null }) {
+  if (change === null) return <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+  if (change === 0) return <span className="text-xs text-gray-400">0</span>
+  if (change > 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <TrendingUp className="w-3 h-3" /> +{change}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-xs font-medium text-red-500 dark:text-red-400">
+      <TrendingDown className="w-3 h-3" /> {change}
     </span>
   )
 }

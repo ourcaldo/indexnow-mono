@@ -17,7 +17,6 @@ import {
   Button,
   Input,
   Label,
-  DashboardPreview,
 } from '@indexnow/ui'
 import {
   PasswordInput,
@@ -321,8 +320,9 @@ export default function Register() {
       {/* Right Side - Dashboard Preview (Desktop Only) */}
       {!isMobile && (
         <div className="w-1/2 bg-brand-primary p-[80px_60px] flex flex-col justify-center text-white relative">
-          <div className="overflow-hidden w-full relative">
-            <DashboardPreview />
+          <div className="overflow-hidden w-full relative flex flex-col items-center justify-center gap-6">
+            <div className="text-4xl font-bold">IndexNow</div>
+            <p className="text-lg opacity-80 text-center max-w-md">Create your account and start tracking keyword rankings today.</p>
           </div>
         </div>
       )}
