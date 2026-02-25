@@ -73,9 +73,9 @@ export function DashboardHeader({
     <>
       {/* Desktop header (hidden on mobile) */}
       <div className="hidden lg:flex bg-background border-b border-border px-6 py-3 items-center justify-between">
-        {/* Left side: Domain Selector */}
+        {/* Left side: Domain Selector or Add Domain prompt */}
         <div className="flex-1">
-          {domains.length > 0 && (
+          {domains.length > 0 ? (
             <SharedDomainSelector
               domains={domains}
               selectedDomainId={selectedDomainId}
@@ -89,6 +89,15 @@ export function DashboardHeader({
               addDomainRoute="/indexnow/add"
               placeholder="Select domain"
             />
+          ) : (
+            <button
+              onClick={handleAddKeywords}
+              className="inline-flex items-center px-4 py-2 text-sm rounded-lg border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors duration-150"
+              data-testid="button-add-first-domain-header"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Your First Domain
+            </button>
           )}
         </div>
         
