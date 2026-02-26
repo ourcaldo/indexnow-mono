@@ -1,7 +1,8 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   LayoutDashboard,
   Search,
@@ -64,6 +65,13 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
   const router = useRouter()
   const { data: profile, isLoading: profileLoading } = useProfile()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [tooltip, setTooltip] = useState<{ label: string; top: number; left: number } | null>(null)
+
+  const showTooltip = useCallback((label: string, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect()
+    setTooltip({ label, top: rect.top + rect.height / 2, left: rect.right + 8 })
+  }, [])
+  const hideTooltip = useCallback(() => setTooltip(null), [])
 
   const currentSlug = profile?.package?.slug || 'free'
   const tier = PACKAGE_TIERS[currentSlug] ?? PACKAGE_TIERS.free
@@ -156,7 +164,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2.5">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2.5">
           {NAV_GROUPS.map((group) => (
             <div key={group.title} className="mb-5">
               {!isCollapsed && (
@@ -172,7 +180,11 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                   const active = isActive(item.href)
                   const Icon = item.icon
                   return (
-                    <div key={item.href} className="relative group">
+                    <div
+                      key={item.href}
+                      onMouseEnter={(e) => isCollapsed && showTooltip(item.label, e.currentTarget)}
+                      onMouseLeave={hideTooltip}
+                    >
                       <button
                         onClick={() => navigate(item.href)}
                         className={`
@@ -194,13 +206,6 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                           </span>
                         )}
                       </button>
-                      {/* Tooltip when collapsed */}
-                      {isCollapsed && (
-                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-                          {item.label}
-                          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
-                        </div>
-                      )}
                     </div>
                   )
                 })}
@@ -232,17 +237,17 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
 
           {/* Upgrade icon when collapsed */}
           {showUpgrade && isCollapsed && (
-            <div className="px-2.5 pt-3 flex justify-center relative group">
+            <div
+              className="px-2.5 pt-3 flex justify-center"
+              onMouseEnter={(e) => showTooltip(`Upgrade to ${tier.next}`, e.currentTarget)}
+              onMouseLeave={hideTooltip}
+            >
               <button
                 onClick={() => navigate('/settings?tab=plans-billing')}
                 className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
               >
                 <ArrowUpRight className="w-4 h-4" />
               </button>
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-                Upgrade to {tier.next}
-                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
-              </div>
             </div>
           )}
 
@@ -258,7 +263,11 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                 {loggingOut ? 'Signing out...' : 'Sign Out'}
               </button>
             ) : (
-              <div className="relative group flex justify-center">
+              <div
+                className="flex justify-center"
+                onMouseEnter={(e) => showTooltip('Sign Out', e.currentTarget)}
+                onMouseLeave={hideTooltip}
+              >
                 <button
                   onClick={handleLogout}
                   disabled={loggingOut}
@@ -266,15 +275,23 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                 >
                   <LogOut className="w-[18px] h-[18px]" />
                 </button>
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-                  Sign Out
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
-                </div>
               </div>
             )}
           </div>
         </div>
       </aside>
+
+      {/* Portal tooltip — rendered on document.body to escape overflow clipping */}
+      {tooltip && createPortal(
+        <div
+          className="fixed z-[9999] px-2.5 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium rounded-md whitespace-nowrap shadow-lg pointer-events-none"
+          style={{ top: tooltip.top, left: tooltip.left, transform: 'translateY(-50%)' }}
+        >
+          {tooltip.label}
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
+        </div>,
+        document.body
+      )}
     </>
   )
 }

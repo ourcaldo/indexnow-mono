@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
   Check,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
   Clock,
   Loader2,
   X,
@@ -24,7 +22,7 @@ import { authService, authenticatedFetch } from '@indexnow/supabase-client'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import { useToast, useApiError } from '@indexnow/ui'
 
-/* ───────────────────── Types (local) ───────────────────── */
+/* ───────────────────── Types ───────────────────── */
 
 interface PricingTier {
   regular_price: number
@@ -139,22 +137,22 @@ function checkoutUrl(pkgId: string, period: string, trial = false) {
   return trial ? `${base}&trial=true` : base
 }
 
-function statusColor(status: string) {
+function statusDot(status: string) {
   switch (status) {
     case 'active':
     case 'completed':
     case 'confirmed':
-      return { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' }
+      return 'bg-emerald-500'
     case 'expired':
     case 'failed':
     case 'cancelled':
-      return { bg: 'bg-red-50 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-800' }
+      return 'bg-red-500'
     case 'pending':
     case 'proof_uploaded':
     case 'expiring_soon':
-      return { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800' }
+      return 'bg-amber-500'
     default:
-      return { bg: 'bg-gray-50 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-700' }
+      return 'bg-gray-400'
   }
 }
 
@@ -168,7 +166,7 @@ function usagePct(used: number, limit: number, unlimited: boolean) {
   return Math.min(100, (used / limit) * 100)
 }
 
-/* ───────────────────── Component ───────────────────── */
+/* ═══════════════════════ Component ═══════════════════════ */
 
 export default function BillingPage() {
   const [billingData, setBillingData] = useState<BillingData | null>(null)
@@ -184,6 +182,7 @@ export default function BillingPage() {
   const [subscribing, setSubscribing] = useState<string | null>(null)
   const [startingTrial, setStartingTrial] = useState<string | null>(null)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [expandedPlan, setExpandedPlan] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -311,31 +310,30 @@ export default function BillingPage() {
     await loadBillingData()
   }
 
-  /* ── Loading / Error ── */
+  /* ── Loading ── */
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-xl bg-white dark:bg-[#141520] p-6 border border-gray-200 dark:border-gray-800">
-            <div className="mb-4 h-5 w-40 rounded bg-gray-200 dark:bg-gray-800" />
-            <div className="space-y-3">
-              <div className="h-10 w-full rounded bg-gray-200 dark:bg-gray-800" />
-              <div className="h-10 w-2/3 rounded bg-gray-200 dark:bg-gray-800" />
-            </div>
-          </div>
-        ))}
+      <div className="animate-pulse space-y-5">
+        <div className="h-4 w-64 rounded bg-gray-200 dark:bg-gray-800" />
+        <div className="h-3 w-48 rounded bg-gray-100 dark:bg-gray-800/50" />
+        <div className="mt-8 space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 rounded bg-gray-100 dark:bg-gray-800/50" />
+          ))}
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="rounded-xl bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 p-10 text-center">
-        <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Error Loading Billing</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{error}</p>
-        <button onClick={loadAllData} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+      <div className="py-12">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          <AlertCircle className="inline w-4 h-4 mr-1.5 -mt-0.5 text-red-500" />
+          {error}
+        </p>
+        <button onClick={loadAllData} className="mt-3 text-sm text-gray-900 dark:text-white underline underline-offset-2 hover:no-underline">
           Retry
         </button>
       </div>
@@ -343,184 +341,179 @@ export default function BillingPage() {
   }
 
   const sub = billingData?.currentSubscription
+  const stats = billingData?.billingStats
   const packages = packagesData?.packages || []
   const currentPkgId = packagesData?.current_package_id
+  const pct = keywordUsage ? usagePct(keywordUsage.keywords_used, keywordUsage.keywords_limit, keywordUsage.is_unlimited) : 0
 
-  /* ─────────────── RENDER ─────────────── */
+  /* ═══════════════════════ RENDER ═══════════════════════ */
 
   return (
-    <div className="space-y-8">
-      {/* ── Current Plan & Usage ── */}
-      {!currentPkgId && (
-        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-gray-900 dark:text-white text-sm">No Active Package</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Subscribe to a plan below to start tracking keywords.</p>
-          </div>
-        </div>
-      )}
+    <div className="space-y-10">
 
-      {sub && (
-        <div className="rounded-xl bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800">
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Plan</span>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mt-1">{sub.package_name}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  {sub.expires_at ? `Expires ${formatDate(sub.expires_at)}` : 'Active'}
-                </p>
+      {/* ── Current plan ── */}
+      {sub ? (
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{sub.package_name}</h2>
+                <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusDot(sub.subscription_status)}`} />
+                  {statusLabel(sub.subscription_status)}
+                </span>
               </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Payment</span>
-                <div className="text-xl font-bold text-gray-900 dark:text-white mt-1">
-                  {formatCurrency(sub.amount_paid)}
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">per {sub.billing_period}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {formatCurrency(sub.amount_paid)}/{sub.billing_period}
+                {sub.expires_at && <> &middot; Renews {formatDate(sub.expires_at)}</>}
+                {stats?.days_remaining != null && <> &middot; {stats.days_remaining} days left</>}
+              </p>
+            </div>
+            {subscriptionData?.hasSubscription && (
+              <button
+                onClick={() => setShowCancelDialog(true)}
+                className="text-sm text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shrink-0"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+
+          {/* Usage bar */}
+          {keywordUsage && (
+            <div className="mt-4">
+              <div className="flex items-baseline justify-between text-sm mb-1.5">
+                <span className="text-gray-500 dark:text-gray-400">Keywords</span>
+                <span className="text-gray-900 dark:text-white font-medium tabular-nums">
+                  {keywordUsage.keywords_used}
+                  <span className="text-gray-400 dark:text-gray-500 font-normal">
+                    {' / '}{keywordUsage.is_unlimited ? '∞' : (keywordUsage.keywords_limit ?? 0).toLocaleString()}
+                  </span>
+                </span>
               </div>
-              <div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</span>
-                <div className="mt-1">
-                  {(() => {
-                    const sc = statusColor(sub.subscription_status)
-                    return (
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${sc.bg} ${sc.text} ${sc.border}`}>
-                        {sub.subscription_status === 'active' && <Check className="w-3 h-3" />}
-                        {statusLabel(sub.subscription_status)}
-                      </span>
-                    )
-                  })()}
-                </div>
+              <div className="h-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                <div
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    pct > 85 ? 'bg-red-500' : pct > 60 ? 'bg-amber-500' : 'bg-blue-600'
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
               </div>
             </div>
-
-            {/* Usage bar */}
-            {keywordUsage && (
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Keywords tracked</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {keywordUsage.keywords_used} / {keywordUsage.is_unlimited ? '∞' : keywordUsage.keywords_limit}
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                  <div
-                    className="h-2 rounded-full bg-blue-600 transition-all duration-300"
-                    style={{ width: `${usagePct(keywordUsage.keywords_used, keywordUsage.keywords_limit, keywordUsage.is_unlimited)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
+      ) : (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          No active plan. Choose one below to start tracking keywords.
+        </p>
       )}
 
-      {/* ── Available Plans ── */}
+      {/* ── Plans ── */}
       <div>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Available Plans</h2>
-          {/* Billing period toggle */}
-          <div className="flex items-center gap-3">
-            <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>Monthly</span>
+        <div className="flex items-baseline justify-between mb-5">
+          <h3 className="text-xs text-gray-400 dark:text-gray-500">Plans</h3>
+          <div className="flex items-center gap-1 text-sm">
             <button
-              onClick={() => setBillingPeriod((p) => (p === 'monthly' ? 'yearly' : 'monthly'))}
-              className={`relative w-10 h-[22px] rounded-full transition-colors ${billingPeriod === 'yearly' ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+              onClick={() => setBillingPeriod('monthly')}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                billingPeriod === 'monthly'
+                  ? 'text-gray-900 dark:text-white font-medium'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
             >
-              <div className={`absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${billingPeriod === 'yearly' ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
+              Monthly
             </button>
-            <span className={`text-sm font-medium ${billingPeriod === 'yearly' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>Annual</span>
-            {billingPeriod === 'yearly' && (
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">Save 20%</span>
-            )}
+            <span className="text-gray-300 dark:text-gray-700">/</span>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                billingPeriod === 'yearly'
+                  ? 'text-gray-900 dark:text-white font-medium'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              Annual{billingPeriod !== 'yearly' ? ' (save 20%)' : ''}
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
           {packages.map((pkg) => {
             const isCurrent = pkg.is_current || pkg.id === currentPkgId
             const pricing = getPricing(pkg, billingPeriod)
             const trialOk = trialEligible && pkg.free_trial_enabled
+            const isExpanded = expandedPlan === pkg.id
 
             return (
-              <div
-                key={pkg.id}
-                className={`rounded-xl border p-5 flex flex-col transition-colors ${
-                  isCurrent
-                    ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'bg-white dark:bg-[#141520] border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700'
-                } ${pkg.is_popular && !isCurrent ? 'ring-2 ring-blue-500/30' : ''}`}
-              >
-                {pkg.is_popular && !isCurrent && (
-                  <span className="inline-block mb-3 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Most Popular</span>
-                )}
+              <div key={pkg.id} className="py-4 first:pt-0 last:pb-0">
+                <div className="flex items-center gap-4">
+                  {/* Name + desc */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{pkg.name}</span>
+                      {isCurrent && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400">Current</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">{pkg.description}</p>
+                  </div>
 
-                <h3 className={`font-semibold ${isCurrent ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{pkg.name}</h3>
-                <p className={`text-sm mt-1 mb-4 ${isCurrent ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>{pkg.description}</p>
-
-                {/* Price */}
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-1.5">
-                    {pricing.originalPrice && pricing.originalPrice > pricing.price && (
-                      <span className={`text-sm line-through ${isCurrent ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>
-                        {formatCurrency(pricing.originalPrice)}
-                      </span>
+                  {/* Price */}
+                  <div className="text-right shrink-0">
+                    <div className="flex items-baseline gap-1 justify-end">
+                      {pricing.originalPrice && pricing.originalPrice > pricing.price && (
+                        <span className="text-xs line-through text-gray-300 dark:text-gray-600">{formatCurrency(pricing.originalPrice)}</span>
+                      )}
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{formatCurrency(pricing.price)}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">/mo</span>
+                    </div>
+                    {pricing.discount && (
+                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400">save {pricing.discount}%</span>
                     )}
-                    <span className={`text-2xl font-bold ${isCurrent ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-                      {formatCurrency(pricing.price)}
-                    </span>
-                    <span className={`text-sm ${isCurrent ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>/mo</span>
                   </div>
-                  {pricing.discount && (
-                    <span className="text-xs font-medium text-emerald-500">Save {pricing.discount}%</span>
-                  )}
-                </div>
 
-                {/* Features */}
-                <ul className={`space-y-2 mb-5 flex-1 ${isCurrent ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'}`}>
-                  {pkg.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <CheckCircle className={`w-4 h-4 mt-0.5 shrink-0 ${isCurrent ? 'text-blue-200' : 'text-emerald-500'}`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Action */}
-                {isCurrent ? (
-                  <div className="flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-blue-200">
-                    <Check className="w-4 h-4" /> Current Plan
-                  </div>
-                ) : (
-                  <div className="space-y-2 mt-auto">
-                    {trialOk && (
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isCurrent ? (
+                      <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    ) : (
                       <button
-                        onClick={() => handleStartTrial(pkg.id)}
-                        disabled={startingTrial === pkg.id}
-                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                        onClick={() => handleSubscribe(pkg.id)}
+                        disabled={subscribing === pkg.id}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
                       >
-                        {startingTrial === pkg.id ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" /> Starting…</>
-                        ) : (
-                          <><Clock className="w-4 h-4" /> Start 3-Day Trial</>
-                        )}
+                        {subscribing === pkg.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Select'}
                       </button>
                     )}
                     <button
-                      onClick={() => handleSubscribe(pkg.id)}
-                      disabled={subscribing === pkg.id}
-                      className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                        trialOk
-                          ? 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
-                      }`}
+                      onClick={() => setExpandedPlan(isExpanded ? null : pkg.id)}
+                      className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
                     >
-                      {subscribing === pkg.id ? (
-                        <span className="flex items-center justify-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> Redirecting…</span>
-                      ) : (
-                        'Switch plan'
-                      )}
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
+                  </div>
+                </div>
+
+                {/* Expanded features */}
+                {isExpanded && (
+                  <div className="mt-3 pl-0 grid grid-cols-2 gap-x-6 gap-y-1.5">
+                    {pkg.features.map((f, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <Check className="w-3 h-3 mt-0.5 shrink-0 text-gray-400 dark:text-gray-500" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{f}</span>
+                      </div>
+                    ))}
+                    {trialOk && !isCurrent && (
+                      <div className="col-span-2 mt-2">
+                        <button
+                          onClick={() => handleStartTrial(pkg.id)}
+                          disabled={startingTrial === pkg.id}
+                          className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline disabled:opacity-50"
+                        >
+                          {startingTrial === pkg.id ? 'Starting...' : 'Start free 3-day trial →'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -529,131 +522,94 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* ── Billing History ── */}
-      <div className="rounded-xl bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800">
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Billing History</h2>
+      {/* ── Transactions ── */}
+      <div>
+        <div className="flex items-baseline justify-between mb-4">
+          <h3 className="text-xs text-gray-400 dark:text-gray-500">Transactions</h3>
           {historyData?.summary && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {historyData.summary.total_transactions} transactions · {formatCurrency(historyData.summary.total_amount_spent)} total spent
-            </p>
+            <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+              {historyData.summary.total_transactions} payments &middot; {formatCurrency(historyData.summary.total_amount_spent)} total
+            </span>
           )}
         </div>
 
         {historyData?.transactions && historyData.transactions.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Package</th>
-                    <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {historyData.transactions.map((tx) => {
-                    const sc = statusColor(tx.transaction_status)
-                    return (
-                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900 dark:text-white">{tx.package?.name || tx.package_name || '—'}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{tx.transaction_type.replace('_', ' ')}</div>
-                        </td>
-                        <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
-                          {formatCurrency(tx.amount)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${sc.bg} ${sc.text} ${sc.border}`}>
-                            {statusLabel(tx.transaction_status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{formatDate(tx.created_at)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+              {historyData.transactions.map((tx) => (
+                <div key={tx.id} className="flex items-center gap-3 py-3 first:pt-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900 dark:text-white truncate">
+                      {tx.package?.name || tx.package_name || 'Payment'}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
+                      {tx.transaction_type.replace('_', ' ')} &middot; {formatDate(tx.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusDot(tx.transaction_status)}`} />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white tabular-nums">
+                      {formatCurrency(tx.amount)}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Pagination */}
             {historyData.pagination && historyData.pagination.total_pages > 1 && (
-              <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-gray-800">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Page {historyData.pagination.current_page} of {historyData.pagination.total_pages}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/60">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, historyData.pagination.total_items)} of {historyData.pagination.total_items}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex gap-3">
                   <button
                     onClick={() => loadBillingHistory(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
-                    className="p-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    Previous
                   </button>
                   <button
                     onClick={() => loadBillingHistory(Math.min(currentPage + 1, historyData.pagination.total_pages))}
                     disabled={currentPage === historyData.pagination.total_pages}
-                    className="p-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    Next
                   </button>
                 </div>
               </div>
             )}
           </>
         ) : (
-          <div className="py-12 text-center">
-            <p className="text-sm text-gray-400 dark:text-gray-500">No transactions yet</p>
-          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 py-4">No transactions yet.</p>
         )}
       </div>
 
-      {/* ── Danger Zone ── */}
-      {subscriptionData?.hasSubscription && subscriptionData.subscription && (
-        <div className="rounded-xl bg-white dark:bg-[#141520] border border-red-200 dark:border-red-900/40">
-          <div className="px-6 py-5">
-            <h2 className="text-base font-semibold text-red-700 dark:text-red-400">Danger Zone</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage subscription cancellation.</p>
-          </div>
-          <div className="flex items-center justify-between px-6 py-5 border-t border-red-100 dark:border-red-900/30">
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white text-sm">Cancel Subscription</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Services stop at the end of the billing cycle.</p>
-            </div>
-            <button
-              onClick={() => setShowCancelDialog(true)}
-              className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
-            >
-              Cancel Subscription
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Cancel Dialog ── */}
+      {/* ── Cancel dialog ── */}
       {showCancelDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCancelDialog(false)} />
-          <div className="relative bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl max-w-md w-full mx-4 p-6">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowCancelDialog(false)} />
+          <div className="relative bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 max-w-sm w-full mx-4 p-6">
             <button onClick={() => setShowCancelDialog(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Cancel Subscription</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              Your subscription will be canceled at the end of the current billing period. You can continue using services until then.
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Cancel subscription?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Your plan stays active until the current billing cycle ends. After that you lose access to paid features.
             </p>
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 mb-6">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
-                <span className="font-medium">Note:</span> This action cannot be undone. You can always subscribe again later.
-              </p>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowCancelDialog(false)} className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                Go Back
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCancelDialog(false)}
+                className="px-3.5 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Keep plan
               </button>
-              <button onClick={handleCancelSuccess} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
-                Yes, Cancel
+              <button
+                onClick={handleCancelSuccess}
+                className="px-3.5 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                Yes, cancel
               </button>
             </div>
           </div>
