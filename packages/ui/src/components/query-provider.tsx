@@ -12,7 +12,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         // Stale time of 5 minutes - data is considered fresh for 5 minutes
         staleTime: 5 * 60 * 1000,
         // Cache time of 10 minutes - data stays in cache for 10 minutes after being unused
-        gcTime: 10 * 60 * 1000, 
+        gcTime: 10 * 60 * 1000,
         // (#146) Retry failed requests 3 times with exponential backoff
         retry: 3,
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
