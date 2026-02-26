@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AUTH_ENDPOINTS, logger } from '@indexnow/shared';
 import { authService, authenticatedFetch } from '@indexnow/supabase-client';
 import { useAuth } from '@indexnow/auth';
@@ -33,20 +34,24 @@ export interface UseAccountSettingsReturn {
   // Actions
   handleSaveProfile: () => Promise<void>;
   handleChangePassword: () => Promise<void>;
-  loadData: () => Promise<void>;
 }
 
 /**
  * Shared hook for account settings (profile + password management).
- * Used by both general/page.tsx and profile/page.tsx to avoid
- * duplicating ~200 lines of identical business logic.
+ * Used by ProfileContent and SecurityContent.
+ *
+ * Profile data is loaded via React Query (query key: ['profile']) — the SAME
+ * cache used by useProfile() in the sidebar. This means:
+ * - No duplicate /v1/auth/user/profile fetch on settings pages
+ * - Instant data on tab switch (served from cache)
+ * - Sidebar automatically updates after profile save
  */
 export function useAccountSettings(): UseAccountSettingsReturn {
   const { addToast } = useToast();
   const { user } = useAuth();
   const { logDashboardActivity } = useActivityLogger();
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
@@ -62,53 +67,37 @@ export function useAccountSettings(): UseAccountSettingsReturn {
     confirmPassword: '',
   });
 
-  const loadData = useCallback(
-    async (signal?: AbortSignal) => {
-      try {
-        setLoading(true);
-        const profileResponse = await authenticatedFetch(AUTH_ENDPOINTS.PROFILE, { signal });
-
-        if (signal?.aborted) return;
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json();
-          // Handle both response shapes: { data: { profile } } and { profile }
-          const profile = profileData?.data?.profile ?? profileData?.profile;
-          if (profile) {
-            setProfileForm({
-              full_name: profile.full_name || '',
-              phone_number: profile.phone_number || '',
-              email_notifications: profile.email_notifications || false,
-            });
-          }
-        } else if (profileResponse.status === 404) {
-          setProfileForm({
-            full_name: user?.email?.split('@')[0] || '',
-            phone_number: '',
-            email_notifications: false,
-          });
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        logger.error(
-          { error: error instanceof Error ? error : undefined },
-          'Error loading profile data'
-        );
-      } finally {
-        if (!signal?.aborted) {
-          setLoading(false);
-        }
-      }
+  // Load profile via React Query — shares cache with useProfile() in AppSidebar
+  const { data: profileQueryData, isLoading: profileLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const res = await authenticatedFetch(AUTH_ENDPOINTS.PROFILE);
+      if (!res.ok) throw new Error(`Profile fetch failed: ${res.status}`);
+      const json = await res.json();
+      // Unwrap standardized response: { success: true, data: { profile: ... } }
+      const data = json?.data ?? json;
+      return data as { profile: { full_name?: string; phone_number?: string; email_notifications?: boolean; email?: string; [key: string]: unknown } };
     },
-    [user?.email]
-  );
+  });
 
+  // Sync React Query data → local form state (only when query data changes)
   useEffect(() => {
-    const controller = new AbortController();
-    loadData(controller.signal);
-    return () => {
-      controller.abort();
-    };
-  }, [loadData]);
+    const profile = profileQueryData?.profile;
+    if (profile) {
+      setProfileForm({
+        full_name: profile.full_name || '',
+        phone_number: profile.phone_number || '',
+        email_notifications: profile.email_notifications || false,
+      });
+    } else if (!profileLoading && !profileQueryData) {
+      // Profile not found — fallback to email prefix
+      setProfileForm({
+        full_name: user?.email?.split('@')[0] || '',
+        phone_number: '',
+        email_notifications: false,
+      });
+    }
+  }, [profileQueryData, profileLoading, user?.email]);
 
   const handleSaveProfile = useCallback(async () => {
     try {
@@ -125,7 +114,9 @@ export function useAccountSettings(): UseAccountSettingsReturn {
           type: 'success',
         });
         await logDashboardActivity('profile_update', 'Profile information updated');
-        loadData();
+        // Invalidate React Query cache so sidebar + all consumers get fresh data
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-aggregate'] });
       } else {
         const error = await response.json();
         addToast({
@@ -144,7 +135,7 @@ export function useAccountSettings(): UseAccountSettingsReturn {
     } finally {
       setSavingProfile(false);
     }
-  }, [profileForm, addToast, logDashboardActivity, loadData]);
+  }, [profileForm, addToast, logDashboardActivity, queryClient]);
 
   const handleChangePassword = useCallback(async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
@@ -240,7 +231,7 @@ export function useAccountSettings(): UseAccountSettingsReturn {
   }, [passwordForm, user?.email, addToast, logDashboardActivity]);
 
   return {
-    loading,
+    loading: profileLoading,
     savingProfile,
     savingPassword,
     profileForm,
@@ -250,6 +241,5 @@ export function useAccountSettings(): UseAccountSettingsReturn {
     setPasswordForm,
     handleSaveProfile,
     handleChangePassword,
-    loadData,
   };
 }

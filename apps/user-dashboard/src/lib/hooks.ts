@@ -1,7 +1,14 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { RANK_TRACKING_ENDPOINTS, AUTH_ENDPOINTS, DASHBOARD_ENDPOINTS, BILLING_ENDPOINTS } from '@indexnow/shared'
+import {
+  RANK_TRACKING_ENDPOINTS,
+  AUTH_ENDPOINTS,
+  DASHBOARD_ENDPOINTS,
+  BILLING_ENDPOINTS,
+  PUBLIC_ENDPOINTS,
+  API_BASE,
+} from '@indexnow/shared'
 import { api } from '../lib/api'
 
 // ——— Types ———
@@ -131,15 +138,6 @@ export function useProfile() {
   })
 }
 
-/** Fetch user quota */
-export function useQuota() {
-  return useQuery({
-    queryKey: ['quota'],
-    queryFn: () => api<{ quota: QuotaInfo }>(AUTH_ENDPOINTS.QUOTA),
-    select (d) { return d.quota },
-  })
-}
-
 /** Fetch keyword usage (used / limit) */
 export function useKeywordUsage() {
   return useQuery({
@@ -168,15 +166,6 @@ export function useWeeklyTrends() {
   })
 }
 
-/** Fetch billing packages */
-export function useBillingPackages() {
-  return useQuery({
-    queryKey: ['billing-packages'],
-    queryFn: () => api<{ packages: BillingPackage[] }>(BILLING_ENDPOINTS.PACKAGES),
-    select: (d) => d.packages ?? [],
-  })
-}
-
 /** Fetch dashboard aggregate data */
 export function useDashboardAggregate() {
   return useQuery({
@@ -187,6 +176,123 @@ export function useDashboardAggregate() {
       rankTracking: { domains: Domain[]; recentKeywords: Keyword[] }
       notifications: unknown[]
     }>(DASHBOARD_ENDPOINTS.MAIN),
+  })
+}
+
+/** Fetch public settings (site settings + packages). Long staleTime — data rarely changes. */
+export function usePublicSettings() {
+  return useQuery({
+    queryKey: ['public-settings'],
+    queryFn: async () => {
+      const res = await fetch(PUBLIC_ENDPOINTS.SETTINGS, {
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) throw new Error(`Public settings fetch failed: ${res.status}`)
+      const json = await res.json()
+      return (json?.data ?? json) as {
+        packages?: { packages: unknown[] }
+        siteSettings?: unknown
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes — this data barely changes
+  })
+}
+
+/** Fetch billing overview (current subscription + stats) */
+export function useBillingOverview() {
+  return useQuery({
+    queryKey: ['billing-overview'],
+    queryFn: () => api<{
+      currentSubscription: {
+        package_name: string
+        package_slug: string
+        subscription_status: string
+        expires_at: string | null
+        subscribed_at: string | null
+        amount_paid: number
+        billing_period: string
+      } | null
+      billingStats: {
+        total_payments: number
+        total_spent: number
+        next_billing_date: string | null
+        days_remaining: number | null
+      }
+    }>(BILLING_ENDPOINTS.OVERVIEW),
+  })
+}
+
+/** Fetch billing history (paginated) */
+export function useBillingHistory(page: number = 1, limit: number = 10) {
+  return useQuery({
+    queryKey: ['billing-history', page, limit],
+    queryFn: () =>
+      api<{
+        transactions: {
+          id: string
+          transaction_type: string
+          transaction_status: string
+          amount: number
+          currency: string
+          payment_method: string
+          created_at: string
+          package_name?: string
+          package?: { name: string; slug: string }
+        }[]
+        summary: {
+          total_transactions: number
+          completed_transactions: number
+          pending_transactions: number
+          failed_transactions: number
+          total_amount_spent: number
+        }
+        pagination: {
+          current_page: number
+          total_pages: number
+          total_items: number
+          items_per_page: number
+          has_next: boolean
+          has_prev: boolean
+        }
+      }>(BILLING_ENDPOINTS.HISTORY, {
+        params: { page, limit },
+      }),
+  })
+}
+
+/** Fetch Paddle subscription status */
+export function useSubscription() {
+  return useQuery({
+    queryKey: ['subscription'],
+    queryFn: async () => {
+      const res = await api<{
+        hasSubscription: boolean
+        subscription?: {
+          paddle_subscription_id: string
+          status: string
+          expires_at: string
+          package_id: string
+        }
+      }>(`${API_BASE.V1}/payments/paddle/subscription/my-subscription`)
+      return res
+    },
+    retry: false, // Don't retry — subscription may not exist
+  })
+}
+
+/** Fetch user notification/settings preferences */
+export function useUserSettings() {
+  return useQuery({
+    queryKey: ['user-settings'],
+    queryFn: () => api<{
+      settings: {
+        email_job_completion: boolean
+        email_job_failure: boolean
+        email_daily_report: boolean
+        email_quota_alerts: boolean
+        [key: string]: unknown
+      }
+    }>(AUTH_ENDPOINTS.SETTINGS),
   })
 }
 
@@ -260,8 +366,9 @@ export function useCheckRank() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['keywords'] })
-      qc.invalidateQueries({ queryKey: ['quota'] })
+      qc.invalidateQueries({ queryKey: ['keyword-usage'] })
       qc.invalidateQueries({ queryKey: ['weekly-trends'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-aggregate'] })
     },
   })
 }

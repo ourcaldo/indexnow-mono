@@ -58,8 +58,9 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
         method: 'POST',
         body: JSON.stringify(request),
       });
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Failed to log activity');
+    } catch {
+      // Activity logging is non-critical — silently swallow failures
+      // (e.g. API server not running, network issues, auth expired)
     }
   }, []);
 

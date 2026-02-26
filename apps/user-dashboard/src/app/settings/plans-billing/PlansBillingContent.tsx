@@ -1,26 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   Check,
   ChevronDown,
-  Clock,
   Loader2,
   X,
 } from 'lucide-react'
-import {
-  API_BASE,
-  BILLING_ENDPOINTS,
-  PUBLIC_ENDPOINTS,
-  formatCurrency,
-  formatDate,
-  logger,
-} from '@indexnow/shared'
-import { authService, authenticatedFetch } from '@indexnow/supabase-client'
+import { formatCurrency, formatDate } from '@indexnow/shared'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import { useToast, useApiError } from '@indexnow/ui'
+import {
+  useBillingOverview,
+  useBillingHistory,
+  useDashboardAggregate,
+  usePublicSettings,
+  useSubscription,
+} from '../../../lib/hooks'
 
 /* ───────────────────── Types ───────────────────── */
 
@@ -169,15 +168,7 @@ function usagePct(used: number, limit: number, unlimited: boolean) {
 /* ═══════════════════════ Component ═══════════════════════ */
 
 export default function BillingPage() {
-  const [billingData, setBillingData] = useState<BillingData | null>(null)
-  const [packagesData, setPackagesData] = useState<PackagesData | null>(null)
-  const [historyData, setHistoryData] = useState<BillingHistoryData | null>(null)
-  const [keywordUsage, setKeywordUsage] = useState<KeywordUsageData | null>(null)
-  const [trialEligible, setTrialEligible] = useState<boolean | null>(null)
-  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null)
-
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /* UI state */
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly')
   const [subscribing, setSubscribing] = useState<string | null>(null)
   const [startingTrial, setStartingTrial] = useState<string | null>(null)
@@ -187,108 +178,50 @@ export default function BillingPage() {
   const itemsPerPage = 10
 
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { addToast } = useToast()
   const { handleApiError } = useApiError()
   const { logBillingActivity } = useActivityLogger()
   usePageViewLogger('/settings/plans-billing', 'Billing & Subscriptions', { section: 'billing_management' })
 
-  /* ── Data loading ── */
+  /* ── Data (all GET requests via React Query) ── */
 
-  const loadAllData = useCallback(async () => {
-    try {
-      setLoading(true)
-      await Promise.all([loadBillingData(), loadBillingHistory(), loadDashboardData(), loadSubscriptionData()])
-    } catch (err) {
-      handleApiError(err)
-    } finally {
-      setLoading(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleApiError])
+  const { data: billingData, isLoading: billingLoading, error: billingError } = useBillingOverview()
+  const { data: historyData, isLoading: historyLoading } = useBillingHistory(currentPage, itemsPerPage)
+  const { data: dashboardData, isLoading: dashLoading } = useDashboardAggregate()
+  const { data: publicSettings, isLoading: pkgLoading } = usePublicSettings()
+  const { data: subscriptionData } = useSubscription()
 
+  // Derived state from hook data
+  const packages: PaymentPackage[] =
+    (publicSettings as { packages?: { packages?: PaymentPackage[] } })?.packages?.packages || []
+  const dashProfile = dashboardData?.user?.profile as Record<string, unknown> | undefined
+  const dashBilling = dashboardData?.billing
+  const currentPkgId = (dashProfile?.package_id as string) || dashBilling?.current_package_id || null
+  const keywordUsage = dashboardData?.user?.quota as KeywordUsageData | undefined
+  const trialEligible = (dashboardData?.user?.trial as { eligible?: boolean })?.eligible ?? null
+
+  const loading = billingLoading || historyLoading || dashLoading || pkgLoading
+  const error = billingError
+    ? (billingError instanceof Error ? billingError.message : 'Failed to load billing data')
+    : null
+
+  // Handle ?payment= URL param cleanup
   useEffect(() => {
-    loadAllData()
     const p = new URLSearchParams(window.location.search).get('payment')
     if (p) {
       const url = new URL(window.location.href)
       url.searchParams.delete('payment')
       router.replace(url.pathname, { scroll: false })
     }
-  }, [loadAllData, router])
+  }, [router])
 
-  async function loadSubscriptionData() {
-    try {
-      const res = await authenticatedFetch(`${API_BASE.V1}/payments/paddle/subscription/my-subscription`)
-      if (!res.ok) return
-      const json = await res.json()
-      if (json.success && json.data) setSubscriptionData(json.data)
-    } catch { /* optional */ }
-  }
-
-  async function loadBillingData() {
-    try {
-      const user = await authService.getCurrentUser()
-      if (!user) throw new Error('Not authenticated')
-      const res = await authenticatedFetch(BILLING_ENDPOINTS.OVERVIEW)
-      if (!res.ok) throw new Error('Failed to load billing data')
-      const json = await res.json()
-      setBillingData(json?.success ? json.data : json)
-    } catch (err) {
-      handleApiError(err)
-      setError(err instanceof Error ? err.message : 'Failed to load billing data')
-    }
-  }
-
-  async function loadDashboardData() {
-    try {
-      const user = await authService.getCurrentUser()
-      if (!user) throw new Error('Not authenticated')
-
-      const [pkgRes, dashRes] = await Promise.all([
-        fetch(PUBLIC_ENDPOINTS.SETTINGS, { headers: { 'Content-Type': 'application/json' } }),
-        authenticatedFetch(`${API_BASE.V1}/dashboard`),
-      ])
-
-      if (!pkgRes.ok) throw new Error('Failed to load packages')
-      if (!dashRes.ok) throw new Error('Failed to load dashboard')
-
-      const pkgJson = await pkgRes.json()
-      const settingsData = pkgJson?.success ? pkgJson.data : pkgJson
-      const packages: PaymentPackage[] = settingsData?.packages?.packages || []
-
-      const dashJson = await dashRes.json()
-      const d = dashJson?.data || {}
-      const profile = d.user?.profile || {}
-      const billing = d.billing || {}
-
-      setPackagesData({
-        packages,
-        current_package_id: profile.package_id || billing.current_package_id || null,
-        expires_at: profile.expires_at || billing.expires_at || null,
-      })
-
-      if (d.user?.quota) setKeywordUsage(d.user.quota as KeywordUsageData)
-      if (d.user?.trial) setTrialEligible(d.user.trial.eligible)
-    } catch (err) {
-      handleApiError(err)
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
-    }
-  }
-
-  async function loadBillingHistory(page = 1) {
-    try {
-      const user = await authService.getCurrentUser()
-      if (!user) throw new Error('Not authenticated')
-      const params = new URLSearchParams({ page: page.toString(), limit: itemsPerPage.toString() })
-      const res = await authenticatedFetch(`${BILLING_ENDPOINTS.HISTORY}?${params}`)
-      if (!res.ok) throw new Error('Failed to load billing history')
-      const json = await res.json()
-      setHistoryData(json?.success ? json.data : json)
-      setCurrentPage(page)
-    } catch (err) {
-      handleApiError(err)
-      setError(err instanceof Error ? err.message : 'Failed to load billing history')
-    }
+  const refetchAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['billing-overview'] })
+    queryClient.invalidateQueries({ queryKey: ['billing-history'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-aggregate'] })
+    queryClient.invalidateQueries({ queryKey: ['public-settings'] })
+    queryClient.invalidateQueries({ queryKey: ['subscription'] })
   }
 
   /* ── Actions ── */
@@ -303,11 +236,11 @@ export default function BillingPage() {
     window.location.href = checkoutUrl(pkgId, 'monthly', true)
   }
 
-  const handleCancelSuccess = async () => {
+  const handleCancelSuccess = () => {
     setShowCancelDialog(false)
     addToast({ title: 'Subscription Canceled', description: 'Your subscription has been successfully canceled.' })
-    await loadSubscriptionData()
-    await loadBillingData()
+    queryClient.invalidateQueries({ queryKey: ['subscription'] })
+    queryClient.invalidateQueries({ queryKey: ['billing-overview'] })
   }
 
   /* ── Loading ── */
@@ -333,17 +266,15 @@ export default function BillingPage() {
           <AlertCircle className="inline w-4 h-4 mr-1.5 -mt-0.5 text-red-500" />
           {error}
         </p>
-        <button onClick={loadAllData} className="mt-3 text-sm text-gray-900 dark:text-white underline underline-offset-2 hover:no-underline">
+        <button onClick={refetchAll} className="mt-3 text-sm text-gray-900 dark:text-white underline underline-offset-2 hover:no-underline">
           Retry
         </button>
       </div>
     )
   }
 
-  const sub = billingData?.currentSubscription
-  const stats = billingData?.billingStats
-  const packages = packagesData?.packages || []
-  const currentPkgId = packagesData?.current_package_id
+  const sub = billingData?.currentSubscription ?? null
+  const stats = billingData?.billingStats ?? null
   const pct = keywordUsage ? usagePct(keywordUsage.keywords_used, keywordUsage.keywords_limit, keywordUsage.is_unlimited) : 0
 
   /* ═══════════════════════ RENDER ═══════════════════════ */
@@ -564,14 +495,14 @@ export default function BillingPage() {
                 </span>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => loadBillingHistory(Math.max(currentPage - 1, 1))}
+                    onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
                     className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors"
                   >
                     Previous
                   </button>
                   <button
-                    onClick={() => loadBillingHistory(Math.min(currentPage + 1, historyData.pagination.total_pages))}
+                    onClick={() => setCurrentPage(Math.min(currentPage + 1, historyData.pagination.total_pages))}
                     disabled={currentPage === historyData.pagination.total_pages}
                     className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors"
                   >

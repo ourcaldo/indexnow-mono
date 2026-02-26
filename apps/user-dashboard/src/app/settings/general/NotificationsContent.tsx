@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useActivityLogger } from '@indexnow/ui/hooks'
 import { useToast } from '@indexnow/ui'
 import { AUTH_ENDPOINTS } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
 import { Loader2 } from 'lucide-react'
+import { useUserSettings } from '../../../lib/hooks'
 
 /* ─── Toggle Switch ─── */
 function Toggle({
@@ -44,8 +46,10 @@ function Toggle({
 export default function NotificationsContent() {
   const { addToast } = useToast()
   const { logDashboardActivity } = useActivityLogger()
+  const queryClient = useQueryClient()
 
-  const [loading, setLoading] = useState(true)
+  const { data: settingsData, isLoading: loading } = useUserSettings()
+
   const [saving, setSaving] = useState(false)
   const [notifications, setNotifications] = useState({
     jobCompletion: true,
@@ -54,29 +58,18 @@ export default function NotificationsContent() {
     criticalAlerts: true,
   })
 
+  // Sync local form state from React Query data
   useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true)
-        const res = await authenticatedFetch(AUTH_ENDPOINTS.SETTINGS)
-        if (res.ok) {
-          const json = await res.json()
-          const s = json.data?.settings ?? json.settings
-          setNotifications({
-            jobCompletion: s.email_job_completion || false,
-            failures: s.email_job_failure || false,
-            dailyReports: s.email_daily_report || false,
-            criticalAlerts: s.email_quota_alerts || false,
-          })
-        }
-      } catch {
-        /* defaults are fine */
-      } finally {
-        setLoading(false)
-      }
+    if (settingsData?.settings) {
+      const s = settingsData.settings
+      setNotifications({
+        jobCompletion: !!s.email_job_completion,
+        failures: !!s.email_job_failure,
+        dailyReports: !!s.email_daily_report,
+        criticalAlerts: !!s.email_quota_alerts,
+      })
     }
-    load()
-  }, [])
+  }, [settingsData])
 
   const save = async () => {
     try {
@@ -91,6 +84,7 @@ export default function NotificationsContent() {
         }),
       })
       if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['user-settings'] })
         addToast({ title: 'Saved', description: 'Notification preferences updated', type: 'success' })
         await logDashboardActivity('settings_update', 'Notification settings updated', {
           section: 'notifications',
