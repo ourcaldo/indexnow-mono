@@ -33,7 +33,7 @@ function Field({
 }
 
 const inputCls =
-  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400';
+  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-transparent';
 
 function Toggle({
   checked,
@@ -56,7 +56,7 @@ function Toggle({
         type="button"
         onClick={() => onChange(!checked)}
         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none mt-0.5 ${
-          checked ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'
+          checked ? 'bg-gray-600 dark:bg-gray-500' : 'bg-gray-200 dark:bg-gray-700'
         }`}
       >
         <span
@@ -135,7 +135,7 @@ export default function SiteSettings() {
         <button
           onClick={handleSave}
           disabled={saveMutation.isPending}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white/10 text-white border border-gray-700 dark:border-white/10 rounded-md hover:bg-gray-800 dark:hover:bg-white/[0.15] transition-colors disabled:opacity-50"
         >
           <Save className="w-3.5 h-3.5" />
           {saveMutation.isPending ? 'Saving…' : 'Save changes'}
@@ -273,3 +273,4 @@ export default function SiteSettings() {
     </div>
   );
 }
+

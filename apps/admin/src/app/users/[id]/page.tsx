@@ -1,40 +1,33 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit3, Save, X, XCircle } from 'lucide-react';
-
-// Import extracted components
+import { ArrowLeft, Edit3, Save, X } from 'lucide-react';
 import { UserProfileCard } from './components/UserProfileCard';
 import { UserActionsPanel } from './components/UserActionsPanel';
 import { PackageSubscriptionCard } from './components/PackageSubscriptionCard';
 import { UserActivityCard } from './components/UserActivityCard';
 import { UserSecurityCard } from './components/UserSecurityCard';
 import { PackageChangeModal } from './components/PackageChangeModal';
-function AdminUserDetailSkeleton() {
-  return <div className="py-20 text-center text-sm text-gray-400">Loading user…</div>;
-}
-function ErrorState({ title, message, showHomeButton }: { title: string; message: string; showHomeButton?: boolean }) {
-  return (
-    <div className="py-20 text-center space-y-2">
-      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{title}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{message}</p>
-    </div>
-  );
-}
+import { useUserData } from './hooks/useUserData';
+import { useUserManagement } from './hooks/useUserManagement';
+
 function ConfirmationDialog({ isOpen, title, message, confirmText, variant, onConfirm, onClose }: {
   isOpen: boolean; title: string; message: string; confirmText?: string; variant?: string;
   onConfirm: () => void; onClose: () => void;
 }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-xl p-6 max-w-sm w-full mx-4 space-y-4 shadow-xl">
         <p className="text-sm font-semibold text-gray-900 dark:text-white">{title}</p>
         <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
-        <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Cancel</button>
-          <button onClick={onConfirm} className={`px-3 py-1.5 text-sm rounded-md text-white transition-opacity hover:opacity-90 ${variant === 'destructive' ? 'bg-red-600' : 'bg-gray-900 dark:bg-white dark:text-gray-900'}`}>
+        <div className="flex justify-end gap-2 pt-1">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">Cancel</button>
+          <button
+            onClick={onConfirm}
+            className={`px-3 py-1.5 text-sm rounded-md text-white transition-colors ${variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-gray-700 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-500'}`}
+          >
             {confirmText ?? 'Confirm'}
           </button>
         </div>
@@ -43,55 +36,21 @@ function ConfirmationDialog({ isOpen, title, message, confirmText, variant, onCo
   );
 }
 
-// Import custom hooks
-import { useUserData } from './hooks/useUserData';
-import { useUserManagement } from './hooks/useUserManagement';
-
 export default function UserDetail() {
   const params = useParams();
   const router = useRouter();
   const userId = params.id as string;
 
-  // Use custom hooks
-  const {
-    user,
-    activityLogs,
-    securityData,
-    availablePackages,
-    loading,
-    activityLoading,
-    securityLoading,
-    fetchUser,
-    fetchUserActivity,
-    fetchUserSecurity,
-  } = useUserData(userId);
+  const { user, activityLogs, securityData, availablePackages, loading, activityLoading, securityLoading,
+    fetchUser, fetchUserActivity, fetchUserSecurity } = useUserData(userId);
 
-  const {
-    actionLoading,
-    newPassword,
-    showPassword,
-    editMode,
-    editForm,
-    showPackageModal,
-    selectedPackageId,
-    confirmConfig,
-    setEditMode,
-    setEditForm,
-    setShowPackageModal,
-    setSelectedPackageId,
-    setConfirmConfig,
-    handleSuspendUser,
-    handleResetPassword,
-    handleResetQuota,
-    handleChangePackage,
-    handleExtendSubscription,
-    handleSaveEdit,
-    handlePackageChangeSubmit,
-    handleEditFormChange,
-    handleTogglePasswordVisibility,
+  const { actionLoading, newPassword, showPassword, editMode, editForm, showPackageModal,
+    selectedPackageId, confirmConfig, setEditMode, setEditForm, setShowPackageModal,
+    setSelectedPackageId, setConfirmConfig, handleSuspendUser, handleResetPassword,
+    handleResetQuota, handleChangePackage, handleExtendSubscription, handleSaveEdit,
+    handlePackageChangeSubmit, handleEditFormChange, handleTogglePasswordVisibility,
   } = useUserManagement();
 
-  // Initialize edit form when user data is loaded
   useEffect(() => {
     if (user && !editMode) {
       setEditForm({
@@ -103,134 +62,88 @@ export default function UserDetail() {
     }
   }, [user, editMode, setEditForm]);
 
-  // Action handlers with callback functions
   const handleSuspendUserWithRefresh = () => handleSuspendUser(userId, fetchUser);
   const handleResetPasswordWithCallback = () => handleResetPassword(userId);
   const handleResetQuotaWithRefresh = () => handleResetQuota(userId, fetchUser);
   const handleExtendSubscriptionWithRefresh = () => handleExtendSubscription(userId, fetchUser);
-  const handleSaveEditWithRefresh = () =>
-    handleSaveEdit(userId, editForm, () => {
-      fetchUser();
-      fetchUserActivity();
-      fetchUserSecurity();
-    });
-  const handlePackageChangeSubmitWithRefresh = () =>
-    handlePackageChangeSubmit(userId, selectedPackageId, fetchUser);
+  const handleSaveEditWithRefresh = () => handleSaveEdit(userId, editForm, () => { fetchUser(); fetchUserActivity(); fetchUserSecurity(); });
+  const handlePackageChangeSubmitWithRefresh = () => handlePackageChangeSubmit(userId, selectedPackageId, fetchUser);
 
-  // Loading state
-  if (loading) {
-    return <AdminUserDetailSkeleton />;
-  }
-
-  // User not found state
-  if (!user) {
-    return (
-      <div className="flex min-h-96 flex-col items-center justify-center">
-        <ErrorState
-          title="User Not Found"
-          message="The user you're looking for doesn't exist."
-          showHomeButton
-        />
-      </div>
-    );
-  }
+  if (loading) return <div className="py-20 text-center text-sm text-gray-400">Loading user…</div>;
+  if (!user) return (
+    <div className="py-20 text-center space-y-2">
+      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">User not found</p>
+      <p className="text-xs text-gray-500">The user you're looking for doesn't exist.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-foreground text-2xl font-bold">User Details</h1>
-            <p className="text-muted-foreground mt-1">Manage user account and permissions</p>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">User Details</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage user account and permissions</p>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           {!editMode ? (
             <button
               onClick={() => setEditMode(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white/10 text-white border border-gray-700 dark:border-white/10 rounded-md hover:bg-gray-800 dark:hover:bg-white/[0.15] transition-colors"
             >
-              <Edit3 className="h-4 w-4" />
-              <span>Edit User</span>
+              <Edit3 className="w-3.5 h-3.5" />
+              Edit user
             </button>
           ) : (
             <>
               <button
                 onClick={() => setEditMode(false)}
-                className="border-border text-muted-foreground hover:bg-secondary flex items-center space-x-2 rounded-lg border px-4 py-2 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                <X className="h-4 w-4" />
-                <span>Cancel</span>
+                <X className="w-3.5 h-3.5" />
+                Cancel
               </button>
               <button
                 onClick={handleSaveEditWithRefresh}
                 disabled={actionLoading.editData}
-                className="bg-success text-success-foreground hover:bg-success/90 flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-700 dark:bg-gray-600 text-white rounded-md hover:bg-gray-600 dark:hover:bg-gray-500 transition-colors disabled:opacity-50"
               >
-                <Save className="h-4 w-4" />
-                <span>{actionLoading.editData ? 'Saving...' : 'Save Changes'}</span>
+                <Save className="w-3.5 h-3.5" />
+                {actionLoading.editData ? 'Saving…' : 'Save changes'}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* User Profile Card */}
-      <UserProfileCard
-        user={user}
-        editMode={editMode}
-        editForm={editForm}
-        onEditFormChange={handleEditFormChange}
-      />
-
-      {/* Package Subscription Card */}
+      <UserProfileCard user={user} editMode={editMode} editForm={editForm} onEditFormChange={handleEditFormChange} />
       <PackageSubscriptionCard user={user} />
-
-      {/* Admin Actions Panel */}
       <UserActionsPanel
-        actionLoading={actionLoading}
-        newPassword={newPassword}
-        showPassword={showPassword}
+        actionLoading={actionLoading} newPassword={newPassword} showPassword={showPassword}
         onTogglePasswordVisibility={handleTogglePasswordVisibility}
-        onSuspendUser={handleSuspendUserWithRefresh}
-        onResetPassword={handleResetPasswordWithCallback}
-        onResetQuota={handleResetQuotaWithRefresh}
-        onChangePackage={handleChangePackage}
+        onSuspendUser={handleSuspendUserWithRefresh} onResetPassword={handleResetPasswordWithCallback}
+        onResetQuota={handleResetQuotaWithRefresh} onChangePackage={handleChangePackage}
         onExtendSubscription={handleExtendSubscriptionWithRefresh}
       />
-
-      {/* Recent Activity Card */}
       <UserActivityCard activityLogs={activityLogs} activityLoading={activityLoading} />
-
-      {/* Security Overview Card */}
       <UserSecurityCard securityData={securityData} securityLoading={securityLoading} />
-
-      {/* Package Change Modal */}
       <PackageChangeModal
-        isOpen={showPackageModal}
-        availablePackages={availablePackages}
-        selectedPackageId={selectedPackageId}
-        changePackageLoading={actionLoading.changePackage}
-        onClose={() => setShowPackageModal(false)}
-        onPackageSelect={setSelectedPackageId}
+        isOpen={showPackageModal} availablePackages={availablePackages}
+        selectedPackageId={selectedPackageId} changePackageLoading={actionLoading.changePackage}
+        onClose={() => setShowPackageModal(false)} onPackageSelect={setSelectedPackageId}
         onSubmit={handlePackageChangeSubmitWithRefresh}
       />
-
-      {/* Confirmation Dialog */}
       <ConfirmationDialog
-        isOpen={confirmConfig.isOpen}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        confirmText={confirmConfig.confirmText}
-        variant={confirmConfig.variant}
+        isOpen={confirmConfig.isOpen} title={confirmConfig.title} message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText} variant={confirmConfig.variant}
         onConfirm={confirmConfig.onConfirm}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
       />

@@ -1,143 +1,102 @@
-'use client'
+'use client';
 
-import { 
-  Activity,
-  Monitor,
-  Smartphone,
-  Tablet,
-  LogIn,
-  LogOut,
-  User,
-  Settings,
-  Shield,
-  Server
-} from 'lucide-react'
-import { formatDate } from '@indexnow/shared'
-import { ActivityLog } from './index'
+import {
+  Activity, Monitor, Smartphone, Tablet,
+  LogIn, LogOut, User, Settings, Shield, Server,
+} from 'lucide-react';
+import { formatDate } from '@indexnow/shared';
+import { ActivityLog } from './index';
 
 interface UserActivityCardProps {
-  activityLogs: ActivityLog[]
-  activityLoading: boolean
+  activityLogs: ActivityLog[];
+  activityLoading: boolean;
+}
+
+const EVENT_ICONS: Record<string, React.ElementType> = {
+  login: LogIn, logout: LogOut, register: User,
+  profile_update: User, admin_login: Shield,
+  user_management: Settings, api_call: Server, settings_change: Settings,
+};
+
+function getDeviceInfo(userAgent?: string | null): { icon: React.ElementType; text: string } {
+  if (!userAgent) return { icon: Monitor, text: 'Desktop' };
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('mobile') || ua.includes('iphone')) return { icon: Smartphone, text: 'Mobile' };
+  if (ua.includes('tablet') || ua.includes('ipad')) return { icon: Tablet, text: 'Tablet' };
+  return { icon: Monitor, text: 'Desktop' };
 }
 
 export function UserActivityCard({ activityLogs, activityLoading }: UserActivityCardProps) {
-  // Helper functions for activity display
-  const getEventIcon = (eventType: string) => {
-    const icons = {
-      login: LogIn,
-      logout: LogOut,
-      register: User,
-      profile_update: User,
-      admin_login: Shield,
-      user_management: Settings,
-      api_call: Server,
-      settings_change: Settings
-    }
-    
-    return icons[eventType as keyof typeof icons] || Activity
-  }
-
-  const getDeviceInfo = (userAgent?: string | null) => {
-    if (!userAgent) return { icon: Monitor, text: 'Desktop' }
-    
-    const ua = userAgent.toLowerCase()
-    
-    if (ua.includes('mobile') || ua.includes('iphone')) {
-      return { icon: Smartphone, text: 'Mobile' }
-    }
-    if (ua.includes('tablet') || ua.includes('ipad')) {
-      return { icon: Tablet, text: 'Tablet' }
-    }
-    
-    return { icon: Monitor, text: 'Desktop' }
-  }
-
-  const formatActivityDate = (dateString: string) => {
-    return formatDate(dateString, true)
-  }
-
   return (
-    <div className="bg-white rounded-lg border border-border p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-success/10">
-          <Activity className="h-5 w-5 text-success" />
-        </div>
+    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+      <div className="mb-5 flex items-center gap-2.5">
+        <Activity className="w-4 h-4 text-gray-400" />
         <div>
-          <h3 className="text-lg font-bold text-foreground">Recent Activity</h3>
-          <p className="text-sm text-muted-foreground">User actions and system events</p>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">User actions and system events</p>
         </div>
       </div>
 
       {activityLoading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
-                <div className="w-8 h-8 bg-muted rounded-lg"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted rounded w-3/4"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                </div>
-                <div className="h-3 bg-muted rounded w-16"></div>
+            <div key={i} className="animate-pulse flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/30 rounded-lg">
+              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-700/50 rounded w-1/2" />
               </div>
+              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
             </div>
           ))}
         </div>
       ) : activityLogs.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {activityLogs.map((log) => {
-            const EventIcon = getEventIcon(log.event_type)
-            const deviceInfo = getDeviceInfo(log.user_agent)
-            const DeviceIcon = deviceInfo.icon
-
+            const EventIcon = EVENT_ICONS[log.event_type] || Activity;
+            const deviceInfo = getDeviceInfo(log.user_agent);
+            const DeviceIcon = deviceInfo.icon;
             return (
-              <div key={log.id} className="flex items-center space-x-3 p-3 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors">
-                <div className="p-2 rounded-lg bg-white border border-border">
-                  <EventIcon className="h-4 w-4 text-muted-foreground" />
+              <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors">
+                <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg bg-white dark:bg-[#0f0f17] border border-gray-200 dark:border-gray-700">
+                  <EventIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-foreground truncate">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm text-gray-900 dark:text-white truncate">
                       {log.action_description}
                     </p>
-                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 whitespace-nowrap">
                       {log.event_type.replace('_', ' ')}
                     </span>
                   </div>
-                  
-                  <div className="flex items-center space-x-4 mt-1">
+                  <div className="flex items-center gap-4 mt-0.5">
                     {log.ip_address && (
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {log.ip_address}
-                      </span>
+                      <span className="text-xs text-gray-400 font-mono">{log.ip_address}</span>
                     )}
-                    
                     {log.user_agent && (
-                      <div className="flex items-center space-x-1">
-                        <DeviceIcon className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {deviceInfo.text}
-                        </span>
+                      <div className="flex items-center gap-1">
+                        <DeviceIcon className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-400">{deviceInfo.text}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="text-xs text-muted-foreground whitespace-nowrap">
-                  {formatActivityDate(log.created_at)}
+                <div className="text-xs text-gray-400 whitespace-nowrap">
+                  {formatDate(log.created_at, true)}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       ) : (
-        <div className="text-center py-8">
-          <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <h4 className="text-lg font-medium text-foreground mb-2">No Recent Activity</h4>
-          <p className="text-sm text-muted-foreground">This user hasn't performed any tracked actions yet.</p>
+        <div className="py-8 text-center">
+          <Activity className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">No recent activity for this user.</p>
         </div>
       )}
     </div>
-  )
+  );
 }

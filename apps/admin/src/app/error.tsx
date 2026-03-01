@@ -40,28 +40,28 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <div className="bg-secondary flex min-h-screen items-center justify-center p-4">
+    <div className="bg-gray-50 dark:bg-[#0c0c14] flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6 text-center">
         <div className="flex justify-center">
-          <div className="bg-destructive/10 rounded-full p-4">
-            <AlertCircle className="text-destructive h-12 w-12" />
+          <div className="bg-rose-50 dark:bg-rose-900/10 rounded-full p-4">
+            <AlertCircle className="text-rose-600 dark:text-rose-400 h-12 w-12" />
           </div>
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-foreground text-2xl font-bold">Something went wrong!</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-gray-900 dark:text-white text-2xl font-bold">Something went wrong!</h1>
+          <p className="text-gray-500 dark:text-gray-400">
             An unexpected error occurred in the admin dashboard. Our team has been notified.
           </p>
           {error.digest && (
-            <p className="text-muted-foreground mt-2 font-mono text-xs">Error ID: {error.digest}</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 font-mono text-xs">Error ID: {error.digest}</p>
           )}
         </div>
 
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button
             onClick={() => reset()}
-            className="bg-primary hover:bg-primary/90 w-full text-white sm:w-auto"
+            className="bg-gray-900 hover:bg-gray-800 dark:bg-white/10 dark:hover:bg-white/[0.15] w-full text-white sm:w-auto"
           >
             <RefreshCcw className="mr-2 h-4 w-4" />
             Try again
@@ -70,7 +70,7 @@ export default function AdminError({
           <Button
             variant="outline"
             asChild
-            className="border-border text-muted-foreground hover:bg-secondary w-full sm:w-auto"
+            className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 w-full sm:w-auto"
           >
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
@@ -79,8 +79,8 @@ export default function AdminError({
           </Button>
         </div>
 
-        <div className="border-border border-t pt-6">
-          <p className="text-muted-foreground text-xs">
+        <div className="border-gray-200 dark:border-gray-800 border-t pt-6">
+          <p className="text-gray-500 dark:text-gray-400 text-xs">
             If the problem persists, please contact the system administrator or check the server
             logs.
           </p>
@@ -89,3 +89,4 @@ export default function AdminError({
     </div>
   );
 }
+

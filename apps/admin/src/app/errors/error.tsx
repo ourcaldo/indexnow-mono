@@ -26,15 +26,15 @@ export default function ErrorMonitoringError({
   return (
     <div className="flex min-h-[50vh] items-center justify-center p-8">
       <div className="w-full max-w-md space-y-4 text-center">
-        <AlertCircle className="text-destructive mx-auto h-10 w-10" />
-        <h2 className="text-foreground text-xl font-semibold">Failed to load Error Monitoring</h2>
-        <p className="text-muted-foreground text-sm">
+        <AlertCircle className="text-rose-500 dark:text-rose-400 mx-auto h-10 w-10" />
+        <h2 className="text-gray-900 dark:text-white text-xl font-semibold">Failed to load Error Monitoring</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           {error.message || 'An unexpected error occurred while loading the error dashboard.'}
         </p>
         {error.digest && (
-          <p className="text-muted-foreground font-mono text-xs">Error ID: {error.digest}</p>
+          <p className="text-gray-500 dark:text-gray-400 font-mono text-xs">Error ID: {error.digest}</p>
         )}
-        <Button onClick={() => reset()} className="bg-primary text-primary-foreground">
+        <Button onClick={() => reset()} className="bg-gray-900 hover:bg-gray-800 dark:bg-white/10 text-white">
           <RefreshCcw className="mr-2 h-4 w-4" />
           Retry
         </Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Shield, MapPin, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { type Json, formatDate } from '@indexnow/shared';
+import { formatDate } from '@indexnow/shared';
 import type { SecurityData } from '.';
 
 interface UserSecurityCardProps {
@@ -9,242 +9,166 @@ interface UserSecurityCardProps {
   securityLoading: boolean;
 }
 
+function getRiskBadge(riskLevel: string): string {
+  if (riskLevel === 'low')    return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/10 dark:text-emerald-400 dark:border-emerald-800';
+  if (riskLevel === 'medium') return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/10 dark:text-amber-400 dark:border-amber-800';
+  if (riskLevel === 'high')   return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/10 dark:text-rose-400 dark:border-rose-800';
+  return 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
+}
+
+function getScoreText(score: number): string {
+  if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
+  if (score >= 60) return 'text-amber-600 dark:text-amber-400';
+  return 'text-rose-600 dark:text-rose-400';
+}
+
 export function UserSecurityCard({ securityData, securityLoading }: UserSecurityCardProps) {
-  const getRiskLevelColor = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'low':
-        return 'bg-success/10 text-success border-success/20';
-      case 'medium':
-        return 'bg-warning/10 text-warning border-warning/20';
-      case 'high':
-        return 'bg-destructive/10 text-destructive border-destructive/20';
-      default:
-        return 'bg-muted/10 text-muted-foreground border-muted/20';
-    }
-  };
-
-  const getSecurityScoreColor = (score: number) => {
-    if (score >= 80) return 'text-success';
-    if (score >= 60) return 'text-warning';
-    return 'text-destructive';
-  };
-
   return (
-    <div className="border-border rounded-lg border bg-white p-6">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="bg-destructive/10 rounded-lg p-2">
-          <Shield className="text-destructive h-5 w-5" />
-        </div>
+    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+      <div className="mb-5 flex items-center gap-2.5">
+        <Shield className="w-4 h-4 text-gray-400" />
         <div>
-          <h3 className="text-foreground text-lg font-bold">Security Overview</h3>
-          <p className="text-muted-foreground text-sm">
-            Account security metrics and login patterns
-          </p>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Security Overview</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Account security metrics and login patterns</p>
         </div>
       </div>
 
       {securityLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="bg-secondary flex items-center space-x-3 rounded-lg p-3">
-                <div className="bg-muted h-8 w-8 rounded-lg"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="bg-muted h-4 w-2/3 rounded"></div>
-                  <div className="bg-muted h-3 w-1/3 rounded"></div>
-                </div>
+            <div key={i} className="animate-pulse flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/30 rounded-lg">
+              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-700/50 rounded w-1/3" />
               </div>
             </div>
           ))}
         </div>
       ) : securityData ? (
         <div className="space-y-6">
-          {/* Security Score & Risk Level */}
+          {/* Score + Risk */}
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="bg-secondary rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Security Score
-                  </p>
-                  <p
-                    className={`text-2xl font-bold ${getSecurityScoreColor(securityData.securityScore)}`}
-                  >
-                    {securityData.securityScore}/100
-                  </p>
-                </div>
-                <div className="border-border flex h-12 w-12 items-center justify-center rounded-full border-4">
-                  <span
-                    className={`text-lg font-bold ${getSecurityScoreColor(securityData.securityScore)}`}
-                  >
-                    {securityData.securityScore}
-                  </span>
-                </div>
-              </div>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Security Score</p>
+              <p className={`text-2xl font-bold ${getScoreText(securityData.securityScore)}`}>
+                {securityData.securityScore}<span className="text-sm font-normal text-gray-400">/100</span>
+              </p>
             </div>
-
-            <div className="bg-secondary rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                    Risk Level
-                  </p>
-                  <span
-                    className={`inline-flex rounded-full border px-3 py-1 text-sm font-medium ${getRiskLevelColor(securityData.riskLevel)}`}
-                  >
-                    {securityData.riskLevel.toUpperCase()}
-                  </span>
-                </div>
-                <AlertTriangle
-                  className={`h-8 w-8 ${
-                    securityData.riskLevel === 'high'
-                      ? 'text-destructive'
-                      : securityData.riskLevel === 'medium'
-                        ? 'text-warning'
-                        : 'text-success'
-                  }`}
-                />
-              </div>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Risk Level</p>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded border ${getRiskBadge(securityData.riskLevel)}`}>
+                <AlertTriangle className="w-3 h-3" />
+                {securityData.riskLevel.charAt(0).toUpperCase() + securityData.riskLevel.slice(1)}
+              </span>
             </div>
           </div>
 
           {/* Login Attempts */}
           <div>
-            <h4 className="text-foreground mb-3 font-medium">Login Attempts</h4>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="bg-secondary rounded-lg p-3 text-center">
-                <p className="text-foreground text-2xl font-bold">
-                  {securityData.loginAttempts.total}
-                </p>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">Total</p>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Login Attempts</h4>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{securityData.loginAttempts.total}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total</p>
               </div>
-              <div className="bg-success/10 rounded-lg p-3 text-center">
-                <p className="text-success text-2xl font-bold">
-                  {securityData.loginAttempts.successful}
-                </p>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">Successful</p>
+              <div className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{securityData.loginAttempts.successful}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Successful</p>
               </div>
-              <div className="bg-destructive/10 rounded-lg p-3 text-center">
-                <p className="text-destructive text-2xl font-bold">
-                  {securityData.loginAttempts.failed}
-                </p>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">Failed</p>
+              <div className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-rose-600 dark:text-rose-400">{securityData.loginAttempts.failed}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Failed</p>
               </div>
             </div>
           </div>
 
           {/* IP Addresses */}
           <div>
-            <h4 className="text-foreground mb-3 font-medium">IP Addresses</h4>
-            <div className="max-h-32 space-y-2 overflow-y-auto">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">IP Addresses</h4>
+            <div className="max-h-32 space-y-1.5 overflow-y-auto">
               {securityData.ipAddresses.map((ip, index) => (
-                <div
-                  key={index}
-                  className="bg-secondary flex items-center justify-between rounded p-2"
-                >
-                  <span className="text-foreground font-mono text-sm">{ip.ip}</span>
-                  <div className="text-muted-foreground text-xs">
-                    Used {ip.usageCount} times â€¢ Last: {formatDate(ip.lastUsed)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Locations */}
-          <div>
-            <h4 className="text-foreground mb-3 font-medium">Locations</h4>
-            <div className="flex flex-wrap gap-2">
-              {securityData.locations.map((location, index) => (
-                <div
-                  key={index}
-                  className="bg-accent/10 text-accent flex items-center space-x-1 rounded-full px-2 py-1 text-xs"
-                >
-                  <MapPin className="h-3 w-3" />
-                  <span>{location}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Login Attempts */}
-          <div>
-            <h4 className="text-foreground mb-3 font-medium">Recent Login Attempts</h4>
-            <div className="max-h-40 space-y-2 overflow-y-auto">
-              {securityData.loginAttempts.recent.map((attempt, index) => (
-                <div
-                  key={index}
-                  className="bg-secondary flex items-center justify-between rounded p-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    {attempt.success ? (
-                      <CheckCircle className="text-success h-4 w-4" />
-                    ) : (
-                      <XCircle className="text-destructive h-4 w-4" />
-                    )}
-                    <span className="text-foreground text-sm">
-                      {attempt.success ? 'Successful login' : 'Failed login'}
-                    </span>
-                    {attempt.ip_address && (
-                      <span className="text-muted-foreground font-mono text-xs">
-                        from {attempt.ip_address}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-muted-foreground text-xs">
-                    {formatDate(attempt.timestamp, true)}
+                <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/30 rounded px-3 py-2">
+                  <span className="text-sm font-mono text-gray-900 dark:text-white">{ip.ip}</span>
+                  <span className="text-xs text-gray-400">
+                    {ip.usageCount}x · Last: {formatDate(ip.lastUsed)}
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Locations */}
+          {securityData.locations.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Locations</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {securityData.locations.map((location, index) => (
+                  <span key={index} className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                    <MapPin className="w-3 h-3" />
+                    {location}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Login Attempts */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Recent Login Attempts</h4>
+            <div className="max-h-40 space-y-1.5 overflow-y-auto">
+              {securityData.loginAttempts.recent.map((attempt, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/30 rounded px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    {attempt.success
+                      ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      : <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />}
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {attempt.success ? 'Successful login' : 'Failed login'}
+                    </span>
+                    {attempt.ip_address && (
+                      <span className="text-xs text-gray-400 font-mono">from {attempt.ip_address}</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400">{formatDate(attempt.timestamp, true)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Activity Summary */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center space-x-3">
-              <Clock className="text-muted-foreground h-4 w-4" />
+          <div className="grid gap-4 md:grid-cols-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-start gap-2.5">
+              <Clock className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                  Last Activity
-                </p>
-                <p className="text-foreground text-sm">
-                  {securityData.activity.lastActivity
-                    ? formatDate(securityData.activity.lastActivity)
-                    : 'Never'}
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Last Activity</p>
+                <p className="text-sm text-gray-900 dark:text-white">
+                  {securityData.activity.lastActivity ? formatDate(securityData.activity.lastActivity) : 'Never'}
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Clock className="text-muted-foreground h-4 w-4" />
+            <div className="flex items-start gap-2.5">
+              <Clock className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">First Seen</p>
-                <p className="text-foreground text-sm">
-                  {securityData.activity.firstSeen
-                    ? formatDate(securityData.activity.firstSeen)
-                    : 'N/A'}
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">First Seen</p>
+                <p className="text-sm text-gray-900 dark:text-white">
+                  {securityData.activity.firstSeen ? formatDate(securityData.activity.firstSeen) : 'N/A'}
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Shield className="text-muted-foreground h-4 w-4" />
+            <div className="flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-muted-foreground text-xs tracking-wide uppercase">
-                  Total Activities
-                </p>
-                <p className="text-foreground text-sm">{securityData.activity.totalActivities}</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Activities</p>
+                <p className="text-sm text-gray-900 dark:text-white">{securityData.activity.totalActivities}</p>
               </div>
             </div>
           </div>
         </div>
       ) : (
         <div className="py-8 text-center">
-          <Shield className="text-muted-foreground mx-auto mb-3 h-12 w-12" />
-          <h4 className="text-foreground mb-2 text-lg font-medium">No Security Data</h4>
-          <p className="text-muted-foreground text-sm">
-            Security information is not available for this user.
-          </p>
+          <Shield className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Security information is not available for this user.</p>
         </div>
       )}
     </div>

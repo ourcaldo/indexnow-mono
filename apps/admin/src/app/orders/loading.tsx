@@ -5,7 +5,7 @@ export default function Loading() {
     <div className="flex h-full items-center justify-center p-8">
       <div className="flex flex-col items-center gap-4">
         <LoadingSpinner size="lg" />
-        <p className="text-sm text-muted-foreground">Loading orders...</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading orders...</p>
       </div>
     </div>
   )

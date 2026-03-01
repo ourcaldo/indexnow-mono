@@ -145,88 +145,88 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
   }, [formData.slug]);
 
   return (
-    <div className="border-border rounded-lg border bg-white p-6">
+    <div className="border-gray-200 dark:border-gray-700 rounded-lg border bg-white dark:bg-[#141520] p-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="text-foreground mb-2 block text-sm font-medium">Package Name</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Package Name</label>
           <input
             type="text"
             value={formData.name || ''}
             onChange={(e) => updateField('name', e.target.value)}
-            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
             placeholder="Premium"
           />
         </div>
 
         <div>
-          <label className="text-foreground mb-2 block text-sm font-medium">Slug</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Slug</label>
           <input
             type="text"
             value={formData.slug || ''}
             onChange={(e) => updateField('slug', e.target.value)}
-            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
             placeholder="premium"
           />
         </div>
 
         <div className="md:col-span-2">
-          <label className="text-foreground mb-2 block text-sm font-medium">Description</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Description</label>
           <textarea
             value={formData.description || ''}
             onChange={(e) => updateField('description', e.target.value)}
             rows={2}
-            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
             placeholder="Enhanced features for professionals"
           />
         </div>
 
         {/* Currency - USD Only */}
         <div>
-          <label className="text-foreground mb-2 block text-sm font-medium">Currency</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Currency</label>
           <input
             type="text"
             value="USD"
             readOnly
             disabled
-            className="border-border bg-muted text-muted-foreground w-full rounded-lg border px-3 py-2"
+            className="border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 w-full rounded-lg border px-3 py-2"
           />
-          <p className="text-muted-foreground mt-1 text-xs">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             All packages use USD pricing (Paddle handles multi-currency conversion)
           </p>
         </div>
 
         {/* Sort Order */}
         <div>
-          <label className="text-foreground mb-2 block text-sm font-medium">Sort Order</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Sort Order</label>
           <input
             type="number"
             value={formData.sort_order || 0}
             onChange={(e) => updateField('sort_order', parseInt(e.target.value))}
-            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
             placeholder="0"
           />
         </div>
 
         {/* Quota Limits */}
         <div className="md:col-span-2">
-          <h3 className="text-foreground border-border mb-4 border-b pb-2 text-lg font-medium">
+          <h3 className="text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 mb-4 border-b pb-2 text-lg font-medium">
             Quota Limits
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                 Concurrent Jobs
               </label>
               <input
                 type="number"
                 value={formData.quota_limits?.concurrent_jobs || 0}
                 onChange={(e) => updateQuotaLimit('concurrent_jobs', parseInt(e.target.value))}
-                className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+                className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
                 placeholder="1"
               />
             </div>
             <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                 <span className="flex items-center gap-2">
                   Keywords Limit
                   <span className="bg-success/10 text-success border-success/20 rounded-full border px-2 py-1 text-xs">
@@ -238,10 +238,10 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                 type="number"
                 value={formData.quota_limits?.keywords_limit || 0}
                 onChange={(e) => updateQuotaLimit('keywords_limit', parseInt(e.target.value))}
-                className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+                className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
                 placeholder="100 (use -1 for unlimited)"
               />
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Maximum number of keywords that can be tracked simultaneously for rank monitoring
               </p>
             </div>
@@ -251,7 +251,7 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
         {/* Pricing Tiers (only for paid packages) */}
         {formData.slug !== 'free' && (
           <div className="md:col-span-2">
-            <h3 className="text-foreground border-border mb-4 border-b pb-2 text-lg font-medium">
+            <h3 className="text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 mb-4 border-b pb-2 text-lg font-medium">
               Pricing Tiers
             </h3>
             <div className="space-y-6">
@@ -269,21 +269,21 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                 return (
                   <div
                     key={periodInfo.period}
-                    className="bg-secondary border-border rounded-lg border p-6"
+                    className="bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700 rounded-lg border p-6"
                   >
                     {/* Period Header */}
                     <div className="mb-4">
-                      <h4 className="text-foreground flex items-center gap-2 text-lg font-semibold">
-                        <Clock className="text-accent h-5 w-5" />
+                      <h4 className="text-gray-900 dark:text-white flex items-center gap-2 text-lg font-semibold">
+                        <Clock className="text-gray-400 h-5 w-5" />
                         {periodInfo.label} Billing
                       </h4>
                     </div>
 
                     {/* USD Pricing Fields */}
-                    <div className="border-border rounded-lg border bg-white p-4">
+                    <div className="border-gray-200 dark:border-gray-700 rounded-lg border bg-white p-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                          <label className="text-foreground mb-2 block text-sm font-medium">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                             Period Label
                           </label>
                           <input
@@ -296,12 +296,12 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                                 e.target.value
                               )
                             }
-                            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+                            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
                             placeholder={periodInfo.defaultLabel}
                           />
                         </div>
                         <div>
-                          <label className="text-foreground mb-2 block text-sm font-medium">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                             Paddle Price ID
                           </label>
                           <input
@@ -314,15 +314,15 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                                 e.target.value
                               )
                             }
-                            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 font-mono text-sm focus:border-transparent focus:ring-2"
+                            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 font-mono text-sm focus:border-transparent"
                             placeholder="pri_01hxxxx..."
                           />
-                          <p className="text-muted-foreground mt-1 text-xs">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Get this from Paddle Dashboard → Catalog → Prices
                           </p>
                         </div>
                         <div>
-                          <label className="text-foreground mb-2 block text-sm font-medium">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                             Regular Price (USD)
                           </label>
                           <input
@@ -336,12 +336,12 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                                 parseFloat(e.target.value) || 0
                               )
                             }
-                            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+                            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
                             placeholder="29.99"
                           />
                         </div>
                         <div>
-                          <label className="text-foreground mb-2 block text-sm font-medium">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                             Promo Price (USD)
                           </label>
                           <input
@@ -355,10 +355,10 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                                 parseFloat(e.target.value) || 0
                               )
                             }
-                            className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+                            className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 w-full rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
                             placeholder="19.99"
                           />
-                          <p className="text-muted-foreground mt-1 text-xs">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Leave at 0 if no promotional pricing
                           </p>
                         </div>
@@ -374,12 +374,12 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
         {/* Features */}
         <div className="md:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-foreground border-border border-b pb-2 text-lg font-medium">
+            <h3 className="text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 border-b pb-2 text-lg font-medium">
               Features
             </h3>
             <button
               onClick={addFeature}
-              className="bg-accent hover:bg-accent/90 flex items-center space-x-2 rounded-lg px-3 py-1 text-sm text-white transition-colors"
+              className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center space-x-2 rounded-lg px-3 py-1 text-sm text-gray-700 dark:text-gray-300 transition-colors"
             >
               <Plus className="h-4 w-4" />
               <span>Add Feature</span>
@@ -392,12 +392,12 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                   type="text"
                   value={feature}
                   onChange={(e) => updateFeature(index, e.target.value)}
-                  className="border-border focus:ring-accent flex-1 rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
+                  className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 flex-1 rounded-lg border bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white px-3 py-2 focus:border-transparent"
                   placeholder="Feature description"
                 />
                 <button
                   onClick={() => removeFeature(index)}
-                  className="text-destructive hover:bg-destructive/10 rounded-lg p-2 transition-colors"
+                  className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-lg p-2 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -413,9 +413,9 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
               type="checkbox"
               checked={formData.is_active || false}
               onChange={(e) => updateField('is_active', e.target.checked)}
-              className="border-border text-accent focus:ring-accent rounded"
+              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-gray-400 rounded"
             />
-            <span className="text-foreground ml-2 text-sm">Active</span>
+            <span className="text-gray-900 dark:text-white ml-2 text-sm">Active</span>
           </label>
 
           <label className="flex items-center">
@@ -423,9 +423,9 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
               type="checkbox"
               checked={formData.is_popular || false}
               onChange={(e) => updateField('is_popular', e.target.checked)}
-              className="border-border text-accent focus:ring-accent rounded"
+              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-gray-400 rounded"
             />
-            <span className="text-foreground ml-2 text-sm">Popular</span>
+            <span className="text-gray-900 dark:text-white ml-2 text-sm">Popular</span>
           </label>
         </div>
       </div>
@@ -433,13 +433,13 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
       <div className="mt-6 flex justify-end space-x-3">
         <button
           onClick={onCancel}
-          className="text-muted-foreground hover:text-foreground px-4 py-2 transition-colors"
+          className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-4 py-2 transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleFormSubmit}
-          className="bg-primary hover:bg-primary/90 flex items-center space-x-2 rounded-lg px-4 py-2 text-white transition-colors"
+          className="bg-gray-900 dark:bg-white/10 hover:bg-gray-800 dark:hover:bg-white/[0.15] flex items-center space-x-2 rounded-lg px-4 py-2 text-white transition-colors border border-gray-700 dark:border-white/10"
         >
           <Save className="h-4 w-4" />
           <span>Save</span>
@@ -448,3 +448,4 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
     </div>
   );
 }
+

@@ -80,7 +80,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-secondary flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0c0c14] flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-foreground rounded-full flex items-center justify-center">
@@ -96,10 +96,10 @@ export default function AdminLoginPage() {
             )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-foreground">
+            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
               Admin Access
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-gray-500 dark:text-gray-400">
               Sign in with admin credentials to access the dashboard
             </CardDescription>
           </div>
@@ -110,7 +110,7 @@ export default function AdminLoginPage() {
             <AuthErrorAlert error={error || null} />
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground font-medium">
+              <Label htmlFor="email" className="text-gray-900 dark:text-white font-medium">
                 Email Address
               </Label>
               <Input
@@ -118,16 +118,16 @@ export default function AdminLoginPage() {
                 type="email"
                 {...register('email')}
                 placeholder="admin@example.com"
-                className="border-border focus:border-accent focus:ring-accent"
+                className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600"
                 disabled={isLoading}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-sm text-rose-600 dark:text-rose-400">{errors.email.message}</p>
               )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground font-medium">
+              <Label htmlFor="password" className="text-gray-900 dark:text-white font-medium">
                 Password
               </Label>
               <Input
@@ -135,11 +135,11 @@ export default function AdminLoginPage() {
                 type="password"
                 {...register('password')}
                 placeholder="Enter your password"
-                className="border-border focus:border-accent focus:ring-accent"
+                className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600"
                 disabled={isLoading}
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-sm text-rose-600 dark:text-rose-400">{errors.password.message}</p>
               )}
             </div>
             
@@ -149,7 +149,7 @@ export default function AdminLoginPage() {
           </form>
           
           <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Only users with admin privileges can access this area
             </p>
           </div>

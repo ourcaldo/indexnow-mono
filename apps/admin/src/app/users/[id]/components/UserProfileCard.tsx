@@ -1,102 +1,75 @@
-'use client'
+﻿'use client';
 
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  CheckCircle,
-  AlertTriangle
-} from 'lucide-react'
-import type { UserProfile } from './index'
+import { User, Mail, Phone, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
+import type { UserProfile } from './index';
 
 interface UserProfileCardProps {
-  user: UserProfile
-  editMode: boolean
-  editForm: {
-    full_name: string
-    role: string
-    email_notifications: boolean
-    phone_number: string
-  }
-  onEditFormChange: (updates: Partial<UserProfileCardProps['editForm']>) => void
+  user: UserProfile;
+  editMode: boolean;
+  editForm: { full_name: string; role: string; email_notifications: boolean; phone_number: string; };
+  onEditFormChange: (updates: Partial<UserProfileCardProps['editForm']>) => void;
+}
+
+const inputCls = 'px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#0f0f17] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-transparent transition-colors';
+
+function roleChip(role: string) {
+  if (role === 'super_admin') return 'bg-gray-200 text-gray-800 dark:bg-white/10 dark:text-gray-200';
+  if (role === 'admin') return 'bg-gray-100 text-gray-700 dark:bg-white/[0.07] dark:text-gray-300';
+  return 'bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400';
 }
 
 export function UserProfileCard({ user, editMode, editForm, onEditFormChange }: UserProfileCardProps) {
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'super_admin':
-        return 'bg-error/10 text-error border-error/20'
-      case 'admin':
-        return 'bg-warning/10 text-warning border-warning/20'
-      case 'user':
-        return 'bg-success/10 text-success border-success/20'
-      default:
-        return 'bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20'
-    }
-  }
-
-  const getStatusIcon = (user: UserProfile) => {
-    if (user.email_confirmed_at) {
-      return <CheckCircle className="h-5 w-5 text-success" />
-    } else {
-      return <AlertTriangle className="h-5 w-5 text-warning" />
-    }
-  }
-
   return (
-    <div className="bg-background rounded-lg border border-border p-6">
-      <div className="flex items-start space-x-6">
+    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+      <div className="flex items-start gap-5">
         {/* Avatar */}
-        <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">
-          <span className="text-2xl font-bold text-accent">
+        <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+          <span className="text-xl font-bold text-gray-600 dark:text-gray-300 select-none">
             {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
           </span>
         </div>
 
-        {/* User Info */}
-        <div className="flex-1 space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Name + role row */}
+          <div className="flex items-start justify-between gap-4">
             <div>
               {!editMode ? (
                 <>
-                  <h2 className="text-xl font-bold text-foreground">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {user.full_name || 'No name set'}
                   </h2>
-                  <p className="text-muted-foreground">{user.email}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                 </>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <input
                     type="text"
                     value={editForm.full_name}
                     onChange={(e) => onEditFormChange({ full_name: e.target.value })}
                     placeholder="Full name"
-                    className="text-xl font-bold text-foreground border border-border rounded-lg px-3 py-1 focus:ring-2 focus:ring-accent focus:border-transparent"
+                    className={`text-lg font-semibold ${inputCls}`}
                   />
-                  <p className="text-muted-foreground">{user.email}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                 </div>
               )}
             </div>
-            
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {!editMode ? (
                 <>
-                  <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full border ${getRoleColor(user.role)}`}>
-                    {user.role.replace('_', ' ')}
+                  <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-md ${roleChip(user.role)}`}>
+                    {user.role.replace(/_/g, ' ')}
                   </span>
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon(user)}
-                    <span className="text-sm text-muted-foreground">
-                      {user.email_confirmed_at ? 'Verified' : 'Unverified'}
-                    </span>
-                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    {user.email_confirmed_at
+                      ? <><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Verified</>
+                      : <><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Unverified</>}
+                  </span>
                 </>
               ) : (
                 <select
                   value={editForm.role}
                   onChange={(e) => onEditFormChange({ role: e.target.value })}
-                  className="px-3 py-1 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  className={inputCls}
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
@@ -106,71 +79,51 @@ export function UserProfileCard({ user, editMode, editForm, onEditFormChange }: 
             </div>
           </div>
 
-          {/* User Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
-            <div className="flex items-center space-x-3">
-              <User className="h-4 w-4 text-muted-foreground" />
+          {/* Details grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-start gap-2.5">
+              <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">User ID</p>
-                <p className="text-sm font-mono text-foreground">{user.user_id}</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">User ID</p>
+                <p className="text-sm font-mono text-gray-900 dark:text-white break-all">{user.user_id}</p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Phone className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-start gap-2.5">
+              <Phone className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Phone</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Phone</p>
                 {!editMode ? (
-                  <p className="text-sm text-foreground">{user.phone_number || 'Not provided'}</p>
+                  <p className="text-sm text-gray-900 dark:text-white">{user.phone_number || 'Not provided'}</p>
                 ) : (
-                  <input
-                    type="text"
-                    value={editForm.phone_number}
-                    onChange={(e) => onEditFormChange({ phone_number: e.target.value })}
-                    placeholder="Phone number"
-                    className="text-sm text-foreground border border-border rounded px-2 py-1 focus:ring-2 focus:ring-accent focus:border-transparent"
-                  />
+                  <input type="text" value={editForm.phone_number} onChange={(e) => onEditFormChange({ phone_number: e.target.value })} placeholder="Phone number" className={inputCls} />
                 )}
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-start gap-2.5">
+              <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Joined</p>
-                <p className="text-sm text-foreground">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Joined</p>
+                <p className="text-sm text-gray-900 dark:text-white">{new Date(user.created_at).toLocaleDateString()}</p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-start gap-2.5">
+              <Calendar className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Last Active</p>
-                <p className="text-sm text-foreground">
-                  {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
-                </p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Last active</p>
+                <p className="text-sm text-gray-900 dark:text-white">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}</p>
               </div>
             </div>
-
-            <div className="flex items-center space-x-3">
-              <Mail className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-start gap-2.5">
+              <Mail className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Email Notifications</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Email notifications</p>
                 {!editMode ? (
-                  <p className="text-sm text-foreground">
-                    {user.email_notifications ? 'Enabled' : 'Disabled'}
-                  </p>
+                  <p className="text-sm text-gray-900 dark:text-white">{user.email_notifications ? 'Enabled' : 'Disabled'}</p>
                 ) : (
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={editForm.email_notifications}
-                      onChange={(e) => onEditFormChange({ email_notifications: e.target.checked })}
-                      className="w-4 h-4 text-accent border-border rounded focus:ring-accent"
-                    />
-                    <span className="text-sm text-foreground">Enable notifications</span>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={editForm.email_notifications} onChange={(e) => onEditFormChange({ email_notifications: e.target.checked })}
+                      className="w-4 h-4 text-gray-700 border-gray-300 rounded focus:ring-1 focus:ring-gray-400" />
+                    <span className="text-sm text-gray-900 dark:text-white">Enable notifications</span>
                   </label>
                 )}
               </div>
@@ -179,5 +132,5 @@ export function UserProfileCard({ user, editMode, editForm, onEditFormChange }: 
         </div>
       </div>
     </div>
-  )
+  );
 }
