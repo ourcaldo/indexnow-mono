@@ -553,8 +553,6 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
 // ── Rank trend chart ──────────────────────────────────────────────────────────
 
-type ChartMode = '1M' | '6M' | '1Y'
-
 const BUCKETS = [
   { key: 'top3',    label: 'Top 3',   color: '#10b981' },
   { key: 'top410',  label: '4-10',    color: '#3b82f6' },
@@ -608,54 +606,77 @@ function buildChartDataMonthly(keywords: RankHistoryKeyword[], numMonths: number
   return results
 }
 
-const CHART_MODE_CONFIG: { label: ChartMode; days: number; monthly: boolean }[] = [
-  { label: '1M', days: 30,  monthly: false },
-  { label: '6M', days: 182, monthly: true  },
-  { label: '1Y', days: 365, monthly: true  },
-]
-
 interface RankTrendChartProps {
   keywords: RankHistoryKeyword[]
   dateColumns: string[]
-  chartMode: ChartMode
-  onChartModeChange: (mode: ChartMode) => void
+  startDate: string
+  endDate: string
 }
 
-function RankTrendChart({ keywords, dateColumns, chartMode, onChartModeChange }: RankTrendChartProps) {
-  const modeConfig = CHART_MODE_CONFIG.find(m => m.label === chartMode)!
+function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrendChartProps) {
+  const allBucketKeys = BUCKETS.map(b => b.key) as string[]
+  const [activeBuckets, setActiveBuckets] = useState<string[]>(allBucketKeys)
+
+  function toggleBucket(key: string) {
+    setActiveBuckets(prev =>
+      prev.includes(key)
+        ? prev.length > 1 ? prev.filter(k => k !== key) : prev // keep at least one
+        : [...prev, key]
+    )
+  }
+
+  // Auto-detect daily vs monthly from range
+  const days = useMemo(() => {
+    const s = new Date(startDate + 'T00:00:00')
+    const e = new Date(endDate   + 'T00:00:00')
+    return Math.round((e.getTime() - s.getTime()) / 86400000)
+  }, [startDate, endDate])
+
+  const isMonthly = days > 30
+  const numMonths = useMemo(() => {
+    const s = new Date(startDate + 'T00:00:00')
+    const e = new Date(endDate   + 'T00:00:00')
+    return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1
+  }, [startDate, endDate])
+
   const data = useMemo(() => {
-    if (!modeConfig.monthly) return buildChartDataDaily(keywords, dateColumns)
-    return buildChartDataMonthly(keywords, chartMode === '6M' ? 6 : 12)
-  }, [keywords, dateColumns, chartMode, modeConfig.monthly])
+    if (!isMonthly) return buildChartDataDaily(keywords, dateColumns)
+    return buildChartDataMonthly(keywords, numMonths)
+  }, [keywords, dateColumns, isMonthly, numMonths])
 
   if (keywords.length === 0) return null
+
+  // Topmost active bucket needs [3,3,0,0] radius
+  const activeBucketList = BUCKETS.filter(b => activeBuckets.includes(b.key))
+  const lastActiveBucketKey = activeBucketList[activeBucketList.length - 1]?.key
 
   return (
     <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mr-2">Keyword Rankings Trend</h2>
-          {BUCKETS.map(b => (
-            <span key={b.key} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: b.color }} />
-              {b.label}
-            </span>
-          ))}
-        </div>
-        <div className="flex items-center gap-0.5 shrink-0">
-          {CHART_MODE_CONFIG.map(f => (
-            <button
-              key={f.label}
-              onClick={() => onChartModeChange(f.label)}
-              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                chartMode === f.label
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 shrink-0">Keyword Rankings Trend</h2>
+        {/* Rank position bucket filter */}
+        <div className="flex items-center flex-wrap gap-1.5">
+          {BUCKETS.map(b => {
+            const active = activeBuckets.includes(b.key)
+            return (
+              <button
+                key={b.key}
+                onClick={() => toggleBucket(b.key)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-colors border ${
+                  active
+                    ? 'border-transparent text-white'
+                    : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 bg-transparent'
+                }`}
+                style={active ? { backgroundColor: b.color, borderColor: b.color } : {}}
+              >
+                <span
+                  className="w-2 h-2 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: active ? 'rgba(255,255,255,0.6)' : b.color }}
+                />
+                {b.label}
+              </button>
+            )
+          })}
         </div>
       </div>
       <ResponsiveContainer width="100%" height={200}>
@@ -665,7 +686,7 @@ function RankTrendChart({ keywords, dateColumns, chartMode, onChartModeChange }:
             tick={{ fontSize: 11, fill: '#9ca3af' }}
             axisLine={false}
             tickLine={false}
-            interval={modeConfig.monthly ? 0 : 1}
+            interval={isMonthly ? 0 : 1}
           />
           <YAxis
             tick={{ fontSize: 11, fill: '#9ca3af' }}
@@ -690,13 +711,13 @@ function RankTrendChart({ keywords, dateColumns, chartMode, onChartModeChange }:
             }}
             labelFormatter={(label) => label as string}
           />
-          {BUCKETS.map((b, i) => (
+          {BUCKETS.filter(b => activeBuckets.includes(b.key)).map(b => (
             <Bar
               key={b.key}
               dataKey={b.key}
               stackId="a"
               fill={b.color}
-              radius={i === BUCKETS.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+              radius={b.key === lastActiveBucketKey ? [3, 3, 0, 0] : [0, 0, 0, 0]}
             />
           ))}
         </BarChart>
@@ -711,7 +732,6 @@ const ITEMS_PER_PAGE = 50
 
 export default function RankHistoryPage() {
   const today = useMemo(() => isoToday(), [])
-  const [chartMode, setChartMode] = useState<ChartMode>('1M')
   const [startDate, setStartDate] = useState(() => subtractDays(isoToday(), 30))
   const [endDate, setEndDate] = useState(today)
   const [page, setPage] = useState(1)
@@ -758,15 +778,6 @@ export default function RankHistoryPage() {
   function handleDateChange(s: string, e: string) {
     setStartDate(s)
     setEndDate(e)
-    setPage(1)
-  }
-
-  function handleChartModeChange(mode: ChartMode) {
-    setChartMode(mode)
-    const cfg = CHART_MODE_CONFIG.find(m => m.label === mode)!
-    const t = isoToday()
-    setStartDate(subtractDays(t, cfg.days))
-    setEndDate(t)
     setPage(1)
   }
 
@@ -878,7 +889,7 @@ export default function RankHistoryPage() {
       </div>
 
       {/* Trend Chart */}
-      <RankTrendChart keywords={keywords} dateColumns={dateColumns} chartMode={chartMode} onChartModeChange={handleChartModeChange} />
+      <RankTrendChart keywords={keywords} dateColumns={dateColumns} startDate={startDate} endDate={endDate} />
 
       {/* Table */}
       <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
