@@ -52,7 +52,18 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
       (keyword.device ?? undefined) as 'desktop' | 'mobile' | undefined
     )
 
-    // 3. Update DB — update keyword position + insert ranking history
+    // 3. Resolve country iso2 → UUID
+    let countryId: string | null = null
+    if (keyword.country) {
+      const { data: countryRow } = await supabaseAdmin
+        .from('indb_keyword_countries')
+        .select('id')
+        .eq('iso2_code', keyword.country)
+        .single()
+      countryId = countryRow?.id ?? null
+    }
+
+    // 4. Update DB — update keyword position + upsert ranking history
     await SecureServiceRoleWrapper.executeSecureOperation(
       {
         userId: userId || 'system',
@@ -84,6 +95,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
             url: result.url,
             check_date: new Date().toISOString().split('T')[0],
             device_type: keyword.device,
+            country_id: countryId,
             metadata: toJson(result)
           }, { onConflict: 'keyword_id,check_date', ignoreDuplicates: false })
 
