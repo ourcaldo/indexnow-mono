@@ -360,3 +360,131 @@ export interface PaymentErrorResponse {
 export type PaymentApiResponse<T = any> = ApiResponse<T>;
 export type PaymentPaginatedResponse<T = any> = PaginatedResponse<T>;
 export type PaymentResponse<T> = ApiResponse<T> | PaymentErrorResponse;
+
+// ─── User-Dashboard canonical DTOs ─────────────────────────────────────────
+// These match the exact shapes returned by the live API routes and consumed
+// by the user-dashboard React Query hooks. They are the shared source-of-truth
+// so TypeScript enforces consistency between API responses and frontend usage.
+
+/** Current subscription block inside BillingOverviewResponse */
+export interface BillingCurrentSubscription {
+  package_name: string;
+  package_slug: string;
+  subscription_status: string;
+  subscription_end_date: string | null;
+  /** Alias for subscription_end_date — some older components may reference this field */
+  expires_at?: string | null;
+  subscription_start_date: string | null;
+  amount_paid: number;
+  billing_period: string;
+}
+
+/** Billing stats block inside BillingOverviewResponse */
+export interface BillingStats {
+  total_payments: number;
+  total_spent: number;
+  next_billing_date: string | null;
+  days_remaining: number | null;
+}
+
+/** Recent transaction summary inside BillingOverviewResponse */
+export interface BillingRecentTransaction {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  created_at: string;
+  package_name: string;
+  payment_method: string;
+}
+
+/**
+ * Full response payload for GET /api/v1/billing/overview.
+ * Consumed by `useBillingOverview()` in the user-dashboard.
+ */
+export interface BillingOverviewResponse {
+  currentSubscription: BillingCurrentSubscription | null;
+  billingStats: BillingStats;
+  recentTransactions: BillingRecentTransaction[];
+}
+
+/** Individual transaction row in billing history */
+export interface BillingHistoryTransaction {
+  id: string;
+  order_id: string;
+  source: string;
+  transaction_type: string;
+  transaction_status: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+  notes: string | null;
+  proof_url: string | null;
+  external_transaction_id: string | null;
+  package_name: string;
+  /** Optional package object — present in some response shapes for backward compat */
+  package?: { name?: string; slug?: string } | null;
+  billing_period: string;
+  gateway_name: string | null;
+  gateway_slug: string | null;
+}
+
+/** Summary block in billing history */
+export interface BillingHistorySummary {
+  total_transactions: number;
+  completed_transactions: number;
+  pending_transactions: number;
+  failed_transactions: number;
+  total_amount_spent: number;
+}
+
+/** Pagination block in billing history */
+export interface BillingHistoryPaginationInfo {
+  current_page: number;
+  total_pages: number;
+  total_items: number;
+  items_per_page: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+/**
+ * Full response payload for GET /api/v1/billing/history.
+ * Consumed by `useBillingHistory()` in the user-dashboard.
+ */
+export interface BillingHistoryResponse {
+  transactions: BillingHistoryTransaction[];
+  summary: BillingHistorySummary;
+  pagination: BillingHistoryPaginationInfo;
+}
+
+/** Package info embedded inside an order */
+export interface OrderPackageInfo {
+  id: string;
+  name: string;
+  description: string;
+  features: string[];
+  quota_limits?: unknown;
+}
+
+/**
+ * Full response payload for GET /api/v1/billing/orders/[id].
+ * Consumed by `useOrderDetails()` in the user-dashboard.
+ */
+export interface OrderDetailsResponse {
+  order_id: string;
+  transaction_id?: string;
+  status: string;
+  payment_status: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  billing_period: string;
+  created_at: string;
+  updated_at: string;
+  package: OrderPackageInfo | null;
+  customer_info: Record<string, unknown>;
+  payment_details: Record<string, unknown>;
+}

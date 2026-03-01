@@ -8,6 +8,11 @@ import {
   BILLING_ENDPOINTS,
   PUBLIC_ENDPOINTS,
   API_BASE,
+  type DashboardAggregateResponse,
+  type PublicSettingsResponse,
+  type BillingOverviewResponse,
+  type BillingHistoryResponse,
+  type OrderDetailsResponse,
 } from '@indexnow/shared'
 import { api } from '../lib/api'
 
@@ -33,15 +38,15 @@ export interface Country {
 export interface RankingEntry {
   position: number | null
   url?: string
-  check_date: string
+  check_date: string | null
 }
 
 export interface Keyword {
   id: string
   keyword: string
-  domain_id: string
-  domain?: { id: string; domain_name: string; display_name: string | null }
-  country?: { id?: string; name: string; iso2_code: string }
+  domain_id?: string
+  domain?: { id?: string; domain_name: string; display_name?: string | null }
+  country?: { id?: string; name?: string; iso2_code: string }
   device_type: string
   current_position?: number | null
   recent_ranking?: RankingEntry[] | RankingEntry
@@ -115,21 +120,9 @@ export interface BillingPackage {
   free_trial_enabled?: boolean
 }
 
-export interface OrderDetails {
-  order_id: string
-  transaction_id?: string
-  status: string
-  payment_status: string
-  amount: number
-  currency: string
-  payment_method: string
-  billing_period: string
-  created_at: string
-  updated_at: string
-  package: { id: string; name: string; description: string; features: string[]; quota_limits?: unknown } | null
-  customer_info: Record<string, unknown>
-  payment_details: Record<string, unknown>
-}
+// OrderDetails is now exported from @indexnow/shared as OrderDetailsResponse.
+// Re-exported here for backwards compatibility with consumers that import from hooks.
+export type { OrderDetailsResponse as OrderDetails } from '@indexnow/shared'
 
 // ——— Hooks ———
 
@@ -192,12 +185,7 @@ export function useWeeklyTrends() {
 export function useDashboardAggregate() {
   return useQuery({
     queryKey: ['dashboard-aggregate'],
-    queryFn: () => api<{
-      user: { profile: UserProfile; quota: QuotaInfo; trial: unknown }
-      billing: { packages: unknown; current_package_id: string | null; expires_at: string | null }
-      rankTracking: { domains: Domain[]; recentKeywords: Keyword[] }
-      notifications: unknown[]
-    }>(DASHBOARD_ENDPOINTS.MAIN),
+    queryFn: () => api<DashboardAggregateResponse>(DASHBOARD_ENDPOINTS.MAIN),
   })
 }
 
@@ -205,17 +193,8 @@ export function useDashboardAggregate() {
 export function usePublicSettings() {
   return useQuery({
     queryKey: ['public-settings'],
-    queryFn: async () => {
-      const res = await fetch(PUBLIC_ENDPOINTS.SETTINGS, {
-        headers: { 'Content-Type': 'application/json' },
-      })
-      if (!res.ok) throw new Error(`Public settings fetch failed: ${res.status}`)
-      const json = await res.json()
-      return (json?.data ?? json) as {
-        packages?: { packages: unknown[] }
-        siteSettings?: unknown
-      }
-    },
+    // Public endpoint — api<T> gracefully omits Authorization if no user is logged in
+    queryFn: () => api<PublicSettingsResponse>(PUBLIC_ENDPOINTS.SETTINGS),
     staleTime: 5 * 60 * 1000, // 5 minutes — this data barely changes
   })
 }
@@ -224,23 +203,7 @@ export function usePublicSettings() {
 export function useBillingOverview() {
   return useQuery({
     queryKey: ['billing-overview'],
-    queryFn: () => api<{
-      currentSubscription: {
-        package_name: string
-        package_slug: string
-        subscription_status: string
-        expires_at: string | null
-        subscribed_at: string | null
-        amount_paid: number
-        billing_period: string
-      } | null
-      billingStats: {
-        total_payments: number
-        total_spent: number
-        next_billing_date: string | null
-        days_remaining: number | null
-      }
-    }>(BILLING_ENDPOINTS.OVERVIEW),
+    queryFn: () => api<BillingOverviewResponse>(BILLING_ENDPOINTS.OVERVIEW),
   })
 }
 
@@ -249,34 +212,7 @@ export function useBillingHistory(page: number = 1, limit: number = 10) {
   return useQuery({
     queryKey: ['billing-history', page, limit],
     queryFn: () =>
-      api<{
-        transactions: {
-          id: string
-          transaction_type: string
-          transaction_status: string
-          amount: number
-          currency: string
-          payment_method: string
-          created_at: string
-          package_name?: string
-          package?: { name: string; slug: string }
-        }[]
-        summary: {
-          total_transactions: number
-          completed_transactions: number
-          pending_transactions: number
-          failed_transactions: number
-          total_amount_spent: number
-        }
-        pagination: {
-          current_page: number
-          total_pages: number
-          total_items: number
-          items_per_page: number
-          has_next: boolean
-          has_prev: boolean
-        }
-      }>(BILLING_ENDPOINTS.HISTORY, {
+      api<BillingHistoryResponse>(BILLING_ENDPOINTS.HISTORY, {
         params: { page, limit },
       }),
   })
@@ -326,7 +262,7 @@ export function useTrialEligibility(enabled = true) {
 export function useOrderDetails(orderId: string | undefined) {
   return useQuery({
     queryKey: ['order', orderId],
-    queryFn: () => api<OrderDetails>(BILLING_ENDPOINTS.ORDER_BY_ID(orderId!)),
+    queryFn: () => api<OrderDetailsResponse>(BILLING_ENDPOINTS.ORDER_BY_ID(orderId!)),
     enabled: !!orderId,
   })
 }
@@ -435,6 +371,26 @@ export function useAddTag() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['keywords'] })
+    },
+  })
+}
+
+/**
+ * Upload manual payment proof for an order.
+ * Invalidates the order cache so the detail page reflects the new proof status.
+ */
+export function useUploadPaymentProof() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, proofUrl }: { orderId: string; proofUrl: string }) =>
+      api<unknown>(BILLING_ENDPOINTS.UPLOAD_PROOF, {
+        method: 'POST',
+        body: JSON.stringify({ order_id: orderId, proof_url: proofUrl }),
+      }),
+    onSuccess: (_data, { orderId }) => {
+      // Refresh the affected order and billing history so status reflects immediately
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+      qc.invalidateQueries({ queryKey: ['billing-history'] })
     },
   })
 }

@@ -10,3 +10,4 @@ export * from './requests/PaymentRequests';
 export * from './responses/UserResponses';
 export * from './responses/PaymentResponses';
 export * from './responses/AdminResponses';
+export * from './responses/DashboardResponses';

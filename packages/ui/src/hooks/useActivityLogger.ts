@@ -58,9 +58,16 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
         method: 'POST',
         body: JSON.stringify(request),
       });
-    } catch {
+    } catch (err) {
       // Activity logging is non-critical — silently swallow failures
-      // (e.g. API server not running, network issues, auth expired)
+      // (e.g. API server not running, network issues, auth expired).
+      // In development, emit a debug log so developers can observe failures.
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(
+          { error: err instanceof Error ? err : undefined, request },
+          '[activity-logger] Failed to log activity (non-critical)'
+        );
+      }
     }
   }, []);
 

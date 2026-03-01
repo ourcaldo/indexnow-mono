@@ -194,7 +194,7 @@ export default function BillingPage() {
 
   // Derived state from hook data
   const packages: PaymentPackage[] =
-    (publicSettings as { packages?: { packages?: PaymentPackage[] } })?.packages?.packages || []
+    (publicSettings as unknown as { packages?: { packages?: PaymentPackage[] } })?.packages?.packages || []
   const dashProfile = dashboardData?.user?.profile as Record<string, unknown> | undefined
   const dashBilling = dashboardData?.billing
   const currentPkgId = (dashProfile?.package_id as string) || dashBilling?.current_package_id || null
