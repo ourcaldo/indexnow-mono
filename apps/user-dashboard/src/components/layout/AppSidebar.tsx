@@ -37,12 +37,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Rank History', href: '/rank-history', icon: BarChart3 },
     ],
   },
-  {
-    title: 'Account',
-    items: [
-      { label: 'Settings', href: '/settings', icon: Settings },
-    ],
-  },
 ]
 
 // Package tier order — used to determine if an upgrade is available
@@ -216,6 +210,44 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
 
         {/* Bottom section */}
         <div className="border-t border-gray-100 dark:border-gray-800/80 shrink-0">
+          {/* Account: Settings */}
+          <div className="px-2.5 pt-2.5">
+            {!isCollapsed ? (
+              <button
+                onClick={() => navigate('/settings')}
+                className={`
+                  w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150
+                  ${isActive('/settings')
+                    ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200'
+                  }
+                `}
+              >
+                <Settings className={`w-[18px] h-[18px] shrink-0 ${isActive('/settings') ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                <span className="text-[13px] font-medium truncate">Settings</span>
+              </button>
+            ) : (
+              <div
+                className="flex justify-center"
+                onMouseEnter={(e) => showTooltip('Settings', e.currentTarget)}
+                onMouseLeave={hideTooltip}
+              >
+                <button
+                  onClick={() => navigate('/settings')}
+                  className={`
+                    w-9 h-9 flex items-center justify-center rounded-lg transition-colors
+                    ${isActive('/settings')
+                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:text-gray-600 dark:hover:text-gray-200'
+                    }
+                  `}
+                >
+                  <Settings className="w-[18px] h-[18px]" />
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Upgrade CTA — shows when a higher tier exists */}
           {showUpgrade && !isCollapsed && (
             <div className="px-3 pt-3">
