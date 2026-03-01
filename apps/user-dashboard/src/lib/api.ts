@@ -15,7 +15,7 @@ export async function api<T = unknown>(
   if (opts?.params) {
     const sp = new URLSearchParams()
     for (const [k, v] of Object.entries(opts.params)) {
-      sp.append(k, String(v))
+      if (v !== undefined && v !== null) sp.append(k, String(v))
     }
     fullUrl += (fullUrl.includes('?') ? '&' : '?') + sp.toString()
   }

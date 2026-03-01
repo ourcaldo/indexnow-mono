@@ -19,15 +19,24 @@ import {
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { type AuthenticatedRequest } from '@/lib/core/api-middleware';
+import { supabaseAdmin } from '@indexnow/database';
 import { z } from 'zod';
 
+// Frontend bulk-add format: domain_id + country_id (UUIDs), keywords array
+const createKeywordsSchema = z.object({
+  keywords: z.array(z.string().min(1)).min(1),
+  domain_id: z.string().uuid(),
+  country_id: z.string().uuid(),
+  device_type: z.enum(['desktop', 'mobile']).optional().default('desktop'),
+  tags: z.array(z.string()).optional(),
+});
+
+// Legacy single-keyword format (kept for backward compat)
 const createKeywordSchema = z.object({
   keyword: z.string().min(1),
   domain: z.string().min(1),
   country: z.string().min(1),
   device: z.string().optional(),
-  // (#V7 L-15) searchEngine is accepted in the schema but not passed to createKeyword.
-  // Currently all rank checks use SE Ranking's default engine. Reserved for multi-engine support.
   searchEngine: z.string().optional(),
   targetUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -76,6 +85,63 @@ export const POST = authenticatedApiWrapper(
         })
       );
     }
+
+    // ── Try bulk format (frontend sends domain_id + country_id + keywords[]) ──
+    const bulkParse = createKeywordsSchema.safeParse(body);
+    if (bulkParse.success) {
+      const { keywords, domain_id, country_id, device_type, tags } = bulkParse.data;
+
+      // Resolve domain name from domain_id (must belong to this user)
+      const { data: domainRow, error: domainErr } = await supabaseAdmin
+        .from('indb_keyword_domains')
+        .select('domain_name')
+        .eq('id', domain_id)
+        .eq('user_id', auth.userId)
+        .single();
+
+      if (domainErr || !domainRow) {
+        return formatError(
+          await ErrorHandlingService.createError(ErrorType.VALIDATION, 'Domain not found', {
+            severity: ErrorSeverity.LOW,
+            userId: auth.userId,
+            statusCode: 400,
+          })
+        );
+      }
+
+      // Resolve country ISO2 code from country_id
+      const { data: countryRow, error: countryErr } = await supabaseAdmin
+        .from('indb_keyword_countries')
+        .select('iso2_code')
+        .eq('id', country_id)
+        .single();
+
+      if (countryErr || !countryRow) {
+        return formatError(
+          await ErrorHandlingService.createError(ErrorType.VALIDATION, 'Country not found', {
+            severity: ErrorSeverity.LOW,
+            userId: auth.userId,
+            statusCode: 400,
+          })
+        );
+      }
+
+      const results = [];
+      for (const kw of keywords) {
+        const created = await rankTrackingService.createKeyword(auth.userId, {
+          keyword: kw,
+          domain: domainRow.domain_name,
+          country: countryRow.iso2_code,
+          device: device_type,
+          tags,
+        });
+        results.push(created);
+      }
+
+      return formatSuccess({ created: results.length, keywords: results }, undefined, 201);
+    }
+
+    // ── Fall back to legacy single-keyword format ──
     const parseResult = createKeywordSchema.safeParse(body);
     if (!parseResult.success) {
       const validationError = await ErrorHandlingService.createError(
@@ -85,10 +151,9 @@ export const POST = authenticatedApiWrapper(
       );
       return formatError(validationError);
     }
-    const { keyword, domain, country, device, searchEngine, targetUrl, tags } = parseResult.data;
+    const { keyword, domain, country, device, targetUrl, tags } = parseResult.data;
 
-    // (#V7 M-28) Cast is safe: Zod schema `createKeywordSchema` validates device
-    // as z.enum(['desktop', 'mobile']).optional() before this point.
+    // (#V7 M-28) Cast is safe: Zod schema validates device before this point.
     const result = await rankTrackingService.createKeyword(auth.userId, {
       keyword,
       domain,
@@ -98,7 +163,7 @@ export const POST = authenticatedApiWrapper(
       tags,
     });
 
-    return formatSuccess(result, undefined, 201);
+    return formatSuccess({ created: 1, keywords: [result] }, undefined, 201);
   }
 );
 
