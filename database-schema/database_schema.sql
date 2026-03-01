@@ -1898,3 +1898,166 @@ $$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION get_domain_keyword_counts(UUID) TO service_role;
+
+-- 12. User billing history: unified legacy + Paddle transactions, paginated with summary
+-- Replaces 6 separate app-layer queries with one DB-side call.
+-- Returns JSONB: { transactions: [...], total_count: int, summary: {...} }
+CREATE OR REPLACE FUNCTION get_user_billing_history(
+  p_user_id UUID,
+  p_page    INTEGER DEFAULT 1,
+  p_limit   INTEGER DEFAULT 20,
+  p_status  TEXT    DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_offset INTEGER;
+BEGIN
+  v_offset := (p_page - 1) * p_limit;
+
+  RETURN (
+    WITH legacy_txns AS (
+      SELECT
+        pt.id,
+        pt.id::text                                              AS order_id,
+        'legacy'::text                                          AS source,
+        'purchase'::text                                        AS transaction_type,
+        pt.status::text                                         AS transaction_status,
+        pt.amount,
+        COALESCE(pt.currency, 'USD')::text                      AS currency,
+        pt.created_at,
+        pt.updated_at,
+        pt.notes,
+        pt.proof_url,
+        COALESCE(pt.payment_method, 'Unknown')::text            AS payment_method,
+        pt.external_transaction_id::text,
+        COALESCE(pkg.name, 'Unknown Package')::text             AS package_name,
+        COALESCE(pt.metadata->>'billing_period', 'monthly')     AS billing_period,
+        COALESCE(gw.name, 'Unknown Gateway')::text              AS gateway_name,
+        COALESCE(gw.slug, 'unknown')::text                      AS gateway_slug,
+        NULL::text                                              AS paddle_transaction_id
+      FROM indb_payment_transactions pt
+      LEFT JOIN indb_payment_packages  pkg ON pkg.id = pt.package_id
+      LEFT JOIN indb_payment_gateways  gw  ON gw.id  = pt.gateway_id
+      WHERE pt.user_id = p_user_id
+        AND (p_status IS NULL OR pt.status::text = p_status)
+    ),
+    paddle_txns AS (
+      SELECT
+        pad.id,
+        pad.paddle_transaction_id::text                         AS order_id,
+        'paddle'::text                                          AS source,
+        'subscription'::text                                    AS transaction_type,
+        COALESCE(pad.status, 'completed')::text                 AS transaction_status,
+        COALESCE(pad.amount, 0)                                 AS amount,
+        'USD'::text                                             AS currency,
+        pad.created_at,
+        pad.updated_at,
+        NULL::text                                              AS notes,
+        NULL::text                                              AS proof_url,
+        'card'::text                                            AS payment_method,
+        pad.paddle_transaction_id::text                         AS external_transaction_id,
+        'Paddle Subscription'::text                             AS package_name,
+        'monthly'::text                                         AS billing_period,
+        'Paddle'::text                                          AS gateway_name,
+        'paddle'::text                                          AS gateway_slug,
+        pad.paddle_transaction_id::text                         AS paddle_transaction_id
+      FROM indb_paddle_transactions pad
+      INNER JOIN indb_payment_transactions pt ON pt.id = pad.transaction_id
+      WHERE pt.user_id = p_user_id
+    ),
+    all_txns AS (
+      SELECT * FROM legacy_txns
+      UNION ALL
+      SELECT * FROM paddle_txns
+    ),
+    summary AS (
+      SELECT
+        COUNT(*)::integer                                                             AS total_transactions,
+        COUNT(*) FILTER (WHERE transaction_status = 'completed')::integer            AS completed_transactions,
+        COUNT(*) FILTER (WHERE transaction_status IN ('pending','proof_uploaded'))::integer
+                                                                                     AS pending_transactions,
+        COUNT(*) FILTER (WHERE transaction_status = 'failed')::integer               AS failed_transactions,
+        COALESCE(SUM(amount) FILTER (WHERE transaction_status = 'completed'), 0)     AS total_amount_spent
+      FROM all_txns
+    )
+    SELECT jsonb_build_object(
+      'transactions', COALESCE(
+        (SELECT jsonb_agg(row_to_json(t.*)::jsonb)
+         FROM (SELECT * FROM all_txns ORDER BY created_at DESC LIMIT p_limit OFFSET v_offset) t),
+        '[]'::jsonb
+      ),
+      'total_count', (SELECT total_transactions FROM summary),
+      'summary',     (SELECT to_jsonb(s) FROM summary s)
+    )
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION get_user_billing_history(UUID, INTEGER, INTEGER, TEXT) TO service_role;
+
+-- 13. User weekly trends: DB-side delta via LATERAL join — no app-layer iteration.
+-- Replaces 2 queries + 5k-row JS loop with one call.
+-- Returns JSONB array of trend rows sorted by current_position ASC NULLS LAST.
+CREATE OR REPLACE FUNCTION get_user_weekly_trends(p_user_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+  RETURN (
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id',                k.id,
+          'keyword',           k.keyword,
+          'domain',            COALESCE(k.domain, ''),
+          'current_position',  COALESCE(k.position, 0),
+          'previous_position', COALESCE(prev.position, 0),
+          'change', CASE
+            WHEN COALESCE(k.position, 0) > 0 AND COALESCE(prev.position, 0) > 0
+              THEN COALESCE(prev.position, 0) - COALESCE(k.position, 0)
+            WHEN COALESCE(k.position, 0) > 0
+              THEN 100
+            WHEN COALESCE(k.position, 0) = 0 AND COALESCE(prev.position, 0) > 0
+              THEN -100
+            ELSE 0
+          END,
+          'history', hist.sparkline
+        )
+        ORDER BY k.position ASC NULLS LAST
+      ),
+      '[]'::jsonb
+    )
+    FROM (
+      SELECT * FROM indb_rank_keywords
+      WHERE user_id = p_user_id AND is_active = TRUE
+      LIMIT 500
+    ) k
+    LEFT JOIN LATERAL (
+      SELECT position
+      FROM indb_keyword_rankings
+      WHERE keyword_id = k.id
+        AND check_date <= CURRENT_DATE - INTERVAL '7 days'
+      ORDER BY check_date DESC
+      LIMIT 1
+    ) prev ON true
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(
+        jsonb_agg(
+          jsonb_build_object('date', h.check_date, 'position', COALESCE(h.position, 0))
+          ORDER BY h.check_date ASC
+        ),
+        '[]'::jsonb
+      ) AS sparkline
+      FROM (
+        SELECT check_date, position
+        FROM indb_keyword_rankings
+        WHERE keyword_id = k.id
+        ORDER BY check_date DESC
+        LIMIT 7
+      ) h
+    ) hist ON true
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION get_user_weekly_trends(UUID) TO service_role;
