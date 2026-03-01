@@ -8,8 +8,10 @@ import {
   ChevronRight,
   Monitor,
   Smartphone,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react'
-import { useRankHistory, type RankHistoryKeyword } from '../../lib/hooks'
+import { useRankHistory, useDomains, type RankHistoryKeyword } from '../../lib/hooks'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -67,13 +69,17 @@ function countryFlag(iso2: string): string {
 // ── Position badge ─────────────────────────────────────────────────────────────
 
 function PosBadge({ pos }: { pos: number | null }) {
-  if (pos === null) return <span className="text-gray-300 text-xs">–</span>
-  let cls = 'bg-gray-100 text-gray-600'
-  if (pos <= 3) cls = 'bg-green-50 text-green-700'
-  else if (pos <= 10) cls = 'bg-blue-50 text-blue-700'
-  else if (pos <= 20) cls = 'bg-amber-50 text-amber-600'
+  if (pos === null) return <span className="text-gray-300 dark:text-gray-600 text-xs">–</span>
+  const cls =
+    pos <= 3
+      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+      : pos <= 10
+        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
+        : pos <= 20
+          ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
   return (
-    <span className={`inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-sm font-bold ${cls}`}>
+    <span className={`inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-full text-xs font-bold ${cls}`}>
       {pos}
     </span>
   )
@@ -82,21 +88,31 @@ function PosBadge({ pos }: { pos: number | null }) {
 // ── Rank cell (date column) ────────────────────────────────────────────────────
 
 function RankCell({ pos }: { pos: number | undefined }) {
-  if (pos === undefined) return <span className="text-gray-200 text-[11px]">–</span>
-  let color = 'text-gray-500'
-  if (pos <= 3) color = 'text-green-600 font-semibold'
-  else if (pos <= 10) color = 'text-blue-600 font-semibold'
-  else if (pos <= 20) color = 'text-amber-600'
+  if (pos === undefined) return <span className="text-gray-200 dark:text-gray-700 text-[11px]">–</span>
+  const color =
+    pos <= 3 ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+    : pos <= 10 ? 'text-blue-600 dark:text-blue-400 font-semibold'
+    : pos <= 20 ? 'text-amber-600 dark:text-amber-400'
+    : 'text-gray-500 dark:text-gray-400'
   return <span className={`text-[12px] font-medium tabular-nums ${color}`}>{pos}</span>
 }
 
 // ── Change cell ────────────────────────────────────────────────────────────────
 
 function ChangeCell({ change }: { change: number | null }) {
-  if (change === null) return <span className="text-gray-300 text-xs">–</span>
-  if (change === 0) return <span className="text-gray-300 text-xs">–</span>
-  if (change > 0) return <span className="text-green-600 text-sm font-semibold">▲ {change}</span>
-  return <span className="text-red-500 text-sm font-semibold">▼ {Math.abs(change)}</span>
+  if (change === null || change === 0) return <span className="text-gray-300 dark:text-gray-600 text-xs">–</span>
+  if (change > 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <TrendingUp className="w-3 h-3" /> +{change}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5 text-xs font-medium text-red-500 dark:text-red-400">
+      <TrendingDown className="w-3 h-3" /> {change}
+    </span>
+  )
 }
 
 // ── Date range presets ─────────────────────────────────────────────────────────
@@ -357,7 +373,7 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
     <tr className="group">
       {/* # */}
       <td
-        className="sticky bg-white group-hover:bg-gray-50 border-b border-gray-100 px-3 py-2.5 text-xs text-gray-400 tabular-nums text-center"
+        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-xs text-gray-400 dark:text-gray-500 tabular-nums text-center"
         style={{ left: 0, width: COL_NUM, minWidth: COL_NUM, zIndex: 5 }}
       >
         {idx}
@@ -365,7 +381,7 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
 
       {/* Keyword */}
       <td
-        className="sticky bg-white group-hover:bg-gray-50 border-b border-gray-100 px-3 py-2.5 text-sm font-medium text-gray-900"
+        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100"
         style={{ left: COL_NUM, width: COL_KEYWORD, minWidth: COL_KEYWORD, zIndex: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         title={kw.keyword}
       >
@@ -374,7 +390,7 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
 
       {/* Position */}
       <td
-        className="sticky bg-white group-hover:bg-gray-50 border-b border-gray-100 px-3 py-2.5 text-center"
+        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center"
         style={{ left: COL_NUM + COL_KEYWORD, width: COL_POSITION, minWidth: COL_POSITION, zIndex: 5 }}
       >
         <PosBadge pos={kw.current_position} />
@@ -382,13 +398,13 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
 
       {/* Change — frozen edge border */}
       <td
-        className="sticky bg-white group-hover:bg-gray-50 border-b border-gray-100 px-3 py-2.5 text-center"
+        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center"
         style={{
           left: COL_NUM + COL_KEYWORD + COL_POSITION,
           width: COL_CHANGE,
           minWidth: COL_CHANGE,
           zIndex: 5,
-          borderRight: '2px solid #e5e7eb',
+          borderRight: '2px solid var(--tw-border, #e5e7eb)',
         }}
       >
         <ChangeCell change={kw.change} />
@@ -401,7 +417,9 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
         return (
           <td
             key={d}
-            className={`border-b border-gray-100 py-2.5 text-center ${even ? 'bg-black/[0.008]' : ''} group-hover:bg-gray-50`}
+            className={`border-b border-gray-100 dark:border-gray-800/50 py-2.5 text-center group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 ${
+              even ? 'bg-gray-50/60 dark:bg-white/[0.02]' : 'bg-white dark:bg-[#141520]'
+            }`}
             style={{ width: 46, minWidth: 46, maxWidth: 46, padding: '10px 2px' }}
           >
             <RankCell pos={pos} />
@@ -411,7 +429,7 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
 
       {/* URL — trailing edge border */}
       <td
-        className="border-b border-gray-100 px-3 py-2.5 text-xs text-gray-500"
+        className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40"
         style={{ minWidth: 130, maxWidth: 180, borderLeft: '2px solid #e5e7eb' }}
       >
         {kw.latest_url ? (
@@ -419,27 +437,27 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
             href={kw.latest_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-indigo-600 transition-colors block overflow-hidden text-ellipsis whitespace-nowrap"
+            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors block overflow-hidden text-ellipsis whitespace-nowrap"
             title={kw.latest_url}
           >
             {kw.latest_url.replace(/^https?:\/\/(www\.)?/, '')}
           </a>
         ) : (
-          <span className="text-gray-300">–</span>
+          <span className="text-gray-300 dark:text-gray-600">–</span>
         )}
       </td>
 
       {/* Country */}
-      <td className="border-b border-gray-100 px-3 py-2.5 whitespace-nowrap" style={{ minWidth: 90 }}>
-        <span className="flex items-center gap-1.5 text-xs text-gray-600">
+      <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 whitespace-nowrap bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 90 }}>
+        <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
           <span className="text-sm leading-none">{countryFlag(kw.country)}</span>
           {kw.country || '–'}
         </span>
       </td>
 
       {/* Device */}
-      <td className="border-b border-gray-100 px-3 py-2.5" style={{ minWidth: 80 }}>
-        <span className="flex items-center gap-1 text-xs text-gray-500">
+      <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 80 }}>
+        <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
           {kw.device === 'mobile'
             ? <Smartphone className="w-3.5 h-3.5 flex-shrink-0" />
             : <Monitor className="w-3.5 h-3.5 flex-shrink-0" />}
@@ -448,8 +466,8 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
       </td>
 
       {/* Last Check */}
-      <td className="border-b border-gray-100 px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap tabular-nums" style={{ minWidth: 100 }}>
-        {kw.latest_check || <span className="text-gray-300">–</span>}
+      <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 100 }}>
+        {kw.latest_check || <span className="text-gray-300 dark:text-gray-600">–</span>}
       </td>
     </tr>
   )
@@ -464,9 +482,11 @@ export default function RankHistoryPage() {
   const [startDate, setStartDate] = useState(() => subtractDays(isoToday(), 30))
   const [endDate, setEndDate] = useState(today)
   const [search, setSearch] = useState('')
+  const [selectedDomainId, setSelectedDomainId] = useState('')
   const [page, setPage] = useState(1)
 
   const { data, isLoading } = useRankHistory(startDate, endDate)
+  const { data: domains } = useDomains()
 
   const dateColumns = useMemo(
     () => getDateColumns(startDate, endDate),
@@ -476,11 +496,24 @@ export default function RankHistoryPage() {
   const keywords = data?.keywords ?? []
   const total = data?.total ?? 0
 
+  const stats = useMemo(() => ({
+    improved: keywords.filter(k => k.change !== null && k.change > 0).length,
+    declined: keywords.filter(k => k.change !== null && k.change < 0).length,
+    noData: keywords.filter(k => k.current_position === null).length,
+  }), [keywords])
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return keywords
-    const q = search.toLowerCase()
-    return keywords.filter(k => k.keyword.toLowerCase().includes(q))
-  }, [keywords, search])
+    let result = keywords
+    if (selectedDomainId) {
+      const dom = (domains ?? []).find(d => d.id === selectedDomainId)
+      if (dom) result = result.filter(k => k.domain === dom.domain_name)
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(k => k.keyword.toLowerCase().includes(q))
+    }
+    return result
+  }, [keywords, selectedDomainId, domains, search])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageSlice = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
@@ -498,68 +531,117 @@ export default function RankHistoryPage() {
 
   const colSpanTotal = 4 + dateColumns.length + 4
 
-  return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 tracking-tight">Rank History</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {isLoading ? 'Loading…' : `${total} keyword${total === 1 ? '' : 's'} tracked`}
-          </p>
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-7 w-40 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+              <div className="h-7 w-10 bg-gray-200 dark:bg-gray-800 rounded mx-auto mb-1" />
+              <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800/60 rounded mb-2" />
+          ))}
         </div>
       </div>
+    )
+  }
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-md px-2.5 py-1.5 w-56 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+          Rank History
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          View ranking history across all your tracked keywords
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {[
+          { value: total, label: 'Total Keywords', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
+          { value: stats.improved, label: 'Improved', color: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+          { value: stats.declined, label: 'Declined', color: 'text-red-500 dark:text-red-400', dot: 'bg-red-500' },
+          { value: stats.noData, label: 'No Data', color: 'text-gray-400 dark:text-gray-500', dot: 'bg-gray-300' },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+            <div className={`text-2xl font-bold ${stat.color} tracking-tight`}>{stat.value}</div>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${stat.dot}`} />
+              <span className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Filter keywords…"
+              placeholder="Search keywords..."
               value={search}
               onChange={e => handleSearch(e.target.value)}
-              className="text-sm text-gray-800 placeholder-gray-400 bg-transparent border-none outline-none w-full"
+              className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
             />
           </div>
+          <select
+            value={selectedDomainId}
+            onChange={e => { setSelectedDomainId(e.target.value); setPage(1) }}
+            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">All Domains</option>
+            {(domains ?? []).map(d => (
+              <option key={d.id} value={d.id}>{d.display_name || d.domain_name}</option>
+            ))}
+          </select>
+          <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
         </div>
-        <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table
-            className="border-collapse"
+            className="border-collapse bg-white dark:bg-[#141520]"
             style={{ width: 'max-content', minWidth: '100%', tableLayout: 'fixed' }}
           >
             <thead>
               <tr>
                 {/* Frozen: # */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
                   style={{ left: 0, width: COL_NUM, minWidth: COL_NUM }}
                 >
                   #
                 </th>
                 {/* Frozen: Keyword */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 text-left border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-left border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
                   style={{ left: COL_NUM, width: COL_KEYWORD, minWidth: COL_KEYWORD }}
                 >
                   Keyword
                 </th>
                 {/* Frozen: Position */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
                   style={{ left: COL_NUM + COL_KEYWORD, width: COL_POSITION, minWidth: COL_POSITION }}
                 >
                   Pos.
                 </th>
                 {/* Frozen: Change — right border marks frozen edge */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
                   style={{
                     left: COL_NUM + COL_KEYWORD + COL_POSITION,
                     width: COL_CHANGE,
@@ -577,39 +659,41 @@ export default function RankHistoryPage() {
                   return (
                     <th
                       key={d}
-                      className={`sticky top-0 z-10 border-b border-gray-200 ${even ? 'bg-gray-50' : 'bg-white'}`}
+                      className={`sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 ${
+                        even ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-[#141520]'
+                      }`}
                       style={{ width: 46, minWidth: 46, maxWidth: 46, textAlign: 'center', padding: '6px 2px' }}
                     >
-                      <span className="block text-[11px] font-semibold text-gray-500 leading-tight">{lbl.day}</span>
-                      <span className="block text-[9px] font-medium text-gray-400 leading-tight">{lbl.month}</span>
+                      <span className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 leading-tight">{lbl.day}</span>
+                      <span className="block text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-tight">{lbl.month}</span>
                     </th>
                   )
                 })}
 
                 {/* Trailing: URL */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 text-left border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-left border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 130, borderLeft: '2px solid #e5e7eb' }}
                 >
                   URL
                 </th>
                 {/* Trailing: Country */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 text-left border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-left border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 90 }}
                 >
                   Country
                 </th>
                 {/* Trailing: Device */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 text-left border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-left border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
                   style={{ minWidth: 80 }}
                 >
                   Device
                 </th>
                 {/* Trailing: Last Check */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 text-left border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-left border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 100 }}
                 >
                   Last Check
@@ -626,7 +710,7 @@ export default function RankHistoryPage() {
                 </tr>
               ) : pageSlice.length === 0 ? (
                 <tr>
-                  <td colSpan={colSpanTotal} className="py-16 text-center text-sm text-gray-400">
+                  <td colSpan={colSpanTotal} className="py-16 text-center text-sm text-gray-400 dark:text-gray-500">
                     {search ? 'No keywords match your filter.' : 'No keywords tracked for this period.'}
                   </td>
                 </tr>
@@ -645,44 +729,34 @@ export default function RankHistoryPage() {
         </div>
 
         {/* Footer */}
-        {!isLoading && filtered.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400">
-            <span>
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               Showing{' '}
-              <strong className="text-gray-600 font-medium">
+              <strong className="text-gray-700 dark:text-gray-300 font-medium">
                 {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)}
               </strong>{' '}
               of{' '}
-              <strong className="text-gray-600 font-medium">{filtered.length}</strong> keywords
+              <strong className="text-gray-700 dark:text-gray-300 font-medium">{filtered.length}</strong> keywords
             </span>
             {totalPages > 1 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-7 h-7 flex items-center justify-center rounded border text-xs font-medium transition-colors ${
-                      page === p
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  {page} / {totalPages}
+                </span>
                 <button
-                  disabled={page === totalPages}
+                  disabled={page >= totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             )}
