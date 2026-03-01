@@ -588,7 +588,7 @@ function RankTrendChart({ keywords, dateColumns, chartMode, onChartModeChange }:
             tick={{ fontSize: 11, fill: '#9ca3af' }}
             axisLine={false}
             tickLine={false}
-            interval={modeConfig.monthly ? 0 : Math.ceil(data.length / 10) - 1}
+            interval={modeConfig.monthly ? 0 : 1}
           />
           <YAxis
             tick={{ fontSize: 11, fill: '#9ca3af' }}
