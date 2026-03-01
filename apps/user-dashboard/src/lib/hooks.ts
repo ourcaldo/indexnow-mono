@@ -321,6 +321,10 @@ export function useAddKeywords() {
       qc.invalidateQueries({ queryKey: ['keyword-usage'] })
       qc.invalidateQueries({ queryKey: ['dashboard-aggregate'] })
       qc.invalidateQueries({ queryKey: ['domains'] })
+      // Rank check runs async on server (~2-3s). Re-fetch after 5s to show real position.
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['keywords'] })
+      }, 5000)
     },
   })
 }
