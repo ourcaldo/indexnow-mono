@@ -11,15 +11,15 @@ function severityColor(severity: string) {
   return 'text-gray-500 dark:text-gray-400';
 }
 
-function SummaryCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
+function StatItem({ label, value, sub, alert }: { label: string; value: number | string; sub?: string; alert?: boolean }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">
+    <span className="text-sm text-gray-500 dark:text-gray-400">
+      {label}:{' '}
+      <span className={`font-medium tabular-nums ${alert ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </span>
-      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
-      {sub && <span className="text-xs text-gray-400 dark:text-gray-500">{sub}</span>}
-    </div>
+      {sub && <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({sub})</span>}
+    </span>
   );
 }
 
@@ -37,7 +37,7 @@ export default function ErrorLogsPage() {
     : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -79,13 +79,11 @@ export default function ErrorLogsPage() {
         <>
           {/* Summary Stats */}
           {stats && (
-            <div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pb-6 border-b border-gray-100 dark:border-gray-800">
-                <SummaryCard label="Total errors" value={stats.summary.totalErrors} sub={trendLabel ?? undefined} />
-                <SummaryCard label="Critical" value={stats.summary.criticalErrors} />
-                <SummaryCard label="High severity" value={stats.summary.highErrors} />
-                <SummaryCard label="Unresolved" value={stats.summary.unresolvedErrors} />
-              </div>
+            <div className="flex items-center gap-6 flex-wrap border-b border-gray-100 dark:border-gray-800 pb-4">
+              <StatItem label="Total" value={stats.summary.totalErrors} sub={trendLabel ?? undefined} />
+              <StatItem label="Critical" value={stats.summary.criticalErrors} alert={stats.summary.criticalErrors > 0} />
+              <StatItem label="High" value={stats.summary.highErrors} />
+              <StatItem label="Unresolved" value={stats.summary.unresolvedErrors} alert={stats.summary.unresolvedErrors > 0} />
             </div>
           )}
 

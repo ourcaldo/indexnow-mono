@@ -23,7 +23,7 @@ export default function RootLayout({
           <div className="flex min-h-screen">
             <AdminSidebar />
             <main className="flex-1 overflow-y-auto">
-              <div className="px-8 py-8 max-w-6xl">
+              <div className="px-8 py-8">
                 {children}
               </div>
             </main>
