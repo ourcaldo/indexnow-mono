@@ -17,7 +17,7 @@ import {
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { BILLING_ENDPOINTS, formatCurrency, logger, type Json } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
-import { supabaseBrowser } from '@indexnow/database/client';
+import { useOrderDetails } from '@/lib/hooks';
 
 interface Transaction {
   id: string;
@@ -60,91 +60,47 @@ export default function OrderCompletedPage() {
   const router = useRouter();
   const { addToast } = useToast();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
 
+  const { data: orderData, isLoading: loading } = useOrderDetails(params.id as string | undefined);
+
+  // Map API response to local Transaction shape whenever orderData changes
   useEffect(() => {
-    fetchTransactionDetails();
-    // (#V7 M-33) fetchTransactionDetails depends on params.id (listed) and stable
-    // refs (router, addToast). Not memoized, so listing it would cause infinite loops.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  const fetchTransactionDetails = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabaseBrowser.auth.getSession();
-
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const response = await authenticatedFetch(
-        `${BILLING_ENDPOINTS.HISTORY.replace('/history', '')}/orders/${params.id}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch transaction details');
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        // Map API response to frontend Transaction interface
-        const orderData = data.data;
-        const mappedTransaction = {
-          id: orderData.order_id,
-          user_id: '', // Not needed for frontend
-          package_id: orderData.package?.id || '',
-          gateway_id: '', // Not needed for frontend
-          transaction_type: 'purchase',
-          transaction_status: orderData.status,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          payment_proof_url: null, // Will be set if exists
-          billing_period: orderData.billing_period || 'one-time',
-          created_at: orderData.created_at,
-          metadata: orderData,
-          package: orderData.package || {
-            id: '',
-            name: 'Unknown Package',
-            description: '',
-            features: [],
-          },
-          gateway: {
-            id: '',
-            name: orderData.payment_method || 'Unknown Gateway',
-            configuration: {},
-          },
-          customer_info: orderData.customer_info || {
-            first_name: '',
-            last_name: '',
-            email: '',
-            phone_number: '',
-          },
-        };
-        setTransaction(mappedTransaction);
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      logger.error(
-        { error: error instanceof Error ? error : undefined },
-        'Error fetching transaction'
-      );
-      addToast({
-        type: 'error',
-        title: 'Error',
-        description: 'Failed to load order details',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!orderData) return;
+    setTransaction({
+      id: orderData.order_id,
+      user_id: '',
+      package_id: (orderData.package as Record<string, string> | null)?.id || '',
+      gateway_id: '',
+      transaction_type: 'purchase',
+      transaction_status: orderData.status,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      payment_proof_url: null,
+      billing_period: orderData.billing_period || 'one-time',
+      created_at: orderData.created_at,
+      metadata: orderData as unknown as Record<string, Json>,
+      package: (orderData.package as Transaction['package']) || {
+        id: '',
+        name: 'Unknown Package',
+        description: '',
+        features: [],
+      },
+      gateway: {
+        id: '',
+        name: orderData.payment_method || 'Unknown Gateway',
+        configuration: {},
+      },
+      customer_info: (orderData.customer_info as Transaction['customer_info']) || {
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone_number: '',
+      },
+    });
+  }, [orderData]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

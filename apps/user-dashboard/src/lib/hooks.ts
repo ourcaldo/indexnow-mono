@@ -53,6 +53,7 @@ export interface Keyword {
 export interface UserProfile {
   id: string
   name: string | null
+  full_name?: string | null
   email?: string
   phone_number?: string | null
   country?: string | null
@@ -100,6 +101,11 @@ export interface BillingPackage {
   slug: string
   price_monthly: number
   price_yearly: number
+  pricing_tiers?: Record<string, {
+    regular_price: number
+    promo_price?: number
+    paddle_price_id?: string
+  }>
   quota_limits: {
     keywords_limit: number
     daily_checks_limit: number
@@ -107,6 +113,22 @@ export interface BillingPackage {
   features: string[]
   is_active: boolean
   free_trial_enabled?: boolean
+}
+
+export interface OrderDetails {
+  order_id: string
+  transaction_id?: string
+  status: string
+  payment_status: string
+  amount: number
+  currency: string
+  payment_method: string
+  billing_period: string
+  created_at: string
+  updated_at: string
+  package: { id: string; name: string; description: string; features: string[]; quota_limits?: unknown } | null
+  customer_info: Record<string, unknown>
+  payment_details: Record<string, unknown>
 }
 
 // ——— Hooks ———
@@ -277,6 +299,35 @@ export function useSubscription() {
       return res
     },
     retry: false, // Don't retry — subscription may not exist
+  })
+}
+
+/** Fetch a single billing package by ID */
+export function usePackageById(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['package', id],
+    queryFn: () => api<BillingPackage>(BILLING_ENDPOINTS.PACKAGE_BY_ID(id!)),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Fetch trial eligibility for current user */
+export function useTrialEligibility(enabled = true) {
+  return useQuery({
+    queryKey: ['trial-eligibility'],
+    queryFn: () => api<{ eligible: boolean; message?: string }>(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY),
+    enabled,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+/** Fetch order details by ID */
+export function useOrderDetails(orderId: string | undefined) {
+  return useQuery({
+    queryKey: ['order', orderId],
+    queryFn: () => api<OrderDetails>(BILLING_ENDPOINTS.ORDER_BY_ID(orderId!)),
+    enabled: !!orderId,
   })
 }
 

@@ -80,8 +80,6 @@ export const GET = publicApiWrapper(async (request, context) => {
     return formatError(error)
   }
 
-  return formatSuccess({
-    data: packageData
-  })
+  return formatSuccess(packageData)
 })
 

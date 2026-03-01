@@ -136,8 +136,5 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth, co
         : {}),
   };
 
-  return formatSuccess({
-    success: true,
-    data: orderData,
-  });
+  return formatSuccess(orderData);
 });

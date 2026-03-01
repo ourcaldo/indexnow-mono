@@ -131,6 +131,9 @@ export const BILLING_ENDPOINTS = {
   UPLOAD_PROOF: `${API_BASE.V1}/billing/upload-proof`,
   CANCEL_TRIAL: `${API_BASE.V1}/billing/cancel-trial`,
 
+  // Orders (user-side)
+  ORDER_BY_ID: (id: string) => `${API_BASE.V1}/billing/orders/${id}`,
+
   // Transactions
   TRANSACTIONS: `${API_BASE.V1}/billing/transactions`,
   TRANSACTION_BY_ID: (id: string) => `${API_BASE.V1}/billing/transactions/${id}`,

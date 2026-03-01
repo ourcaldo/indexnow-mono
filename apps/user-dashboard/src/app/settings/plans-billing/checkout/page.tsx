@@ -14,14 +14,13 @@ import {
   CheckoutSubmitButton,
   PaymentMethodSelector,
 } from '@indexnow/ui/checkout';
-import { ApiEndpoints as API, PaymentSchemas, logger } from '@indexnow/shared';
-import { authenticatedFetch } from '@indexnow/supabase-client';
+import { PaymentSchemas, logger } from '@indexnow/shared';
 import { usePaddle } from '@indexnow/ui/providers';
-import { supabaseBrowser } from '@indexnow/database/client';
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks';
 import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { type PaymentPackage } from '@indexnow/ui/billing';
+import { useProfile, usePackageById, useTrialEligibility } from '@/lib/hooks';
 
 // Types
 interface CheckoutFormData {
@@ -48,12 +47,17 @@ function CheckoutPageContent() {
   const [billing_period, setBillingPeriod] = useState(searchParams?.get('period') || 'monthly');
   const [isTrialFlow, setIsTrialFlow] = useState(searchParams?.get('trial') === 'true');
 
-  // State
-  const [userId, setUserId] = useState<string | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<PaymentPackage | null>(null);
-  const [loading, setLoading] = useState(true);
+  // React Query hooks — replace manual GET orchestration
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: pkgData, isLoading: pkgLoading } = usePackageById(package_id);
+  const { data: trialData } = useTrialEligibility(isTrialFlow);
+
+  // Derived state from hooks
+  const userId = (profile as unknown as Record<string, unknown>)?.id as string | null ?? null;
+  const selectedPackage = (pkgData as unknown as PaymentPackage) ?? null;
+  const loading = profileLoading || pkgLoading;
+  const trialEligible = trialData?.eligible ?? null;
   const [processing, setProcessing] = useState(false);
-  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
 
   const [form, setForm] = useState<CheckoutFormData>({
     first_name: '',
@@ -74,102 +78,28 @@ function CheckoutPageContent() {
   });
   const { logBillingActivity } = useActivityLogger();
 
-  // Data loading effect
+  // Auto-populate form fields from profile
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+    if (!profile) return;
+    const prof = profile as unknown as Record<string, string | null | undefined>;
+    const userName = prof.full_name || prof.email?.split('@')[0] || '';
+    const nameParts = (userName as string).split(' ');
+    setForm(prev => ({
+      ...prev,
+      first_name: nameParts[0] || '',
+      last_name: nameParts.slice(1).join(' ') || '',
+      email: prof.email || '',
+      phone: prof.phone_number || '',
+      country: prof.country || 'ID',
+    }));
+  }, [profile]);
 
-        // Get authentication session and user
-        const {
-          data: { session },
-        } = await supabaseBrowser.auth.getSession();
-        if (!session?.access_token || !session?.user) {
-          addToast({
-            title: 'Authentication required',
-            description: 'Please log in to continue.',
-            type: 'error',
-          });
-          router.push('/auth/login');
-          return;
-        }
-
-        // Store user ID for checkout
-        setUserId(session.user.id);
-
-        // Fetch full user profile including country data
-        const profileResponse = await authenticatedFetch(API.AUTH.PROFILE);
-
-        if (!profileResponse.ok) {
-          throw new Error('Failed to fetch user profile');
-        }
-
-        const profileResult = await profileResponse.json();
-        const profileData =
-          profileResult?.success === true && profileResult.data
-            ? profileResult.data
-            : profileResult;
-        const userProfile = profileData.profile;
-
-        // Auto-populate user information from full profile
-        const userName = userProfile.full_name || userProfile.email?.split('@')[0] || '';
-        const nameParts = userName.split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
-        setForm((prev) => ({
-          ...prev,
-          first_name: firstName,
-          last_name: lastName,
-          email: userProfile.email || '',
-          phone: userProfile.phone_number || '',
-          country: userProfile.country || '',
-        }));
-
-        // Fetch package data
-        const packageResponse = await authenticatedFetch(API.BILLING.PACKAGE_BY_ID(package_id!));
-
-        if (!packageResponse.ok) {
-          throw new Error('Failed to load checkout data');
-        }
-
-        const packageResult = await packageResponse.json();
-        const packageData =
-          packageResult?.success === true && packageResult.data
-            ? packageResult.data
-            : packageResult;
-
-        setSelectedPackage(packageData.data || packageData);
-
-        // Check trial eligibility if needed
-        if (isTrialFlow) {
-          const trialResponse = await authenticatedFetch(API.AUTH.TRIAL_ELIGIBILITY);
-          if (trialResponse.ok) {
-            const trialResult = await trialResponse.json();
-            setTrialEligible(trialResult.eligible);
-          }
-        }
-      } catch (error) {
-        logger.error(
-          { error: error instanceof Error ? error : undefined },
-          'Error fetching checkout data'
-        );
-        addToast({
-          title: 'Error loading checkout',
-          description: 'Please try again later.',
-          type: 'error',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (package_id) {
-      fetchData();
-    } else {
+  // Redirect if no package selected
+  useEffect(() => {
+    if (!package_id) {
       router.push('/settings/plans-billing');
     }
-  }, [package_id, router, addToast, isTrialFlow]);
+  }, [package_id, router]);
 
   // Pricing calculation (flat USD structure)
   const calculatePrice = () => {
