@@ -14,19 +14,21 @@ function StatCard({
   icon: React.ElementType; href?: string;
 }) {
   const body = (
-    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+    <div className="flex flex-col h-full bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-700 transition-all">
       <div className="text-3xl font-bold tabular-nums tracking-tight text-gray-900 dark:text-white">
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
-      <div className="flex items-center gap-1.5 mt-2">
+      <div className="flex items-center gap-1.5 mt-3">
         <Icon className="w-3.5 h-3.5 flex-shrink-0 text-gray-400 dark:text-gray-500" />
         <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
         {href && <ArrowRight className="w-3 h-3 ml-auto text-gray-300 dark:text-gray-600" />}
       </div>
-      {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 ml-5">{sub}</p>}
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 ml-5 h-4">
+        {sub ?? ''}
+      </p>
     </div>
   );
-  return href ? <Link href={href} className="block">{body}</Link> : body;
+  return href ? <Link href={href} className="block h-full">{body}</Link> : <div className="h-full">{body}</div>;
 }
 
 function SectionLabel({ label, href }: { label: string; href?: string }) {
@@ -44,9 +46,12 @@ function SectionLabel({ label, href }: { label: string; href?: string }) {
 
 function SkeletonCard() {
   return (
-    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 animate-pulse">
-      <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-      <div className="h-3.5 w-28 bg-gray-100 dark:bg-gray-700/50 rounded" />
+    <div className="h-[100px] bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 animate-pulse flex flex-col justify-between">
+      <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+      <div className="space-y-1.5">
+        <div className="h-3.5 w-28 bg-gray-100 dark:bg-gray-700/50 rounded" />
+        <div className="h-3 w-20 bg-gray-100 dark:bg-gray-700/30 rounded" />
+      </div>
     </div>
   );
 }
@@ -87,9 +92,9 @@ export default function AdminDashboard() {
           <section>
             <SectionLabel label="Users" href="/users" />
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              <StatCard label="Total users"   value={stats?.users.total ?? 0}       icon={Users}       href="/users" />
-              <StatCard label="New this week" value={stats?.users.newThisWeek ?? 0} icon={TrendingUp}  href="/users" />
-              <StatCard label="Active today"  value={stats?.users.activeToday ?? 0} icon={CheckCircle} sub="based on activity logs" />
+              <StatCard label="Total users"   value={stats?.users.total ?? 0}        icon={Users}       href="/users" />
+              <StatCard label="New this week" value={stats?.users.newThisWeek ?? 0}  icon={TrendingUp}  href="/users" />
+              <StatCard label="Active today"  value={stats?.users.activeToday ?? 0}  icon={CheckCircle} sub="based on activity logs" />
             </div>
           </section>
 
@@ -119,9 +124,9 @@ export default function AdminDashboard() {
           <section>
             <SectionLabel label="Error Logs" href="/errors" />
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              <StatCard label="Critical"       value={stats?.errors.critical ?? 0}   icon={AlertTriangle} sub="unresolved critical" href="/errors" />
-              <StatCard label="Unresolved"     value={stats?.errors.unresolved ?? 0} icon={AlertTriangle} href="/errors" />
-              <StatCard label="Last 24 hours"  value={stats?.errors.last24h ?? 0}    icon={AlertTriangle} href="/errors" />
+              <StatCard label="Critical"      value={stats?.errors.critical ?? 0}   icon={AlertTriangle} sub="unresolved critical" href="/errors" />
+              <StatCard label="Unresolved"    value={stats?.errors.unresolved ?? 0} icon={AlertTriangle} href="/errors" />
+              <StatCard label="Last 24 hours" value={stats?.errors.last24h ?? 0}    icon={AlertTriangle} href="/errors" />
             </div>
           </section>
         </>

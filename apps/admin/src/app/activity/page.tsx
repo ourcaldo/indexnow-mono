@@ -121,8 +121,8 @@ export default function ActivityLogsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-mono ${eventBadgeColor(log.event_type)}`}>
-                      {log.event_type}
+                    <span className={`text-sm font-medium ${eventBadgeColor(log.event_type)}`}>
+                      {log.event_type.replace(/_/g, ' ')}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-[240px] truncate">
