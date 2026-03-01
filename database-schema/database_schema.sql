@@ -1290,12 +1290,7 @@ ON CONFLICT (iso2_code) DO NOTHING;
 -- Purpose: Add critical performance indexes for rank tracking queries
 -- ============================================================
 
--- 1. Composite index for faster user domain lookups
--- This optimizes queries that filter keywords by user_id and domain
-CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_domain 
-ON indb_rank_keywords(user_id, domain);
-
--- 2. GIN index for faster keyword searches
+-- 1. GIN index for faster keyword searches
 -- This optimizes ILIKE queries on the keyword column
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_keyword_gin 
 ON indb_rank_keywords USING gin(keyword gin_trgm_ops);
