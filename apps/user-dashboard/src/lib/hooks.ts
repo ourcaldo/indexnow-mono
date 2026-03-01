@@ -145,6 +145,17 @@ export function useCountries() {
   })
 }
 
+/** Returns a map of iso2_code (uppercase) -> country name, built from the countries list */
+export function useCountryMap(): Record<string, string> {
+  const { data } = useCountries()
+  if (!data) return {}
+  const map: Record<string, string> = {}
+  for (const c of data) {
+    if (c.iso2_code) map[c.iso2_code.toUpperCase()] = c.name
+  }
+  return map
+}
+
 /** Fetch user profile with package info */
 export function useProfile() {
   return useQuery({

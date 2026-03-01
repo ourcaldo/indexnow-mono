@@ -21,6 +21,7 @@ import {
   useProfile,
   useKeywordUsage,
   useDashboardAggregate,
+  useCountryMap,
   type Keyword,
 } from '../lib/hooks'
 import { useWorkspace } from '../components/providers/WorkspaceProvider'
@@ -36,6 +37,7 @@ export default function Dashboard() {
   const { data: profile } = useProfile()
   const { data: keywordUsage } = useKeywordUsage()
   const { data: dashboardData, isLoading: dashLoading, error: dashError } = useDashboardAggregate(activeDomain)
+  const countryMap = useCountryMap()
 
   const [addDomainOpen, setAddDomainOpen] = useState(false)
   const [addKeywordsOpen, setAddKeywordsOpen] = useState(false)
@@ -249,7 +251,7 @@ export default function Dashboard() {
                           <td className="px-3 py-3 hidden md:table-cell">
                             <div className="flex items-center gap-1">
                               <Globe className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{fmtCountry(kw.country)}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{fmtCountry({ ...kw.country, name: countryMap[(kw.country?.iso2_code ?? '').toUpperCase()] ?? kw.country?.name })}</span>
                             </div>
                           </td>
                         </tr>
