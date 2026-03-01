@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Target,
   Calendar,
-  RefreshCw,
   Monitor,
   Smartphone,
   Crown,
@@ -22,7 +21,6 @@ import {
   useProfile,
   useKeywordUsage,
   useDashboardAggregate,
-  useCheckRank,
   type Keyword,
 } from '../lib/hooks'
 import { useWorkspace } from '../components/providers/WorkspaceProvider'
@@ -37,7 +35,6 @@ export default function Dashboard() {
   const { data: profile } = useProfile()
   const { data: keywordUsage } = useKeywordUsage()
   const { data: dashboardData, isLoading: dashLoading, error: dashError } = useDashboardAggregate(activeDomain)
-  const checkRank = useCheckRank()
 
   const [addDomainOpen, setAddDomainOpen] = useState(false)
   const [addKeywordsOpen, setAddKeywordsOpen] = useState(false)
@@ -228,8 +225,7 @@ export default function Dashboard() {
                       <th className="text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-5 py-3">Keyword</th>
                       <th className="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3">Position</th>
                       <th className="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3 hidden sm:table-cell">Device</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3 hidden md:table-cell">Domain</th>
-                      <th className="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3 hidden lg:table-cell">Action</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3 hidden md:table-cell">Country</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -254,19 +250,9 @@ export default function Dashboard() {
                             )}
                           </td>
                           <td className="px-3 py-3 hidden md:table-cell">
-                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate block max-w-[140px]">
-                              {kw.domain?.display_name || kw.domain?.domain_name || '—'}
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {kw.country?.name || kw.country?.iso2_code || '—'}
                             </span>
-                          </td>
-                          <td className="px-3 py-3 text-center hidden lg:table-cell">
-                            <button
-                              onClick={() => checkRank.mutate(kw.id)}
-                              disabled={checkRank.isPending}
-                              title="Check rank now"
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                            >
-                              <RefreshCw className={`w-3.5 h-3.5 ${checkRank.isPending ? 'animate-spin' : ''}`} />
-                            </button>
                           </td>
                         </tr>
                       )
@@ -372,17 +358,13 @@ function MetricCard({ label, value, icon, iconColor, subtitle }: {
 }
 
 function PositionBadge({ position }: { position: number | null }) {
-  if (!position) return <span className="text-gray-400 text-sm">—</span>
+  if (!position) return <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
   const cls =
-    position <= 3 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-      : position <= 10 ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
-        : position <= 20 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
-          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-  return (
-    <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 text-xs font-bold rounded-md ${cls}`}>
-      {position}
-    </span>
-  )
+    position <= 3 ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+      : position <= 10 ? 'text-blue-600 dark:text-blue-400 font-semibold'
+        : position <= 20 ? 'text-amber-600 dark:text-amber-400 font-medium'
+          : 'text-gray-500 dark:text-gray-400'
+  return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
 }
 
 function DistRow({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {

@@ -22,7 +22,7 @@ import { AddKeywordsModal } from '../../components/modals/AddKeywordsModal'
 
 const ITEMS_PER_PAGE = 20
 
-type SortField = 'keyword' | 'position' | 'domain' | 'country' | 'device'
+type SortField = 'keyword' | 'position' | 'country' | 'device'
 type SortDirection = 'asc' | 'desc'
 
 export default function OverviewPage() {
@@ -69,9 +69,6 @@ export default function OverviewPage() {
           cmp = posA - posB
           break
         }
-        case 'domain':
-          cmp = (a.domain?.domain_name ?? '').localeCompare(b.domain?.domain_name ?? '')
-          break
         case 'country':
           cmp = (a.country?.name ?? '').localeCompare(b.country?.name ?? '')
           break
@@ -270,7 +267,6 @@ export default function OverviewPage() {
                     {([
                       { field: 'keyword' as SortField, label: 'Keyword', align: 'left' },
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
-                      { field: 'domain' as SortField, label: 'Domain', align: 'center' },
                       { field: 'country' as SortField, label: 'Country', align: 'center' },
                       { field: 'device' as SortField, label: 'Device', align: 'center' },
                     ]).map(col => (
@@ -323,11 +319,6 @@ export default function OverviewPage() {
                         <td className="px-4 py-3 text-center">
                           <PositionBadge position={pos} />
                           {checkDate && <div className="text-[10px] text-gray-400 mt-0.5">{checkDate}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {kw.domain?.display_name || kw.domain?.domain_name || '—'}
-                          </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -392,18 +383,11 @@ function getPos(kw: Keyword): number | null {
 }
 
 function PositionBadge({ position }: { position: number | null }) {
-  if (!position) return <span className="text-sm text-gray-400">—</span>
+  if (!position) return <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
   const cls =
-    position <= 3
-      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-      : position <= 10
-        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
-        : position <= 20
-          ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
-          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-  return (
-    <span className={`inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 text-xs font-bold rounded-full ${cls}`}>
-      {position}
-    </span>
-  )
+    position <= 3 ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+      : position <= 10 ? 'text-blue-600 dark:text-blue-400 font-semibold'
+        : position <= 20 ? 'text-amber-600 dark:text-amber-400 font-medium'
+          : 'text-gray-500 dark:text-gray-400'
+  return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
 }
