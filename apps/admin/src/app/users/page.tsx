@@ -6,8 +6,8 @@ import { Search, Eye, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react
 import { useAdminUsers, type UserProfile } from '@/hooks';
 
 function roleBadge(role: string) {
-  if (role === 'super_admin') return 'text-red-600 dark:text-red-400';
-  if (role === 'admin') return 'text-orange-600 dark:text-orange-400';
+  if (role === 'super_admin') return 'text-gray-900 dark:text-white font-medium';
+  if (role === 'admin') return 'text-gray-700 dark:text-gray-200 font-medium';
   return 'text-gray-500 dark:text-gray-400';
 }
 
@@ -59,7 +59,7 @@ export default function UserManagement() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by name or emailâ€¦"
+            placeholder="Search by name or email..."
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-transparent"
@@ -80,7 +80,7 @@ export default function UserManagement() {
       {/* Table */}
       <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
         {isLoading ? (
-          <div className="py-16 text-center text-sm text-gray-400">Loading usersâ€¦</div>
+          <div className="py-16 text-center text-sm text-gray-400">Loading users...</div>
         ) : (
           <table className="w-full">
             <thead>
@@ -103,7 +103,7 @@ export default function UserManagement() {
                   <td className="px-4 py-3">
                     <div>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {user.full_name || 'â€”'}
+                        {user.full_name || '-'}
                       </div>
                       <div className="text-xs text-gray-400 dark:text-gray-500">{user.email}</div>
                     </div>
@@ -115,7 +115,7 @@ export default function UserManagement() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-sm text-gray-600 dark:text-gray-300">
-                      {user.package?.name || 'â€”'}
+                      {user.package?.name || '-'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -153,7 +153,7 @@ export default function UserManagement() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 px-4 py-3">
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Showing {(currentPage - 1) * pageSize + 1}â€“{Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+              Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalItems)} of {totalItems}
             </span>
             <div className="flex items-center gap-2">
               <button
