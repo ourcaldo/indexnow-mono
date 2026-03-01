@@ -261,10 +261,10 @@ export default function OverviewPage() {
                     {([
                       { field: 'keyword' as SortField, label: 'Keyword', align: 'left' },
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
+                      { field: 'keyword' as SortField, label: 'URL', align: 'center', noSort: true },
                       { field: 'country' as SortField, label: 'Country', align: 'center' },
                       { field: 'device' as SortField, label: 'Device', align: 'center' },
                       { field: 'keyword' as SortField, label: 'Last Checked', align: 'center', noSort: true },
-                      { field: 'keyword' as SortField, label: 'URL', align: 'center', noSort: true },
                     ] as Array<{ field: SortField; label: string; align: string; noSort?: boolean }>).map(col => (
                       <th
                         key={col.label}
@@ -317,6 +317,20 @@ export default function OverviewPage() {
                           <PositionBadge position={pos} />
                         </td>
                         <td className="px-4 py-3 text-center">
+                          {ranking?.url ? (
+                            <div className="inline-flex items-center gap-1 max-w-[160px]">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap block max-w-[130px]" title={ranking.url}>
+                                {ranking.url.replace(/^https?:\/\/(www\.)?/, '')}
+                              </span>
+                              <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Open in new tab">
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Globe className="h-3 w-3 text-gray-400 flex-shrink-0" />
                             <span className="text-sm text-gray-500 dark:text-gray-400">{fmtCountry(kw.country)}</span>
@@ -330,20 +344,6 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="text-xs text-gray-400 dark:text-gray-500">{checkDate || '—'}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {ranking?.url ? (
-                            <div className="inline-flex items-center gap-1 max-w-[160px]">
-                              <span className="text-xs text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap block max-w-[130px]" title={ranking.url}>
-                                {ranking.url.replace(/^https?:\/\/(www\.)?/, '')}
-                              </span>
-                              <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Open in new tab">
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                          )}
                         </td>
                       </tr>
                     )
