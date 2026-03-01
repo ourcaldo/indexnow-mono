@@ -2,14 +2,13 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Search,
+  ExternalLink,
   ArrowUpDown,
   Globe,
   Smartphone,
   Monitor,
   ChevronLeft,
   ChevronRight,
-  Plus,
   Trash2,
 } from 'lucide-react'
 import {
@@ -18,7 +17,6 @@ import {
   type Keyword,
 } from '../../lib/hooks'
 import { useWorkspace } from '../../components/providers/WorkspaceProvider'
-import { AddKeywordsModal } from '../../components/modals/AddKeywordsModal'
 import { fmtDate, fmtDevice, fmtCountry } from '../../lib/utils'
 
 const ITEMS_PER_PAGE = 20
@@ -29,19 +27,17 @@ type SortDirection = 'asc' | 'desc'
 export default function OverviewPage() {
   const { activeDomain } = useWorkspace()
 
-  const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [sortField, setSortField] = useState<SortField>('position')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [deviceFilter, setDeviceFilter] = useState<string>('all')
+  const [countryFilter, setCountryFilter] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [addKeywordsOpen, setAddKeywordsOpen] = useState(false)
 
   const { data: keywordsData, isLoading } = useKeywords({
     domain: activeDomain || undefined,
     page: currentPage,
     limit: ITEMS_PER_PAGE,
-    search: searchQuery || undefined,
   })
 
   const deleteKeywords = useDeleteKeywords()
@@ -49,11 +45,27 @@ export default function OverviewPage() {
   const allKeywords: Keyword[] = keywordsData?.keywords ?? []
   const totalKeywordsCount = keywordsData?.total ?? 0
 
-  // Client-side device filter (API may not support it)
+  // Unique countries derived from loaded keywords for the country filter
+  const uniqueCountries = useMemo(() => {
+    const seen = new Set<string>()
+    const list: { iso2_code: string; name: string }[] = []
+    for (const k of allKeywords) {
+      const code = k.country?.iso2_code ?? ''
+      if (code && !seen.has(code)) {
+        seen.add(code)
+        list.push({ iso2_code: code, name: k.country?.name || code.toUpperCase() })
+      }
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name))
+  }, [allKeywords])
+
+  // Client-side device + country filter
   const filteredKeywords = useMemo(() => {
-    if (deviceFilter === 'all') return allKeywords
-    return allKeywords.filter(k => k.device_type === deviceFilter)
-  }, [allKeywords, deviceFilter])
+    let kws = allKeywords
+    if (deviceFilter !== 'all') kws = kws.filter(k => k.device_type === deviceFilter)
+    if (countryFilter !== 'all') kws = kws.filter(k => (k.country?.iso2_code ?? '') === countryFilter)
+    return kws
+  }, [allKeywords, deviceFilter, countryFilter])
 
   // Client-side sort
   const sortedKeywords = useMemo(() => {
@@ -161,7 +173,7 @@ export default function OverviewPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
             Keyword Overview
@@ -170,12 +182,36 @@ export default function OverviewPage() {
             Track and manage all your keywords across domains
           </p>
         </div>
-        <button
-          onClick={() => setAddKeywordsOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Add Keywords
-        </button>
+        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+          <select
+            value={deviceFilter}
+            onChange={(e) => { setDeviceFilter(e.target.value); setCurrentPage(1) }}
+            className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-700 dark:text-gray-200"
+          >
+            <option value="all">All Devices</option>
+            <option value="desktop">Desktop</option>
+            <option value="mobile">Mobile</option>
+          </select>
+          <select
+            value={countryFilter}
+            onChange={(e) => { setCountryFilter(e.target.value); setCurrentPage(1) }}
+            className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-700 dark:text-gray-200"
+          >
+            <option value="all">All Countries</option>
+            {uniqueCountries.map(c => (
+              <option key={c.iso2_code} value={c.iso2_code}>{c.name}</option>
+            ))}
+          </select>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={deleteKeywords.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -197,59 +233,15 @@ export default function OverviewPage() {
         ))}
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search keywords, domains..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-              className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-            />
-          </div>
 
-          {/* Device Filter */}
-          <select
-            value={deviceFilter}
-            onChange={(e) => { setDeviceFilter(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100"
-          >
-            <option value="all">All Devices</option>
-            <option value="desktop">Desktop</option>
-            <option value="mobile">Mobile</option>
-          </select>
-
-          {/* Bulk delete */}
-          {selectedIds.size > 0 && (
-            <button
-              onClick={handleBulkDelete}
-              disabled={deleteKeywords.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size}
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Keywords Table */}
       <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         {sortedKeywords.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <Search className="h-7 w-7 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <Globe className="h-7 w-7 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-gray-50">No Keywords Found</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {searchQuery ? 'Try a different search term.' : 'Start tracking keywords to see them here.'}
-            </p>
-            {!searchQuery && (
-              <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-blue-600 dark:text-blue-400">
-                Add keywords →
-              </button>
-            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400">Start tracking keywords to see them here.</p>
           </div>
         ) : (
           <>
@@ -265,12 +257,14 @@ export default function OverviewPage() {
                         className="rounded border-gray-300 dark:border-gray-600"
                       />
                     </th>
+                    <th className="px-3 py-3 w-8 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">#</th>
                     {([
                       { field: 'keyword' as SortField, label: 'Keyword', align: 'left' },
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
                       { field: 'country' as SortField, label: 'Country', align: 'center' },
                       { field: 'device' as SortField, label: 'Device', align: 'center' },
                       { field: 'keyword' as SortField, label: 'Last Checked', align: 'center', noSort: true },
+                      { field: 'keyword' as SortField, label: 'URL', align: 'center', noSort: true },
                     ] as Array<{ field: SortField; label: string; align: string; noSort?: boolean }>).map(col => (
                       <th
                         key={col.label}
@@ -286,7 +280,7 @@ export default function OverviewPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedKeywords.map((kw) => {
+                  {sortedKeywords.map((kw, idx) => {
                     const pos = getPos(kw)
                     const ranking = Array.isArray(kw.recent_ranking) ? kw.recent_ranking[0] : kw.recent_ranking
                     const checkDate = ranking?.check_date
@@ -306,6 +300,7 @@ export default function OverviewPage() {
                             className="rounded border-gray-300 dark:border-gray-600"
                           />
                         </td>
+                        <td className="px-3 py-3 text-center text-xs text-gray-400 dark:text-gray-500 tabular-nums w-8">{idx + 1}</td>
                         <td className="px-4 py-3">
                           <div>
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{kw.keyword}</span>
@@ -335,6 +330,20 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="text-xs text-gray-400 dark:text-gray-500">{checkDate || '—'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {ranking?.url ? (
+                            <div className="inline-flex items-center gap-1 max-w-[160px]">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap block max-w-[130px]" title={ranking.url}>
+                                {ranking.url.replace(/^https?:\/\/(www\.)?/, '')}
+                              </span>
+                              <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Open in new tab">
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                          )}
                         </td>
                       </tr>
                     )
@@ -374,7 +383,6 @@ export default function OverviewPage() {
         )}
       </div>
 
-      <AddKeywordsModal open={addKeywordsOpen} onClose={() => setAddKeywordsOpen(false)} />
     </div>
   )
 }

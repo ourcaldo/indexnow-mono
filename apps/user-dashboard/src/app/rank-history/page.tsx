@@ -5,6 +5,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Globe,
   Monitor,
   Smartphone,
@@ -497,19 +498,28 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
       {/* URL — trailing edge border */}
       <td
-        className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40"
-        style={{ minWidth: 130, maxWidth: 180, borderLeft: '2px solid #e5e7eb' }}
+        className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40"
+        style={{ minWidth: 160, maxWidth: 200, borderLeft: '2px solid #e5e7eb' }}
       >
         {kw.latest_url ? (
-          <a
-            href={kw.latest_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block overflow-hidden text-ellipsis whitespace-nowrap max-w-full"
-            title={kw.latest_url}
-          >
-            {kw.latest_url.replace(/^https?:\/\/(www\.)?/, '')}
-          </a>
+          <div className="inline-flex items-center gap-1.5 max-w-full">
+            <span
+              className="text-xs text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap block"
+              style={{ maxWidth: 130 }}
+              title={kw.latest_url}
+            >
+              {kw.latest_url.replace(/^https?:\/\/(www\.)?/, '')}
+            </span>
+            <a
+              href={kw.latest_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title="Open in new tab"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
         ) : (
           <span className="text-gray-300 dark:text-gray-600">–</span>
         )}
