@@ -531,8 +531,8 @@ export default function RankHistoryPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-7 w-40 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
               <div className="h-7 w-10 bg-gray-200 dark:bg-gray-800 rounded mx-auto mb-1" />
               <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
@@ -561,7 +561,7 @@ export default function RankHistoryPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {/* Total Keywords */}
         <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
           <div className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">{total}</div>
@@ -584,18 +584,30 @@ export default function RankHistoryPage() {
           </div>
         </div>
 
-        {/* Top 3 / Top 10 / Top 20 */}
+        {/* Top 3 */}
         <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">{stats.top3}</span>
-            <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
-            <span className="text-xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">{stats.top10}</span>
-            <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
-            <span className="text-xl font-bold text-amber-600 dark:text-amber-400 tracking-tight">{stats.top20}</span>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">{stats.top3}</div>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">Top 3</span>
           </div>
+        </div>
+
+        {/* Top 10 */}
+        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">{stats.top10}</div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Top 3 · Top 10 · Top 20</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Top 10</span>
+          </div>
+        </div>
+
+        {/* Top 20 */}
+        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 tracking-tight">{stats.top20}</div>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">Top 20</span>
           </div>
         </div>
 
