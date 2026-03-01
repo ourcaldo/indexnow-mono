@@ -476,6 +476,8 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
 
 // ── Rank trend chart ──────────────────────────────────────────────────────────
 
+type ChartMode = '1M' | '6M' | '1Y'
+
 const BUCKETS = [
   { key: 'top3',    label: 'Top 3',   color: '#10b981' },
   { key: 'top410',  label: '4-10',    color: '#3b82f6' },
@@ -484,7 +486,8 @@ const BUCKETS = [
   { key: 'top51',   label: '51-100',  color: '#f43f5e' },
 ] as const
 
-function buildChartData(keywords: RankHistoryKeyword[], dateColumns: string[]) {
+// Daily bars — one per date (for 1M)
+function buildChartDataDaily(keywords: RankHistoryKeyword[], dateColumns: string[]) {
   return [...dateColumns].reverse().map(date => {
     let top3 = 0, top410 = 0, top1120 = 0, top2150 = 0, top51 = 0
     for (const kw of keywords) {
@@ -500,31 +503,55 @@ function buildChartData(keywords: RankHistoryKeyword[], dateColumns: string[]) {
   })
 }
 
+// Monthly bars — one per month, using latest position per keyword per month (for 6M/1Y)
+function buildChartDataMonthly(keywords: RankHistoryKeyword[], numMonths: number) {
+  const now = new Date()
+  const results = []
+  for (let i = numMonths - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`
+    const label = `${MONTHS_SHORT[month]} '${String(year).slice(2)}`
+    let top3 = 0, top410 = 0, top1120 = 0, top2150 = 0, top51 = 0
+    for (const kw of keywords) {
+      const datesInMonth = Object.keys(kw.history).filter(k => k.startsWith(prefix))
+      if (datesInMonth.length === 0) continue
+      const latestDate = datesInMonth.sort()[datesInMonth.length - 1]
+      const pos = kw.history[latestDate]
+      if (pos === undefined) continue
+      if (pos <= 3) top3++
+      else if (pos <= 10) top410++
+      else if (pos <= 20) top1120++
+      else if (pos <= 50) top2150++
+      else if (pos <= 100) top51++
+    }
+    results.push({ date: prefix, label, top3, top410, top1120, top2150, top51 })
+  }
+  return results
+}
+
+const CHART_MODE_CONFIG: { label: ChartMode; days: number; monthly: boolean }[] = [
+  { label: '1M', days: 30,  monthly: false },
+  { label: '6M', days: 182, monthly: true  },
+  { label: '1Y', days: 365, monthly: true  },
+]
+
 interface RankTrendChartProps {
   keywords: RankHistoryKeyword[]
   dateColumns: string[]
-  startDate: string
-  endDate: string
-  onDateChange: (start: string, end: string) => void
+  chartMode: ChartMode
+  onChartModeChange: (mode: ChartMode) => void
 }
 
-const CHART_FILTERS = [
-  { label: '1M',       days: 30  },
-  { label: '6M',       days: 180 },
-  { label: '1Y',       days: 365 },
-  { label: '2Y',       days: 730 },
-  { label: 'All time', days: 840 },
-] as const
+function RankTrendChart({ keywords, dateColumns, chartMode, onChartModeChange }: RankTrendChartProps) {
+  const modeConfig = CHART_MODE_CONFIG.find(m => m.label === chartMode)!
+  const data = useMemo(() => {
+    if (!modeConfig.monthly) return buildChartDataDaily(keywords, dateColumns)
+    return buildChartDataMonthly(keywords, chartMode === '6M' ? 6 : 12)
+  }, [keywords, dateColumns, chartMode, modeConfig.monthly])
 
-function RankTrendChart({ keywords, dateColumns, startDate, endDate, onDateChange }: RankTrendChartProps) {
-  const data = useMemo(() => buildChartData(keywords, dateColumns), [keywords, dateColumns])
-  if (data.length === 0 || keywords.length === 0) return null
-
-  const today = isoToday()
-  const activeFilter = CHART_FILTERS.find(f => {
-    const expected = subtractDays(endDate, f.days)
-    return expected === startDate && endDate === today
-  })
+  if (keywords.length === 0) return null
 
   return (
     <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
@@ -539,22 +566,19 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate, onDateChang
           ))}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          {CHART_FILTERS.map(f => {
-            const active = activeFilter?.label === f.label
-            return (
-              <button
-                key={f.label}
-                onClick={() => onDateChange(subtractDays(today, f.days), today)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                  active
-                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                {f.label}
-              </button>
-            )
-          })}
+          {CHART_MODE_CONFIG.map(f => (
+            <button
+              key={f.label}
+              onClick={() => onChartModeChange(f.label)}
+              className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                chartMode === f.label
+                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
       <ResponsiveContainer width="100%" height={200}>
@@ -610,7 +634,8 @@ const ITEMS_PER_PAGE = 50
 
 export default function RankHistoryPage() {
   const today = useMemo(() => isoToday(), [])
-  const [startDate, setStartDate] = useState(() => subtractDays(isoToday(), 7))
+  const [chartMode, setChartMode] = useState<ChartMode>('1M')
+  const [startDate, setStartDate] = useState(() => subtractDays(isoToday(), 30))
   const [endDate, setEndDate] = useState(today)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -660,6 +685,15 @@ export default function RankHistoryPage() {
   function handleDateChange(s: string, e: string) {
     setStartDate(s)
     setEndDate(e)
+    setPage(1)
+  }
+
+  function handleChartModeChange(mode: ChartMode) {
+    setChartMode(mode)
+    const cfg = CHART_MODE_CONFIG.find(m => m.label === mode)!
+    const t = isoToday()
+    setStartDate(subtractDays(t, cfg.days))
+    setEndDate(t)
     setPage(1)
   }
 
@@ -766,7 +800,7 @@ export default function RankHistoryPage() {
       </div>
 
       {/* Trend Chart */}
-      <RankTrendChart keywords={keywords} dateColumns={dateColumns} startDate={startDate} endDate={endDate} onDateChange={handleDateChange} />
+      <RankTrendChart keywords={keywords} dateColumns={dateColumns} chartMode={chartMode} onChartModeChange={handleChartModeChange} />
 
       {/* Filters */}
       <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
