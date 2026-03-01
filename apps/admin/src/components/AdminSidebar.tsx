@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, Receipt, Activity, AlertTriangle,
   Settings, Globe, Package, CreditCard, LogOut,
-  ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen,
+  ChevronDown, ChevronRight, PanelLeftClose,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { authService } from '@indexnow/supabase-client';
@@ -74,17 +74,34 @@ export function AdminSidebar() {
       className={`${collapsed ? 'w-14' : 'w-56'} flex-shrink-0 bg-white dark:bg-[#0f0f17] border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 transition-all duration-200 ease-in-out overflow-hidden`}
     >
       {/* Logo */}
-      <div className={`h-14 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2.5 flex-shrink-0 ${collapsed ? 'justify-center' : 'px-4'}`}>
-        <div className="w-7 h-7 rounded-lg bg-gray-900 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-[11px] font-bold text-white leading-none select-none">A</span>
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
-              {siteName || 'IndexNow Studio'}
-            </p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-tight">Admin</p>
-          </div>
+      <div className={`h-14 border-b border-gray-200 dark:border-gray-800 flex items-center flex-shrink-0 ${collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'}`}>
+        {collapsed ? (
+          <button
+            onClick={toggleCollapsed}
+            title="Expand sidebar"
+            className="w-7 h-7 rounded-lg bg-gray-900 dark:bg-white/10 flex items-center justify-center hover:bg-gray-700 dark:hover:bg-white/20 transition-colors"
+          >
+            <span className="text-[11px] font-bold text-white leading-none select-none">A</span>
+          </button>
+        ) : (
+          <>
+            <div className="w-7 h-7 rounded-lg bg-gray-900 dark:bg-white/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-[11px] font-bold text-white leading-none select-none">A</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
+                {siteName || 'IndexNow Studio'}
+              </p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium leading-tight">Admin</p>
+            </div>
+            <button
+              onClick={toggleCollapsed}
+              title="Collapse sidebar"
+              className="flex-shrink-0 p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </>
         )}
       </div>
 
@@ -155,23 +172,13 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      {/* Bottom actions */}
-      <div className={`py-3 border-t border-gray-200 dark:border-gray-800 space-y-0.5 flex-shrink-0 ${collapsed ? 'px-1.5' : 'px-2'}`}>
-        <button
-          onClick={toggleCollapsed}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={collapsed
-            ? `${iconLink('text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/60 rounded-md transition-colors')}`
-            : 'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors'
-          }
-        >
-          {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <><PanelLeftClose className="w-4 h-4" /><span>Collapse</span></>}
-        </button>
+      {/* Sign out */}
+      <div className={`py-3 border-t border-gray-200 dark:border-gray-800 flex-shrink-0 ${collapsed ? 'px-1.5' : 'px-2'}`}>
         <button
           onClick={handleSignOut}
-          title={collapsed ? 'Sign out' : undefined}
+          title="Sign out"
           className={collapsed
-            ? `${iconLink('text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-colors')}`
+            ? iconLink('text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-colors')
             : 'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors'
           }
         >
