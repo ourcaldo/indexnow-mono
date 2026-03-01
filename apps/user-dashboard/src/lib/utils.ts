@@ -29,3 +29,24 @@ export function fmtDateTime(iso: string | Date | null | undefined): string {
   if (isNaN(d.getTime())) return '—'
   return d.toLocaleDateString('en-US', { ...DATE_FMT, hour: '2-digit', minute: '2-digit' })
 }
+
+/**
+ * Normalize a device_type value to a display label.
+ * 'mobile' → 'Mobile', anything else → 'Desktop', null/undefined → '—'
+ */
+export function fmtDevice(device: string | null | undefined): string {
+  if (!device) return '—'
+  if (device === 'mobile') return 'Mobile'
+  return 'Desktop'
+}
+
+/**
+ * Format a country for display. Prefers full name, falls back to ISO code.
+ */
+export function fmtCountry(
+  country: { name?: string | null; iso2_code?: string | null } | string | null | undefined
+): string {
+  if (!country) return '—'
+  if (typeof country === 'string') return country || '—'
+  return country.name || country.iso2_code || '—'
+}

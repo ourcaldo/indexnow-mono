@@ -19,7 +19,7 @@ import {
 } from '../../lib/hooks'
 import { useWorkspace } from '../../components/providers/WorkspaceProvider'
 import { AddKeywordsModal } from '../../components/modals/AddKeywordsModal'
-import { fmtDate } from '../../lib/utils'
+import { fmtDate, fmtDevice, fmtCountry } from '../../lib/utils'
 
 const ITEMS_PER_PAGE = 20
 
@@ -323,16 +323,14 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {kw.country?.iso2_code && <Globe className="h-3 w-3 text-gray-400" />}
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {kw.country?.name || kw.country?.iso2_code || '—'}
-                            </span>
+                            <Globe className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                            <span className="text-sm text-gray-500 dark:text-gray-400">{fmtCountry(kw.country)}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400">
                             {kw.device_type === 'mobile' ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
-                            <span className="text-xs">{kw.device_type ? (kw.device_type === 'mobile' ? 'Mobile' : 'Desktop') : '—'}</span>
+                            <span className="text-xs">{fmtDevice(kw.device_type)}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">

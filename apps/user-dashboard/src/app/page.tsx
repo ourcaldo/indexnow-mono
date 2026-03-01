@@ -26,6 +26,7 @@ import {
 import { useWorkspace } from '../components/providers/WorkspaceProvider'
 import { AddDomainModal } from '../components/modals/AddDomainModal'
 import { AddKeywordsModal } from '../components/modals/AddKeywordsModal'
+import { fmtDevice, fmtCountry } from '../lib/utils'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -242,15 +243,13 @@ export default function Dashboard() {
                           <td className="px-3 py-3 text-center hidden sm:table-cell">
                             <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400">
                               {kw.device_type === 'mobile' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
-                              <span className="text-xs">{kw.device_type === 'mobile' ? 'Mobile' : 'Desktop'}</span>
+                              <span className="text-xs">{fmtDevice(kw.device_type)}</span>
                             </div>
                           </td>
                           <td className="px-3 py-3 hidden md:table-cell">
                             <div className="flex items-center gap-1">
                               <Globe className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {kw.country?.name || kw.country?.iso2_code || '—'}
-                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{fmtCountry(kw.country)}</span>
                             </div>
                           </td>
                         </tr>

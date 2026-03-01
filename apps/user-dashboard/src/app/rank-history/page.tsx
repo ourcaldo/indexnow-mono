@@ -20,7 +20,7 @@ import {
 } from 'recharts'
 import { useRankHistory, type RankHistoryKeyword } from '../../lib/hooks'
 import { useWorkspace } from '../../components/providers/WorkspaceProvider'
-import { fmtDate } from '../../lib/utils'
+import { fmtDate, fmtDevice } from '../../lib/utils'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -541,7 +541,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
           {kw.device === 'mobile'
             ? <Smartphone className="w-3.5 h-3.5 flex-shrink-0" />
             : <Monitor className="w-3.5 h-3.5 flex-shrink-0" />}
-          {kw.device === 'mobile' ? 'Mobile' : 'Desktop'}
+          {fmtDevice(kw.device)}
         </span>
       </td>
 
