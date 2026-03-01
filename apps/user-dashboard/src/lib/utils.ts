@@ -40,12 +40,36 @@ export function fmtDevice(device: string | null | undefined): string {
 }
 
 /**
- * Format a country for display. Prefers full name, falls back to ISO code.
+ * Format a country for display. Prefers full name, falls back to ISO code lookup, then ISO code.
  */
+const ISO_NAMES: Record<string, string> = {
+  AF:'Afghanistan',AM:'Armenia',AR:'Argentina',AU:'Australia',AT:'Austria',
+  AZ:'Azerbaijan',BD:'Bangladesh',BE:'Belgium',BR:'Brazil',CA:'Canada',
+  CL:'Chile',CN:'China',CO:'Colombia',HR:'Croatia',CZ:'Czechia',
+  DK:'Denmark',EG:'Egypt',FI:'Finland',FR:'France',DE:'Germany',
+  GH:'Ghana',GR:'Greece',HK:'Hong Kong',HU:'Hungary',IN:'India',
+  ID:'Indonesia',IE:'Ireland',IL:'Israel',IT:'Italy',JP:'Japan',
+  KE:'Kenya',KR:'South Korea',MY:'Malaysia',MX:'Mexico',MA:'Morocco',
+  NL:'Netherlands',NZ:'New Zealand',NG:'Nigeria',NO:'Norway',PK:'Pakistan',
+  PE:'Peru',PH:'Philippines',PL:'Poland',PT:'Portugal',RO:'Romania',
+  RU:'Russia',SA:'Saudi Arabia',SG:'Singapore',ZA:'South Africa',ES:'Spain',
+  SE:'Sweden',CH:'Switzerland',TW:'Taiwan',TH:'Thailand',TR:'Turkey',
+  UA:'Ukraine',AE:'United Arab Emirates',GB:'United Kingdom',US:'United States',
+  VN:'Vietnam',
+}
+
 export function fmtCountry(
   country: { name?: string | null; iso2_code?: string | null } | string | null | undefined
 ): string {
   if (!country) return '—'
-  if (typeof country === 'string') return country || '—'
-  return country.name || country.iso2_code || '—'
+  if (typeof country === 'string') {
+    const iso = country.toUpperCase()
+    return ISO_NAMES[iso] || country || '—'
+  }
+  if (country.name) return country.name
+  if (country.iso2_code) {
+    const iso = country.iso2_code.toUpperCase()
+    return ISO_NAMES[iso] || country.iso2_code
+  }
+  return '—'
 }
