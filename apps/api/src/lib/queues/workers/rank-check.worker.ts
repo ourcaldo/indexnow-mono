@@ -75,18 +75,19 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
 
         if (updateError) throw ErrorHandlingService.createError({ message: `Failed to update keyword position: ${updateError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
 
+        // Upsert: one row per keyword per day. If checked twice in a day, update with latest result.
         const { error: insertError } = await supabaseAdmin
           .from('indb_keyword_rankings')
-          .insert({
+          .upsert({
             keyword_id: keywordId,
             position: result.position,
             url: result.url,
             check_date: new Date().toISOString().split('T')[0],
             device_type: keyword.device,
             metadata: toJson(result)
-          })
+          }, { onConflict: 'keyword_id,check_date', ignoreDuplicates: false })
 
-        if (insertError) throw ErrorHandlingService.createError({ message: `Failed to insert ranking history: ${insertError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
+        if (insertError) throw ErrorHandlingService.createError({ message: `Failed to upsert ranking history: ${insertError.message}`, type: ErrorType.DATABASE, severity: ErrorSeverity.HIGH })
 
         return null
       }

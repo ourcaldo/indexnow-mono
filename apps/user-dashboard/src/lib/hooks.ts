@@ -312,7 +312,7 @@ export function useAddKeywords() {
       country_id: string
       tags?: string[]
     }) =>
-      api<unknown>(RANK_TRACKING_ENDPOINTS.KEYWORDS, {
+      api<{ created: number; keywords: unknown[]; skipped?: string[] }>(RANK_TRACKING_ENDPOINTS.KEYWORDS, {
         method: 'POST',
         body: JSON.stringify(data),
       }),

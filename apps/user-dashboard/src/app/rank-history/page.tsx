@@ -190,20 +190,15 @@ export default function RankHistoryPage() {
 
   // Stats
   const stats = useMemo(() => {
-    const checksWithPosition = historyRows.filter(r => r.position !== null)
     const uniqueKeywords = new Set(historyRows.map(r => r.keyword)).size
     const improved = historyRows.filter(r => r.change !== null && r.change > 0).length
     const declined = historyRows.filter(r => r.change !== null && r.change < 0).length
-    const latestCheck = historyRows
-      .filter(r => r.checkDateRaw)
-      .sort((a, b) => b.checkDateRaw.localeCompare(a.checkDateRaw))[0]?.checkDate || '—'
 
     return {
       totalChecks: historyRows.length,
       uniqueKeywords,
       improved,
       declined,
-      latestCheck,
     }
   }, [historyRows])
 
@@ -211,8 +206,8 @@ export default function RankHistoryPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-7 w-40 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
               <div className="h-7 w-10 bg-gray-200 dark:bg-gray-800 rounded mx-auto mb-1" />
               <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
@@ -241,13 +236,12 @@ export default function RankHistoryPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
           { value: stats.totalChecks, label: 'Total Checks', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
           { value: stats.uniqueKeywords, label: 'Keywords', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-blue-500' },
           { value: stats.improved, label: 'Improved', color: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
           { value: stats.declined, label: 'Declined', color: 'text-red-500 dark:text-red-400', dot: 'bg-red-500' },
-          { value: stats.latestCheck, label: 'Latest Check', color: 'text-gray-900 dark:text-gray-50', dot: 'bg-gray-400' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
             <div className={`text-2xl font-bold ${stat.color} tracking-tight`}>{stat.value}</div>

@@ -191,7 +191,25 @@ export const POST = authenticatedApiWrapper(
       }
 
       const results = [];
+      const skipped: string[] = [];
+
+      // Check for already-existing keywords for this user/domain/country/device combo
+      const { data: existingRows } = await supabaseAdmin
+        .from('indb_rank_keywords')
+        .select('keyword')
+        .eq('user_id', auth.userId)
+        .eq('domain', domainRow.domain_name)
+        .eq('country', countryRow.iso2_code)
+        .eq('device', device_type)
+        .in('keyword', keywords);
+
+      const existingSet = new Set((existingRows ?? []).map((r: { keyword: string }) => r.keyword.toLowerCase()));
+
       for (const kw of keywords) {
+        if (existingSet.has(kw.toLowerCase())) {
+          skipped.push(kw);
+          continue;
+        }
         const created = await rankTrackingService.createKeyword(auth.userId, {
           keyword: kw,
           domain: domainRow.domain_name,
@@ -218,7 +236,7 @@ export const POST = authenticatedApiWrapper(
         }
       }
 
-      return formatSuccess({ created: results.length, keywords: results }, undefined, 201);
+      return formatSuccess({ created: results.length, keywords: results, skipped }, undefined, 201);
     }
 
     // ── Fall back to legacy single-keyword format ──

@@ -47,6 +47,7 @@ export function AddKeywordsModal({
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [skippedKeywords, setSkippedKeywords] = useState<string[]>([])
   const [showAddDomain, setShowAddDomain] = useState(false)
   const [newDomainName, setNewDomainName] = useState('')
   const [domainSearch, setDomainSearch] = useState('')
@@ -75,6 +76,7 @@ export function AddKeywordsModal({
       setTags([])
       setTagInput('')
       setErrors({})
+      setSkippedKeywords([])
       setShowAddDomain(false)
       setNewDomainName('')
       setDomainSearch('')
@@ -167,13 +169,29 @@ export function AddKeywordsModal({
     }
 
     try {
-      await addKeywords.mutateAsync({
+      const result = await addKeywords.mutateAsync({
         domain_id: selectedDomainId,
         keywords: keywordsList,
         device_type: deviceType,
         country_id: selectedCountryId,
         tags,
       })
+
+      const skipped = result?.skipped ?? []
+
+      if (skipped.length > 0 && result.created === 0) {
+        // All keywords were duplicates — stay open and show error
+        setErrors({ submit: `${skipped.length === 1 ? 'This keyword is' : 'These keywords are'} already being tracked: ${skipped.join(', ')}` })
+        return
+      }
+
+      if (skipped.length > 0) {
+        // Some created, some skipped — notify then close
+        setSkippedKeywords(skipped)
+        onSuccess?.()
+        return
+      }
+
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -551,6 +569,18 @@ export function AddKeywordsModal({
                   <span className="text-sm text-red-700 dark:text-red-300">{errors.submit}</span>
                 </div>
               )}
+
+              {/* Partial-skipped success notice */}
+              {skippedKeywords.length > 0 && (
+                <div className="px-3 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-1">
+                    {skippedKeywords.length} keyword{skippedKeywords.length > 1 ? 's' : ''} already tracked — skipped
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {skippedKeywords.join(', ')}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -572,6 +602,16 @@ export function AddKeywordsModal({
                   Continue
                 </button>
               </div>
+            </>
+          ) : skippedKeywords.length > 0 ? (
+            <>
+              <div />
+              <button
+                onClick={onClose}
+                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                Done
+              </button>
             </>
           ) : (
             <>
