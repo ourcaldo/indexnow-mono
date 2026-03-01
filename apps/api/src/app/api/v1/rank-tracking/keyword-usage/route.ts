@@ -37,16 +37,12 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       },
       { table: 'indb_rank_keywords', operationType: 'select' },
       async (db) => {
-        const domain = request.nextUrl.searchParams.get('domain');
+        // keyword-usage is account-wide (quota is per account, not per workspace)
         const [countResult, profileResult] = await Promise.all([
-          (() => {
-            let q = db
-              .from('indb_rank_keywords')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', auth.userId);
-            if (domain) q = q.eq('domain', domain);
-            return q;
-          })()
+          db
+            .from('indb_rank_keywords')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', auth.userId),
 
           db
             .from('indb_auth_user_profiles')

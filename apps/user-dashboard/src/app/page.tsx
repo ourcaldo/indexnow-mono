@@ -35,7 +35,7 @@ export default function Dashboard() {
   const { activeDomain } = useWorkspace()
   const { data: domains, isLoading: domainsLoading } = useDomains()
   const { data: profile } = useProfile()
-  const { data: keywordUsage } = useKeywordUsage(activeDomain)
+  const { data: keywordUsage } = useKeywordUsage()
   const { data: dashboardData, isLoading: dashLoading, error: dashError } = useDashboardAggregate(activeDomain)
   const checkRank = useCheckRank()
 

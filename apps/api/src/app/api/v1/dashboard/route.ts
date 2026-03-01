@@ -69,6 +69,27 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       },
       { table: 'indb_auth_user_profiles', operationType: 'select' },
       async (db) => {
+        // Build domain-scoped queries upfront to avoid IIFE issues inside Promise.all
+        let kwCountQuery = db
+          .from('indb_rank_keywords')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('is_active', true);
+        if (domain) kwCountQuery = kwCountQuery.eq('domain', domain);
+
+        let recentKwQuery = db
+          .from('indb_rank_keywords')
+          .select(
+            `
+                            id, keyword, device, created_at, domain, country, position, last_checked
+                        `
+          )
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (domain) recentKwQuery = recentKwQuery.eq('domain', domain);
+
         return await Promise.all([
           // 1. User Profile with Package
           db
@@ -85,16 +106,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             .eq('user_id', userId)
             .single(),
 
-          // 2. Keyword Count (using indb_rank_keywords)
-          (() => {
-            let q = db
-              .from('indb_rank_keywords')
-              .select('id', { count: 'exact', head: true })
-              .eq('user_id', userId)
-              .eq('is_active', true);
-            if (domain) q = q.eq('domain', domain);
-            return q;
-          })()
+          // 2. Keyword Count (workspace-scoped if domain selected)
+          kwCountQuery,
 
           // 3. Available Packages (for trial/upgrade)
           db
@@ -105,8 +118,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             .order('sort_order', { ascending: true })
             .limit(50),
 
-          // 4. Domains (using indb_keyword_domains if it exists, or distinct domains from rank_keywords?)
-          // indb_keyword_domains exists and has user_id, so use it
+          // 4. Domains
           db
             .from('indb_keyword_domains')
             .select('*')
@@ -125,22 +137,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             .order('created_at', { ascending: false })
             .limit(5),
 
-          // 6. Recent Keywords with Ranking (No joins, use denormalized columns)
-          (() => {
-            let q = db
-              .from('indb_rank_keywords')
-              .select(
-                `
-                            id, keyword, device, created_at, domain, country, position, last_checked
-                        `
-              )
-              .eq('user_id', userId)
-              .eq('is_active', true)
-              .order('created_at', { ascending: false })
-              .limit(20);
-            if (domain) q = q.eq('domain', domain);
-            return q;
-          })()
+          // 6. Recent Keywords (workspace-scoped if domain selected)
+          recentKwQuery,
         ]);
       }
     );

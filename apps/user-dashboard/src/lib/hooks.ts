@@ -154,13 +154,11 @@ export function useProfile() {
   })
 }
 
-/** Fetch keyword usage (used / limit) — optionally scoped to a workspace domain */
-export function useKeywordUsage(domain?: string | null) {
+/** Fetch keyword usage (used / limit) — account-wide, not workspace-scoped */
+export function useKeywordUsage() {
   return useQuery({
-    queryKey: ['keyword-usage', domain ?? 'all'],
-    queryFn: () => api<KeywordUsage>(RANK_TRACKING_ENDPOINTS.KEYWORD_USAGE, {
-      params: domain ? { domain } : undefined,
-    }),
+    queryKey: ['keyword-usage'],
+    queryFn: () => api<KeywordUsage>(RANK_TRACKING_ENDPOINTS.KEYWORD_USAGE),
   })
 }
 
