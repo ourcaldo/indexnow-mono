@@ -7,7 +7,7 @@ import {
   Settings, Globe, Package, CreditCard, LogOut,
   ChevronDown, ChevronRight, PanelLeftClose,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authService } from '@indexnow/supabase-client';
 import { useRouter } from 'next/navigation';
 import { useSiteName } from '@indexnow/database/client';
@@ -38,9 +38,8 @@ function isActive(pathname: string, href: string, exact?: boolean) {
   return pathname === href || pathname.startsWith(href + '/');
 }
 
-const base = 'rounded-md transition-colors';
-const activeCls = `${base} bg-gray-100 dark:bg-white/[0.07] text-gray-900 dark:text-white font-medium`;
-const inactiveCls = `${base} text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/60`;
+const activeCls = 'rounded-md bg-gray-100 dark:bg-white/[0.07] text-gray-900 dark:text-white font-medium transition-colors';
+const inactiveCls = 'rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors';
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -48,15 +47,30 @@ export function AdminSidebar() {
   const siteName = useSiteName();
 
   const [collapsed, setCollapsed] = useState(false);
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const flyoutRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     try {
       if (localStorage.getItem('admin-sidebar-collapsed') === 'true') setCollapsed(true);
     } catch {}
   }, []);
 
+  useEffect(() => {
+    if (!flyoutOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (flyoutRef.current && !flyoutRef.current.contains(e.target as Node)) {
+        setFlyoutOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [flyoutOpen]);
+
   const toggleCollapsed = () => {
     const next = !collapsed;
     setCollapsed(next);
+    setFlyoutOpen(false);
     try { localStorage.setItem('admin-sidebar-collapsed', String(next)); } catch {}
   };
 
@@ -66,14 +80,14 @@ export function AdminSidebar() {
 
   const handleSignOut = async () => { await authService.signOut(); router.push('/login'); };
 
-  const iconLink = (cls: string) => `flex items-center justify-center w-9 h-9 mx-auto ${cls}`;
+  const iconBtn = (extra: string) => `flex items-center justify-center w-9 h-9 mx-auto rounded-md ${extra}`;
   const rowLink = (cls: string) => `flex items-center gap-2.5 px-3 py-2 text-sm ${cls}`;
 
   return (
     <aside
-      className={`${collapsed ? 'w-14' : 'w-56'} flex-shrink-0 bg-white dark:bg-[#0f0f17] border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 transition-all duration-200 ease-in-out overflow-hidden`}
+      className={`${collapsed ? 'w-14' : 'w-56'} flex-shrink-0 bg-white dark:bg-[#0f0f17] border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 transition-all duration-200 ease-in-out overflow-visible z-30`}
     >
-      {/* Logo */}
+      {/* Logo / header */}
       <div className={`h-14 border-b border-gray-200 dark:border-gray-800 flex items-center flex-shrink-0 ${collapsed ? 'justify-center px-2' : 'px-3 gap-2.5'}`}>
         {collapsed ? (
           <button
@@ -109,18 +123,41 @@ export function AdminSidebar() {
       <nav className={`flex-1 overflow-y-auto py-3 space-y-0.5 ${collapsed ? 'px-1.5' : 'px-2'}`}>
         {NAV.map((entry, i) => {
           if (isGroup(entry)) {
+            /* ── Collapsed: icon + flyout popover ── */
             if (collapsed) {
               return (
-                <Link
-                  key={i}
-                  href={entry.defaultHref}
-                  title={entry.label}
-                  className={iconLink(settingsActive ? activeCls : inactiveCls)}
-                >
-                  <entry.icon className="w-4 h-4" />
-                </Link>
+                <div key={i} className="relative" ref={flyoutRef}>
+                  <button
+                    onClick={() => setFlyoutOpen((v) => !v)}
+                    title={entry.label}
+                    className={iconBtn(settingsActive ? activeCls : inactiveCls)}
+                  >
+                    <entry.icon className="w-4 h-4" />
+                  </button>
+
+                  {flyoutOpen && (
+                    <div className="absolute left-full top-0 ml-1.5 z-50 bg-white dark:bg-[#1a1a28] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1.5 min-w-[140px]">
+                      <div className="px-3 py-1 mb-1 border-b border-gray-100 dark:border-gray-700/60">
+                        <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Settings</span>
+                      </div>
+                      {entry.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={() => setFlyoutOpen(false)}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm ${isActive(pathname, child.href) ? 'text-gray-900 dark:text-white font-medium bg-gray-50 dark:bg-white/[0.05]' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/[0.04]'} transition-colors`}
+                        >
+                          <child.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             }
+
+            /* ── Expanded: accordion ── */
             return (
               <div key={i}>
                 <button
@@ -163,7 +200,7 @@ export function AdminSidebar() {
               key={entry.href}
               href={entry.href}
               title={collapsed ? entry.label : undefined}
-              className={collapsed ? iconLink(active ? activeCls : inactiveCls) : rowLink(active ? activeCls : inactiveCls)}
+              className={collapsed ? iconBtn(active ? activeCls : inactiveCls) : rowLink(active ? activeCls : inactiveCls)}
             >
               <entry.icon className="w-4 h-4 flex-shrink-0" />
               {!collapsed && entry.label}
@@ -178,7 +215,7 @@ export function AdminSidebar() {
           onClick={handleSignOut}
           title="Sign out"
           className={collapsed
-            ? iconLink('text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-colors')
+            ? iconBtn('text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors')
             : 'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors'
           }
         >
