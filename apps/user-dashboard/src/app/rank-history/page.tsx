@@ -647,6 +647,45 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
 
   if (keywords.length === 0) return null
 
+  // ── Custom tooltip ──────────────────────────────────────────────────────────
+  type TooltipPayloadItem = { name: string; value: number; color: string }
+  function ChartTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) {
+    if (!active || !payload?.length) return null
+    const rawDate: string = (payload[0] as unknown as { payload: { date: string } }).payload.date
+    // Format date header: "2026-02-25" → "February 25, 2026"; "2026-02" → "Feb 2026"
+    let dateLabel = rawDate
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      dateLabel = new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    } else if (/^\d{4}-\d{2}$/.test(rawDate)) {
+      const [y, m] = rawDate.split('-')
+      dateLabel = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    }
+    const total = payload.reduce((s, p) => s + (p.value || 0), 0)
+    return (
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-3 px-4 min-w-[180px]">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{dateLabel}</p>
+        <div className="space-y-1.5">
+          {payload.map(p => {
+            const bucket = BUCKETS.find(b => b.key === p.name)
+            return (
+              <div key={p.name} className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
+                  <span className="text-xs text-gray-600 dark:text-gray-300">{bucket?.label ?? p.name}</span>
+                </div>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white tabular-nums">{p.value}</span>
+              </div>
+            )
+          })}
+        </div>
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total</span>
+          <span className="text-xs font-bold text-gray-900 dark:text-white tabular-nums">{total}</span>
+        </div>
+      </div>
+    )
+  }
+
   // Topmost active bucket needs [3,3,0,0] radius
   const activeBucketList = BUCKETS.filter(b => activeBuckets.includes(b.key))
   const lastActiveBucketKey = activeBucketList[activeBucketList.length - 1]?.key
@@ -700,21 +739,8 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
             allowDecimals={false}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: '#1f2937',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '12px',
-              color: '#f9fafb',
-              padding: '8px 12px',
-            }}
-            itemStyle={{ color: '#f9fafb', padding: '1px 0' }}
+            content={(props) => <ChartTooltip active={props.active} payload={props.payload as TooltipPayloadItem[] | undefined} />}
             cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-            formatter={(value: number, name: string) => {
-              const bucket = BUCKETS.find(b => b.key === name)
-              return [value, bucket?.label ?? name]
-            }}
-            labelFormatter={(label) => label as string}
           />
           {BUCKETS.filter(b => activeBuckets.includes(b.key)).map(b => (
             <Bar
