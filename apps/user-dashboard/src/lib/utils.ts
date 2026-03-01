@@ -32,10 +32,9 @@ export function fmtDateTime(iso: string | Date | null | undefined): string {
 
 /**
  * Normalize a device_type value to a display label.
- * 'mobile' → 'Mobile', anything else → 'Desktop', null/undefined → '—'
+ * 'mobile' → 'Mobile', anything else (including null/undefined) → 'Desktop'
  */
 export function fmtDevice(device: string | null | undefined): string {
-  if (!device) return '—'
   if (device === 'mobile') return 'Mobile'
   return 'Desktop'
 }
