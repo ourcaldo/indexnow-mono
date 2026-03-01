@@ -10,7 +10,8 @@ import {
   Loader2,
   X,
 } from 'lucide-react'
-import { formatCurrency, formatDate } from '@indexnow/shared'
+import { formatCurrency } from '@indexnow/shared'
+import { fmtDate } from '../../../lib/utils'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import { useToast, useApiError } from '@indexnow/ui'
 import {
@@ -296,7 +297,7 @@ export default function BillingPage() {
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {formatCurrency(sub.amount_paid)}/{sub.billing_period}
-                {sub.expires_at && <> &middot; Renews {formatDate(sub.expires_at)}</>}
+                {sub.expires_at && <> &middot; Renews {fmtDate(sub.expires_at)}</>}
                 {stats?.days_remaining != null && <> &middot; {stats.days_remaining} days left</>}
               </p>
             </div>
@@ -474,7 +475,7 @@ export default function BillingPage() {
                       {tx.package?.name || tx.package_name || 'Payment'}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
-                      {tx.transaction_type.replace('_', ' ')} &middot; {formatDate(tx.created_at)}
+                      {tx.transaction_type.replace('_', ' ')} &middot; {fmtDate(tx.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0">

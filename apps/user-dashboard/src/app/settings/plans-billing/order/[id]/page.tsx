@@ -303,7 +303,7 @@ export default function OrderCompletedPage() {
                     <p className="text-muted-foreground text-sm">
                       {new Date(transaction.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                       })}
                     </p>

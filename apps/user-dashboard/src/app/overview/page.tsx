@@ -19,6 +19,7 @@ import {
 } from '../../lib/hooks'
 import { useWorkspace } from '../../components/providers/WorkspaceProvider'
 import { AddKeywordsModal } from '../../components/modals/AddKeywordsModal'
+import { fmtDate } from '../../lib/utils'
 
 const ITEMS_PER_PAGE = 20
 
@@ -289,7 +290,7 @@ export default function OverviewPage() {
                     const pos = getPos(kw)
                     const ranking = Array.isArray(kw.recent_ranking) ? kw.recent_ranking[0] : kw.recent_ranking
                     const checkDate = ranking?.check_date
-                      ? new Date(ranking.check_date).toLocaleDateString()
+                      ? fmtDate(ranking.check_date)
                       : null
 
                     return (
