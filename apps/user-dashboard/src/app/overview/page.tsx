@@ -272,7 +272,7 @@ export default function OverviewPage() {
                       { field: 'keyword' as SortField, label: 'Last Checked', align: 'center', noSort: true },
                     ] as Array<{ field: SortField; label: string; align: string; noSort?: boolean }>).map(col => (
                       <th
-                        key={col.field}
+                        key={col.label}
                         className={`px-4 py-3 text-${col.align} text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ${col.noSort ? '' : 'cursor-pointer hover:text-gray-900 dark:hover:text-gray-200'} transition-colors`}
                         onClick={() => !col.noSort && handleSort(col.field)}
                       >
