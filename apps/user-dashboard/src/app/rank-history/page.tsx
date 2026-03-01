@@ -11,6 +11,14 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import { useRankHistory, type RankHistoryKeyword } from '../../lib/hooks'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
@@ -466,6 +474,101 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
   )
 }
 
+// ── Rank trend chart ──────────────────────────────────────────────────────────
+
+const BUCKETS = [
+  { key: 'top3',    label: 'Top 3',   color: '#10b981' },
+  { key: 'top410',  label: '4-10',    color: '#3b82f6' },
+  { key: 'top1120', label: '11-20',   color: '#f59e0b' },
+  { key: 'top2150', label: '21-50',   color: '#f97316' },
+  { key: 'top51',   label: '51-100',  color: '#f43f5e' },
+] as const
+
+function buildChartData(keywords: RankHistoryKeyword[], dateColumns: string[]) {
+  return [...dateColumns].reverse().map(date => {
+    let top3 = 0, top410 = 0, top1120 = 0, top2150 = 0, top51 = 0
+    for (const kw of keywords) {
+      const pos = kw.history[date]
+      if (pos === undefined) continue
+      if (pos <= 3) top3++
+      else if (pos <= 10) top410++
+      else if (pos <= 20) top1120++
+      else if (pos <= 50) top2150++
+      else if (pos <= 100) top51++
+    }
+    return { date, label: formatDateShort(date), top3, top410, top1120, top2150, top51 }
+  })
+}
+
+interface RankTrendChartProps {
+  keywords: RankHistoryKeyword[]
+  dateColumns: string[]
+}
+
+function RankTrendChart({ keywords, dateColumns }: RankTrendChartProps) {
+  const data = useMemo(() => buildChartData(keywords, dateColumns), [keywords, dateColumns])
+  if (data.length === 0 || keywords.length === 0) return null
+
+  return (
+    <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Keyword Rankings Trend</h2>
+        <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5">
+          {BUCKETS.map(b => (
+            <span key={b.key} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: b.color }} />
+              {b.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barCategoryGap="25%">
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            axisLine={false}
+            tickLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            axisLine={false}
+            tickLine={false}
+            allowDecimals={false}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#1f2937',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '12px',
+              color: '#f9fafb',
+              padding: '8px 12px',
+            }}
+            itemStyle={{ color: '#f9fafb', padding: '1px 0' }}
+            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+            formatter={(value: number, name: string) => {
+              const bucket = BUCKETS.find(b => b.key === name)
+              return [value, bucket?.label ?? name]
+            }}
+            labelFormatter={(label) => label as string}
+          />
+          {BUCKETS.map((b, i) => (
+            <Bar
+              key={b.key}
+              dataKey={b.key}
+              stackId="a"
+              fill={b.color}
+              radius={i === BUCKETS.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 const ITEMS_PER_PAGE = 50
@@ -538,6 +641,10 @@ export default function RankHistoryPage() {
               <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
             </div>
           ))}
+        </div>
+        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+          <div className="h-4 w-40 bg-gray-200 dark:bg-gray-800 rounded mb-4" />
+          <div className="h-[200px] bg-gray-100 dark:bg-gray-800/60 rounded" />
         </div>
         <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -622,6 +729,9 @@ export default function RankHistoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Trend Chart */}
+      <RankTrendChart keywords={keywords} dateColumns={dateColumns} />
 
       {/* Filters */}
       <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
