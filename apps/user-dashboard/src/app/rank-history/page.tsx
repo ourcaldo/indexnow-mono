@@ -503,23 +503,58 @@ function buildChartData(keywords: RankHistoryKeyword[], dateColumns: string[]) {
 interface RankTrendChartProps {
   keywords: RankHistoryKeyword[]
   dateColumns: string[]
+  startDate: string
+  endDate: string
+  onDateChange: (start: string, end: string) => void
 }
 
-function RankTrendChart({ keywords, dateColumns }: RankTrendChartProps) {
+const CHART_FILTERS = [
+  { label: '1M',       days: 30  },
+  { label: '6M',       days: 180 },
+  { label: '1Y',       days: 365 },
+  { label: '2Y',       days: 730 },
+  { label: 'All time', days: 840 },
+] as const
+
+function RankTrendChart({ keywords, dateColumns, startDate, endDate, onDateChange }: RankTrendChartProps) {
   const data = useMemo(() => buildChartData(keywords, dateColumns), [keywords, dateColumns])
   if (data.length === 0 || keywords.length === 0) return null
+
+  const today = isoToday()
+  const activeFilter = CHART_FILTERS.find(f => {
+    const expected = subtractDays(endDate, f.days)
+    return expected === startDate && endDate === today
+  })
 
   return (
     <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Keyword Rankings Trend</h2>
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mr-2">Keyword Rankings Trend</h2>
           {BUCKETS.map(b => (
             <span key={b.key} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
               <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: b.color }} />
               {b.label}
             </span>
           ))}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {CHART_FILTERS.map(f => {
+            const active = activeFilter?.label === f.label
+            return (
+              <button
+                key={f.label}
+                onClick={() => onDateChange(subtractDays(today, f.days), today)}
+                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                  active
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            )
+          })}
         </div>
       </div>
       <ResponsiveContainer width="100%" height={200}>
@@ -731,7 +766,7 @@ export default function RankHistoryPage() {
       </div>
 
       {/* Trend Chart */}
-      <RankTrendChart keywords={keywords} dateColumns={dateColumns} />
+      <RankTrendChart keywords={keywords} dateColumns={dateColumns} startDate={startDate} endDate={endDate} onDateChange={handleDateChange} />
 
       {/* Filters */}
       <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
