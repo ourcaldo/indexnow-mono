@@ -5,6 +5,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Globe,
   Monitor,
   Smartphone,
   TrendingUp,
@@ -20,7 +21,7 @@ import {
 } from 'recharts'
 import { useRankHistory, type RankHistoryKeyword } from '../../lib/hooks'
 import { useWorkspace } from '../../components/providers/WorkspaceProvider'
-import { fmtDate, fmtDevice } from '../../lib/utils'
+import { fmtDate, fmtDevice, fmtCountry } from '../../lib/utils'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -138,19 +139,6 @@ function getColPos(history: Record<string, number>, col: TableColumn): number | 
     if (history[d] !== undefined) return history[d]
   }
   return undefined
-}
-
-// ── Country flags ──────────────────────────────────────────────────────────────
-
-const FLAG_MAP: Record<string, string> = {
-  US: '🇺🇸', GB: '🇬🇧', DE: '🇩🇪', AU: '🇦🇺', ID: '🇮🇩', FR: '🇫🇷',
-  SG: '🇸🇬', JP: '🇯🇵', IN: '🇮🇳', CA: '🇨🇦', BR: '🇧🇷', MX: '🇲🇽',
-  KR: '🇰🇷', NL: '🇳🇱', IT: '🇮🇹', ES: '🇪🇸', PL: '🇵🇱', SE: '🇸🇪',
-  MY: '🇲🇾', TH: '🇹🇭', PH: '🇵🇭', VN: '🇻🇳',
-}
-
-function countryFlag(iso2: string): string {
-  return FLAG_MAP[(iso2 || '').toUpperCase()] || '🌐'
 }
 
 // ── Position badge ─────────────────────────────────────────────────────────────
@@ -530,8 +518,8 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
       {/* Country */}
       <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center whitespace-nowrap bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 90 }}>
         <span className="inline-flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <span className="text-sm leading-none">{countryFlag(kw.country)}</span>
-          {kw.country || '–'}
+          <Globe className="h-3 w-3 text-gray-400 flex-shrink-0" />
+          {fmtCountry(kw.country_name || kw.country)}
         </span>
       </td>
 
