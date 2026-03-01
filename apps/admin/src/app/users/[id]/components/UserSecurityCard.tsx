@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { Shield, MapPin, Clock, AlertTriangle, CheckCircle, XCircle, Activity, Wifi } from 'lucide-react';
+import { Shield, MapPin, Clock, CheckCircle, XCircle, Activity, Wifi } from 'lucide-react';
 import { formatDate } from '@indexnow/shared';
 import type { SecurityData } from './index';
 
@@ -88,76 +88,70 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
         </div>
       </div>
 
-      {/* Two-column: IPs + activity meta */}
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* Activity meta — single column, label above value */}
+      <div className="space-y-4 py-2">
 
-        {/* Known IPs */}
-        <div>
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
-            <Wifi className="w-3.5 h-3.5" />
-            Known IP addresses
-          </p>
-          {ipAddresses.length > 0 ? (
-            <div className="space-y-1.5">
-              {ipAddresses.slice(0, 4).map((ip, i) => (
-                <div key={`${ip.ip}-${i}`} className="flex items-center justify-between text-sm">
-                  <span className="font-mono text-gray-900 dark:text-white text-xs">{ip.ip}</span>
-                  <span className="text-xs text-gray-400 tabular-nums">{ip.usageCount}x</span>
-                </div>
-              ))}
-              {ipAddresses.length > 4 && (
-                <p className="text-xs text-gray-400">+{ipAddresses.length - 4} more</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">No IPs recorded</p>
-          )}
+        <div className="flex items-center gap-1.5 mb-1">
+          <Activity className="w-3.5 h-3.5 text-gray-400" />
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Activity</p>
         </div>
-
-        {/* Locations + activity meta */}
-        <div className="space-y-4">
-          {locations.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                Locations
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {locations.slice(0, 4).map((loc) => (
-                  <span key={loc} className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                    {loc}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <div className="grid grid-cols-3 gap-4">
           <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5" />
-              Activity
+            <p className="text-xs text-gray-400 mb-0.5">Total</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{activity.totalActivities}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Last active</p>
+            <p className="text-sm text-gray-900 dark:text-white">
+              {activity.lastActivity ? new Date(activity.lastActivity).toLocaleDateString() : 'Never'}
             </p>
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Total events</span>
-                <span className="text-gray-900 dark:text-white tabular-nums">{activity.totalActivities}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Last active</span>
-                <span className="text-gray-900 dark:text-white">
-                  {activity.lastActivity ? formatDate(activity.lastActivity, true) : 'Never'}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">First seen</span>
-                <span className="text-gray-900 dark:text-white">
-                  {activity.firstSeen ? formatDate(activity.firstSeen, true) : 'N/A'}
-                </span>
-              </div>
-            </div>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">First seen</p>
+            <p className="text-sm text-gray-900 dark:text-white">
+              {activity.firstSeen ? new Date(activity.firstSeen).toLocaleDateString() : 'N/A'}
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Known IPs */}
+      {ipAddresses.length > 0 && (
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Wifi className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Known IP addresses</p>
+          </div>
+          <div className="space-y-1.5">
+            {ipAddresses.slice(0, 5).map((ip, i) => (
+              <div key={`${ip.ip}-${i}`} className="flex items-center gap-2">
+                <span className="font-mono text-xs text-gray-900 dark:text-white flex-1 truncate">{ip.ip}</span>
+                <span className="text-xs text-gray-400 tabular-nums flex-shrink-0">{ip.usageCount}×</span>
+              </div>
+            ))}
+            {ipAddresses.length > 5 && (
+              <p className="text-xs text-gray-400">+{ipAddresses.length - 5} more</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Locations */}
+      {locations.length > 0 && (
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <MapPin className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Locations</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {locations.slice(0, 5).map((loc) => (
+              <span key={loc} className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                {loc}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent login attempts */}
       {recentLogins.length > 0 && (
