@@ -21,9 +21,11 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
   try {
+    const domain = request.nextUrl.searchParams.get('domain');
+
     const { data, error } = await (supabaseAdmin.rpc as Function)(
       'get_user_weekly_trends',
-      { p_user_id: auth.userId }
+      { p_user_id: auth.userId, p_domain: domain || null }
     );
 
     if (error) throw error;

@@ -55,8 +55,7 @@ interface UserProfileWithPackage {
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
   try {
     const userId = auth.userId;
-
-    // Execute queries in parallel
+    const domain = request.nextUrl.searchParams.get('domain');
     const dashboardData = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
       {
@@ -87,11 +86,15 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             .single(),
 
           // 2. Keyword Count (using indb_rank_keywords)
-          db
-            .from('indb_rank_keywords')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .eq('is_active', true),
+          (() => {
+            let q = db
+              .from('indb_rank_keywords')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', userId)
+              .eq('is_active', true);
+            if (domain) q = q.eq('domain', domain);
+            return q;
+          })()
 
           // 3. Available Packages (for trial/upgrade)
           db
@@ -123,17 +126,21 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
             .limit(5),
 
           // 6. Recent Keywords with Ranking (No joins, use denormalized columns)
-          db
-            .from('indb_rank_keywords')
-            .select(
-              `
+          (() => {
+            let q = db
+              .from('indb_rank_keywords')
+              .select(
+                `
                             id, keyword, device, created_at, domain, country, position, last_checked
                         `
-            )
-            .eq('user_id', userId)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(20),
+              )
+              .eq('user_id', userId)
+              .eq('is_active', true)
+              .order('created_at', { ascending: false })
+              .limit(20);
+            if (domain) q = q.eq('domain', domain);
+            return q;
+          })()
         ]);
       }
     );

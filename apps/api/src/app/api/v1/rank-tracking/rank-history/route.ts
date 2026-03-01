@@ -97,6 +97,12 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       kwQuery = kwQuery.in('id', filterIds);
     }
 
+    // Domain filter
+    const domain = sp.get('domain');
+    if (domain) {
+      kwQuery = kwQuery.eq('domain', domain);
+    }
+
     const { data: keywords, error: kwError, count: totalCount } = await kwQuery;
 
     if (kwError) throw new Error(`Failed to fetch keywords: ${kwError.message}`);

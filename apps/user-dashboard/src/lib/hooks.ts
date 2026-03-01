@@ -62,6 +62,7 @@ export interface UserProfile {
   email?: string
   phone_number?: string | null
   country?: string | null
+  active_domain?: string | null
   package?: {
     id: string
     name: string
@@ -153,11 +154,24 @@ export function useProfile() {
   })
 }
 
-/** Fetch keyword usage (used / limit) */
-export function useKeywordUsage() {
+/** Fetch keyword usage (used / limit) — optionally scoped to a workspace domain */
+export function useKeywordUsage(domain?: string | null) {
   return useQuery({
-    queryKey: ['keyword-usage'],
-    queryFn: () => api<KeywordUsage>(RANK_TRACKING_ENDPOINTS.KEYWORD_USAGE),
+    queryKey: ['keyword-usage', domain ?? 'all'],
+    queryFn: () => api<KeywordUsage>(RANK_TRACKING_ENDPOINTS.KEYWORD_USAGE, {
+      params: domain ? { domain } : undefined,
+    }),
+  })
+}
+
+/** Persist the user's active workspace domain to their profile */
+export function useUpdateActiveDomain() {
+  return useMutation({
+    mutationFn: (activeDomain: string | null) =>
+      api<void>(AUTH_ENDPOINTS.PROFILE, {
+        method: 'PUT',
+        body: JSON.stringify({ active_domain: activeDomain }),
+      }),
   })
 }
 
@@ -173,19 +187,23 @@ export function useKeywords(params?: { domain?: string; page?: number; limit?: n
   })
 }
 
-/** Fetch weekly trends */
-export function useWeeklyTrends() {
+/** Fetch weekly trends — optionally scoped to a workspace domain */
+export function useWeeklyTrends(domain?: string | null) {
   return useQuery({
-    queryKey: ['weekly-trends'],
-    queryFn: () => api<WeeklyTrend[]>(RANK_TRACKING_ENDPOINTS.WEEKLY_TRENDS),
+    queryKey: ['weekly-trends', domain ?? 'all'],
+    queryFn: () => api<WeeklyTrend[]>(RANK_TRACKING_ENDPOINTS.WEEKLY_TRENDS, {
+      params: domain ? { domain } : undefined,
+    }),
   })
 }
 
-/** Fetch dashboard aggregate data */
-export function useDashboardAggregate() {
+/** Fetch dashboard aggregate data — optionally scoped to a workspace domain */
+export function useDashboardAggregate(domain?: string | null) {
   return useQuery({
-    queryKey: ['dashboard-aggregate'],
-    queryFn: () => api<DashboardAggregateResponse>(DASHBOARD_ENDPOINTS.MAIN),
+    queryKey: ['dashboard-aggregate', domain ?? 'all'],
+    queryFn: () => api<DashboardAggregateResponse>(DASHBOARD_ENDPOINTS.MAIN, {
+      params: domain ? { domain } : undefined,
+    }),
   })
 }
 
@@ -407,13 +425,13 @@ export interface RankHistoryResponse {
  * Fetch rank history for the authenticated user's keywords over a date range.
  * startDate / endDate should be ISO date strings: "YYYY-MM-DD"
  */
-export function useRankHistory(startDate: string, endDate: string) {
+export function useRankHistory(startDate: string, endDate: string, domain?: string | null) {
   return useQuery({
-    queryKey: ['rank-history', startDate, endDate],
+    queryKey: ['rank-history', startDate, endDate, domain ?? 'all'],
     queryFn: () =>
       api<RankHistoryResponse>(
         RANK_TRACKING_ENDPOINTS.RANK_HISTORY,
-        { params: { start_date: startDate, end_date: endDate, limit: '200' } }
+        { params: { start_date: startDate, end_date: endDate, limit: '200', ...(domain ? { domain } : {}) } }
       ),
     staleTime: 2 * 60 * 1000, // 2 minutes
   })

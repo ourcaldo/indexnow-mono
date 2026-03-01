@@ -25,21 +25,22 @@ import {
   useCheckRank,
   type Keyword,
 } from '../lib/hooks'
+import { useWorkspace } from '../components/providers/WorkspaceProvider'
 import { AddDomainModal } from '../components/modals/AddDomainModal'
 import { AddKeywordsModal } from '../components/modals/AddKeywordsModal'
 
 export default function Dashboard() {
   const router = useRouter()
   const { user } = useAuth()
+  const { activeDomain } = useWorkspace()
   const { data: domains, isLoading: domainsLoading } = useDomains()
   const { data: profile } = useProfile()
-  const { data: keywordUsage } = useKeywordUsage()
-  const { data: dashboardData, isLoading: dashLoading, error: dashError } = useDashboardAggregate()
+  const { data: keywordUsage } = useKeywordUsage(activeDomain)
+  const { data: dashboardData, isLoading: dashLoading, error: dashError } = useDashboardAggregate(activeDomain)
   const checkRank = useCheckRank()
 
   const [addDomainOpen, setAddDomainOpen] = useState(false)
   const [addKeywordsOpen, setAddKeywordsOpen] = useState(false)
-  const [selectedDomain, setSelectedDomain] = useState<string>('all')
 
   const isLoading = domainsLoading || dashLoading
 
@@ -48,11 +49,8 @@ export default function Dashboard() {
     return dashboardData?.rankTracking?.recentKeywords ?? []
   }, [dashboardData])
 
-  // Filter by selected domain
-  const keywords = useMemo(() => {
-    if (selectedDomain === 'all') return allKeywords
-    return allKeywords.filter(k => k.domain?.id === selectedDomain)
-  }, [allKeywords, selectedDomain])
+  // Use all keywords (domain filtering handled server-side via activeDomain)
+  const keywords = allKeywords
 
   // Compute stats
   const stats = useMemo(() => {
@@ -192,19 +190,6 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {/* Domain filter */}
-          {domains && domains.length > 1 && (
-            <select
-              value={selectedDomain}
-              onChange={e => setSelectedDomain(e.target.value)}
-              className="px-3 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="all">All Domains</option>
-              {domains.map(d => (
-                <option key={d.id} value={d.id}>{d.display_name || d.domain_name}</option>
-              ))}
-            </select>
-          )}
         </div>
       </div>
 

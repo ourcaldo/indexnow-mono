@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard,
@@ -10,11 +10,15 @@ import {
   LogOut,
   ChevronsLeft,
   ChevronsRight,
+  ChevronsUpDown,
+  Check,
   BarChart3,
   ArrowUpRight,
+  Globe,
 } from 'lucide-react'
 import { authService } from '@indexnow/supabase-client'
 import { useProfile } from '../../lib/hooks'
+import { useWorkspace } from '../providers/WorkspaceProvider'
 
 interface NavItem {
   label: string
@@ -39,7 +43,181 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-// Package tier order — used to determine if an upgrade is available
+// ── WorkspaceSwitcher ────────────────────────────────────────────────────────
+
+interface WorkspaceSwitcherProps {
+  isCollapsed: boolean
+  showTooltip: (label: string, el: HTMLElement) => void
+  hideTooltip: () => void
+}
+
+interface DropdownPos { top: number; left: number; width: number }
+
+function WorkspaceDropdown({
+  activeDomain,
+  pos,
+  onSelect,
+  onClose,
+}: {
+  activeDomain: string | null
+  pos: DropdownPos
+  onSelect: (name: string | null) => void
+  onClose: () => void
+}) {
+  const { domains } = useWorkspace()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 220), zIndex: 9999 }}
+      className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg overflow-hidden"
+    >
+      <div className="px-2 py-2">
+        <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500 px-2 mb-1.5">Switch workspace</p>
+
+        {/* All workspaces */}
+        <button
+          onClick={() => onSelect(null)}
+          className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
+            activeDomain === null
+              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+          }`}
+        >
+          <div className="w-5 h-5 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 shrink-0">
+            <Globe className="w-3 h-3" />
+          </div>
+          <span className="flex-1 text-left truncate">All workspaces</span>
+          {activeDomain === null && <Check className="w-3.5 h-3.5 shrink-0" />}
+        </button>
+
+        {domains.length > 0 && (
+          <div className="my-1.5 border-t border-gray-100 dark:border-gray-800" />
+        )}
+
+        {domains.map(d => (
+          <button
+            key={d.id}
+            onClick={() => onSelect(d.domain_name)}
+            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
+              activeDomain === d.domain_name
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+            }`}
+          >
+            <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">
+              {d.domain_name[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="truncate font-medium leading-tight">
+                {d.display_name || d.domain_name}
+              </p>
+              {d.display_name && (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate leading-tight">
+                  {d.domain_name}
+                </p>
+              )}
+            </div>
+            {activeDomain === d.domain_name && <Check className="w-3.5 h-3.5 shrink-0" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function WorkspaceSwitcher({ isCollapsed, showTooltip, hideTooltip }: WorkspaceSwitcherProps) {
+  const { activeDomain, activeDomainInfo, setActiveDomain } = useWorkspace()
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [dropdownPos, setDropdownPos] = useState<DropdownPos | null>(null)
+
+  const displayName =
+    activeDomainInfo?.display_name || activeDomainInfo?.domain_name || activeDomain || 'All workspaces'
+  const initial = activeDomainInfo
+    ? activeDomainInfo.domain_name[0].toUpperCase()
+    : null
+
+  function openDropdown() {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+    setOpen(true)
+  }
+
+  function selectDomain(name: string | null) {
+    setActiveDomain(name)
+    setOpen(false)
+  }
+
+  if (isCollapsed) {
+    return (
+      <div
+        className="flex justify-center py-2.5 border-b border-gray-100 dark:border-gray-800/80 shrink-0"
+        onMouseEnter={(e) => showTooltip(displayName, e.currentTarget)}
+        onMouseLeave={hideTooltip}
+      >
+        <button
+          ref={triggerRef}
+          onClick={openDropdown}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-colors bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+          title={displayName}
+        >
+          {initial ?? <Globe className="w-3.5 h-3.5" />}
+        </button>
+        {open && dropdownPos && createPortal(
+          <WorkspaceDropdown
+            activeDomain={activeDomain}
+            pos={{ top: dropdownPos.top, left: dropdownPos.left + 44, width: 220 }}
+            onSelect={selectDomain}
+            onClose={() => setOpen(false)}
+          />,
+          document.body
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-b border-gray-100 dark:border-gray-800/80 shrink-0 px-3 py-2.5">
+      <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 px-1.5 mb-1.5 tracking-wide">
+        WORKSPACE
+      </p>
+      <button
+        ref={triggerRef}
+        onClick={openDropdown}
+        className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors group"
+      >
+        {/* Domain initial badge */}
+        <div className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+          {initial ?? <Globe className="w-3.5 h-3.5" />}
+        </div>
+        <span className="text-[13px] font-medium text-gray-800 dark:text-gray-200 truncate flex-1 text-left">
+          {displayName}
+        </span>
+        <ChevronsUpDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 shrink-0" />
+      </button>
+      {open && dropdownPos && createPortal(
+        <WorkspaceDropdown
+          activeDomain={activeDomain}
+          pos={dropdownPos}
+          onSelect={selectDomain}
+          onClose={() => setOpen(false)}
+        />,
+        document.body
+      )}
+    </div>
+  )
+}
 const PACKAGE_TIERS: Record<string, { order: number; next: string | null }> = {
   free:       { order: 0, next: 'Starter' },
   starter:    { order: 1, next: 'Pro' },
@@ -157,7 +335,13 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
           </div>
         )}
 
-        {/* Navigation */}
+        {/* Workspace Switcher */}
+        <WorkspaceSwitcher
+          isCollapsed={isCollapsed}
+          showTooltip={showTooltip}
+          hideTooltip={hideTooltip}
+        />
+
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2.5">
           {NAV_GROUPS.map((group) => (
             <div key={group.title} className="mb-5">

@@ -120,6 +120,9 @@ CREATE TABLE IF NOT EXISTS indb_auth_user_profiles (
   suspended_at TIMESTAMPTZ,
   must_change_password BOOLEAN DEFAULT FALSE,
   
+  -- Workspace
+  active_domain VARCHAR(255),
+
   -- Login Metadata
   last_login_at TIMESTAMPTZ,
   last_login_ip VARCHAR(50),
@@ -454,6 +457,7 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_user ON indb_rank_keywords(user_id);
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_active ON indb_rank_keywords(user_id, is_active) WHERE is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_needs_enrichment ON indb_rank_keywords(keyword_bank_id) WHERE keyword_bank_id IS NULL AND is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_domain ON indb_rank_keywords(user_id, domain);
 
 -- Keyword rankings (historical rank position snapshots per check)
 -- Each rank check creates a new record for historical tracking
@@ -1999,7 +2003,7 @@ GRANT EXECUTE ON FUNCTION get_user_billing_history(UUID, INTEGER, INTEGER, TEXT)
 -- 13. User weekly trends: DB-side delta via LATERAL join — no app-layer iteration.
 -- Replaces 2 queries + 5k-row JS loop with one call.
 -- Returns JSONB array of trend rows sorted by current_position ASC NULLS LAST.
-CREATE OR REPLACE FUNCTION get_user_weekly_trends(p_user_id UUID)
+CREATE OR REPLACE FUNCTION get_user_weekly_trends(p_user_id UUID, p_domain TEXT DEFAULT NULL)
 RETURNS JSONB AS $$
 BEGIN
   RETURN (
@@ -2029,6 +2033,7 @@ BEGIN
     FROM (
       SELECT * FROM indb_rank_keywords
       WHERE user_id = p_user_id AND is_active = TRUE
+        AND (p_domain IS NULL OR domain = p_domain)
       LIMIT 500
     ) k
     LEFT JOIN LATERAL (
@@ -2061,3 +2066,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION get_user_weekly_trends(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION get_user_weekly_trends(UUID, TEXT) TO service_role;

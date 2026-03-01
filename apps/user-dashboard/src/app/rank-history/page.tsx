@@ -19,6 +19,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { useRankHistory, type RankHistoryKeyword } from '../../lib/hooks'
+import { useWorkspace } from '../../components/providers/WorkspaceProvider'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -740,7 +741,8 @@ export default function RankHistoryPage() {
   const [endDate, setEndDate] = useState(today)
   const [page, setPage] = useState(1)
 
-  const { data, isLoading } = useRankHistory(startDate, endDate)
+  const { activeDomain } = useWorkspace()
+  const { data, isLoading } = useRankHistory(startDate, endDate, activeDomain)
 
   // Raw daily columns for chart
   const dateColumns = useMemo(

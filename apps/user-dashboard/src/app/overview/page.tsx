@@ -13,11 +13,11 @@ import {
   Trash2,
 } from 'lucide-react'
 import {
-  useDomains,
   useKeywords,
   useDeleteKeywords,
   type Keyword,
 } from '../../lib/hooks'
+import { useWorkspace } from '../../components/providers/WorkspaceProvider'
 import { AddKeywordsModal } from '../../components/modals/AddKeywordsModal'
 
 const ITEMS_PER_PAGE = 20
@@ -26,9 +26,8 @@ type SortField = 'keyword' | 'position' | 'domain' | 'country' | 'device'
 type SortDirection = 'asc' | 'desc'
 
 export default function OverviewPage() {
-  const { data: domains } = useDomains()
+  const { activeDomain } = useWorkspace()
 
-  const [selectedDomainId, setSelectedDomainId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [sortField, setSortField] = useState<SortField>('position')
@@ -38,7 +37,7 @@ export default function OverviewPage() {
   const [addKeywordsOpen, setAddKeywordsOpen] = useState(false)
 
   const { data: keywordsData, isLoading } = useKeywords({
-    domain: selectedDomainId || undefined,
+    domain: activeDomain || undefined,
     page: currentPage,
     limit: ITEMS_PER_PAGE,
     search: searchQuery || undefined,
@@ -214,18 +213,6 @@ export default function OverviewPage() {
               className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
             />
           </div>
-
-          {/* Domain Filter */}
-          <select
-            value={selectedDomainId}
-            onChange={(e) => { setSelectedDomainId(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100"
-          >
-            <option value="">All Domains</option>
-            {(domains ?? []).map(d => (
-              <option key={d.id} value={d.id}>{d.display_name || d.domain_name}</option>
-            ))}
-          </select>
 
           {/* Device Filter */}
           <select
