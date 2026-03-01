@@ -123,7 +123,7 @@ export default function RankHistoryPage() {
             position: t.current_position,
             previousPosition: t.previous_position,
             change: t.change,
-            checkDate: 'This week',
+            checkDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
             checkDateRaw: new Date().toISOString(),
           })
         }

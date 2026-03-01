@@ -70,7 +70,29 @@ export const GET = authenticatedApiWrapper(
     };
 
     const result = await rankTrackingService.getUserKeywords(auth.userId, options);
-    return formatSuccess(result);
+
+    // Enrich flat country/domain strings into nested objects the frontend expects
+    const keywords = (result.keywords ?? []) as Record<string, unknown>[];
+    const countryCodes = Array.from(new Set(keywords.map(k => k.country as string).filter(Boolean)));
+    let countryMap: Record<string, { iso2_code: string; name: string }> = {};
+    if (countryCodes.length > 0) {
+      const { data: countryRows } = await supabaseAdmin
+        .from('indb_keyword_countries')
+        .select('iso2_code, name')
+        .in('iso2_code', countryCodes);
+      countryMap = Object.fromEntries((countryRows ?? []).map(c => [c.iso2_code, c]));
+    }
+    const enriched = keywords.map(k => ({
+      ...k,
+      country: k.country
+        ? (countryMap[k.country as string] ?? { iso2_code: k.country, name: (k.country as string).toUpperCase() })
+        : null,
+      domain: k.domain
+        ? { domain_name: k.domain, display_name: k.domain }
+        : null,
+    }));
+
+    return formatSuccess({ keywords: enriched, total: result.total ?? 0 });
   }
 );
 

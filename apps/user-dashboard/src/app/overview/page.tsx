@@ -10,13 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  RefreshCw,
   Trash2,
 } from 'lucide-react'
 import {
   useDomains,
   useKeywords,
-  useCheckRank,
   useDeleteKeywords,
   type Keyword,
 } from '../../lib/hooks'
@@ -46,7 +44,6 @@ export default function OverviewPage() {
     search: searchQuery || undefined,
   })
 
-  const checkRank = useCheckRank()
   const deleteKeywords = useDeleteKeywords()
 
   const allKeywords: Keyword[] = keywordsData?.keywords ?? []
@@ -301,9 +298,6 @@ export default function OverviewPage() {
                         </div>
                       </th>
                     ))}
-                    <th className="px-4 py-3 text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -361,16 +355,6 @@ export default function OverviewPage() {
                             {kw.device_type === 'mobile' ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
                             <span className="text-sm capitalize">{kw.device_type || '—'}</span>
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => checkRank.mutate(kw.id)}
-                            disabled={checkRank.isPending}
-                            title="Check rank now"
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                          >
-                            <RefreshCw className={`w-3.5 h-3.5 ${checkRank.isPending ? 'animate-spin' : ''}`} />
-                          </button>
                         </td>
                       </tr>
                     )
