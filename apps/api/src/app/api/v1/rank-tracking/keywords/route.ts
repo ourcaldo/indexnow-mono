@@ -84,6 +84,7 @@ export const GET = authenticatedApiWrapper(
     }
     const enriched = keywords.map(k => ({
       ...k,
+      current_position: k.position ?? null,
       country: k.country
         ? (countryMap[k.country as string] ?? { iso2_code: k.country, name: (k.country as string).toUpperCase() })
         : null,
