@@ -18,7 +18,7 @@ interface KeywordToEnrich {
   id: string;
   user_id: string;
   keyword: string;
-  country: string; // ISO2 code stored directly (e.g., "id", "us")
+  country_id: string | null; // UUID FK to indb_keyword_countries
   keyword_bank_id: string | null;
   intelligence_updated_at: string | null;
 }
@@ -262,7 +262,7 @@ export class KeywordEnrichmentWorker {
             'id',
             'user_id',
             'keyword',
-            'country',
+            'country_id',
             'keyword_bank_id',
             'intelligence_updated_at',
           ],
@@ -271,7 +271,7 @@ export class KeywordEnrichmentWorker {
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_rank_keywords')
-            .select('id, user_id, keyword, country, keyword_bank_id, intelligence_updated_at')
+            .select('id, user_id, keyword, country_id, keyword_bank_id, intelligence_updated_at')
             .eq('is_active', true)
             .is('keyword_bank_id', null) // Simple: get keywords that don't have bank reference
             .limit(limit);
@@ -305,8 +305,16 @@ export class KeywordEnrichmentWorker {
     try {
       logger.debug({ keyword: keyword.keyword }, 'Keyword Enrichment: Enriching keyword');
 
-      // Get country code directly - indb_rank_keywords.country stores ISO2 codes directly
-      const countryCode = keyword.country;
+      // Resolve country_id UUID → ISO2 code for enrichment service
+      let countryCode: string | null = null;
+      if (keyword.country_id) {
+        const { data: countryRow } = await supabaseAdmin
+          .from('indb_keyword_countries')
+          .select('iso2_code')
+          .eq('id', keyword.country_id)
+          .single();
+        countryCode = countryRow?.iso2_code ?? null;
+      }
 
       if (!countryCode) {
         logger.error(

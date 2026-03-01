@@ -631,7 +631,7 @@ export type Database = {
           keyword: string;
           domain: string | null;
           device: 'desktop' | 'mobile' | 'tablet' | null;
-          country: string | null;
+          country_id: string | null;
           search_engine: SearchEngineType | null;
           target_url: string | null;
           tags: string[] | null;
@@ -650,7 +650,7 @@ export type Database = {
           keyword: string;
           domain?: string | null;
           device?: 'desktop' | 'mobile' | 'tablet' | null;
-          country?: string | null;
+          country_id?: string | null;
           search_engine?: SearchEngineType | null;
           target_url?: string | null;
           tags?: string[] | null;
@@ -669,7 +669,7 @@ export type Database = {
           keyword?: string;
           domain?: string | null;
           device?: 'desktop' | 'mobile' | 'tablet' | null;
-          country?: string | null;
+          country_id?: string | null;
           position?: number | null;
           previous_position?: number | null;
           last_checked?: string | null;

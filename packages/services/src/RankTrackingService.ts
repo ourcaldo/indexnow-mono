@@ -51,7 +51,7 @@ export class RankTrackingService {
     keywordData: {
       keyword: string;
       domain: string;
-      country: string;
+      country_id: string;
       device?: 'desktop' | 'mobile';
       targetUrl?: string;
       tags?: string[];
@@ -72,7 +72,7 @@ export class RankTrackingService {
       user_id: userId,
       keyword: keywordData.keyword.trim(),
       domain: keywordData.domain,
-      country: keywordData.country,
+      country_id: keywordData.country_id,
       device: keywordData.device || 'desktop',
       tags: keywordData.tags || [],
       created_at: new Date().toISOString(),

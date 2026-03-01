@@ -75,15 +75,15 @@ export const GET = authenticatedApiWrapper(
     const keywords = (result.keywords ?? []) as Record<string, unknown>[];
     const keywordIds = keywords.map(k => k.id as string).filter(Boolean);
 
-    // 1. Country map: iso2_code → { iso2_code, name }
-    const countryCodes = Array.from(new Set(keywords.map(k => k.country as string).filter(Boolean)));
-    let countryMap: Record<string, { iso2_code: string; name: string }> = {};
-    if (countryCodes.length > 0) {
+    // 1. Country map: country_id (UUID) → { id, iso2_code, name }
+    const countryIds = Array.from(new Set(keywords.map(k => k.country_id as string).filter(Boolean)));
+    let countryMap: Record<string, { id: string; iso2_code: string; name: string }> = {};
+    if (countryIds.length > 0) {
       const { data: countryRows } = await supabaseAdmin
         .from('indb_keyword_countries')
-        .select('iso2_code, name')
-        .in('iso2_code', countryCodes);
-      countryMap = Object.fromEntries((countryRows ?? []).map(c => [c.iso2_code, c]));
+        .select('id, iso2_code, name')
+        .in('id', countryIds);
+      countryMap = Object.fromEntries((countryRows ?? []).map(c => [c.id, c]));
     }
 
     // 2. Domain map: domain_name → { id, domain_name }
@@ -119,8 +119,8 @@ export const GET = authenticatedApiWrapper(
       return {
         ...k,
         current_position: k.position ?? null,
-        country: k.country
-          ? (countryMap[k.country as string] ?? { iso2_code: k.country, name: (k.country as string).toUpperCase() })
+        country: k.country_id
+          ? (countryMap[k.country_id as string] ?? { id: k.country_id, iso2_code: '', name: '' })
           : null,
         domain: domainRow
           ? { id: domainRow.id, domain_name: domainRow.domain_name, display_name: domainRow.domain_name }
@@ -173,23 +173,6 @@ export const POST = authenticatedApiWrapper(
         );
       }
 
-      // Resolve country ISO2 code from country_id
-      const { data: countryRow, error: countryErr } = await supabaseAdmin
-        .from('indb_keyword_countries')
-        .select('iso2_code')
-        .eq('id', country_id)
-        .single();
-
-      if (countryErr || !countryRow) {
-        return formatError(
-          await ErrorHandlingService.createError(ErrorType.VALIDATION, 'Country not found', {
-            severity: ErrorSeverity.LOW,
-            userId: auth.userId,
-            statusCode: 400,
-          })
-        );
-      }
-
       const results = [];
       const skipped: string[] = [];
 
@@ -199,7 +182,7 @@ export const POST = authenticatedApiWrapper(
         .select('keyword')
         .eq('user_id', auth.userId)
         .eq('domain', domainRow.domain_name)
-        .eq('country', countryRow.iso2_code)
+        .eq('country_id', country_id)
         .eq('device', device_type)
         .in('keyword', keywords);
 
@@ -213,7 +196,7 @@ export const POST = authenticatedApiWrapper(
         const created = await rankTrackingService.createKeyword(auth.userId, {
           keyword: kw,
           domain: domainRow.domain_name,
-          country: countryRow.iso2_code,
+          country_id: country_id,
           device: device_type,
           tags,
         });
@@ -251,11 +234,19 @@ export const POST = authenticatedApiWrapper(
     }
     const { keyword, domain, country, device, targetUrl, tags } = parseResult.data;
 
+    // Resolve legacy country ISO2 code → UUID FK
+    const { data: legacyCountryRow } = await supabaseAdmin
+      .from('indb_keyword_countries')
+      .select('id')
+      .eq('iso2_code', country.toUpperCase())
+      .single();
+    const resolvedCountryId = legacyCountryRow?.id ?? '';
+
     // (#V7 M-28) Cast is safe: Zod schema validates device before this point.
     const result = await rankTrackingService.createKeyword(auth.userId, {
       keyword,
       domain,
-      country,
+      country_id: resolvedCountryId,
       device: device as 'desktop' | 'mobile' | undefined,
       targetUrl,
       tags,

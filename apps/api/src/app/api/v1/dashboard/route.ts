@@ -6,7 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { SecureServiceRoleWrapper, fromJson, asTypedClient, type Json } from '@indexnow/database';
+import { SecureServiceRoleWrapper, fromJson, asTypedClient, supabaseAdmin, type Json } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
@@ -81,7 +81,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
           .from('indb_rank_keywords')
           .select(
             `
-                            id, keyword, device, created_at, domain, country, position, last_checked
+                            id, keyword, device, created_at, domain, country_id, position, last_checked
                         `
           )
           .eq('user_id', userId)
@@ -266,13 +266,26 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     }
 
     // Process Recent Keywords (Manual mapping for FE compatibility)
-    const recentKeywords = (recentKeywordsResult.data || []).map((kw: any) => ({
+    const recentKwRaw = (recentKeywordsResult.data || []) as any[];
+
+    // Enrich country_id UUIDs → { iso2_code, name }
+    const recentCountryIds = [...new Set(recentKwRaw.map((k) => k.country_id).filter(Boolean))];
+    let dashCountryMap: Record<string, { iso2_code: string; name: string }> = {};
+    if (recentCountryIds.length > 0) {
+      const { data: cRows } = await supabaseAdmin
+        .from('indb_keyword_countries')
+        .select('id, iso2_code, name')
+        .in('id', recentCountryIds);
+      dashCountryMap = Object.fromEntries((cRows ?? []).map((c) => [c.id, { iso2_code: c.iso2_code, name: c.name }]));
+    }
+
+    const recentKeywords = recentKwRaw.map((kw: any) => ({
       id: kw.id,
       keyword: kw.keyword,
       device_type: kw.device,
       created_at: kw.created_at,
       domain: { domain_name: kw.domain },
-      country: { iso2_code: kw.country },
+      country: dashCountryMap[kw.country_id] ?? { iso2_code: '', name: '' },
       recent_ranking: { position: kw.position, check_date: kw.last_checked },
     }));
 

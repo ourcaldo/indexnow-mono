@@ -24,7 +24,7 @@ const checkRankSchema = z.object({
 
 type RankKeywordSelect = Pick<
   DbRankKeywordRow,
-  'id' | 'keyword' | 'device' | 'user_id' | 'domain' | 'country' | 'is_active'
+  'id' | 'keyword' | 'device' | 'user_id' | 'domain' | 'country_id' | 'is_active'
 >;
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
@@ -58,7 +58,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       async (db) => {
         const { data, error } = await db
           .from('indb_rank_keywords')
-          .select('id, keyword, device, user_id, domain, country, is_active')
+          .select('id, keyword, device, user_id, domain, country_id, is_active')
           .eq('id', keyword_id)
           .eq('user_id', auth.userId)
           .single();
@@ -107,11 +107,23 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       return formatError(domainError);
     }
 
+    // Resolve country_id UUID → iso2_code for rank search
+    let countryIso = 'us';
+    if (keywordData.country_id) {
+      const { data: countryData } = await supabaseAdmin
+        .from('indb_keyword_countries')
+        .select('iso2_code')
+        .eq('id', keywordData.country_id)
+        .limit(1)
+        .single();
+      countryIso = countryData?.iso2_code ?? 'us';
+    }
+
     const deviceType = keywordData.device === 'mobile' ? 'mobile' : 'desktop';
     const rankResult = await RankTracker.checkRank(
       keywordData.keyword,
       domainName,
-      keywordData.country || 'us',
+      countryIso,
       deviceType
     );
 
@@ -139,18 +151,6 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
         if (updateError) throw new Error(`Failed to update keyword: ${updateError.message}`);
 
-        // Resolve country code to FK
-        let countryId: string | null = null;
-        if (keywordData.country) {
-          const { data: countryData } = await supabaseAdmin
-            .from('indb_keyword_countries')
-            .select('id')
-            .eq('iso2_code', keywordData.country.toLowerCase())
-            .limit(1)
-            .single();
-          countryId = countryData?.id ?? null;
-        }
-
         // Insert ranking history
         const { error: insertError } = await supabaseAdmin.from('indb_keyword_rankings').insert({
           keyword_id: keyword_id,
@@ -158,7 +158,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
           url: rankResult.url,
           check_date: checkDate,
           device_type: keywordData.device,
-          country_id: countryId,
+          country_id: keywordData.country_id ?? null,
         });
 
         if (insertError) throw new Error(`Failed to insert ranking: ${insertError.message}`);

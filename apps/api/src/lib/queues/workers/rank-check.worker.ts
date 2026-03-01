@@ -32,7 +32,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
       async () => {
         const { data, error } = await supabaseAdmin
           .from('indb_rank_keywords')
-          .select('id, keyword, domain, country, device, position')
+          .select('id, keyword, domain, country_id, device, position')
           .eq('id', keywordId)
           .single()
 
@@ -44,24 +44,24 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
       }
     )
 
+    // 3. Resolve country UUID → iso2_code for rank search
+    let countryIso = ''
+    if (keyword.country_id) {
+      const { data: countryRow } = await supabaseAdmin
+        .from('indb_keyword_countries')
+        .select('iso2_code')
+        .eq('id', keyword.country_id)
+        .single()
+      countryIso = countryRow?.iso2_code ?? ''
+    }
+
     // 2. Check rank using Firecrawl (RankTracker class)
     const result = await RankTracker.checkRank(
       keyword.keyword,
       keyword.domain ?? '',
-      keyword.country ?? '',
+      countryIso,
       (keyword.device ?? undefined) as 'desktop' | 'mobile' | undefined
     )
-
-    // 3. Resolve country iso2 → UUID
-    let countryId: string | null = null
-    if (keyword.country) {
-      const { data: countryRow } = await supabaseAdmin
-        .from('indb_keyword_countries')
-        .select('id')
-        .eq('iso2_code', keyword.country)
-        .single()
-      countryId = countryRow?.id ?? null
-    }
 
     // 4. Update DB — update keyword position + upsert ranking history
     await SecureServiceRoleWrapper.executeSecureOperation(
@@ -95,7 +95,7 @@ async function processRankCheck(job: Job<ImmediateRankCheckJob>): Promise<{
             url: result.url,
             check_date: new Date().toISOString().split('T')[0],
             device_type: keyword.device,
-            country_id: countryId,
+            country_id: keyword.country_id ?? null,
             metadata: toJson(result)
           }, { onConflict: 'keyword_id,check_date', ignoreDuplicates: false })
 

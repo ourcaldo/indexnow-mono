@@ -423,8 +423,8 @@ CREATE TABLE IF NOT EXISTS indb_rank_keywords (
   keyword TEXT NOT NULL,
   domain TEXT,
   device VARCHAR(20) DEFAULT 'desktop' CHECK (device IN ('desktop', 'mobile', 'tablet')),
-  country VARCHAR(10),
-  
+  country_id UUID REFERENCES indb_keyword_countries(id) ON DELETE SET NULL,
+
   -- Tracking configuration
   search_engine VARCHAR(50) DEFAULT 'google',
   target_url TEXT,
@@ -440,8 +440,6 @@ CREATE TABLE IF NOT EXISTS indb_rank_keywords (
   keyword_bank_id UUID REFERENCES indb_keyword_bank(id) ON DELETE SET NULL,
   intelligence_updated_at TIMESTAMPTZ,
   
-  -- DESIGN NOTE (#218): country here is a free-text shortcode (e.g., 'US') for quick display.
-  -- For referential integrity, use keyword_bank.country_id → indb_keyword_countries FK.
   -- DESIGN NOTE (#227): domain here is free-text. For verified domains, cross-reference
   -- indb_keyword_domains table via (user_id, domain) lookup.
   
@@ -458,6 +456,7 @@ CREATE INDEX IF NOT EXISTS idx_rank_keywords_user ON indb_rank_keywords(user_id)
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_active ON indb_rank_keywords(user_id, is_active) WHERE is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_needs_enrichment ON indb_rank_keywords(keyword_bank_id) WHERE keyword_bank_id IS NULL AND is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_rank_keywords_user_domain ON indb_rank_keywords(user_id, domain);
+CREATE INDEX IF NOT EXISTS idx_rank_keywords_country ON indb_rank_keywords(country_id);
 
 -- Keyword rankings (historical rank position snapshots per check)
 -- Each rank check creates a new record for historical tracking

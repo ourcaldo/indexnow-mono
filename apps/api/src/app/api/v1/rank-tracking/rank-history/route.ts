@@ -87,7 +87,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     // 1. Fetch user keywords
     let kwQuery = supabaseAdmin
       .from('indb_rank_keywords')
-      .select('id, keyword, domain, country, device', { count: 'exact' })
+      .select('id, keyword, domain, country_id, device', { count: 'exact' })
       .eq('user_id', auth.userId)
       .eq('is_active', true)
       .order('created_at', { ascending: true })
@@ -112,15 +112,15 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
     const keywordIds = keywords.map((k) => k.id);
 
-    // 2. Country name map
-    const iso2Codes = Array.from(new Set(keywords.map((k) => k.country).filter(Boolean)));
-    let countryNameMap: Record<string, string> = {};
-    if (iso2Codes.length > 0) {
+    // 2. Country name map: UUID → { iso2_code, name }
+    const countryIds = Array.from(new Set(keywords.map((k) => k.country_id).filter(Boolean)));
+    let countryNameMap: Record<string, { iso2_code: string; name: string }> = {};
+    if (countryIds.length > 0) {
       const { data: countryRows } = await supabaseAdmin
         .from('indb_keyword_countries')
-        .select('iso2_code, name')
-        .in('iso2_code', iso2Codes as string[]);
-      countryNameMap = Object.fromEntries((countryRows ?? []).map((c) => [c.iso2_code, c.name]));
+        .select('id, iso2_code, name')
+        .in('id', countryIds as string[]);
+      countryNameMap = Object.fromEntries((countryRows ?? []).map((c) => [c.id, { iso2_code: c.iso2_code, name: c.name }]));
     }
 
     // 3. Fetch rankings for the date range (chunked to avoid large IN clauses)
@@ -183,8 +183,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         id: kw.id,
         keyword: kw.keyword,
         domain: kw.domain || '',
-        country: kw.country || '',
-        country_name: kw.country ? (countryNameMap[kw.country] ?? kw.country) : '',
+        country: countryNameMap[kw.country_id]?.iso2_code || '',
+        country_name: countryNameMap[kw.country_id]?.name || '',
         device: kw.device || 'desktop',
         current_position: currentPos,
         change,
