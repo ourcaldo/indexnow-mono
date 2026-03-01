@@ -554,11 +554,11 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 // ── Rank trend chart ──────────────────────────────────────────────────────────
 
 const BUCKETS = [
-  { key: 'top3',    label: 'Top 3',   color: '#10b981' },
-  { key: 'top410',  label: '4-10',    color: '#3b82f6' },
-  { key: 'top1120', label: '11-20',   color: '#f59e0b' },
-  { key: 'top2150', label: '21-50',   color: '#f97316' },
-  { key: 'top51',   label: '51-100',  color: '#f43f5e' },
+  { key: 'top3',    label: 'Top 3',   color: '#1e40af' },
+  { key: 'top410',  label: '4-10',    color: '#2563eb' },
+  { key: 'top1120', label: '11-20',   color: '#3b82f6' },
+  { key: 'top2150', label: '21-50',   color: '#60a5fa' },
+  { key: 'top51',   label: '51-100',  color: '#93c5fd' },
 ] as const
 
 // Daily bars — one per date (for 1M)
@@ -652,27 +652,31 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
 
   return (
     <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 shrink-0">Keyword Rankings Trend</h2>
         {/* Rank position bucket filter */}
-        <div className="flex items-center flex-wrap gap-1.5">
+        <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5">
           {BUCKETS.map(b => {
             const active = activeBuckets.includes(b.key)
             return (
               <button
                 key={b.key}
                 onClick={() => toggleBucket(b.key)}
-                className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-colors border ${
-                  active
-                    ? 'border-transparent text-white'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 bg-transparent'
-                }`}
-                style={active ? { backgroundColor: b.color, borderColor: b.color } : {}}
+                className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors select-none"
               >
                 <span
-                  className="w-2 h-2 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: active ? 'rgba(255,255,255,0.6)' : b.color }}
-                />
+                  className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center rounded-sm transition-colors"
+                  style={{
+                    backgroundColor: active ? b.color : 'transparent',
+                    border: `2px solid ${b.color}`,
+                  }}
+                >
+                  {active && (
+                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                      <path d="M1 3l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
                 {b.label}
               </button>
             )
