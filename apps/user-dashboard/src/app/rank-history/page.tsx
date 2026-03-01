@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import {
-  Search,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -637,7 +636,6 @@ export default function RankHistoryPage() {
   const [chartMode, setChartMode] = useState<ChartMode>('1M')
   const [startDate, setStartDate] = useState(() => subtractDays(isoToday(), 30))
   const [endDate, setEndDate] = useState(today)
-  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
   const { data, isLoading } = useRankHistory(startDate, endDate)
@@ -666,21 +664,11 @@ export default function RankHistoryPage() {
   }, [keywords])
 
   const filtered = useMemo(() => {
-    let result = keywords
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(k => k.keyword.toLowerCase().includes(q))
-    }
-    return result
-  }, [keywords, search])
+    return keywords
+  }, [keywords])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const pageSlice = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-
-  function handleSearch(q: string) {
-    setSearch(q)
-    setPage(1)
-  }
 
   function handleDateChange(s: string, e: string) {
     setStartDate(s)
@@ -727,13 +715,18 @@ export default function RankHistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
-          Rank History
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          View ranking history across all your tracked keywords
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+            Rank History
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            View ranking history across all your tracked keywords
+          </p>
+        </div>
+        <div className="shrink-0 pt-0.5">
+          <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
+        </div>
       </div>
 
       {/* Stats */}
@@ -801,23 +794,6 @@ export default function RankHistoryPage() {
 
       {/* Trend Chart */}
       <RankTrendChart keywords={keywords} dateColumns={dateColumns} chartMode={chartMode} onChartModeChange={handleChartModeChange} />
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search keywords..."
-              value={search}
-              onChange={e => handleSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-            />
-          </div>
-          <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
-        </div>
-      </div>
 
       {/* Table */}
       <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
