@@ -60,6 +60,84 @@ function dateColLabel(iso: string): { day: string; month: string } {
   return { day: String(d.getDate()), month: MONTHS_SHORT[d.getMonth()] }
 }
 
+// ── Table column abstraction (daily / weekly / monthly) ───────────────────────
+
+interface TableColumn {
+  key: string
+  top: string    // header top line
+  bottom: string // header bottom line
+  dates: string[] // ISO dates in bucket, newest-first — used to resolve position
+}
+
+function buildTableColumns(startDate: string, endDate: string): TableColumn[] {
+  const start = new Date(startDate + 'T00:00:00')
+  const end   = new Date(endDate   + 'T00:00:00')
+  const days  = Math.round((end.getTime() - start.getTime()) / 86400000)
+
+  // Daily
+  if (days <= 7) {
+    const cols: TableColumn[] = []
+    const d = new Date(end)
+    while (d >= start) {
+      const iso = d.toISOString().split('T')[0]
+      cols.push({ key: iso, top: String(d.getDate()), bottom: MONTHS_SHORT[d.getMonth()], dates: [iso] })
+      d.setDate(d.getDate() - 1)
+    }
+    return cols
+  }
+
+  // Monthly (> 90 days)
+  if (days > 90) {
+    const cols: TableColumn[] = []
+    let cur = new Date(end.getFullYear(), end.getMonth(), 1)
+    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
+    while (cur >= startMonth) {
+      const year = cur.getFullYear()
+      const month = cur.getMonth()
+      const monthEnd = new Date(year, month + 1, 0)
+      const bucketEnd = monthEnd < end ? monthEnd : end
+      const bucketStart = cur > start ? cur : start
+      const dates: string[] = []
+      const d = new Date(bucketEnd)
+      while (d >= bucketStart) {
+        dates.push(d.toISOString().split('T')[0])
+        d.setDate(d.getDate() - 1)
+      }
+      const prefix = `${year}-${String(month + 1).padStart(2, '0')}`
+      cols.push({ key: prefix, top: MONTHS_SHORT[month], bottom: `'${String(year).slice(2)}`, dates })
+      cur.setMonth(cur.getMonth() - 1)
+    }
+    return cols
+  }
+
+  // Weekly (8-90 days) — rolling 7-day buckets from endDate backwards
+  const cols: TableColumn[] = []
+  let bucketEnd = new Date(end)
+  while (bucketEnd >= start) {
+    const be = new Date(bucketEnd)
+    const bs = new Date(bucketEnd)
+    bs.setDate(bs.getDate() - 6)
+    if (bs < start) bs.setTime(start.getTime())
+    const dates: string[] = []
+    const d = new Date(be)
+    while (d >= bs) {
+      dates.push(d.toISOString().split('T')[0])
+      d.setDate(d.getDate() - 1)
+    }
+    cols.push({ key: be.toISOString().split('T')[0], top: String(bs.getDate()), bottom: MONTHS_SHORT[bs.getMonth()], dates })
+    bucketEnd.setDate(bucketEnd.getDate() - 7)
+  }
+  return cols
+}
+
+// Resolve position for a table column — uses the newest date in the bucket that has data
+function getColPos(history: Record<string, number>, col: TableColumn): number | undefined {
+  for (const d of col.dates) {
+    if (history[d] !== undefined) return history[d]
+  }
+  return undefined
+}
+
 // ── Country flags ──────────────────────────────────────────────────────────────
 
 const FLAG_MAP: Record<string, string> = {
@@ -365,10 +443,10 @@ const COL_CHANGE = 72
 interface KeywordRowProps {
   kw: RankHistoryKeyword
   idx: number
-  dateColumns: string[]
+  tableColumns: TableColumn[]
 }
 
-function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
+function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
   return (
     <tr className="group">
       {/* # */}
@@ -411,12 +489,12 @@ function KeywordRow({ kw, idx, dateColumns }: KeywordRowProps) {
       </td>
 
       {/* Date columns */}
-      {dateColumns.map((d, i) => {
-        const pos = kw.history[d]
+      {tableColumns.map((col, i) => {
+        const pos = getColPos(kw.history, col)
         const even = i % 2 === 0
         return (
           <td
-            key={d}
+            key={col.key}
             className={`border-b border-gray-100 dark:border-gray-800/50 py-2.5 text-center group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 ${
               even ? 'bg-gray-50/60 dark:bg-white/[0.02]' : 'bg-white dark:bg-[#141520]'
             }`}
@@ -640,8 +718,15 @@ export default function RankHistoryPage() {
 
   const { data, isLoading } = useRankHistory(startDate, endDate)
 
+  // Raw daily columns for chart
   const dateColumns = useMemo(
     () => getDateColumns(startDate, endDate),
+    [startDate, endDate]
+  )
+
+  // Aggregated columns for table (daily / weekly / monthly based on range)
+  const tableColumns = useMemo(
+    () => buildTableColumns(startDate, endDate),
     [startDate, endDate]
   )
 
@@ -685,7 +770,7 @@ export default function RankHistoryPage() {
     setPage(1)
   }
 
-  const colSpanTotal = 4 + dateColumns.length + 4
+  const colSpanTotal = 4 + tableColumns.length + 4
 
   if (isLoading) {
     return (
@@ -839,19 +924,18 @@ export default function RankHistoryPage() {
                 </th>
 
                 {/* Scrollable date columns */}
-                {dateColumns.map((d, i) => {
-                  const lbl = dateColLabel(d)
+                {tableColumns.map((col, i) => {
                   const even = i % 2 === 0
                   return (
                     <th
-                      key={d}
+                      key={col.key}
                       className={`sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 ${
                         even ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-[#141520]'
                       }`}
                       style={{ width: 46, minWidth: 46, maxWidth: 46, textAlign: 'center', padding: '6px 2px' }}
                     >
-                      <span className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 leading-tight">{lbl.day}</span>
-                      <span className="block text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-tight">{lbl.month}</span>
+                      <span className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 leading-tight">{col.top}</span>
+                      <span className="block text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-tight">{col.bottom}</span>
                     </th>
                   )
                 })}
@@ -906,7 +990,7 @@ export default function RankHistoryPage() {
                     key={kw.id}
                     kw={kw}
                     idx={(page - 1) * ITEMS_PER_PAGE + idx + 1}
-                    dateColumns={dateColumns}
+                    tableColumns={tableColumns}
                   />
                 ))
               )}
