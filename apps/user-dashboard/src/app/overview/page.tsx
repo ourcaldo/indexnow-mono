@@ -269,15 +269,16 @@ export default function OverviewPage() {
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
                       { field: 'country' as SortField, label: 'Country', align: 'center' },
                       { field: 'device' as SortField, label: 'Device', align: 'center' },
-                    ]).map(col => (
+                      { field: 'keyword' as SortField, label: 'Last Checked', align: 'center', noSort: true },
+                    ] as Array<{ field: SortField; label: string; align: string; noSort?: boolean }>).map(col => (
                       <th
                         key={col.field}
-                        className={`px-4 py-3 text-${col.align} text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-900 dark:hover:text-gray-200 transition-colors`}
-                        onClick={() => handleSort(col.field)}
+                        className={`px-4 py-3 text-${col.align} text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ${col.noSort ? '' : 'cursor-pointer hover:text-gray-900 dark:hover:text-gray-200'} transition-colors`}
+                        onClick={() => !col.noSort && handleSort(col.field)}
                       >
                         <div className={`flex items-center gap-1 ${col.align === 'center' ? 'justify-center' : ''}`}>
                           {col.label}
-                          <ArrowUpDown className="h-3 w-3" />
+                          {!col.noSort && <ArrowUpDown className="h-3 w-3" />}
                         </div>
                       </th>
                     ))}
@@ -318,7 +319,6 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <PositionBadge position={pos} />
-                          {checkDate && <div className="text-[10px] text-gray-400 mt-0.5">{checkDate}</div>}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -333,6 +333,9 @@ export default function OverviewPage() {
                             {kw.device_type === 'mobile' ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
                             <span className="text-sm capitalize">{kw.device_type || '—'}</span>
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-xs text-gray-400 dark:text-gray-500">{checkDate || '—'}</span>
                         </td>
                       </tr>
                     )
