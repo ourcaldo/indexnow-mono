@@ -379,6 +379,46 @@ export function useAddTag() {
   })
 }
 
+// ── Rank History ──────────────────────────────────────────────────────────────
+
+export interface RankHistoryKeyword {
+  id: string
+  keyword: string
+  domain: string
+  country: string
+  country_name: string
+  device: string
+  current_position: number | null
+  change: number | null
+  latest_url: string | null
+  latest_check: string | null
+  /** date → position map, e.g. { "2025-01-01": 5 } */
+  history: Record<string, number>
+}
+
+export interface RankHistoryResponse {
+  keywords: RankHistoryKeyword[]
+  total: number
+  startDate: string
+  endDate: string
+}
+
+/**
+ * Fetch rank history for the authenticated user's keywords over a date range.
+ * startDate / endDate should be ISO date strings: "YYYY-MM-DD"
+ */
+export function useRankHistory(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['rank-history', startDate, endDate],
+    queryFn: () =>
+      api<RankHistoryResponse>(
+        RANK_TRACKING_ENDPOINTS.RANK_HISTORY,
+        { params: { start_date: startDate, end_date: endDate, limit: '200' } }
+      ),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
 /**
  * Upload manual payment proof for an order.
  * Invalidates the order cache so the detail page reflects the new proof status.
