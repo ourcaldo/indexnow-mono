@@ -73,6 +73,9 @@ export const GET = authenticatedApiWrapper(
 
     // Enrich flat country/domain strings into nested objects the frontend expects
     const keywords = (result.keywords ?? []) as Record<string, unknown>[];
+    const keywordIds = keywords.map(k => k.id as string).filter(Boolean);
+
+    // 1. Country map: iso2_code → { iso2_code, name }
     const countryCodes = Array.from(new Set(keywords.map(k => k.country as string).filter(Boolean)));
     let countryMap: Record<string, { iso2_code: string; name: string }> = {};
     if (countryCodes.length > 0) {
@@ -82,16 +85,51 @@ export const GET = authenticatedApiWrapper(
         .in('iso2_code', countryCodes);
       countryMap = Object.fromEntries((countryRows ?? []).map(c => [c.iso2_code, c]));
     }
-    const enriched = keywords.map(k => ({
-      ...k,
-      current_position: k.position ?? null,
-      country: k.country
-        ? (countryMap[k.country as string] ?? { iso2_code: k.country, name: (k.country as string).toUpperCase() })
-        : null,
-      domain: k.domain
-        ? { domain_name: k.domain, display_name: k.domain }
-        : null,
-    }));
+
+    // 2. Domain map: domain_name → { id, domain_name }
+    const domainNames = Array.from(new Set(keywords.map(k => k.domain as string).filter(Boolean)));
+    let domainMap: Record<string, { id: string; domain_name: string }> = {};
+    if (domainNames.length > 0) {
+      const { data: domainRows } = await supabaseAdmin
+        .from('indb_keyword_domains')
+        .select('id, domain_name')
+        .in('domain_name', domainNames)
+        .eq('user_id', auth.userId);
+      domainMap = Object.fromEntries((domainRows ?? []).map(d => [d.domain_name, d]));
+    }
+
+    // 3. Recent rankings map: keyword_id → RankingEntry[]
+    let rankingsMap: Record<string, { position: number | null; url: string | null; check_date: string }[]> = {};
+    if (keywordIds.length > 0) {
+      const { data: rankingRows } = await supabaseAdmin
+        .from('indb_keyword_rankings')
+        .select('keyword_id, position, url, check_date')
+        .in('keyword_id', keywordIds)
+        .order('check_date', { ascending: false })
+        .limit(keywordIds.length * 30); // up to 30 entries per keyword
+      for (const row of rankingRows ?? []) {
+        if (!rankingsMap[row.keyword_id]) rankingsMap[row.keyword_id] = [];
+        rankingsMap[row.keyword_id].push({ position: row.position, url: row.url, check_date: row.check_date });
+      }
+    }
+
+    const enriched = keywords.map(k => {
+      const domainName = k.domain as string;
+      const domainRow = domainName ? domainMap[domainName] : null;
+      return {
+        ...k,
+        current_position: k.position ?? null,
+        country: k.country
+          ? (countryMap[k.country as string] ?? { iso2_code: k.country, name: (k.country as string).toUpperCase() })
+          : null,
+        domain: domainRow
+          ? { id: domainRow.id, domain_name: domainRow.domain_name, display_name: domainRow.domain_name }
+          : domainName
+            ? { domain_name: domainName, display_name: domainName }
+            : null,
+        recent_ranking: rankingsMap[k.id as string] ?? [],
+      };
+    });
 
     return formatSuccess({ keywords: enriched, total: result.total ?? 0 });
   }
