@@ -1,4 +1,4 @@
-// (#V7 L-23) This form relies on native HTML validation (required attributes)
+﻿// (#V7 L-23) This form relies on native HTML validation (required attributes)
 // and server-side Zod validation in the packages API route. Client-side Zod
 // validation would improve UX with inline errors but is not critical.
 'use client';
@@ -209,7 +209,7 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
 
         {/* Quota Limits */}
         <div className="md:col-span-2">
-          <h3 className="text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 mb-4 border-b pb-2 text-lg font-medium">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 mb-4 border-b pb-2">
             Quota Limits
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -229,7 +229,7 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
                 <span className="flex items-center gap-2">
                   Keywords Limit
-                  <span className="bg-success/10 text-success border-success/20 rounded-full border px-2 py-1 text-xs">
+                  <span className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full px-2 py-0.5 text-xs">
                     Rank Tracker
                   </span>
                 </span>
@@ -251,7 +251,7 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
         {/* Pricing Tiers (only for paid packages) */}
         {formData.slug !== 'free' && (
           <div className="md:col-span-2">
-            <h3 className="text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 mb-4 border-b pb-2 text-lg font-medium">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 mb-4 border-b pb-2">
               Pricing Tiers
             </h3>
             <div className="space-y-6">
@@ -274,13 +274,13 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
                     {/* Period Header */}
                     <div className="mb-4">
                       <h4 className="text-gray-900 dark:text-white flex items-center gap-2 text-lg font-semibold">
-                        <Clock className="text-gray-400 h-5 w-5" />
+                        <Clock className="w-4 h-4 text-gray-400" />
                         {periodInfo.label} Billing
                       </h4>
                     </div>
 
                     {/* USD Pricing Fields */}
-                    <div className="border-gray-200 dark:border-gray-700 rounded-lg border bg-white p-4">
+                    <div className="border-gray-200 dark:border-gray-700 rounded-md border bg-white dark:bg-[#0f0f17] p-4">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
                           <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
@@ -374,7 +374,7 @@ export function PackageForm({ packageData, onSave, onCancel }: PackageFormProps)
         {/* Features */}
         <div className="md:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 border-b pb-2 text-lg font-medium">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 border-b pb-2">
               Features
             </h3>
             <button

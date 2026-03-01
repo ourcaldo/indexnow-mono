@@ -10,6 +10,9 @@ import {
   type UI_SiteSettings,
 } from '@/hooks';
 
+const inputCls =
+  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-transparent';
+
 function Field({
   label,
   hint,
@@ -31,9 +34,6 @@ function Field({
     </div>
   );
 }
-
-const inputCls =
-  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-transparent';
 
 function Toggle({
   checked,
@@ -124,7 +124,7 @@ export default function SiteSettings() {
   };
 
   if (isLoading || !settings) {
-    return <div className="py-20 text-center text-sm text-gray-400">{isLoading ? 'Loading settings…' : 'No settings found.'}</div>;
+    return <div className="py-20 text-center text-sm text-gray-400">{isLoading ? 'Loading...' : 'No settings found.'}</div>;
   }
 
   return (
@@ -138,7 +138,7 @@ export default function SiteSettings() {
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white/10 text-white border border-gray-700 dark:border-white/10 rounded-md hover:bg-gray-800 dark:hover:bg-white/[0.15] transition-colors disabled:opacity-50"
         >
           <Save className="w-3.5 h-3.5" />
-          {saveMutation.isPending ? 'Saving…' : 'Save changes'}
+          {saveMutation.isPending ? 'Saving...' : 'Save changes'}
         </button>
       </div>
 
@@ -148,49 +148,8 @@ export default function SiteSettings() {
         </div>
       )}
 
-      {/* Basic Information */}
+      {/* System settings */}
       <section>
-        <SectionHeader>Basic information</SectionHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="Site name">
-            <input type="text" value={settings.site_name ?? ''} onChange={(e) => update('site_name', e.target.value)} className={inputCls} placeholder="My Site" />
-          </Field>
-          <Field label="Contact email">
-            <input type="email" value={settings.contact_email || ''} onChange={(e) => update('contact_email', e.target.value)} className={inputCls} placeholder="contact@example.com" />
-          </Field>
-          <Field label="Site tagline" wide hint="Appears in page titles and branding">
-            <input type="text" value={settings.site_tagline || ''} onChange={(e) => update('site_tagline', e.target.value)} className={inputCls} placeholder="Rank Tracking Made Simple" />
-          </Field>
-          <Field label="Site description" wide>
-            <textarea rows={3} value={settings.site_description || ''} onChange={(e) => update('site_description', e.target.value)} className={inputCls} placeholder="Professional URL indexing automation platform" />
-          </Field>
-          <Field label="Support email">
-            <input type="email" value={settings.support_email || ''} onChange={(e) => update('support_email', e.target.value)} className={inputCls} placeholder="support@example.com" />
-          </Field>
-        </div>
-      </section>
-
-      {/* Branding */}
-      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
-        <SectionHeader>Branding &amp; assets</SectionHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="Site logo URL" hint="Main logo for header and branding">
-            <input type="url" value={settings.site_logo_url || ''} onChange={(e) => update('site_logo_url', e.target.value)} className={inputCls} placeholder="https://example.com/logo.png" />
-          </Field>
-          <Field label="White logo URL" hint="White version for dark backgrounds">
-            <input type="url" value={settings.white_logo || ''} onChange={(e) => update('white_logo', e.target.value)} className={inputCls} placeholder="https://example.com/white-logo.png" />
-          </Field>
-          <Field label="Site icon URL" hint="Square icon for mobile and apps">
-            <input type="url" value={settings.site_icon_url || ''} onChange={(e) => update('site_icon_url', e.target.value)} className={inputCls} placeholder="https://example.com/icon.png" />
-          </Field>
-          <Field label="Favicon URL" hint="Browser tab icon (16×16 or 32×32)">
-            <input type="url" value={settings.site_favicon_url || ''} onChange={(e) => update('site_favicon_url', e.target.value)} className={inputCls} placeholder="https://example.com/favicon.ico" />
-          </Field>
-        </div>
-      </section>
-
-      {/* System toggles */}
-      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
         <SectionHeader>System settings</SectionHeader>
         <Toggle
           label="Maintenance mode"
@@ -204,20 +163,6 @@ export default function SiteSettings() {
           checked={settings.registration_enabled}
           onChange={(v) => update('registration_enabled', v)}
         />
-      </section>
-
-      {/* SEO */}
-      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
-        <SectionHeader>SEO — Robots.txt</SectionHeader>
-        <Field label="robots.txt content" hint="Changes are cached for 1 hour.">
-          <textarea
-            rows={10}
-            value={settings.robots_txt_content || ''}
-            onChange={(e) => update('robots_txt_content', e.target.value)}
-            className={`${inputCls} font-mono`}
-            placeholder="User-agent: *&#10;Allow: /"
-          />
-        </Field>
       </section>
 
       {/* Email / SMTP */}
@@ -264,7 +209,7 @@ export default function SiteSettings() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${testEmailMutation.isPending ? 'animate-spin' : ''}`} />
-              {testEmailMutation.isPending ? 'Sending…' : 'Send test email'}
+              {testEmailMutation.isPending ? 'Sending...' : 'Send test email'}
             </button>
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Verify SMTP configuration is working</p>
           </div>
@@ -273,4 +218,3 @@ export default function SiteSettings() {
     </div>
   );
 }
-
