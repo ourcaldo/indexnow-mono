@@ -99,8 +99,8 @@ export function UserSecurityCard({ securityData, securityLoading }: UserSecurity
           </p>
           {ipAddresses.length > 0 ? (
             <div className="space-y-1.5">
-              {ipAddresses.slice(0, 4).map((ip) => (
-                <div key={ip.ip} className="flex items-center justify-between text-sm">
+              {ipAddresses.slice(0, 4).map((ip, i) => (
+                <div key={`${ip.ip}-${i}`} className="flex items-center justify-between text-sm">
                   <span className="font-mono text-gray-900 dark:text-white text-xs">{ip.ip}</span>
                   <span className="text-xs text-gray-400 tabular-nums">{ip.usageCount}x</span>
                 </div>

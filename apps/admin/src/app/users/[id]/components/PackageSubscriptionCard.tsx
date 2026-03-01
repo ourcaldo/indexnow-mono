@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { CheckCircle, BarChart3, Calendar, DollarSign } from 'lucide-react';
+import { CheckCircle, Calendar, DollarSign } from 'lucide-react';
 import type { UserProfile } from './index';
 import type { PackagePricingTiers } from '@indexnow/shared';
 
@@ -38,9 +38,6 @@ export function PackageSubscriptionCard({ user }: { user: UserProfile }) {
   }
 
   const { package: pkg } = user;
-  const used = user.daily_quota_used ?? 0;
-  const limit = user.daily_quota_limit ?? 1;
-  const pct = Math.min((used / limit) * 100, 100);
   const features = getSafeFeatures(pkg.features);
 
   return (
@@ -65,25 +62,6 @@ export function PackageSubscriptionCard({ user }: { user: UserProfile }) {
       </div>
 
       <div className="px-6 py-5 space-y-5">
-
-        {/* Quota usage */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Daily quota</span>
-            </div>
-            <span className="text-xs tabular-nums text-gray-900 dark:text-white">
-              {used.toLocaleString()} / {limit.toLocaleString()} URLs
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-            <div
-              className="h-1.5 rounded-full bg-gray-600 dark:bg-gray-400 transition-all duration-300"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
 
         {/* Subscription dates */}
         <div className="grid grid-cols-2 gap-4 py-4 border-t border-gray-100 dark:border-gray-800">
