@@ -1,24 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  Globe,
-  Save,
-  Upload,
-  Image,
-  Mail,
-  Settings as SettingsIcon,
-  AlertTriangle,
-  CheckCircle,
-  Server,
-  Lock,
-  Shield,
-  TestTube2,
-  Search,
-  FileText,
-  Map,
-} from 'lucide-react';
-import { SettingsPageSkeleton, ErrorState } from '@indexnow/ui';
+import { Save, RefreshCw } from 'lucide-react';
 import { logger } from '@indexnow/shared';
 import {
   useAdminSiteSettings,
@@ -27,50 +10,103 @@ import {
   type UI_SiteSettings,
 } from '@/hooks';
 
+function Field({
+  label,
+  hint,
+  children,
+  wide,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+  wide?: boolean;
+}) {
+  return (
+    <div className={wide ? 'md:col-span-2' : ''}>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        {label}
+      </label>
+      {children}
+      {hint && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{hint}</p>}
+    </div>
+  );
+}
+
+const inputCls =
+  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400';
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-start justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+      <div>
+        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</div>
+        {hint && <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{hint}</div>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none mt-0.5 ${
+          checked ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'
+        }`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white dark:bg-gray-900 shadow ring-0 transition duration-200 ease-in-out mt-[3px] ${
+            checked ? 'translate-x-4' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">{children}</h2>
+  );
+}
+
 export default function SiteSettings() {
-  const { data: serverSettings, isLoading: loading } = useAdminSiteSettings();
+  const { data: serverSettings, isLoading } = useAdminSiteSettings();
   const saveMutation = useSaveSiteSettings();
   const testEmailMutation = useTestEmail();
 
   const [settings, setSettings] = useState<UI_SiteSettings | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // Sync server data to local form state
   useEffect(() => {
-    if (serverSettings && !settings) {
-      setSettings(serverSettings);
-    }
+    if (serverSettings && !settings) setSettings(serverSettings);
   }, [serverSettings, settings]);
+
+  const update = <K extends keyof UI_SiteSettings>(field: K, value: UI_SiteSettings[K]) => {
+    if (!settings) return;
+    setSettings({ ...settings, [field]: value });
+  };
 
   const handleSave = async () => {
     if (!settings) return;
-    setMessage(null);
-
+    setMsg(null);
     try {
       await saveMutation.mutateAsync(settings);
-      setMessage({ type: 'success', text: 'Site settings saved successfully!' });
+      setMsg({ ok: true, text: 'Settings saved.' });
     } catch (err) {
-      // (#V7 M-31) Use structured logger instead of console.error
-      logger.error(
-        { error: err instanceof Error ? err : undefined },
-        'Failed to save site settings'
-      );
-      setMessage({ type: 'error', text: 'Failed to save site settings' });
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Failed to save site settings');
+      setMsg({ ok: false, text: 'Failed to save settings.' });
     }
   };
 
-  const updateSettings = <K extends keyof UI_SiteSettings>(field: K, value: UI_SiteSettings[K]) => {
-    if (!settings) return;
-    setSettings({
-      ...settings,
-      [field]: value,
-    });
-  };
-
   const handleTestEmail = async () => {
-    if (!settings || !settings.smtp_enabled) return;
-    setMessage(null);
-
+    if (!settings?.smtp_enabled) return;
+    setMsg(null);
     try {
       await testEmailMutation.mutateAsync({
         smtp_host: settings.smtp_host,
@@ -81,455 +117,159 @@ export default function SiteSettings() {
         smtp_from_email: settings.smtp_from_email,
         smtp_secure: settings.smtp_secure,
       });
-      setMessage({ type: 'success', text: 'Test email sent successfully!' });
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'Network error. Please try again.',
-      });
+      setMsg({ ok: true, text: 'Test email sent.' });
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : 'Failed to send test email.' });
     }
   };
 
-  if (loading) {
-    return <SettingsPageSkeleton />;
-  }
-
-  if (!settings) {
-    return (
-      <div className="py-12 text-center">
-        <ErrorState
-          title="Failed to load site settings"
-          message="Site settings could not be loaded. Please try refreshing the page."
-          onRetry={() => window.location.reload()}
-        />
-      </div>
-    );
+  if (isLoading || !settings) {
+    return <div className="py-20 text-center text-sm text-gray-400">{isLoading ? 'Loading settings…' : 'No settings found.'}</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-2xl">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-foreground text-2xl font-bold">Site Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Configure your site's basic information and appearance
-          </p>
-        </div>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Site Settings</h1>
         <button
           onClick={handleSave}
           disabled={saveMutation.isPending}
-          className="bg-primary hover:bg-primary/90 flex items-center space-x-2 rounded-lg px-4 py-2 text-white transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          <Save className="h-4 w-4" />
-          <span>{saveMutation.isPending ? 'Saving...' : 'Save Changes'}</span>
+          <Save className="w-3.5 h-3.5" />
+          {saveMutation.isPending ? 'Saving…' : 'Save changes'}
         </button>
       </div>
 
-      {/* Message */}
-      {message && (
-        <div
-          className={`flex items-center space-x-2 rounded-lg border p-4 ${
-            message.type === 'success'
-              ? 'bg-success/10 text-success border-success/20'
-              : 'bg-destructive/10 text-destructive border-destructive/20'
-          }`}
-        >
-          {message.type === 'success' ? (
-            <CheckCircle className="h-5 w-5" />
-          ) : (
-            <AlertTriangle className="h-5 w-5" />
-          )}
-          <span>{message.text}</span>
+      {msg && (
+        <div className={`text-sm px-4 py-2.5 rounded-md border ${msg.ok ? 'text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' : 'text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'}`}>
+          {msg.text}
         </div>
       )}
 
       {/* Basic Information */}
-      <div className="bg-card border-border rounded-lg border p-6">
-        <div className="mb-6 flex items-center space-x-2">
-          <Globe className="text-primary h-5 w-5" />
-          <h2 className="text-foreground text-lg font-semibold">Basic Information</h2>
+      <section>
+        <SectionHeader>Basic information</SectionHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="Site name">
+            <input type="text" value={settings.site_name ?? ''} onChange={(e) => update('site_name', e.target.value)} className={inputCls} placeholder="My Site" />
+          </Field>
+          <Field label="Contact email">
+            <input type="email" value={settings.contact_email || ''} onChange={(e) => update('contact_email', e.target.value)} className={inputCls} placeholder="contact@example.com" />
+          </Field>
+          <Field label="Site tagline" wide hint="Appears in page titles and branding">
+            <input type="text" value={settings.site_tagline || ''} onChange={(e) => update('site_tagline', e.target.value)} className={inputCls} placeholder="Rank Tracking Made Simple" />
+          </Field>
+          <Field label="Site description" wide>
+            <textarea rows={3} value={settings.site_description || ''} onChange={(e) => update('site_description', e.target.value)} className={inputCls} placeholder="Professional URL indexing automation platform" />
+          </Field>
+          <Field label="Support email">
+            <input type="email" value={settings.support_email || ''} onChange={(e) => update('support_email', e.target.value)} className={inputCls} placeholder="support@example.com" />
+          </Field>
         </div>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Site Name</label>
-            <input
-              type="text"
-              value={settings.site_name ?? ''}
-              onChange={(e) => updateSettings('site_name', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="IndexNow Studio"
-            />
-          </div>
-
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Contact Email</label>
-            <input
-              type="email"
-              value={settings.contact_email || ''}
-              onChange={(e) => updateSettings('contact_email', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="contact@indexnowpro.com"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="text-foreground mb-2 block text-sm font-medium">Site Tagline</label>
-            <input
-              type="text"
-              value={settings.site_tagline || ''}
-              onChange={(e) => updateSettings('site_tagline', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="Rank Tracking Made Simple for Smarter SEO Decisions"
-            />
-            <p className="text-muted-foreground mt-1 text-xs">
-              Short tagline that appears in page titles and branding
-            </p>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="text-foreground mb-2 block text-sm font-medium">
-              Site Description
-            </label>
-            <textarea
-              value={settings.site_description || ''}
-              onChange={(e) => updateSettings('site_description', e.target.value)}
-              rows={3}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="Professional URL indexing automation platform"
-            />
-          </div>
-
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Support Email</label>
-            <input
-              type="email"
-              value={settings.support_email || ''}
-              onChange={(e) => updateSettings('support_email', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="support@indexnowpro.com"
-            />
-          </div>
-        </div>
-      </div>
+      </section>
 
       {/* Branding */}
-      <div className="bg-card border-border rounded-lg border p-6">
-        <div className="mb-6 flex items-center space-x-2">
-          <Image className="text-warning h-5 w-5" />
-          <h2 className="text-foreground text-lg font-semibold">Branding & Assets</h2>
+      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
+        <SectionHeader>Branding &amp; assets</SectionHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="Site logo URL" hint="Main logo for header and branding">
+            <input type="url" value={settings.site_logo_url || ''} onChange={(e) => update('site_logo_url', e.target.value)} className={inputCls} placeholder="https://example.com/logo.png" />
+          </Field>
+          <Field label="White logo URL" hint="White version for dark backgrounds">
+            <input type="url" value={settings.white_logo || ''} onChange={(e) => update('white_logo', e.target.value)} className={inputCls} placeholder="https://example.com/white-logo.png" />
+          </Field>
+          <Field label="Site icon URL" hint="Square icon for mobile and apps">
+            <input type="url" value={settings.site_icon_url || ''} onChange={(e) => update('site_icon_url', e.target.value)} className={inputCls} placeholder="https://example.com/icon.png" />
+          </Field>
+          <Field label="Favicon URL" hint="Browser tab icon (16×16 or 32×32)">
+            <input type="url" value={settings.site_favicon_url || ''} onChange={(e) => update('site_favicon_url', e.target.value)} className={inputCls} placeholder="https://example.com/favicon.ico" />
+          </Field>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Site Logo URL</label>
-            <input
-              type="url"
-              value={settings.site_logo_url || ''}
-              onChange={(e) => updateSettings('site_logo_url', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="https://example.com/logo.png"
-            />
-            <p className="text-muted-foreground mt-1 text-xs">Main logo for header and branding</p>
-          </div>
+      {/* System toggles */}
+      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
+        <SectionHeader>System settings</SectionHeader>
+        <Toggle
+          label="Maintenance mode"
+          hint="Temporarily disable public access to the site"
+          checked={settings.maintenance_mode}
+          onChange={(v) => update('maintenance_mode', v)}
+        />
+        <Toggle
+          label="User registration"
+          hint="Allow new users to register accounts"
+          checked={settings.registration_enabled}
+          onChange={(v) => update('registration_enabled', v)}
+        />
+      </section>
 
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">White Logo URL</label>
-            <input
-              type="url"
-              value={settings.white_logo || ''}
-              onChange={(e) => updateSettings('white_logo', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="https://example.com/white-logo.png"
-            />
-            <p className="text-muted-foreground mt-1 text-xs">White version for dark backgrounds</p>
-          </div>
+      {/* SEO */}
+      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
+        <SectionHeader>SEO — Robots.txt</SectionHeader>
+        <Field label="robots.txt content" hint="Changes are cached for 1 hour.">
+          <textarea
+            rows={10}
+            value={settings.robots_txt_content || ''}
+            onChange={(e) => update('robots_txt_content', e.target.value)}
+            className={`${inputCls} font-mono`}
+            placeholder="User-agent: *&#10;Allow: /"
+          />
+        </Field>
+      </section>
 
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Site Icon URL</label>
-            <input
-              type="url"
-              value={settings.site_icon_url || ''}
-              onChange={(e) => updateSettings('site_icon_url', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="https://example.com/icon.png"
-            />
-            <p className="text-muted-foreground mt-1 text-xs">Square icon for mobile and apps</p>
-          </div>
-
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Favicon URL</label>
-            <input
-              type="url"
-              value={settings.site_favicon_url || ''}
-              onChange={(e) => updateSettings('site_favicon_url', e.target.value)}
-              className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="https://example.com/favicon.ico"
-            />
-            <p className="text-muted-foreground mt-1 text-xs">Browser tab icon (16x16 or 32x32)</p>
-          </div>
+      {/* Email / SMTP */}
+      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <SectionHeader>Email configuration</SectionHeader>
+          <Toggle
+            label=""
+            checked={settings.smtp_enabled}
+            onChange={(v) => update('smtp_enabled', v)}
+          />
         </div>
-      </div>
-
-      {/* System Settings */}
-      <div className="bg-card border-border rounded-lg border p-6">
-        <div className="mb-6 flex items-center space-x-2">
-          <SettingsIcon className="text-primary h-5 w-5" />
-          <h2 className="text-foreground text-lg font-semibold">System Settings</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <Field label="SMTP host">
+            <input type="text" value={settings.smtp_host || ''} onChange={(e) => update('smtp_host', e.target.value)} className={inputCls} placeholder="mail.example.com" />
+          </Field>
+          <Field label="SMTP port">
+            <input type="number" value={settings.smtp_port || 465} onChange={(e) => update('smtp_port', parseInt(e.target.value))} className={inputCls} placeholder="465" />
+          </Field>
+          <Field label="SMTP username">
+            <input type="text" value={settings.smtp_user || ''} onChange={(e) => update('smtp_user', e.target.value)} className={inputCls} placeholder="user@example.com" />
+          </Field>
+          <Field label="SMTP password">
+            <input type="password" value={settings.smtp_pass || ''} onChange={(e) => update('smtp_pass', e.target.value)} className={inputCls} placeholder="••••••••••••" />
+          </Field>
+          <Field label="From name">
+            <input type="text" value={settings.smtp_from_name || ''} onChange={(e) => update('smtp_from_name', e.target.value)} className={inputCls} placeholder="My Site" />
+          </Field>
+          <Field label="From email">
+            <input type="email" value={settings.smtp_from_email || ''} onChange={(e) => update('smtp_from_email', e.target.value)} className={inputCls} placeholder="noreply@example.com" />
+          </Field>
         </div>
-
-        <div className="space-y-4">
-          <div className="bg-secondary flex items-center justify-between rounded-lg p-4">
-            <div>
-              <h3 className="text-foreground text-sm font-medium">Maintenance Mode</h3>
-              <p className="text-muted-foreground text-xs">
-                Temporarily disable public access to the site
-              </p>
-            </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={settings.maintenance_mode}
-                onChange={(e) => updateSettings('maintenance_mode', e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="bg-muted peer-focus:ring-primary/20 peer after:bg-card after:border-border peer-checked:bg-primary h-6 w-11 rounded-full peer-focus:ring-4 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
-            </label>
-          </div>
-
-          <div className="bg-secondary flex items-center justify-between rounded-lg p-4">
-            <div>
-              <h3 className="text-foreground text-sm font-medium">User Registration</h3>
-              <p className="text-muted-foreground text-xs">Allow new users to register accounts</p>
-            </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={settings.registration_enabled}
-                onChange={(e) => updateSettings('registration_enabled', e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="bg-muted peer-focus:ring-primary/20 peer after:bg-card after:border-border peer-checked:bg-primary h-6 w-11 rounded-full peer-focus:ring-4 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* SEO Management */}
-      <div className="bg-card border-border rounded-lg border p-6">
-        <div className="mb-6 flex items-center space-x-2">
-          <Search className="text-success h-5 w-5" />
-          <h2 className="text-foreground text-lg font-semibold">SEO Management</h2>
-        </div>
-
-        {/* Robots.txt Section */}
-        <div className="space-y-6">
-          <div className="border-border rounded-lg border p-4">
-            <div className="mb-4 flex items-center space-x-2">
-              <FileText className="text-primary h-4 w-4" />
-              <h3 className="text-md text-foreground font-medium">Robots.txt Configuration</h3>
-            </div>
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                Robots.txt Content
-              </label>
-              <textarea
-                value={settings.robots_txt_content || ''}
-                onChange={(e) => updateSettings('robots_txt_content', e.target.value)}
-                rows={12}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 font-mono text-sm focus:border-transparent focus:ring-2"
-                placeholder={`User-agent: *
-Allow: /
-
-# Disallow admin areas
-Disallow: /admin/
-Disallow: /api/
-Disallow: /dashboard/
-Disallow: /backend/
-
-# Allow important directories
-Allow: /pricing/
-Allow: /contact/
-
-# Crawl delay
-Crawl-delay: 1`}
-              />
-              <p className="text-muted-foreground mt-1 text-xs">
-                Configure how search engines crawl your site. Changes are cached for 1 hour.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SMTP Email Configuration */}
-      <div className="bg-card border-border rounded-lg border p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Mail className="text-primary h-5 w-5" />
-            <h2 className="text-foreground text-lg font-semibold">Email Configuration</h2>
-          </div>
-          <label className="flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              checked={settings.smtp_enabled}
-              onChange={(e) => updateSettings('smtp_enabled', e.target.checked)}
-              className="sr-only"
-            />
-            <div
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.smtp_enabled ? 'bg-success' : 'bg-muted'
-              }`}
-            >
-              <span
-                className={`bg-card inline-block h-4 w-4 transform rounded-full transition-transform ${
-                  settings.smtp_enabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </div>
-            <span className="text-muted-foreground ml-2 text-sm">
-              {settings.smtp_enabled ? 'Enabled' : 'Disabled'}
-            </span>
-          </label>
-        </div>
-
-        <div className="space-y-6">
-          {/* Server Settings */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                <Server className="mr-2 inline h-4 w-4" />
-                SMTP Host
-              </label>
-              <input
-                type="text"
-                value={settings.smtp_host || ''}
-                onChange={(e) => updateSettings('smtp_host', e.target.value)}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                placeholder="mail.example.com"
-              />
-            </div>
-
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                <SettingsIcon className="mr-2 inline h-4 w-4" />
-                SMTP Port
-              </label>
-              <input
-                type="number"
-                value={settings.smtp_port || 465}
-                onChange={(e) => updateSettings('smtp_port', parseInt(e.target.value))}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                placeholder="465"
-              />
-            </div>
-          </div>
-
-          {/* Authentication */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                <Mail className="mr-2 inline h-4 w-4" />
-                SMTP Username
-              </label>
-              <input
-                type="text"
-                value={settings.smtp_user || ''}
-                onChange={(e) => updateSettings('smtp_user', e.target.value)}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                placeholder="username@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                <Lock className="mr-2 inline h-4 w-4" />
-                SMTP Password
-              </label>
-              <input
-                type="password"
-                value={settings.smtp_pass || ''}
-                onChange={(e) => updateSettings('smtp_pass', e.target.value)}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                placeholder="••••••••••••"
-              />
-            </div>
-          </div>
-
-          {/* Sender Settings */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">From Name</label>
-              <input
-                type="text"
-                value={settings.smtp_from_name || 'IndexNow Studio'}
-                onChange={(e) => updateSettings('smtp_from_name', e.target.value)}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                placeholder="IndexNow Studio"
-              />
-            </div>
-
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                From Email Address
-              </label>
-              <input
-                type="email"
-                value={settings.smtp_from_email || ''}
-                onChange={(e) => updateSettings('smtp_from_email', e.target.value)}
-                className="border-border focus:ring-primary w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                placeholder="noreply@example.com"
-              />
-            </div>
-          </div>
-
-          {/* Security Settings */}
-          <div>
-            <label className="flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                checked={settings.smtp_secure}
-                onChange={(e) => updateSettings('smtp_secure', e.target.checked)}
-                className="sr-only"
-              />
-              <div
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  settings.smtp_secure ? 'bg-success' : 'bg-muted'
-                }`}
-              >
-                <span
-                  className={`bg-card inline-block h-4 w-4 transform rounded-full transition-transform ${
-                    settings.smtp_secure ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </div>
-              <span className="text-foreground ml-3 text-sm">
-                <Shield className="mr-1 inline h-4 w-4" />
-                Use TLS/SSL Encryption
-              </span>
-            </label>
-            <p className="text-muted-foreground mt-1 ml-14 text-xs">
-              Recommended for secure email transmission (typically required for port 465)
-            </p>
-          </div>
-
-          {/* Test Email */}
-          <div className="border-border border-t pt-4">
+        <div className="mt-4 space-y-3">
+          <Toggle
+            label="Use TLS/SSL encryption"
+            hint="Recommended for port 465"
+            checked={settings.smtp_secure}
+            onChange={(v) => update('smtp_secure', v)}
+          />
+          <div className="pt-2">
             <button
               onClick={handleTestEmail}
               disabled={testEmailMutation.isPending || !settings.smtp_enabled}
-              className="border-border hover:bg-secondary flex items-center space-x-2 rounded-lg border px-4 py-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
             >
-              <TestTube2 className="h-4 w-4" />
-              <span>{testEmailMutation.isPending ? 'Testing...' : 'Test Email Configuration'}</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${testEmailMutation.isPending ? 'animate-spin' : ''}`} />
+              {testEmailMutation.isPending ? 'Sending…' : 'Send test email'}
             </button>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Send a test email to verify SMTP configuration is working correctly
-            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Verify SMTP configuration is working</p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

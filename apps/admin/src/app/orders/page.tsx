@@ -1,488 +1,217 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Receipt,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  MoreVertical,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Button,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Checkbox,
-  ErrorState,
-} from '@indexnow/ui';
-import { useToast } from '@indexnow/ui';
-
-import {
-  formatCurrency,
-  formatDate,
-  formatRelativeTime,
-  type AdminOrdersResponse,
-  type AdminOrderTransaction,
-  type AdminOrderSummary,
-} from '@indexnow/shared';
+import { Search, Eye, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAdminOrders } from '@/hooks';
 
-interface OrderMetadata {
-  customer_info?: {
-    email?: string;
-    [key: string]: unknown;
-  };
-  billing_period?: string;
-  [key: string]: unknown;
+function statusDot(status: string) {
+  switch (status) {
+    case 'completed': return 'bg-green-500';
+    case 'pending': return 'bg-yellow-400';
+    case 'proof_uploaded': return 'bg-blue-400';
+    case 'failed': return 'bg-red-500';
+    case 'cancelled': return 'bg-gray-400';
+    default: return 'bg-gray-300';
+  }
 }
 
-const getSafeMetadata = (metadata: unknown): OrderMetadata => {
-  if (typeof metadata === 'object' && metadata !== null && !Array.isArray(metadata)) {
-    return metadata as OrderMetadata;
+function statusLabel(status: string) {
+  switch (status) {
+    case 'proof_uploaded': return 'Awaiting Confirmation';
+    default: return status.charAt(0).toUpperCase() + status.slice(1);
   }
-  return {};
-};
+}
+
+function formatAmount(amount: unknown, currency: unknown) {
+  const num = typeof amount === 'number' ? amount : parseFloat(String(amount || 0));
+  const cur = typeof currency === 'string' ? currency.toUpperCase() : 'USD';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(num);
+}
 
 export default function AdminOrdersPage() {
-  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-
-  // Filters
-  const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [customerSearch, setCustomerSearch] = useState<string>('');
-  const [packageFilter, setPackageFilter] = useState<string>('all');
-
   const router = useRouter();
-  const { addToast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [customerSearch, setCustomerSearch] = useState('');
 
-  const {
-    data: ordersData,
-    isLoading: loading,
-    error,
-    refetch,
-  } = useAdminOrders({
+  const { data, isLoading, isFetching, refetch } = useAdminOrders({
     page: currentPage,
     status: statusFilter,
     customer: customerSearch,
-    packageId: packageFilter,
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <Badge variant="secondary" className="bg-muted/10 text-muted-foreground border-muted/20">
-            <Clock className="mr-1 h-3 w-3" />
-            Pending
-          </Badge>
-        );
-      case 'proof_uploaded':
-        return (
-          <Badge variant="secondary" className="bg-muted/10 text-muted-foreground border-muted/20">
-            <AlertCircle className="mr-1 h-3 w-3" />
-            Waiting for Confirmation
-          </Badge>
-        );
-      case 'completed':
-        return (
-          <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
-            <CheckCircle className="mr-1 h-3 w-3" />
-            Completed
-          </Badge>
-        );
-      case 'failed':
-        return (
-          <Badge
-            variant="secondary"
-            className="bg-destructive/10 text-destructive border-destructive/20"
-          >
-            <XCircle className="mr-1 h-3 w-3" />
-            Failed
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="secondary" className="bg-muted/10 text-muted-foreground border-muted/20">
-            {status}
-          </Badge>
-        );
-    }
-  };
+  const orders = data?.orders ?? [];
+  const summary = data?.summary;
+  const pagination = data?.pagination;
 
-  const handleSelectOrder = (orderId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedOrders([...selectedOrders, orderId]);
-    } else {
-      setSelectedOrders(selectedOrders.filter((id) => id !== orderId));
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked && ordersData?.orders) {
-      setSelectedOrders(ordersData.orders.map((order) => order.id));
-    } else {
-      setSelectedOrders([]);
-    }
-  };
-
-  const handleViewOrder = (orderId: string) => {
-    router.push(`/orders/${orderId}`);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
-          <p className="text-muted-foreground">Loading orders...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <ErrorState
-          title="Error Loading Orders"
-          message={error.message}
-          onRetry={() => refetch()}
-          showHomeButton
-        />
-      </div>
-    );
-  }
+  const summaryItems = [
+    { label: 'Total', value: summary?.total_orders ?? 0 },
+    { label: 'Pending', value: summary?.pending_orders ?? 0 },
+    { label: 'Awaiting', value: summary?.proof_uploaded_orders ?? 0 },
+    { label: 'Completed', value: summary?.completed_orders ?? 0 },
+    { label: 'Failed', value: summary?.failed_orders ?? 0 },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-foreground text-2xl font-bold">Orders Management</h1>
-          <p className="text-muted-foreground">Manage and process payment orders</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Orders</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Payment transactions</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            className="border-border text-muted-foreground hover:bg-secondary"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      {/* Summary Cards */}
-      {ordersData?.summary && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium">
-                Total Orders
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-foreground text-2xl font-bold">
-                {ordersData.summary.total_orders}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium">
-                Pending Review
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-warning text-2xl font-bold">
-                {ordersData.summary.proof_uploaded_orders}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium">Completed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-success text-2xl font-bold">
-                {ordersData.summary.completed_orders}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-foreground text-2xl font-bold">
-                {formatCurrency(ordersData.summary.total_revenue)}
-              </div>
-            </CardContent>
-          </Card>
+      {/* Summary row */}
+      {summary && (
+        <div className="flex items-center gap-6 text-sm">
+          {summaryItems.map((item) => (
+            <span key={item.label} className="text-gray-500 dark:text-gray-400">
+              {item.label}: <span className="font-medium text-gray-900 dark:text-white tabular-nums">{item.value.toLocaleString()}</span>
+            </span>
+          ))}
+          {typeof summary.total_revenue === 'number' && (
+            <span className="text-gray-500 dark:text-gray-400 ml-auto">
+              Revenue: <span className="font-medium text-gray-900 dark:text-white">{formatAmount(summary.total_revenue, 'USD')}</span>
+            </span>
+          )}
         </div>
       )}
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="proof_uploaded">Proof Uploaded</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by customer…"
+            value={customerSearch}
+            onChange={(e) => { setCustomerSearch(e.target.value); setCurrentPage(1); }}
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+          className="text-sm border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-white dark:bg-[#141520] text-gray-700 dark:text-gray-300 focus:outline-none"
+        >
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="proof_uploaded">Awaiting Confirmation</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
 
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                Customer Search
-              </label>
-              <Input
-                placeholder="Search by name or email"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                className="border-border"
-              />
-            </div>
+      {/* Table */}
+      <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-gray-400">Loading orders…</div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Package</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-3 w-12" />
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr
+                  key={order.id}
+                  className="border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 cursor-pointer transition-colors"
+                  onClick={() => router.push(`/orders/${order.id}`)}
+                >
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                      {order.id.slice(0, 8)}…
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {order.user?.full_name || '—'}
+                      </div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500">{order.user?.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    {order.package?.name || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white tabular-nums">
+                    {formatAmount(order.amount, order.currency)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDot(order.status)}`} />
+                      {statusLabel(order.status)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-400 dark:text-gray-500 tabular-nums">
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); router.push(`/orders/${order.id}`); }}
+                      className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {orders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">No orders found</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
 
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">Package</label>
-              <Select value={packageFilter} onValueChange={setPackageFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All packages" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All packages</SelectItem>
-                  {/* Add package options dynamically */}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-end">
-              <Button
-                onClick={() => {
-                  setStatusFilter('all');
-                  setCustomerSearch('');
-                  setPackageFilter('all');
-                  setCurrentPage(1);
-                }}
-                variant="outline"
-                className="border-border text-muted-foreground hover:bg-secondary"
+        {/* Pagination */}
+        {pagination && pagination.total_pages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 px-4 py-3">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {pagination.total_items.toLocaleString()} total orders
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={!pagination.has_prev}
+                className="p-1.5 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
               >
-                Clear Filters
-              </Button>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-xs text-gray-500">
+                Page {pagination.current_page} of {pagination.total_pages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(pagination.total_pages, p + 1))}
+                disabled={!pagination.has_next}
+                className="p-1.5 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Orders Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Orders</CardTitle>
-            {selectedOrders.length > 0 && (
-              <div className="text-muted-foreground text-sm">
-                {selectedOrders.length} order{selectedOrders.length > 1 ? 's' : ''} selected
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={
-                        selectedOrders.length === ordersData?.orders.length &&
-                        ordersData?.orders.length > 0
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead className="text-left">Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Package</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ordersData?.orders.map((order) => (
-                  <TableRow key={order.id} className="hover:bg-secondary">
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedOrders.includes(order.id)}
-                        onCheckedChange={(checked) =>
-                          handleSelectOrder(order.id, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-left">
-                      <button
-                        onClick={() => handleViewOrder(order.id)}
-                        className="text-foreground hover:text-primary block text-left font-medium transition-colors hover:underline"
-                      >
-                        #{order.id}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-foreground font-medium">{order.user.full_name}</div>
-                        <div className="text-muted-foreground max-w-[200px] truncate text-sm">
-                          {order.user.email ||
-                            getSafeMetadata(order.metadata).customer_info?.email ||
-                            'N/A'}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-foreground font-medium">
-                          {order.package?.name || 'Unknown Package'}
-                        </div>
-                        <div className="text-muted-foreground text-sm">
-                          {getSafeMetadata(order.metadata).billing_period ||
-                            order.package?.billing_period}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-foreground font-medium">
-                        {formatCurrency(order.amount)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(order.transaction_status)}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-foreground text-sm">
-                          {formatRelativeTime(order.created_at)}
-                        </div>
-                        <div className="text-muted-foreground text-xs">
-                          {formatDate(order.created_at)}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground hover:bg-secondary"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => handleViewOrder(order.id)}
-                            className="text-foreground hover:bg-secondary hover:text-foreground focus:bg-secondary focus:text-foreground"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {ordersData?.pagination && ordersData.pagination.total_pages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <div className="text-muted-foreground text-sm">
-                Showing{' '}
-                {(ordersData.pagination.current_page - 1) * ordersData.pagination.items_per_page +
-                  1}{' '}
-                to{' '}
-                {Math.min(
-                  ordersData.pagination.current_page * ordersData.pagination.items_per_page,
-                  ordersData.pagination.total_items
-                )}{' '}
-                of {ordersData.pagination.total_items} orders
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={!ordersData.pagination.has_prev}
-                  className="border-border"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <span className="text-muted-foreground text-sm">
-                  Page {ordersData.pagination.current_page} of {ordersData.pagination.total_pages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={!ordersData.pagination.has_next}
-                  className="border-border"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

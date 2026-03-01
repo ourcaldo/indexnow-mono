@@ -1,133 +1,140 @@
 'use client';
 
-import { useEffect } from 'react';
-import {
-  Users,
-  Activity,
-  Briefcase,
-  Server,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  type LucideIcon,
-} from 'lucide-react';
 import Link from 'next/link';
-import { AdminPageSkeleton } from '@indexnow/ui';
-import { useAdminDashboardLogger } from '@indexnow/ui/hooks';
+import { RefreshCw, Users, AlertTriangle, Receipt, Key, TrendingUp, CheckCircle, Clock, BarChart2 } from 'lucide-react';
 import { useAdminDashboard } from '@/hooks';
 
-export default function AdminDashboard() {
-  const { data: stats, isLoading, refetch } = useAdminDashboard();
-  const { logDashboardView, logStatsRefresh } = useAdminDashboardLogger();
-
-  useEffect(() => {
-    logDashboardView();
-    // (#V7 M-29) logDashboardView is stable (no deps) — listed for exhaustive-deps compliance
-  }, [logDashboardView]);
-
-  if (isLoading) {
-    return <AdminPageSkeleton />;
-  }
-
-  const statCards = [
-    {
-      title: 'Total Users',
-      value: stats?.total_users || 0,
-      subtitle: `${stats?.regular_users || 0} regular, ${stats?.admin_users || 0} admin`,
-      icon: Users,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
-    },
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-foreground text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Overview of IndexNow Studio system metrics</p>
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  href,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  icon: React.ElementType;
+  href?: string;
+}) {
+  const content = (
+    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 flex items-start gap-4 hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
+      <Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+      <div className="min-w-0">
+        <div className="text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">
+          {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
-        <button
-          onClick={() => {
-            refetch();
-            logStatsRefresh();
-          }}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 transition-colors"
-        >
-          Refresh Data
-        </button>
-      </div>
-
-      {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((card, index) => (
-          <div
-            key={index}
-            className="bg-background border-border rounded-lg border p-6 transition-shadow hover:shadow-md"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <div className={`rounded-lg p-3 ${card.bgColor}`}>
-                <card.icon className={`h-6 w-6 ${card.color}`} />
-              </div>
-            </div>
-            <div>
-              <h3 className="text-foreground mb-1 text-2xl font-bold">
-                {card.value.toLocaleString()}
-              </h3>
-              <p className="text-foreground mb-1 text-sm font-medium">{card.title}</p>
-              <p className="text-muted-foreground text-xs">{card.subtitle}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* (#V7 L-24) System Status: Currently hardcoded. TODO: Wire to /api/v1/system/health */}
-      <div className="bg-background border-border rounded-lg border p-6">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">System Status</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="flex items-center space-x-3">
-            <div className="bg-success h-3 w-3 rounded-full"></div>
-            <span className="text-muted-foreground text-sm">Database Connection</span>
-            <span className="text-success text-sm font-medium">Healthy</span>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <div className="bg-success h-3 w-3 rounded-full"></div>
-            <span className="text-muted-foreground text-sm">Background Worker</span>
-            <span className="text-success text-sm font-medium">Running</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Summary */}
-      <div className="bg-background border-border rounded-lg border p-6">
-        <h2 className="text-foreground mb-4 text-lg font-semibold">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Link
-            href="/users"
-            className="border-border hover:bg-secondary flex items-center rounded-lg border p-4 transition-colors"
-          >
-            <Users className="text-accent mr-3 h-5 w-5" />
-            <span className="text-foreground text-sm font-medium">Manage Users</span>
-          </Link>
-          <Link
-            href="/activity"
-            className="border-border hover:bg-secondary flex items-center rounded-lg border p-4 transition-colors"
-          >
-            <Activity className="text-success mr-3 h-5 w-5" />
-            <span className="text-foreground text-sm font-medium">View Logs</span>
-          </Link>
-          <Link
-            href="/settings/site"
-            className="border-border hover:bg-secondary flex items-center rounded-lg border p-4 transition-colors"
-          >
-            <Server className="text-warning mr-3 h-5 w-5" />
-            <span className="text-foreground text-sm font-medium">Site Settings</span>
-          </Link>
-        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{label}</div>
+        {sub && <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</div>}
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {content}
+      </Link>
+    );
+  }
+  return content;
 }
+
+export default function AdminDashboard() {
+  const { data: stats, isLoading, isFetching, refetch } = useAdminDashboard();
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">System overview</p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 animate-pulse">
+              <div className="h-6 w-12 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+              <div className="h-4 w-24 bg-gray-100 dark:bg-gray-700/50 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Section: Users */}
+          <section>
+            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Users</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <StatCard label="Total users" value={stats?.users.total ?? 0} icon={Users} href="/users" />
+              <StatCard label="New this week" value={stats?.users.newThisWeek ?? 0} icon={TrendingUp} href="/users" />
+              <StatCard label="Active today" value={stats?.users.activeToday ?? 0} icon={CheckCircle} sub="based on activity logs" />
+            </div>
+          </section>
+
+          {/* Section: Orders */}
+          <section>
+            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Orders</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <StatCard label="Total orders" value={stats?.transactions.total ?? 0} icon={Receipt} href="/orders" />
+              <StatCard label="Completed this month" value={stats?.transactions.completedThisMonth ?? 0} icon={CheckCircle} href="/orders" />
+              <StatCard
+                label="Pending"
+                value={stats?.transactions.pendingCount ?? 0}
+                icon={Clock}
+                sub={stats?.transactions.pendingCount ? 'awaiting confirmation' : 'none pending'}
+                href="/orders"
+              />
+            </div>
+          </section>
+
+          {/* Section: Keywords */}
+          <section>
+            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Rank Tracking</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <StatCard label="Total keywords" value={stats?.keywords.total ?? 0} icon={Key} />
+              <StatCard label="Checked today" value={stats?.keywords.checkedToday ?? 0} icon={BarChart2} sub="rank checks run today" />
+            </div>
+          </section>
+
+          {/* Section: Errors */}
+          <section>
+            <h2 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Errors</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <StatCard
+                label="Critical errors"
+                value={stats?.errors.critical ?? 0}
+                icon={AlertTriangle}
+                sub="unresolved critical"
+                href="/errors"
+              />
+              <StatCard
+                label="Unresolved errors"
+                value={stats?.errors.unresolved ?? 0}
+                icon={AlertTriangle}
+                href="/errors"
+              />
+              <StatCard
+                label="Errors last 24h"
+                value={stats?.errors.last24h ?? 0}
+                icon={AlertTriangle}
+                href="/errors"
+              />
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+

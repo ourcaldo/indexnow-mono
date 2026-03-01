@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AdminClientProviders } from '@/components/providers/AdminClientProviders'
+import { AdminSidebar } from '@/components/AdminSidebar'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,11 +18,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-gray-50 dark:bg-[#0c0c14]`}>
         <AdminClientProviders>
-          {children}
+          <div className="flex min-h-screen">
+            <AdminSidebar />
+            <main className="flex-1 overflow-y-auto">
+              <div className="px-8 py-8 max-w-6xl">
+                {children}
+              </div>
+            </main>
+          </div>
         </AdminClientProviders>
       </body>
     </html>
   )
 }
+

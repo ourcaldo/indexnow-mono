@@ -1,64 +1,16 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, ErrorState } from '@indexnow/ui';
-import {
-  ArrowLeft,
-  Activity,
-  Clock,
-  User,
-  Monitor,
-  MapPin,
-  Smartphone,
-  AlertTriangle,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Monitor, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { formatDate, EnrichedActivityLog } from '@indexnow/shared';
+import { formatDate } from '@indexnow/shared';
 import { useAdminUserActivity } from '@/hooks';
 
-interface ActivityLog {
-  id: string;
-  user_id: string;
-  event_type: string;
-  action_description: string;
-  target_type?: string;
-  target_id?: string;
-  ip_address?: string;
-  user_agent?: string;
-  device_info?: DeviceInfo;
-  location_data?: LocationData;
-  success: boolean;
-  error_message?: string;
-  metadata?: ActivityMetadata;
-  created_at: string;
-}
-
-interface UserInfo {
-  id: string;
-  name: string;
-}
-
-interface DeviceInfo {
-  browser?: string;
-  os?: string;
-  device?: string;
-  [key: string]: unknown;
-}
-
-interface LocationData {
-  city?: string;
-  country?: string;
-  ip?: string;
-  [key: string]: unknown;
-}
-
-interface ActivityMetadata {
-  device_info?: DeviceInfo;
-  location_data?: LocationData;
-  [key: string]: unknown;
+function getDeviceIcon(ua?: string | null) {
+  if (!ua) return <Monitor className="w-3.5 h-3.5" />;
+  const u = ua.toLowerCase();
+  if (u.includes('mobile') || u.includes('android') || u.includes('iphone')) return <Smartphone className="w-3.5 h-3.5" />;
+  return <Monitor className="w-3.5 h-3.5" />;
 }
 
 export default function UserActivityPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,308 +18,124 @@ export default function UserActivityPage({ params }: { params: Promise<{ id: str
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
-    const resolveParams = async () => {
-      const resolved = await params;
-      setResolvedParams(resolved);
-    };
-    resolveParams();
+    params.then(setResolvedParams);
   }, [params]);
 
-  const {
-    data,
-    isLoading: loading,
-    error,
-  } = useAdminUserActivity(resolvedParams?.id ?? '', currentPage);
+  const userId = resolvedParams?.id ?? '';
+  const { data, isLoading, error } = useAdminUserActivity(userId, currentPage);
 
   const logs = data?.logs ?? [];
   const user = data?.user ?? null;
   const pagination = data?.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 };
 
-  const getEventTypeBadge = (eventType: string, success: boolean) => {
-    const colors = {
-      login: success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive',
-      logout: 'bg-muted/10 text-muted-foreground',
-      job_create: 'bg-primary/10 text-primary',
-      job_update: 'bg-warning/10 text-warning',
-      job_delete: 'bg-destructive/10 text-destructive',
-      profile_update: 'bg-primary/10 text-primary',
-      api_call: 'bg-muted/10 text-muted-foreground',
-    };
+  const successCount = logs.filter((l) => l.success).length;
+  const failedCount = logs.filter((l) => !l.success).length;
+  const eventTypes = new Set(logs.map((l) => l.event_type)).size;
 
-    return colors[eventType as keyof typeof colors] || 'bg-muted/10 text-muted-foreground';
-  };
-
-  const getDeviceIcon = (userAgent?: string | null) => {
-    if (!userAgent) return <Monitor className="h-4 w-4" />;
-
-    if (
-      userAgent.includes('Mobile') ||
-      userAgent.includes('Android') ||
-      userAgent.includes('iPhone')
-    ) {
-      return <Smartphone className="h-4 w-4" />;
-    }
-
-    return <Monitor className="h-4 w-4" />;
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-background min-h-screen p-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8">
-            <div className="mb-4 flex items-center gap-4">
-              <Link href="/users">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Users
-                </Button>
-              </Link>
-            </div>
-            <h1 className="text-foreground text-2xl font-semibold">User Activity History</h1>
-            <p className="text-muted-foreground mt-2">Loading user activity...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-background min-h-screen p-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8">
-            <div className="mb-4 flex items-center gap-4">
-              <Link href="/users">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Users
-                </Button>
-              </Link>
-            </div>
-            <h1 className="text-foreground text-2xl font-semibold">User Activity History</h1>
-            <div className="mt-4">
-              <ErrorState
-                title="Failed to load user activity"
-                message={error.message}
-                onRetry={() => window.location.reload()}
-                variant="inline"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="py-20 text-center text-sm text-gray-400">Loading activity…</div>;
+  if (error) return (
+    <div className="py-10 text-center space-y-2">
+      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Failed to load activity</p>
+      <p className="text-xs text-gray-400">{error.message}</p>
+      <button onClick={() => window.location.reload()} className="text-xs underline text-gray-400">Retry</button>
+    </div>
+  );
 
   return (
-    <div className="bg-background min-h-screen p-6">
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="mb-4 flex items-center gap-4">
-            <Link href="/users">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Users
-              </Button>
-            </Link>
-            {resolvedParams?.id && (
-              <Link href={`/users/${resolvedParams.id}`}>
-                <Button variant="outline" size="sm">
-                  <User className="mr-2 h-4 w-4" />
-                  View User Profile
-                </Button>
-              </Link>
-            )}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/users" className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Activity history</h1>
+            {user?.name && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{user.name}</p>}
           </div>
-          <h1 className="text-foreground text-2xl font-semibold">
-            Activity History: {user?.name || 'Loading...'}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Complete activity timeline for this user including logins, actions, and system
-            interactions
-          </p>
         </div>
+        {userId && (
+          <Link href={`/users/${userId}`} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            View user profile
+          </Link>
+        )}
+      </div>
 
-        {/* Statistics */}
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-primary/10 rounded-lg p-2">
-                  <Activity className="text-primary h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-foreground text-lg font-bold">{logs.length}</p>
-                  <p className="text-muted-foreground text-xs">Total Activities</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-success/10 rounded-lg p-2">
-                  <CheckCircle className="text-success h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-foreground text-lg font-bold">
-                    {logs.filter((l) => l.success).length}
-                  </p>
-                  <p className="text-muted-foreground text-xs">Successful</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-destructive/10 rounded-lg p-2">
-                  <AlertTriangle className="text-destructive h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-foreground text-lg font-bold">
-                    {logs.filter((l) => !l.success).length}
-                  </p>
-                  <p className="text-muted-foreground text-xs">Failed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-warning/10 rounded-lg p-2">
-                  <Activity className="text-warning h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-foreground text-lg font-bold">
-                    {new Set(logs.map((l) => l.event_type)).size}
-                  </p>
-                  <p className="text-muted-foreground text-xs">Event Types</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total activities', value: pagination.total },
+          { label: 'Successful', value: successCount, cls: 'text-green-600 dark:text-green-400' },
+          { label: 'Failed', value: failedCount, cls: 'text-red-600 dark:text-red-400' },
+          { label: 'Event types', value: eventTypes },
+        ].map((s) => (
+          <div key={s.label} className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3">
+            <p className={`text-xl font-semibold tabular-nums ${s.cls || 'text-gray-900 dark:text-white'}`}>{s.value.toLocaleString()}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
 
-        {/* Activity Timeline */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Activity Timeline ({logs.length} entries)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {logs.length === 0 ? (
-              <div className="py-8 text-center">
-                <Activity className="text-muted-foreground mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p className="text-muted-foreground">No activity found for this user</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {logs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="border-border hover:bg-background rounded-lg border p-4 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex flex-1 items-start space-x-4">
-                        {/* Timestamp */}
-                        <div className="flex items-center gap-2 sm:min-w-[140px]">
-                          <Clock className="text-muted-foreground h-4 w-4" />
-                          <span className="text-foreground text-sm font-medium">
-                            {formatDate(log.created_at)}
-                          </span>
-                        </div>
-
-                        {/* Event/Action */}
-                        <div className="flex-1">
-                          <div className="mb-1 flex items-center gap-2">
-                            <Badge
-                              className={`${getEventTypeBadge(log.event_type, log.success)} border-0 text-xs`}
-                            >
-                              {log.event_type.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                            {!log.success && (
-                              <Badge className="bg-destructive/10 text-destructive border-0 text-xs">
-                                FAILED
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-foreground mb-1 text-sm">{log.action_description}</p>
-                          {log.error_message && (
-                            <p className="text-destructive text-xs">Error: {log.error_message}</p>
-                          )}
-                        </div>
-
-                        {/* IP and Device */}
-                        <div className="text-muted-foreground flex items-center gap-4 text-xs sm:min-w-[180px]">
-                          {log.ip_address && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              <span className="font-mono">{log.ip_address}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            {getDeviceIcon(log.user_agent)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Link to Activity Detail */}
-                      <Link href={`/activity/${log.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-background h-8 w-8 p-0"
-                        >
-                          <Activity className="h-4 w-4" />
-                        </Button>
-                      </Link>
+      {/* Activity table */}
+      <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        {logs.length === 0 ? (
+          <div className="py-12 text-center text-sm text-gray-400">No activity found</div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Event</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Result</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">IP / Device</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id} className="border-b border-gray-50 dark:border-gray-800/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                  <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 tabular-nums whitespace-nowrap">{formatDate(log.created_at)}</td>
+                  <td className="px-4 py-3 text-xs font-mono text-gray-500 dark:text-gray-400">{log.event_type}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-[240px] truncate">
+                    {log.action_description}
+                    {log.error_message && <span className="block text-xs text-red-500">{log.error_message}</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {log.success
+                      ? <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                      : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                      <span className="font-mono">{log.ip_address || '—'}</span>
+                      {getDeviceIcon(log.user_agent)}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/activity/${log.id}`} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">Detail</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <p className="text-muted-foreground text-sm">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                  {pagination.total} entries
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                  <span className="text-muted-foreground text-sm">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === pagination.totalPages}
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 px-4 py-3">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Page {pagination.page} of {pagination.totalPages} ({pagination.total.toLocaleString()} total)
+            </span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors">
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={currentPage === pagination.totalPages} className="p-1.5 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

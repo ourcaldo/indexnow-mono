@@ -1,5 +1,6 @@
-'use client';
+﻿'use client';
 
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -7,375 +8,301 @@ import {
   CheckCircle2,
   Clock,
   User,
-  XCircle,
-  Calendar,
   Code,
   Globe,
   Activity,
+  Calendar,
 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  Badge,
-  Separator,
-  useToast,
-  ErrorState,
-} from '@indexnow/ui';
 import { formatDate, formatRelativeTime, type ErrorDetailResponse } from '@indexnow/shared';
 import { useAdminErrorDetail, useErrorAction } from '@/hooks';
+
+function SeverityBadge({ severity }: { severity: string }) {
+  const cls: Record<string, string> = {
+    CRITICAL: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    HIGH: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    MEDIUM: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    LOW: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  };
+  return (
+    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${cls[severity] ?? cls.LOW}`}>
+      {severity}
+    </span>
+  );
+}
 
 export default function AdminErrorDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { addToast } = useToast();
   const errorId = params.id as string;
+
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const { data: errorData, isLoading: loading, error, refetch } = useAdminErrorDetail(errorId);
   const actionMutation = useErrorAction(errorId);
 
   const handleAction = async (action: 'acknowledge' | 'resolve') => {
+    setMsg(null);
     try {
       await actionMutation.mutateAsync(action);
-
-      addToast({
-        type: 'success',
-        title: 'Success',
-        description: `Error has been ${action}d successfully`,
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to ${action} error`;
-      addToast({
-        type: 'error',
-        title: 'Error',
-        description: errorMessage,
-      });
-    }
-  };
-
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case 'CRITICAL':
-        return <Badge className="bg-destructive text-destructive-foreground">Critical</Badge>;
-      case 'HIGH':
-        return <Badge className="bg-warning/80 text-warning-foreground">High</Badge>;
-      case 'MEDIUM':
-        return <Badge className="bg-muted text-muted-foreground">Medium</Badge>;
-      case 'LOW':
-        return <Badge className="bg-muted/50 text-muted-foreground">Low</Badge>;
-      default:
-        return <Badge className="bg-muted text-muted-foreground">{severity}</Badge>;
+      setMsg({ type: 'ok', text: `Error ${action}d successfully.` });
+    } catch (e: unknown) {
+      setMsg({ type: 'err', text: e instanceof Error ? e.message : `Failed to ${action} error` });
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="border-foreground mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
-          <p className="text-muted-foreground">Loading error details...</p>
-        </div>
-      </div>
-    );
+    return <div className="py-20 text-center text-sm text-gray-400">Loading error details…</div>;
   }
 
   if (error) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <ErrorState
-          title="Error Loading Details"
-          message={error.message}
-          onRetry={() => refetch()}
-          showHomeButton
-        />
+      <div className="py-20 text-center">
+        <p className="text-sm font-medium text-gray-900 dark:text-white">Failed to load</p>
+        <p className="mt-1 text-sm text-gray-500">{error.message}</p>
+        <button
+          onClick={() => refetch()}
+          className="mt-4 text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+          Try again
+        </button>
       </div>
     );
   }
 
   if (!errorData) return null;
 
-  const { error: errorDetail, userInfo, relatedErrors } = errorData;
+  const { error: errorDetail, userInfo, relatedErrors } = errorData as ErrorDetailResponse;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            onClick={() => router.back()}
-            variant="outline"
-            size="sm"
-            className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
-            data-testid="button-back"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-foreground text-2xl font-bold" data-testid="text-page-title">
-              Error Details
-            </h1>
-            <p className="text-muted-foreground">View and manage error information</p>
-          </div>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <div className="flex-1">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Error Details</h1>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            View and manage error information
+          </p>
         </div>
-        <div className="flex items-center space-x-2">{getSeverityBadge(errorDetail.severity)}</div>
+        <SeverityBadge severity={errorDetail.severity} />
       </div>
 
-      {/* Main 2-Column Layout */}
+      {msg && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            msg.type === 'ok'
+              ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
+              : 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400'
+          }`}
+        >
+          {msg.text}
+        </div>
+      )}
+
+      {/* 2-column layout */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* COLUMN 1 */}
+        {/* Column 1 */}
         <div className="space-y-6">
           {/* Error Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center">
-                <AlertCircle className="mr-2 h-5 w-5" />
-                Error Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-muted-foreground text-sm font-medium">Error ID</label>
-                <code
-                  className="bg-muted mt-1 block rounded px-2 py-1 text-xs"
-                  data-testid="text-error-id"
-                >
+          <div className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-[#141520]">
+            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+              <AlertCircle className="h-4 w-4" />
+              Error Overview
+            </div>
+            <div className="space-y-4">
+              <Row label="Error ID">
+                <code className="block rounded bg-gray-50 px-2 py-1 text-xs dark:bg-gray-800/60">
                   {errorDetail.id}
                 </code>
-              </div>
-
-              <div>
-                <label className="text-muted-foreground text-sm font-medium">Error Type</label>
-                <code
-                  className="bg-muted mt-1 block rounded px-2 py-1 text-xs"
-                  data-testid="text-error-type"
-                >
+              </Row>
+              <Row label="Error Type">
+                <code className="block rounded bg-gray-50 px-2 py-1 text-xs dark:bg-gray-800/60">
                   {errorDetail.error_type}
                 </code>
-              </div>
-
-              <div>
-                <label className="text-muted-foreground text-sm font-medium">User Message</label>
-                <p className="text-foreground mt-1 text-sm" data-testid="text-user-message">
-                  {errorDetail.user_message}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-muted-foreground text-sm font-medium">
-                  Technical Message
-                </label>
-                <pre
-                  className="bg-muted mt-1 overflow-x-auto rounded p-3 text-xs"
-                  data-testid="text-technical-message"
-                >
+              </Row>
+              {errorDetail.user_message && (
+                <Row label="User Message">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{errorDetail.user_message}</p>
+                </Row>
+              )}
+              <Row label="Technical Message">
+                <pre className="overflow-x-auto rounded bg-gray-50 p-3 text-xs dark:bg-gray-800/60">
                   {errorDetail.message}
                 </pre>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {errorDetail.status_code && (
-                  <div>
-                    <label className="text-muted-foreground text-sm font-medium">Status Code</label>
-                    <p className="text-foreground mt-1 text-sm" data-testid="text-status-code">
-                      {errorDetail.status_code}
-                    </p>
-                  </div>
-                )}
-                {errorDetail.http_method && (
-                  <div>
-                    <label className="text-muted-foreground text-sm font-medium">HTTP Method</label>
-                    <Badge variant="outline" className="mt-1" data-testid="text-http-method">
-                      {errorDetail.http_method}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-
-              {errorDetail.endpoint && (
-                <div>
-                  <label className="text-muted-foreground text-sm font-medium">Endpoint</label>
-                  <code
-                    className="bg-muted mt-1 block rounded px-2 py-1 text-xs break-all"
-                    data-testid="text-endpoint"
-                  >
-                    {errorDetail.endpoint}
-                  </code>
+              </Row>
+              {(errorDetail.status_code || errorDetail.http_method) && (
+                <div className="flex gap-6">
+                  {errorDetail.status_code && (
+                    <Row label="Status Code">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{errorDetail.status_code}</span>
+                    </Row>
+                  )}
+                  {errorDetail.http_method && (
+                    <Row label="HTTP Method">
+                      <span className="inline-block rounded border border-gray-200 px-2 py-0.5 text-xs dark:border-gray-700">
+                        {errorDetail.http_method}
+                      </span>
+                    </Row>
+                  )}
                 </div>
               )}
-
-              <div>
-                <label className="text-muted-foreground text-sm font-medium">Created At</label>
-                <div className="mt-1 flex items-center space-x-2">
-                  <Calendar className="text-muted-foreground h-4 w-4" />
-                  <p className="text-foreground text-sm" data-testid="text-created-at">
-                    {formatDate(errorDetail.created_at)}
-                  </p>
-                  <span className="text-muted-foreground text-xs">
+              {errorDetail.endpoint && (
+                <Row label="Endpoint">
+                  <code className="block break-all rounded bg-gray-50 px-2 py-1 text-xs dark:bg-gray-800/60">
+                    {errorDetail.endpoint}
+                  </code>
+                </Row>
+              )}
+              <Row label="Created At">
+                <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                  {formatDate(errorDetail.created_at)}
+                  <span className="text-xs text-gray-400">
                     ({formatRelativeTime(errorDetail.created_at)})
                   </span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </Row>
+            </div>
+          </div>
 
-          {/* User Information */}
+          {/* Affected User */}
           {userInfo && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <User className="mr-2 h-5 w-5" />
-                  Affected User
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="text-muted-foreground text-sm font-medium">Email</label>
-                  <p className="text-foreground mt-1 text-sm" data-testid="text-user-email">
-                    {userInfo.email}
-                  </p>
-                </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-[#141520]">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+                <User className="h-4 w-4" />
+                Affected User
+              </div>
+              <div className="space-y-3">
+                <Row label="Email">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{userInfo.email}</span>
+                </Row>
                 {userInfo.full_name && (
-                  <div>
-                    <label className="text-muted-foreground text-sm font-medium">Full Name</label>
-                    <p className="text-foreground mt-1 text-sm">{userInfo.full_name}</p>
-                  </div>
+                  <Row label="Full Name">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{userInfo.full_name}</span>
+                  </Row>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Stack Trace */}
           {errorDetail.stack_trace && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <Code className="mr-2 h-5 w-5" />
-                  Stack Trace
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <pre
-                  className="bg-muted max-h-96 overflow-x-auto rounded p-3 text-xs"
-                  data-testid="text-stack-trace"
-                >
-                  {errorDetail.stack_trace}
-                </pre>
-              </CardContent>
-            </Card>
+            <div className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-[#141520]">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+                <Code className="h-4 w-4" />
+                Stack Trace
+              </div>
+              <pre className="max-h-96 overflow-x-auto rounded bg-gray-50 p-3 text-xs dark:bg-gray-800/60">
+                {errorDetail.stack_trace}
+              </pre>
+            </div>
           )}
         </div>
 
-        {/* COLUMN 2 */}
+        {/* Column 2 */}
         <div className="space-y-6">
           {/* Resolution Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center">
-                <Activity className="mr-2 h-5 w-5" />
-                Resolution Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-[#141520]">
+            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+              <Activity className="h-4 w-4" />
+              Resolution Status
+            </div>
+            <div className="space-y-4">
               {errorDetail.resolved_at ? (
-                <div className="text-success flex items-center gap-2" data-testid="status-resolved">
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium">Resolved</p>
-                    <p className="text-muted-foreground text-xs">
-                      {formatRelativeTime(errorDetail.resolved_at)}
-                    </p>
+                    <p className="text-xs text-gray-500">{formatRelativeTime(errorDetail.resolved_at)}</p>
                   </div>
                 </div>
               ) : errorDetail.acknowledged_at ? (
-                <div
-                  className="text-warning flex items-center gap-2"
-                  data-testid="status-acknowledged"
-                >
+                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
                   <Clock className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium">Acknowledged</p>
-                    <p className="text-muted-foreground text-xs">
-                      {formatRelativeTime(errorDetail.acknowledged_at)}
-                    </p>
+                    <p className="text-xs text-gray-500">{formatRelativeTime(errorDetail.acknowledged_at)}</p>
                   </div>
                 </div>
               ) : (
-                <div className="text-destructive flex items-center gap-2" data-testid="status-new">
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                   <AlertCircle className="h-5 w-5" />
                   <div>
                     <p className="text-sm font-medium">Not Acknowledged</p>
-                    <p className="text-muted-foreground text-xs">Requires attention</p>
+                    <p className="text-xs text-gray-500">Requires attention</p>
                   </div>
                 </div>
               )}
 
-              {/* Action Buttons */}
               {!errorDetail.resolved_at && (
-                <div className="flex flex-col gap-2 pt-4">
+                <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                   {!errorDetail.acknowledged_at && (
-                    <Button
+                    <button
                       onClick={() => handleAction('acknowledge')}
                       disabled={actionMutation.isPending}
-                      className="w-full"
-                      variant="outline"
-                      data-testid="button-acknowledge"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                     >
-                      <Clock className="mr-2 h-4 w-4" />
-                      {actionMutation.isPending ? 'Processing...' : 'Acknowledge Error'}
-                    </Button>
+                      <Clock className="h-4 w-4" />
+                      {actionMutation.isPending ? 'Processing…' : 'Acknowledge Error'}
+                    </button>
                   )}
-                  <Button
+                  <button
                     onClick={() => handleAction('resolve')}
                     disabled={actionMutation.isPending}
-                    className="bg-success hover:bg-success/90 text-success-foreground w-full"
-                    data-testid="button-resolve"
+                    className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
                   >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    {actionMutation.isPending ? 'Processing...' : 'Mark as Resolved'}
-                  </Button>
+                    <CheckCircle2 className="h-4 w-4" />
+                    {actionMutation.isPending ? 'Processing…' : 'Mark as Resolved'}
+                  </button>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Related Errors */}
           {relatedErrors.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center">
-                  <Globe className="mr-2 h-5 w-5" />
-                  Related Errors (Last 24h)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2" data-testid="list-related-errors">
-                  {relatedErrors.slice(0, 10).map((relError) => (
-                    <div
-                      key={relError.id}
-                      className="bg-secondary hover:bg-secondary/80 cursor-pointer rounded-lg p-3 transition-colors"
-                      onClick={() => router.push(`/errors/${relError.id}`)}
-                    >
-                      <div className="mb-1 flex items-center justify-between">
-                        <code className="text-foreground text-xs font-medium">
-                          {relError.error_type}
-                        </code>
-                        {getSeverityBadge(relError.severity)}
-                      </div>
-                      <p className="text-muted-foreground truncate text-xs">{relError.message}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {formatRelativeTime(relError.created_at)}
-                      </p>
+            <div className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-[#141520]">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+                <Globe className="h-4 w-4" />
+                Related Errors — Last 24h
+              </div>
+              <div className="space-y-2">
+                {relatedErrors.slice(0, 10).map((relError: { id: string; error_type: string; severity: string; message: string; created_at: string }) => (
+                  <button
+                    key={relError.id}
+                    onClick={() => router.push(`/errors/${relError.id}`)}
+                    className="w-full rounded-lg bg-gray-50 p-3 text-left transition-colors hover:bg-gray-100 dark:bg-gray-800/40 dark:hover:bg-gray-800"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <code className="text-xs font-medium text-gray-900 dark:text-white">
+                        {relError.error_type}
+                      </code>
+                      <SeverityBadge severity={relError.severity} />
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <p className="truncate text-xs text-gray-500">{relError.message}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">{formatRelativeTime(relError.created_at)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <div className="mt-1">{children}</div>
     </div>
   );
 }

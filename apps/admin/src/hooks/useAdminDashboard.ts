@@ -3,9 +3,25 @@ import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface DashboardStats {
-  total_users: number;
-  regular_users: number;
-  admin_users: number;
+  users: {
+    total: number;
+    activeToday: number;
+    newThisWeek: number;
+  };
+  errors: {
+    critical: number;
+    unresolved: number;
+    last24h: number;
+  };
+  transactions: {
+    total: number;
+    completedThisMonth: number;
+    pendingCount: number;
+  };
+  keywords: {
+    total: number;
+    checkedToday: number;
+  };
 }
 
 async function fetchDashboardStats(): Promise<DashboardStats | null> {
@@ -28,5 +44,6 @@ export function useAdminDashboard(): UseQueryResult<DashboardStats | null, Error
   return useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: fetchDashboardStats,
+    refetchInterval: 60_000,
   });
 }

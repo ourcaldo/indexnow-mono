@@ -11,8 +11,37 @@ import { PackageSubscriptionCard } from './components/PackageSubscriptionCard';
 import { UserActivityCard } from './components/UserActivityCard';
 import { UserSecurityCard } from './components/UserSecurityCard';
 import { PackageChangeModal } from './components/PackageChangeModal';
-import { AdminUserDetailSkeleton, ErrorState } from '@indexnow/ui';
-import { ConfirmationDialog } from '@indexnow/ui/modals';
+function AdminUserDetailSkeleton() {
+  return <div className="py-20 text-center text-sm text-gray-400">Loading user…</div>;
+}
+function ErrorState({ title, message, showHomeButton }: { title: string; message: string; showHomeButton?: boolean }) {
+  return (
+    <div className="py-20 text-center space-y-2">
+      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{title}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{message}</p>
+    </div>
+  );
+}
+function ConfirmationDialog({ isOpen, title, message, confirmText, variant, onConfirm, onClose }: {
+  isOpen: boolean; title: string; message: string; confirmText?: string; variant?: string;
+  onConfirm: () => void; onClose: () => void;
+}) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-xl p-6 max-w-sm w-full mx-4 space-y-4">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Cancel</button>
+          <button onClick={onConfirm} className={`px-3 py-1.5 text-sm rounded-md text-white transition-opacity hover:opacity-90 ${variant === 'destructive' ? 'bg-red-600' : 'bg-gray-900 dark:bg-white dark:text-gray-900'}`}>
+            {confirmText ?? 'Confirm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Import custom hooks
 import { useUserData } from './hooks/useUserData';

@@ -1,14 +1,12 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
-import { CreditCard, Plus, Edit3, Trash2, CheckCircle, AlertTriangle, Save, X } from 'lucide-react';
+import { CreditCard, Plus, Edit3, Trash2, Save } from 'lucide-react';
 import {
   type PaymentGatewayConfiguration,
   type PaymentGatewayCredentials,
   logger,
 } from '@indexnow/shared';
-import { AdminPageSkeleton } from '@indexnow/ui';
-import { ConfirmationDialog } from '@indexnow/ui/modals';
 import {
   useAdminPaymentSettings,
   useSavePaymentGateway,
@@ -17,439 +15,249 @@ import {
   type UI_PaymentGateway,
 } from '@/hooks';
 
+const inputCls =
+  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400';
+
+function GatewayForm({
+  gateway,
+  onSave,
+  onCancel,
+}: {
+  gateway: Partial<UI_PaymentGateway>;
+  onSave: (g: Partial<UI_PaymentGateway>) => void;
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState<Partial<UI_PaymentGateway>>({
+    ...gateway,
+    configuration: gateway.configuration || {},
+    api_credentials: gateway.api_credentials || {},
+  });
+
+  const updateField = <K extends keyof UI_PaymentGateway>(field: K, value: UI_PaymentGateway[K]) =>
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  const updateConfig = <K extends keyof PaymentGatewayConfiguration>(field: K, value: PaymentGatewayConfiguration[K]) =>
+    setFormData((prev) => ({ ...prev, configuration: { ...(prev.configuration || {}), [field]: value } }));
+  const updateCreds = <K extends keyof PaymentGatewayCredentials>(field: K, value: PaymentGatewayCredentials[K]) =>
+    setFormData((prev) => ({ ...prev, api_credentials: { ...(prev.api_credentials || {}), [field]: value } }));
+
+  const isPaddle = formData.slug === 'paddle';
+
+  return (
+    <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
+          <input type="text" value={formData.name || ''} onChange={(e) => updateField('name', e.target.value)} className={inputCls} placeholder="Paddle" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Slug</label>
+          <input type="text" value={formData.slug || ''} onChange={(e) => updateField('slug', e.target.value)} className={inputCls} placeholder="paddle" />
+        </div>
+
+        {isPaddle && (
+          <>
+            <div className="md:col-span-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Paddle Billing API</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Handles subscriptions, tax calculation, and global compliance.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Environment</label>
+              <select value={formData.configuration?.environment || 'sandbox'} onChange={(e) => updateConfig('environment', e.target.value as 'sandbox' | 'production')} className={inputCls}>
+                <option value="sandbox">Sandbox</option>
+                <option value="production">Production</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Vendor ID</label>
+              <input type="text" value={String(formData.configuration?.vendor_id || '')} onChange={(e) => updateConfig('vendor_id', e.target.value)} className={inputCls} placeholder="12345" />
+              <p className="mt-1 text-xs text-gray-400">Settings → Authentication in Paddle dashboard</p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">API Key</label>
+              <input type="password" value={formData.api_credentials?.api_key || ''} onChange={(e) => updateCreds('api_key', e.target.value)} className={inputCls} placeholder="paddle_api_..." />
+              <p className="mt-1 text-xs text-gray-400">Stored encrypted. Prefer PADDLE_API_KEY env var.</p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Webhook Secret</label>
+              <input type="password" value={formData.api_credentials?.webhook_secret || ''} onChange={(e) => updateCreds('webhook_secret', e.target.value)} className={inputCls} placeholder="pdl_ntfset_..." />
+              <p className="mt-1 text-xs text-gray-400">For verifying event signatures. Prefer PADDLE_WEBHOOK_SECRET env var.</p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Client Token</label>
+              <input type="text" value={formData.api_credentials?.client_token || ''} onChange={(e) => updateCreds('client_token', e.target.value)} className={inputCls} placeholder="test_... or live_..." />
+              <p className="mt-1 text-xs text-gray-400">Safe to expose. Used for Paddle.js initialization.</p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Webhook URL</label>
+              <input type="url" readOnly value={String(formData.configuration?.webhook_url || '')} onChange={(e) => updateConfig('webhook_url', e.target.value)} className={`${inputCls} opacity-60`} placeholder="https://yourdomain.com/api/paddle/webhook" />
+              <p className="mt-1 text-xs text-gray-400">Configure in Paddle dashboard → Developer Tools → Notifications</p>
+            </div>
+          </>
+        )}
+
+        <div className="flex items-center gap-5">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <input type="checkbox" checked={formData.is_active || false} onChange={(e) => updateField('is_active', e.target.checked)} className="rounded border-gray-300 dark:border-gray-600" />
+            Active
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <input type="checkbox" checked={formData.is_default || false} onChange={(e) => updateField('is_default', e.target.checked)} className="rounded border-gray-300 dark:border-gray-600" />
+            Default
+          </label>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+          Cancel
+        </button>
+        <button onClick={() => onSave(formData)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-md hover:opacity-90 transition-opacity">
+          <Save className="w-3.5 h-3.5" />
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PaymentGateways() {
-  const { data: gateways = [], isLoading: loading } = useAdminPaymentSettings();
+  const { data: gateways = [], isLoading } = useAdminPaymentSettings();
   const saveGatewayMutation = useSavePaymentGateway();
   const deleteGatewayMutation = useDeletePaymentGateway();
   const setDefaultMutation = useSetDefaultPaymentGateway();
 
   const [editingGateway, setEditingGateway] = useState<UI_PaymentGateway | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [confirmConfig, setConfirmConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    confirmText?: string;
-    variant?: 'destructive' | 'primary';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-  });
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const handleSave = async (gateway: Partial<UI_PaymentGateway>) => {
     try {
       await saveGatewayMutation.mutateAsync(gateway);
-      setMessage({
-        type: 'success',
-        text: `Payment gateway ${gateway.id ? 'updated' : 'created'} successfully!`,
-      });
+      setMsg({ ok: true, text: `Gateway ${gateway.id ? 'updated' : 'created'}.` });
       setEditingGateway(null);
       setIsCreating(false);
     } catch (err) {
-      logger.error({ err: err as Error }, 'Failed to save payment gateway');
-      setMessage({ type: 'error', text: 'Failed to save payment gateway' });
+      logger.error({ err: err as Error }, 'Failed to save gateway');
+      setMsg({ ok: false, text: 'Failed to save gateway.' });
     }
   };
 
   const handleDelete = async (id: string) => {
-    setConfirmConfig({
-      isOpen: true,
-      title: 'Delete Payment Gateway',
-      message:
-        'Are you sure you want to delete this payment gateway? This action cannot be undone.',
-      variant: 'destructive',
-      confirmText: 'Delete',
-      onConfirm: async () => {
-        try {
-          await deleteGatewayMutation.mutateAsync(id);
-          setMessage({ type: 'success', text: 'Payment gateway deleted successfully!' });
-        } catch (err) {
-          logger.error({ err: err as Error }, 'Failed to delete payment gateway');
-          setMessage({ type: 'error', text: 'Failed to delete payment gateway' });
-        } finally {
-          setConfirmConfig((prev) => ({ ...prev, isOpen: false }));
-        }
-      },
-    });
+    if (!window.confirm('Delete this payment gateway? This cannot be undone.')) return;
+    try {
+      await deleteGatewayMutation.mutateAsync(id);
+      setMsg({ ok: true, text: 'Gateway deleted.' });
+    } catch (err) {
+      logger.error({ err: err as Error }, 'Failed to delete gateway');
+      setMsg({ ok: false, text: 'Failed to delete gateway.' });
+    }
   };
 
   const handleSetDefault = async (id: string) => {
     try {
       await setDefaultMutation.mutateAsync(id);
-      setMessage({ type: 'success', text: 'Default payment gateway updated!' });
+      setMsg({ ok: true, text: 'Default gateway updated.' });
     } catch (err) {
-      logger.error({ err: err as Error }, 'Failed to update default gateway');
-      setMessage({ type: 'error', text: 'Failed to update default gateway' });
+      logger.error({ err: err as Error }, 'Failed to set default');
+      setMsg({ ok: false, text: 'Failed to set default.' });
     }
   };
 
-  const GatewayForm = ({
-    gateway,
-    onSave,
-    onCancel,
-  }: {
-    gateway: Partial<UI_PaymentGateway>;
-    onSave: (gateway: Partial<UI_PaymentGateway>) => void;
-    onCancel: () => void;
-  }) => {
-    // Initialize defaults if undefined
-    const [formData, setFormData] = useState<Partial<UI_PaymentGateway>>({
-      ...gateway,
-      configuration: gateway.configuration || {},
-      api_credentials: gateway.api_credentials || {},
-    });
-
-    const updateField = <K extends keyof UI_PaymentGateway>(
-      field: K,
-      value: UI_PaymentGateway[K]
-    ) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-    };
-
-    const updateConfigurationField = <K extends keyof PaymentGatewayConfiguration>(
-      field: K,
-      value: PaymentGatewayConfiguration[K]
-    ) => {
-      setFormData((prev) => ({
-        ...prev,
-        configuration: {
-          ...(prev.configuration || {}),
-          [field]: value,
-        },
-      }));
-    };
-
-    const updateCredentialsField = <K extends keyof PaymentGatewayCredentials>(
-      field: K,
-      value: PaymentGatewayCredentials[K]
-    ) => {
-      setFormData((prev) => ({
-        ...prev,
-        api_credentials: {
-          ...(prev.api_credentials || {}),
-          [field]: value,
-        },
-      }));
-    };
-
-    return (
-      <div className="border-border rounded-lg border bg-white p-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Name</label>
-            <input
-              type="text"
-              value={formData.name || ''}
-              onChange={(e) => updateField('name', e.target.value)}
-              className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="PayPal"
-            />
-          </div>
-
-          <div>
-            <label className="text-foreground mb-2 block text-sm font-medium">Slug</label>
-            <input
-              type="text"
-              value={formData.slug || ''}
-              onChange={(e) => updateField('slug', e.target.value)}
-              className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-              placeholder="paypal"
-            />
-          </div>
-
-          {/* Paddle Configuration */}
-          {formData.slug === 'paddle' && (
-            <>
-              <div className="md:col-span-2">
-                <h3 className="text-foreground border-border mb-4 border-b pb-2 text-lg font-medium">
-                  Paddle Billing API Configuration
-                </h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Configure your Paddle credentials for subscription billing and payments. Paddle
-                  handles all payment methods, tax calculation, and compliance globally.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-foreground mb-2 block text-sm font-medium">
-                  Environment
-                </label>
-                <select
-                  value={formData.configuration?.environment || 'sandbox'}
-                  onChange={(e) =>
-                    updateConfigurationField(
-                      'environment',
-                      e.target.value as 'sandbox' | 'production'
-                    )
-                  }
-                  className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                >
-                  <option value="sandbox">Sandbox</option>
-                  <option value="production">Production</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-foreground mb-2 block text-sm font-medium">Vendor ID</label>
-                <input
-                  type="text"
-                  value={String(formData.configuration?.vendor_id || '')}
-                  onChange={(e) => updateConfigurationField('vendor_id', e.target.value)}
-                  className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                  placeholder="12345"
-                />
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Your Paddle Vendor ID from Settings → Authentication
-                </p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-foreground mb-2 block text-sm font-medium">API Key</label>
-                <input
-                  type="password"
-                  value={formData.api_credentials?.api_key || ''}
-                  onChange={(e) => updateCredentialsField('api_key', e.target.value)}
-                  className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                  placeholder="paddle_api_..."
-                />
-                <p className="text-muted-foreground mt-1 text-xs">
-                  API key will be encrypted before storing in database. Recommended: Store in
-                  environment variables (PADDLE_API_KEY).
-                </p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-foreground mb-2 block text-sm font-medium">
-                  Webhook Secret
-                </label>
-                <input
-                  type="password"
-                  value={formData.api_credentials?.webhook_secret || ''}
-                  onChange={(e) => updateCredentialsField('webhook_secret', e.target.value)}
-                  className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                  placeholder="pdl_ntfset_..."
-                />
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Webhook secret for verifying event signatures. Recommended: Store in environment
-                  variables (PADDLE_WEBHOOK_SECRET).
-                </p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-foreground mb-2 block text-sm font-medium">
-                  Client Token
-                </label>
-                <input
-                  type="text"
-                  value={formData.api_credentials?.client_token || ''}
-                  onChange={(e) => updateCredentialsField('client_token', e.target.value)}
-                  className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                  placeholder="test_... or live_..."
-                />
-                <p className="text-muted-foreground mt-1 text-xs">
-                  Client-side token for Paddle.js initialization. This is safe to expose in the
-                  browser and will be served via the config API.
-                </p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-foreground mb-2 block text-sm font-medium">
-                  Webhook URL
-                </label>
-                <input
-                  type="url"
-                  value={String(formData.configuration?.webhook_url || '')}
-                  onChange={(e) => updateConfigurationField('webhook_url', e.target.value)}
-                  className="border-border focus:ring-accent w-full rounded-lg border px-3 py-2 focus:border-transparent focus:ring-2"
-                  placeholder="https://yourdomain.com/api/paddle/webhook"
-                  readOnly
-                />
-                <p className="text-muted-foreground mt-1 text-xs">
-                  This webhook URL should be configured in your Paddle dashboard under Developer
-                  Tools → Notifications
-                </p>
-              </div>
-            </>
-          )}
-
-          <div className="flex items-center space-x-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.is_active || false}
-                onChange={(e) => updateField('is_active', e.target.checked)}
-                className="border-border text-accent focus:ring-accent rounded"
-              />
-              <span className="text-foreground ml-2 text-sm">Active</span>
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.is_default || false}
-                onChange={(e) => updateField('is_default', e.target.checked)}
-                className="border-border text-accent rounded focus:border-transparent"
-              />
-              <span className="text-foreground ml-2 text-sm">Default</span>
-            </label>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end space-x-3">
-          <button
-            onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground px-4 py-2 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSave(formData)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors"
-          >
-            <Save className="h-4 w-4" />
-            <span>Save</span>
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  if (loading) {
-    return <AdminPageSkeleton />;
+  if (isLoading) {
+    return <div className="py-20 text-center text-sm text-gray-400">Loading gateways…</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-foreground text-2xl font-bold">Payment Gateways</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage payment methods and processing options
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Payment Gateways</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {gateways.length} gateway{gateways.length !== 1 ? 's' : ''} configured
           </p>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center space-x-2 rounded-lg px-4 py-2 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Gateway</span>
-        </button>
+        {!isCreating && (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-md hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add gateway
+          </button>
+        )}
       </div>
 
-      {/* Message */}
-      {message && (
-        <div
-          className={`flex items-center space-x-2 rounded-lg border p-4 ${
-            message.type === 'success'
-              ? 'bg-success/10 text-success border-success/20'
-              : 'bg-destructive/10 text-destructive border-destructive/20'
-          }`}
-        >
-          {message.type === 'success' ? (
-            <CheckCircle className="h-5 w-5" />
-          ) : (
-            <AlertTriangle className="h-5 w-5" />
-          )}
-          <span>{message.text}</span>
+      {msg && (
+        <div className={`text-sm px-4 py-2.5 rounded-md border ${msg.ok ? 'text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' : 'text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'}`}>
+          {msg.text}
         </div>
       )}
 
-      {/* Create Form */}
       {isCreating && (
         <GatewayForm gateway={{}} onSave={handleSave} onCancel={() => setIsCreating(false)} />
       )}
 
-      {/* Payment Gateways List */}
-      <div className="space-y-4">
-        {gateways.map((gateway) => (
-          <div key={gateway.id}>
-            {editingGateway?.id === gateway.id ? (
-              <GatewayForm
-                gateway={editingGateway}
-                onSave={handleSave}
-                onCancel={() => setEditingGateway(null)}
-              />
-            ) : (
-              <div className="border-border rounded-lg border bg-white p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-accent/10 flex h-12 w-12 items-center justify-center rounded-lg">
-                      <CreditCard className="text-accent h-6 w-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-3">
-                        <h3 className="text-foreground text-lg font-semibold">{gateway.name}</h3>
-                        {gateway.is_default && (
-                          <span className="bg-success/10 text-success border-success/20 rounded-full border px-2 py-1 text-xs font-medium">
-                            Default
-                          </span>
-                        )}
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs font-medium ${
-                            gateway.is_active
-                              ? 'bg-success/10 text-success border-success/20'
-                              : 'bg-muted/10 text-muted-foreground border-muted/20'
-                          }`}
-                        >
-                          {gateway.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground mt-1 text-xs">Slug: {gateway.slug}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {!gateway.is_default && (
-                      <button
-                        onClick={() => handleSetDefault(gateway.id)}
-                        className="text-accent hover:bg-accent/10 rounded-lg px-3 py-1 text-sm transition-colors"
-                      >
-                        Set Default
-                      </button>
+      <div className="space-y-3">
+        {gateways.map((gateway) =>
+          editingGateway?.id === gateway.id ? (
+            <GatewayForm
+              key={gateway.id}
+              gateway={editingGateway}
+              onSave={handleSave}
+              onCancel={() => setEditingGateway(null)}
+            />
+          ) : (
+            <div
+              key={gateway.id}
+              className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg px-5 py-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-4">
+                <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{gateway.name}</span>
+                    {gateway.is_default && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400">Default</span>
                     )}
-                    <button
-                      onClick={() => setEditingGateway(gateway)}
-                      className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg p-2 transition-colors"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(gateway.id)}
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg p-2 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <span className={`text-xs ${gateway.is_active ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                      {gateway.is_active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">{gateway.slug}</div>
                 </div>
               </div>
-            )}
+              <div className="flex items-center gap-1">
+                {!gateway.is_default && (
+                  <button
+                    onClick={() => handleSetDefault(gateway.id)}
+                    className="px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Set default
+                  </button>
+                )}
+                <button
+                  onClick={() => setEditingGateway(gateway)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(gateway.id)}
+                  className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )
+        )}
+        {gateways.length === 0 && (
+          <div className="py-12 text-center text-sm text-gray-400">
+            No payment gateways configured.{' '}
+            <button onClick={() => setIsCreating(true)} className="underline">Add one</button>
           </div>
-        ))}
+        )}
       </div>
-
-      {gateways.length === 0 && (
-        <div className="py-12 text-center">
-          <CreditCard className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
-          <p className="text-muted-foreground">No payment gateways configured</p>
-          <button onClick={() => setIsCreating(true)} className="text-accent mt-4 hover:underline">
-            Add your first payment gateway
-          </button>
-        </div>
-      )}
-
-      <ConfirmationDialog
-        isOpen={confirmConfig.isOpen}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        onConfirm={confirmConfig.onConfirm}
-        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
-        confirmText={confirmConfig.confirmText}
-        variant={confirmConfig.variant}
-      />
     </div>
   );
 }
