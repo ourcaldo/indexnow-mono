@@ -332,7 +332,7 @@ export default function OverviewPage() {
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400">
                             {kw.device_type === 'mobile' ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
-                            <span className="text-sm capitalize">{kw.device_type || '—'}</span>
+                            <span className="text-xs">{kw.device_type ? (kw.device_type === 'mobile' ? 'Mobile' : 'Desktop') : '—'}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
