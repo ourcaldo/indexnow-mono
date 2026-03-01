@@ -37,8 +37,8 @@ export class RankTracker {
     try {
       logger.info({ keyword, targetDomain, country, device }, 'Performing rank check')
 
-      // Call Firecrawl API (Search endpoint)
-      const response = await fetch('https://api.firecrawl.dev/v1/search', {
+      // Call Firecrawl API (v2 Search endpoint)
+      const response = await fetch('https://api.firecrawl.dev/v2/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,11 +46,8 @@ export class RankTracker {
         },
         body: JSON.stringify({
           query: keyword,
-          search_options: {
-            limit: 100,
-            location: country,
-            device: device,
-          },
+          limit: 100,
+          location: country,
         }),
       })
 
@@ -60,19 +57,18 @@ export class RankTracker {
       }
 
       const data = await response.json()
-      const results = data.data || []
+      // v2 response: { success: true, data: { web: [...], images: [...], news: [...] } }
+      const results = (data.data?.web) || []
 
-      // Find target domain in results
+      // Find target domain in results; v2 results include a `position` field
       let position = -1
       let foundUrl = null
       let foundTitle = null
 
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i]
+      for (const result of results) {
         const url = result.url || ''
-        
         if (url.toLowerCase().includes(targetDomain.toLowerCase())) {
-          position = i + 1
+          position = result.position ?? (results.indexOf(result) + 1)
           foundUrl = url
           foundTitle = result.title
           break
@@ -89,17 +85,9 @@ export class RankTracker {
         foundInTop100: position > 0,
       }
     } catch (error) {
-      logger.error({ error, keyword, targetDomain }, 'Rank check failed')
-      return {
-        position: null,
-        url: null,
-        title: null,
-        keyword,
-        device,
-        country,
-        foundInTop100: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error({ errorMessage, keyword, targetDomain }, 'Rank check failed')
+      throw error
     }
   }
 }
