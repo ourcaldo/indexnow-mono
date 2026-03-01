@@ -20,6 +20,7 @@ import {
 } from 'recharts'
 import { useRankHistory, type RankHistoryKeyword } from '../../lib/hooks'
 import { useWorkspace } from '../../components/providers/WorkspaceProvider'
+import { fmtDate } from '../../lib/utils'
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
@@ -546,7 +547,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
       {/* Last Check */}
       <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 100 }}>
-        {kw.latest_check || <span className="text-gray-300 dark:text-gray-600">–</span>}
+        {kw.latest_check ? fmtDate(kw.latest_check) : <span className="text-gray-300 dark:text-gray-600">–</span>}
       </td>
     </tr>
   )

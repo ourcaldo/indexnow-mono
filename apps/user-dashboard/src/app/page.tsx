@@ -235,24 +235,23 @@ export default function Dashboard() {
                         <tr key={kw.id} className="border-t border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
                           <td className="px-5 py-3">
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{kw.keyword}</span>
-                            {kw.country?.iso2_code && (
-                              <span className="ml-2 text-[10px] text-gray-400 uppercase">{kw.country.iso2_code}</span>
-                            )}
                           </td>
                           <td className="px-3 py-3 text-center">
                             <PositionBadge position={pos} />
                           </td>
                           <td className="px-3 py-3 text-center hidden sm:table-cell">
-                            {kw.device_type === 'mobile' ? (
-                              <Smartphone className="w-3.5 h-3.5 text-gray-400 mx-auto" />
-                            ) : (
-                              <Monitor className="w-3.5 h-3.5 text-gray-400 mx-auto" />
-                            )}
+                            <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400">
+                              {kw.device_type === 'mobile' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
+                              <span className="text-xs">{kw.device_type === 'mobile' ? 'Mobile' : 'Desktop'}</span>
+                            </div>
                           </td>
                           <td className="px-3 py-3 hidden md:table-cell">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {kw.country?.name || kw.country?.iso2_code || '—'}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <Globe className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {kw.country?.name || kw.country?.iso2_code || '—'}
+                              </span>
+                            </div>
                           </td>
                         </tr>
                       )
