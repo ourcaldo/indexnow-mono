@@ -1,5 +1,6 @@
 import { logger } from '@/lib/monitoring/error-handling';
 import { initializeRankCheckWorker } from './rank-check.worker';
+import { initializeRankScheduleWorker } from './rank-schedule.worker';
 import { initializeEmailWorker } from './email.worker';
 import { initializePaymentWorker } from './payments.worker';
 import { initializeAutoCancelWorker } from './auto-cancel.worker';
@@ -28,6 +29,7 @@ export async function initializeAllWorkers(): Promise<void> {
 
     await initializeAutoCancelWorker();
     await initializeKeywordEnrichmentWorker();
+    await initializeRankScheduleWorker();
 
     logger.info({}, 'All BullMQ workers initialized successfully');
   } catch (error) {

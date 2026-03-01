@@ -21,6 +21,9 @@ import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { type AuthenticatedRequest } from '@/lib/core/api-middleware';
 import { supabaseAdmin } from '@indexnow/database';
 import { z } from 'zod';
+import { enqueueJob } from '@/lib/queues/QueueManager';
+import { queueConfig } from '@/lib/queues/config';
+import { logger } from '@/lib/monitoring/error-handling';
 
 // Frontend bulk-add format: domain_id + country_id (UUIDs), keywords array
 const createKeywordsSchema = z.object({
@@ -138,6 +141,22 @@ export const POST = authenticatedApiWrapper(
         results.push(created);
       }
 
+      // Trigger immediate rank check for each newly created keyword
+      for (const kw of results) {
+        try {
+          if (process.env.ENABLE_BULLMQ === 'true') {
+            await enqueueJob(
+              queueConfig.rankCheck.name,
+              'immediate-rank-check',
+              { keywordId: kw.id, userId: auth.userId, domainId: domain_id },
+              { priority: 1 }
+            );
+          }
+        } catch (enqueueErr) {
+          logger.warn({ keywordId: kw.id, error: enqueueErr }, 'Failed to enqueue rank check — keyword saved but check skipped');
+        }
+      }
+
       return formatSuccess({ created: results.length, keywords: results }, undefined, 201);
     }
 
@@ -162,6 +181,20 @@ export const POST = authenticatedApiWrapper(
       targetUrl,
       tags,
     });
+
+    // Trigger immediate rank check for the newly created keyword
+    try {
+      if (process.env.ENABLE_BULLMQ === 'true') {
+        await enqueueJob(
+          queueConfig.rankCheck.name,
+          'immediate-rank-check',
+          { keywordId: result.id, userId: auth.userId },
+          { priority: 1 }
+        );
+      }
+    } catch (enqueueErr) {
+      logger.warn({ keywordId: result.id, error: enqueueErr }, 'Failed to enqueue rank check — keyword saved but check skipped');
+    }
 
     return formatSuccess({ created: 1, keywords: [result] }, undefined, 201);
   }

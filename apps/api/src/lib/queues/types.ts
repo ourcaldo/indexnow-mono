@@ -3,10 +3,11 @@ import { z } from 'zod';
 export const ImmediateRankCheckJobSchema = z.object({
   keywordId: z.string().uuid(),
   userId: z.string().uuid(),
-  domainId: z.string().uuid(),
-  keyword: z.string(),
-  countryCode: z.string(),
-  device: z.enum(['desktop', 'mobile', 'tablet']),
+  // The following fields are optional context — the worker re-fetches them from the DB.
+  domainId: z.string().uuid().optional(),
+  keyword: z.string().optional(),
+  countryCode: z.string().optional(),
+  device: z.enum(['desktop', 'mobile', 'tablet']).optional(),
 });
 
 export type ImmediateRankCheckJob = z.infer<typeof ImmediateRankCheckJobSchema>;
