@@ -53,6 +53,24 @@ async function validateRouteParams(context: RouteContext): Promise<NextResponse 
 }
 
 /**
+ * Safely extract a human-readable message from any thrown value.
+ * Prevents "[object Object]" from being stored in error logs.
+ */
+function toErrorInstance(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  if (err && typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    // Supabase / Postgres errors
+    if (typeof obj.message === 'string') return new Error(obj.message);
+    if (typeof obj.error === 'string') return new Error(obj.error);
+    // Last resort: stringify the object so we keep useful info
+    try { return new Error(JSON.stringify(err)); } catch { /* fall through */ }
+  }
+  return new Error('Unknown error');
+}
+
+/**
  * Standard Cache-Control headers.
  * - Private/sensitive: no-store (admin, authenticated)
  * - Public: no-cache, must revalidate
@@ -174,7 +192,7 @@ export function adminApiWrapper<T = unknown>(
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
-        error instanceof Error ? error : new Error(String(error)),
+        toErrorInstance(error),
         {
           severity: ErrorSeverity.HIGH,
           endpoint,
@@ -248,7 +266,7 @@ export function authenticatedApiWrapper<T = unknown>(
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
-        error instanceof Error ? error : new Error(String(error)),
+        toErrorInstance(error),
         {
           severity: ErrorSeverity.HIGH,
           endpoint,
@@ -312,7 +330,7 @@ export function publicApiWrapper<T = unknown>(
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
         ErrorType.SYSTEM,
-        error instanceof Error ? error : new Error(String(error)),
+        toErrorInstance(error),
         {
           severity: ErrorSeverity.MEDIUM,
           endpoint,

@@ -6,13 +6,16 @@ import { useAdminErrorStats, useAdminErrorList, useAdminErrorDetail, useErrorAct
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
-/** Safely display a message that might be an object */
+/** Safely display a message that might be an object or the literal string "[object Object]" */
 function displayMessage(msg: unknown): string {
   if (msg === null || msg === undefined) return '—';
-  if (typeof msg === 'string') return msg;
+  if (typeof msg === 'string') {
+    // Detect literal "[object Object]" stored in DB from bad serialization
+    if (msg === '[object Object]' || msg.trim() === '[object Object]') return '(no message — serialization error)';
+    return msg;
+  }
   if (typeof msg === 'object') {
     const obj = msg as Record<string, unknown>;
-    // Try common message properties
     if (typeof obj.message === 'string') return obj.message;
     if (typeof obj.error === 'string') return obj.error;
     try { return JSON.stringify(msg); } catch { return String(msg); }
@@ -278,15 +281,15 @@ export default function ErrorsPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full table-fixed">
+                <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-8 pr-3 py-3 w-12">#</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-8 pr-3 py-3 w-10">#</th>
                       <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-20">ID</th>
                       <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-20">Severity</th>
                       <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Message</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-32">Type</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-44">Endpoint</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-28">Type</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-40">Endpoint</th>
                       <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-3 pr-8 py-3 w-28">Time</th>
                     </tr>
                   </thead>
@@ -296,13 +299,13 @@ export default function ErrorsPage() {
                       return (
                         <tr key={err.id} onClick={() => setSelectedErrorId(err.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
                           <td className="pl-8 pr-3 py-3 text-xs text-gray-400 tabular-nums">{rowNum}</td>
-                          <td className="px-3 py-3 text-sm text-gray-900 font-mono truncate">{err.id.slice(0, 8)}</td>
+                          <td className="px-3 py-3 text-sm text-gray-900 font-mono">{err.id.slice(0, 8)}</td>
                           <td className="px-3 py-3">
                             <span className={`inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}>{err.severity}</span>
                           </td>
-                          <td className="px-3 py-3 text-sm text-gray-900 truncate">{displayMessage(err.message)}</td>
-                          <td className="px-3 py-3 text-xs text-gray-500 truncate">{err.error_type}</td>
-                          <td className="px-3 py-3 text-xs text-gray-500 font-mono truncate">
+                          <td className="px-3 py-3 text-sm text-gray-900 max-w-[400px] truncate">{displayMessage(err.message)}</td>
+                          <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{err.error_type}</td>
+                          <td className="px-3 py-3 text-xs text-gray-500 font-mono truncate max-w-[160px]">
                             {err.endpoint ? `${err.http_method || ''} ${err.endpoint}`.trim() : '\u2014'}
                           </td>
                           <td className="pl-3 pr-8 py-3 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(err.created_at), 'MMM d, HH:mm')}</td>
