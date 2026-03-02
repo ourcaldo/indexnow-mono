@@ -9,10 +9,11 @@ import { useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfi
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import {
   ArrowLeft, Shield, Calendar, Package, AlertTriangle,
-  CheckCircle, Activity, X, Ban, Clock,
+  CheckCircle, Activity, Ban, Clock,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { Modal } from '@/components/Modal';
 
 async function fetchUserDetail(userId: string): Promise<UserProfile | null> {
   const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
@@ -48,26 +49,6 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
     <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-4">
       <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
       <span className="text-sm text-gray-900 text-right">{children}</span>
-    </div>
-  );
-}
-
-/* ─── Modal ──────────────────────────────────────────────── */
-
-function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="p-5">{children}</div>
-      </div>
     </div>
   );
 }
