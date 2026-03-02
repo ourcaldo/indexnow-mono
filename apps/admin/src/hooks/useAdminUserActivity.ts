@@ -32,11 +32,12 @@ async function fetchUserActivity(userId: string, page: number): Promise<UserActi
     throw new Error('Failed to fetch user activity');
   }
 
-  const data = await response.json();
+  const json = await response.json();
+  const payload = json.data ?? json;
   return {
-    logs: data.logs ?? [],
-    user: data.user ?? null,
-    pagination: data.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 },
+    logs: payload.logs ?? [],
+    user: payload.user ?? null,
+    pagination: payload.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 },
   };
 }
 
