@@ -108,7 +108,6 @@ See [.env.example](.env.example) for the full list. Key variables:
 | `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role key (server-only) |
 | `REDIS_URL`                     | Redis connection URL                    |
 | `SE_RANKING_API_KEY`            | SE Ranking API key for rank tracking    |
-| `PADDLE_API_KEY`                | Paddle payment API key                  |
 | `SENTRY_DSN`                    | Sentry error tracking DSN               |
 
 ## Contributing

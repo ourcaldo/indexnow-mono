@@ -109,9 +109,8 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
   }
 
   // ── 4. External services (config-presence check) ──
-  results.paddle = process.env.PADDLE_API_KEY
-    ? { status: 'connected' }
-    : { status: 'unconfigured' };
+  // Paddle credentials are stored in DB (indb_payment_gateways), not in env
+  results.paddle = { status: 'db-managed' };
 
   results.sentry = process.env.NEXT_PUBLIC_SENTRY_DSN
     ? { status: 'connected' }
