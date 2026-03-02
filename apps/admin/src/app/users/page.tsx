@@ -326,8 +326,9 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="-mx-8 -my-8 bg-white min-h-full">
+      {/* ─── Page header ─────────────────────────────────── */}
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500 mt-0.5">{totalItems.toLocaleString()} registered accounts</p>
@@ -342,123 +343,121 @@ export default function UsersPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-        {/* Filter bar */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-10 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            />
-          </div>
-          <select
-            value={roleFilter}
-            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-            className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-          >
-            <option value="all">All roles</option>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-            <option value="super_admin">Super Admin</option>
-          </select>
+      {/* ─── Filter bar ──────────────────────────────────── */}
+      <div className="px-8 py-3 border-b border-gray-200 flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-10 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+          />
         </div>
-
-        {/* Table */}
-        {isLoading ? (
-          <div className="p-5 space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-50 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-10">#</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">User</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">ID</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Role</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Package</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Status</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Joined</th>
-                    <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-14">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((user: UserProfile, index: number) => (
-                    <tr
-                      key={user.id}
-                      onClick={() => setSelectedUserId(user.user_id)}
-                      className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors"
-                    >
-                      <td className="px-3 py-3.5 text-center text-sm text-gray-700 tabular-nums">{(page - 1) * limit + index + 1}</td>
-                      <td className="px-3 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <Avatar name={user.full_name || ''} />
-                          <div className="min-w-0">
-                            <div className="text-sm text-gray-700 truncate">{user.full_name || 'Unnamed'}</div>
-                            <div className="text-xs text-gray-500 truncate">{user.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{user.user_id.slice(0, 8)}</td>
-                      <td className="px-3 py-3.5"><RoleBadge role={user.role} /></td>
-                      <td className="px-3 py-3.5 text-sm text-gray-700">{user.package?.name || '\u2014'}</td>
-                      <td className="px-3 py-3.5"><StatusPill verified={!!user.email_verified} /></td>
-                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</td>
-                      <td className="px-3 py-3.5 text-center">
-                        <ActionsDropdown
-                          user={user}
-                          onChangeRole={openRoleModal}
-                          onChangePackage={openPackageModal}
-                          onSuspend={openSuspendModal}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-16 text-center text-sm text-gray-400">No users found</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
-                <span className="text-xs text-gray-500 tabular-nums">
-                  Showing {(page - 1) * limit + 1}&ndash;{Math.min(page * limit, totalItems)} of {totalItems}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs text-gray-500 px-2 tabular-nums">Page {page} of {totalPages}</span>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        <select
+          value={roleFilter}
+          onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+          className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        >
+          <option value="all">All roles</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
       </div>
+
+      {/* ─── Table ───────────────────────────────────────── */}
+      {isLoading ? (
+        <div className="px-8 py-5 space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-14 bg-gray-50 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-8 pr-3 py-3 w-10">#</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">User</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">ID</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Role</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Package</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Status</th>
+                  <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Joined</th>
+                  <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-3 pr-8 py-3 w-14">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((user: UserProfile, index: number) => (
+                  <tr
+                    key={user.id}
+                    onClick={() => setSelectedUserId(user.user_id)}
+                    className="border-b border-gray-100 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors"
+                  >
+                    <td className="pl-8 pr-3 py-3.5 text-center text-sm text-gray-700 tabular-nums">{(page - 1) * limit + index + 1}</td>
+                    <td className="px-3 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={user.full_name || ''} />
+                        <div className="min-w-0">
+                          <div className="text-sm text-gray-700 truncate">{user.full_name || 'Unnamed'}</div>
+                          <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{user.user_id.slice(0, 8)}</td>
+                    <td className="px-3 py-3.5"><RoleBadge role={user.role} /></td>
+                    <td className="px-3 py-3.5 text-sm text-gray-700">{user.package?.name || '\u2014'}</td>
+                    <td className="px-3 py-3.5"><StatusPill verified={!!user.email_verified} /></td>
+                    <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</td>
+                    <td className="pl-3 pr-8 py-3.5 text-center">
+                      <ActionsDropdown
+                        user={user}
+                        onChangeRole={openRoleModal}
+                        onChangePackage={openPackageModal}
+                        onSuspend={openSuspendModal}
+                      />
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-16 text-center text-sm text-gray-400">No users found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-8 py-3 border-t border-gray-200">
+              <span className="text-xs text-gray-500 tabular-nums">
+                Showing {(page - 1) * limit + 1}&ndash;{Math.min(page * limit, totalItems)} of {totalItems}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-gray-500 px-2 tabular-nums">Page {page} of {totalPages}</span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* ─── Change Role Modal ────────────────────────────── */}
       <Modal open={roleModal} onClose={() => setRoleModal(false)} title="Change Role">
