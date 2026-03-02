@@ -381,8 +381,8 @@ export default function UsersPage() {
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-10">#</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">ID</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">User</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">ID</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Role</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Package</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Status</th>
@@ -398,7 +398,6 @@ export default function UsersPage() {
                       className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors"
                     >
                       <td className="px-3 py-3.5 text-center text-sm text-gray-700 tabular-nums">{(page - 1) * limit + index + 1}</td>
-                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{user.user_id.slice(0, 8)}</td>
                       <td className="px-3 py-3.5">
                         <div className="flex items-center gap-3">
                           <Avatar name={user.full_name || ''} />
@@ -408,6 +407,7 @@ export default function UsersPage() {
                           </div>
                         </div>
                       </td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{user.user_id.slice(0, 8)}</td>
                       <td className="px-3 py-3.5"><RoleBadge role={user.role} /></td>
                       <td className="px-3 py-3.5 text-sm text-gray-700">{user.package?.name || '\u2014'}</td>
                       <td className="px-3 py-3.5"><StatusPill verified={!!user.email_verified} /></td>
