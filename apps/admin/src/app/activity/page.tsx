@@ -281,20 +281,20 @@ export default function ActivityPage() {
                 <tbody>
                   {logs.map((log: any, idx: number) => (
                     <tr key={log.id} onClick={() => setSelectedLogId(log.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
-                      <td className="px-5 py-3.5 text-xs text-gray-400 tabular-nums">{offset + idx + 1}</td>
-                      <td className="px-3 py-3.5 text-sm text-gray-900 tabular-nums">{log.id.slice(0, 8)}</td>
+                      <td className="px-5 py-3.5 text-sm text-gray-700 tabular-nums">{offset + idx + 1}</td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{log.id.slice(0, 8)}</td>
                       <td className="px-3 py-3.5">
-                        <div className="text-xs font-mono text-gray-500 truncate max-w-[140px]" title={log.user_id || ''}>{log.user_id ? log.user_id.slice(0, 8) : '\u2014'}</div>
+                        <div className="text-sm text-gray-700 truncate max-w-[140px]" title={log.user_id || ''}>{log.user_id ? log.user_id.slice(0, 8) : '\u2014'}</div>
                         {log.user_name && log.user_name !== 'Unknown User' && (
-                          <div className="text-[11px] text-gray-400 truncate max-w-[140px]">({log.user_name})</div>
+                          <div className="text-xs text-gray-500 truncate max-w-[140px]">({log.user_name})</div>
                         )}
                       </td>
                       <td className="px-3 py-3.5">
-                        <div className="text-sm font-medium text-gray-900 truncate max-w-[220px]">{log.event_type}</div>
+                        <div className="text-sm text-gray-700 truncate max-w-[220px]">{log.event_type}</div>
                         {log.action_description && <div className="text-xs text-gray-500 truncate max-w-[220px] mt-0.5">{log.action_description}</div>}
                       </td>
                       <td className="px-3 py-3.5"><EntityBadge type={log.target_type} /></td>
-                      <td className="px-3 py-3.5 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(log.created_at), 'MMM d, HH:mm')}</td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums whitespace-nowrap">{format(new Date(log.created_at), 'MMM d, HH:mm')}</td>
                     </tr>
                   ))}
                   {logs.length === 0 && <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">No activity found</td></tr>}
