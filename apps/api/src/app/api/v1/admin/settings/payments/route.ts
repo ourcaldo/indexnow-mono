@@ -187,7 +187,9 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
             configuration: (body.configuration ?? null) as
               | import('@indexnow/shared').PaymentGatewayConfiguration
               | null,
-            api_credentials: (body.api_credentials ?? null) as Json | null,
+            api_credentials: (body.api_credentials ?? null) as
+              | import('@indexnow/shared').PaymentGatewayCredentials
+              | null,
           })
           .select()
           .single();

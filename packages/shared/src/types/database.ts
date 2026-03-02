@@ -337,6 +337,7 @@ export type Database = {
           last_login_at: string | null;
           last_login_ip: string | null;
           must_change_password: boolean;
+          active_domain: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -364,6 +365,7 @@ export type Database = {
           last_login_at?: string | null;
           last_login_ip?: string | null;
           must_change_password?: boolean;
+          active_domain?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -391,6 +393,7 @@ export type Database = {
           last_login_at?: string | null;
           last_login_ip?: string | null;
           must_change_password?: boolean;
+          active_domain?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1456,6 +1459,8 @@ export type Database = {
           resolved_by: string | null;
           acknowledged_at: string | null;
           acknowledged_by: string | null;
+          sentry_event_id: string | null;
+          sentry_issue_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1475,6 +1480,8 @@ export type Database = {
           resolved_by?: string | null;
           acknowledged_at?: string | null;
           acknowledged_by?: string | null;
+          sentry_event_id?: string | null;
+          sentry_issue_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1494,6 +1501,8 @@ export type Database = {
           resolved_by?: string | null;
           acknowledged_at?: string | null;
           acknowledged_by?: string | null;
+          sentry_event_id?: string | null;
+          sentry_issue_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

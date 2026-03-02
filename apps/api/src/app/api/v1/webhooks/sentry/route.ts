@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
           resolved_at: new Date().toISOString(),
           resolved_by: null, // null = resolved by Sentry (not a specific admin)
         })
-        .eq('sentry_issue_id' as any, sentryIssueId)
+        .eq('sentry_issue_id', sentryIssueId)
         .is('resolved_at', null)
         .select('id');
 
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           resolved_at: null,
           resolved_by: null,
         })
-        .eq('sentry_issue_id' as any, sentryIssueId)
+        .eq('sentry_issue_id', sentryIssueId)
         .not('resolved_at', 'is', null)
         .select('id');
 
