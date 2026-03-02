@@ -1,161 +1,87 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@indexnow/ui'
-import { PasswordInput, AuthErrorAlert, AuthLoadingButton } from '@indexnow/ui/auth'
-import { useZodForm } from '@indexnow/ui/hooks'
-import { authService } from '@indexnow/supabase-client'
-import { loginSchema, type LoginRequest } from '@indexnow/shared'
-import { useSiteName, useSiteLogo } from '@indexnow/database/client'
-import { ADMIN_ENDPOINTS, AUTH_ENDPOINTS, type VerifyRoleResponse } from '@indexnow/shared'
+import { useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { authService } from '@indexnow/supabase-client';
+import { Lock } from 'lucide-react';
 
-export default function AdminLoginPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // (#113) react-hook-form + zod for form validation
-  const { register, handleSubmit, formState: { errors } } = useZodForm(loginSchema, {
-    defaultValues: { email: '', password: '' },
-  })
-  
-  // Site settings hooks
-  const siteName = useSiteName()
-  const logoUrl = useSiteLogo(true) // Always use full logo for admin login
-
-  // (#106) Removed duplicate AuthErrorHandler.createAuthStateChangeHandler() listener
-  // Auth state changes (including refresh token errors) are now handled centrally
-  // by AuthProvider which wraps this page in the app layout.
-
-  const onSubmit = async (data: LoginRequest) => {
-    setIsLoading(true)
-    setError('')
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
     try {
-      // Step 1: Authenticate using authService
-      const authData = await authService.signIn(data.email, data.password)
-
-      if (!authData.user || !authData.session) {
-        throw new Error('Authentication failed')
+      const { user } = await authService.signIn(email, password);
+      if (!user) {
+        setError('Invalid credentials');
+        return;
       }
-
-      // Step 2: Verify admin role using direct API call with Bearer token
-      const response = await fetch(ADMIN_ENDPOINTS.VERIFY_ROLE, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.session.access_token}`
-        },
-        credentials: 'include'
-      })
-
-      const roleData = await response.json() as VerifyRoleResponse
-
-      if (!response.ok || !roleData.success) {
-        // Sign out if not admin
-        await authService.signOut()
-        throw new Error(roleData.error || 'Access denied: Admin privileges required')
-      }
-
-      // Step 3: Verify user is SUPER ADMIN (not just admin)
-      if (!roleData.data?.isSuperAdmin) {
-        await authService.signOut()
-        throw new Error('Access denied: Super Admin privileges required. This area is restricted to Super Admins only.')
-      }
-
-      // Step 4: The authService.signIn already calls AUTH_ENDPOINTS.SESSION to set server-side cookies
-      // We can just proceed to redirect
-
-      // Redirect to admin dashboard — cookies are already set by authService.signIn
-      router.push('/')
-      
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.'
-      setError(errorMessage)
+      router.push('/');
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0c0c14] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-foreground rounded-full flex items-center justify-center">
-            {logoUrl && (
-              <Image 
-                src={logoUrl} 
-                alt="Admin Logo"
-                width={48}
-                height={48}
-                className="object-contain filter brightness-0 invert"
-                unoptimized
-              />
-            )}
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a12]">
+      <div className="w-full max-w-sm px-6">
+        <div className="flex items-center gap-2 mb-8">
+          <Lock className="w-4 h-4 text-gray-500" />
+          <span className="text-sm text-gray-400">Admin</span>
+        </div>
+
+        <h1 className="text-xl font-semibold text-white mb-1">Sign in</h1>
+        <p className="text-[13px] text-gray-500 mb-8">
+          Restricted to super admin accounts only.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-[13px] text-gray-400 mb-1.5">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2.5 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+              placeholder="admin@example.com"
+            />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-              Admin Access
-            </CardTitle>
-            <CardDescription className="text-gray-500 dark:text-gray-400">
-              Sign in with admin credentials to access the dashboard
-            </CardDescription>
+            <label className="block text-[13px] text-gray-400 mb-1.5">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2.5 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+              placeholder="••••••••"
+            />
           </div>
-        </CardHeader>
-        
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <AuthErrorAlert error={error || null} />
-            
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-900 dark:text-white font-medium">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                {...register('email')}
-                placeholder="admin@example.com"
-                className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600"
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <p className="text-sm text-rose-600 dark:text-rose-400">{errors.email.message}</p>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-900 dark:text-white font-medium">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                {...register('password')}
-                placeholder="Enter your password"
-                className="border-gray-200 dark:border-gray-700 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600"
-                disabled={isLoading}
-              />
-              {errors.password && (
-                <p className="text-sm text-rose-600 dark:text-rose-400">{errors.password.message}</p>
-              )}
-            </div>
-            
-            <AuthLoadingButton isLoading={isLoading}>
-              Sign In to Admin Dashboard
-            </AuthLoadingButton>
-          </form>
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Only users with admin privileges can access this area
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
 
+          {error && (
+            <div className="text-[13px] text-red-400">{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 px-4 text-[13px] font-medium text-white bg-white/10 rounded-md hover:bg-white/[0.15] transition-colors disabled:opacity-40"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

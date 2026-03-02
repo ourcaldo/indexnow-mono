@@ -1,36 +1,25 @@
-﻿'use client';
+'use client';
 
-import { useEffect, useState } from 'react';
-import { Save, RefreshCw } from 'lucide-react';
-import { logger } from '@indexnow/shared';
-import {
-  useAdminSiteSettings,
-  useSaveSiteSettings,
-  useTestEmail,
-  type UI_SiteSettings,
-} from '@/hooks';
+import { useState, useEffect } from 'react';
+import { Save, Send } from 'lucide-react';
+import { useAdminSiteSettings, useSaveSiteSettings, useTestEmail, type UI_SiteSettings } from '@/hooks';
 
-const inputCls =
-  'w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-[#141520] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-transparent';
-
-function Field({
+function FieldRow({
   label,
-  hint,
+  description,
   children,
-  wide,
 }: {
   label: string;
-  hint?: string;
+  description?: string;
   children: React.ReactNode;
-  wide?: boolean;
 }) {
   return (
-    <div className={wide ? 'md:col-span-2' : ''}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-        {label}
-      </label>
-      {children}
-      {hint && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{hint}</p>}
+    <div className="flex items-start justify-between py-4 border-b border-white/[0.04] last:border-0 gap-8">
+      <div className="flex-shrink-0 w-48">
+        <div className="text-[13px] text-gray-200">{label}</div>
+        {description && <div className="text-[12px] text-gray-600 mt-0.5">{description}</div>}
+      </div>
+      <div className="flex-1 max-w-sm">{children}</div>
     </div>
   );
 }
@@ -38,181 +27,213 @@ function Field({
 function Toggle({
   checked,
   onChange,
-  label,
-  hint,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
-  label: string;
-  hint?: string;
 }) {
   return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
-      <div>
-        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</div>
-        {hint && <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{hint}</div>}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none mt-0.5 ${
-          checked ? 'bg-gray-600 dark:bg-gray-500' : 'bg-gray-200 dark:bg-gray-700'
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`relative w-9 h-5 rounded-full transition-colors ${
+        checked ? 'bg-emerald-500' : 'bg-white/10'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-4' : 'translate-x-0'
         }`}
-      >
-        <span
-          className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white dark:bg-gray-900 shadow ring-0 transition duration-200 ease-in-out mt-[3px] ${
-            checked ? 'translate-x-4' : 'translate-x-1'
-          }`}
-        />
-      </button>
-    </div>
+      />
+    </button>
   );
 }
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">{children}</h2>
-  );
-}
-
-export default function SiteSettings() {
-  const { data: serverSettings, isLoading } = useAdminSiteSettings();
+export default function SiteSettingsPage() {
+  const { data: settings, isLoading } = useAdminSiteSettings();
   const saveMutation = useSaveSiteSettings();
   const testEmailMutation = useTestEmail();
 
-  const [settings, setSettings] = useState<UI_SiteSettings | null>(null);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [form, setForm] = useState<Partial<UI_SiteSettings>>({});
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    if (serverSettings && !settings) setSettings(serverSettings);
-  }, [serverSettings, settings]);
+    if (settings) {
+      setForm({ ...settings });
+    }
+  }, [settings]);
 
-  const update = <K extends keyof UI_SiteSettings>(field: K, value: UI_SiteSettings[K]) => {
-    if (!settings) return;
-    setSettings({ ...settings, [field]: value });
+  const update = (key: string, value: unknown) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
-    if (!settings) return;
-    setMsg(null);
+    if (!form) return;
     try {
-      await saveMutation.mutateAsync(settings);
-      setMsg({ ok: true, text: 'Settings saved.' });
-    } catch (err) {
-      logger.error({ error: err instanceof Error ? err : undefined }, 'Failed to save site settings');
-      setMsg({ ok: false, text: 'Failed to save settings.' });
+      await saveMutation.mutateAsync(form as UI_SiteSettings);
+      setSaveMsg('Saved');
+      setTimeout(() => setSaveMsg(''), 2000);
+    } catch {
+      setSaveMsg('Failed to save');
     }
   };
 
   const handleTestEmail = async () => {
-    if (!settings?.smtp_enabled) return;
-    setMsg(null);
+    if (!testEmailTo.trim()) return;
     try {
       await testEmailMutation.mutateAsync({
-        smtp_host: settings.smtp_host,
-        smtp_port: settings.smtp_port,
-        smtp_user: settings.smtp_user,
-        smtp_pass: settings.smtp_pass,
-        smtp_from_name: settings.smtp_from_name,
-        smtp_from_email: settings.smtp_from_email,
-        smtp_secure: settings.smtp_secure,
+        to: testEmailTo,
+        smtp_host: form.smtp_host,
+        smtp_port: form.smtp_port,
+        smtp_user: form.smtp_user,
+        smtp_pass: form.smtp_pass,
+        smtp_from_email: form.smtp_from_email,
+        smtp_from_name: form.smtp_from_name,
       });
-      setMsg({ ok: true, text: 'Test email sent.' });
-    } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : 'Failed to send test email.' });
+      alert('Test email sent');
+    } catch (err: any) {
+      alert(err.message || 'Failed to send test email');
     }
   };
 
-  if (isLoading || !settings) {
-    return <div className="py-20 text-center text-sm text-gray-400">{isLoading ? 'Loading...' : 'No settings found.'}</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-14 bg-white/[0.02] rounded animate-pulse" />
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8 max-w-2xl">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Site Settings</h1>
+        <div>
+          <h1 className="text-lg font-semibold text-white">Site Settings</h1>
+          <p className="text-[13px] text-gray-500 mt-0.5">General platform configuration</p>
+        </div>
         <button
           onClick={handleSave}
           disabled={saveMutation.isPending}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-white/10 text-white border border-gray-700 dark:border-white/10 rounded-md hover:bg-gray-800 dark:hover:bg-white/[0.15] transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-white bg-white/10 rounded-md hover:bg-white/[0.15] transition-colors disabled:opacity-40"
         >
           <Save className="w-3.5 h-3.5" />
-          {saveMutation.isPending ? 'Saving...' : 'Save changes'}
+          {saveMsg || 'Save'}
         </button>
       </div>
 
-      {msg && (
-        <div className={`text-sm px-4 py-2.5 rounded-md border ${msg.ok ? 'text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' : 'text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'}`}>
-          {msg.text}
-        </div>
-      )}
-
-      {/* System settings */}
+      {/* General */}
       <section>
-        <SectionHeader>System settings</SectionHeader>
-        <Toggle
-          label="Maintenance mode"
-          hint="Temporarily disable public access to the site"
-          checked={settings.maintenance_mode}
-          onChange={(v) => update('maintenance_mode', v)}
-        />
-        <Toggle
-          label="User registration"
-          hint="Allow new users to register accounts"
-          checked={settings.registration_enabled}
-          onChange={(v) => update('registration_enabled', v)}
-        />
+        <h2 className="text-sm font-medium text-white mb-1">General</h2>
+        <div>
+          <FieldRow label="Site name" description="Displayed in browser title and emails">
+            <input
+              type="text"
+              value={form.site_name ?? ''}
+              onChange={(e) => update('site_name', e.target.value)}
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="Tagline">
+            <input
+              type="text"
+              value={form.site_tagline ?? ''}
+              onChange={(e) => update('site_tagline', e.target.value)}
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="Maintenance mode" description="Block user access during maintenance">
+            <Toggle
+              checked={!!form.maintenance_mode}
+              onChange={(v) => update('maintenance_mode', v)}
+            />
+          </FieldRow>
+          <FieldRow label="Registration" description="Allow new user sign-ups">
+            <Toggle
+              checked={form.registration_enabled !== false}
+              onChange={(v) => update('registration_enabled', v)}
+            />
+          </FieldRow>
+        </div>
       </section>
 
-      {/* Email / SMTP */}
-      <section className="pt-2 border-t border-gray-100 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4">
-          <SectionHeader>Email configuration</SectionHeader>
-          <Toggle
-            label=""
-            checked={settings.smtp_enabled}
-            onChange={(v) => update('smtp_enabled', v)}
-          />
+      <div className="border-t border-white/[0.06]" />
+
+      {/* SMTP */}
+      <section>
+        <h2 className="text-sm font-medium text-white mb-1">Email (SMTP)</h2>
+        <div>
+          <FieldRow label="SMTP Host">
+            <input
+              type="text"
+              value={form.smtp_host ?? ''}
+              onChange={(e) => update('smtp_host', e.target.value)}
+              placeholder="smtp.example.com"
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="SMTP Port">
+            <input
+              type="number"
+              value={form.smtp_port ?? ''}
+              onChange={(e) => update('smtp_port', Number(e.target.value))}
+              placeholder="587"
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="SMTP User">
+            <input
+              type="text"
+              value={form.smtp_user ?? ''}
+              onChange={(e) => update('smtp_user', e.target.value)}
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="SMTP Password">
+            <input
+              type="password"
+              value={form.smtp_pass ?? ''}
+              onChange={(e) => update('smtp_pass', e.target.value)}
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="From email">
+            <input
+              type="email"
+              value={form.smtp_from_email ?? ''}
+              onChange={(e) => update('smtp_from_email', e.target.value)}
+              placeholder="noreply@example.com"
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
+          <FieldRow label="From name">
+            <input
+              type="text"
+              value={form.smtp_from_name ?? ''}
+              onChange={(e) => update('smtp_from_name', e.target.value)}
+              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
+            />
+          </FieldRow>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="SMTP host">
-            <input type="text" value={settings.smtp_host || ''} onChange={(e) => update('smtp_host', e.target.value)} className={inputCls} placeholder="mail.example.com" />
-          </Field>
-          <Field label="SMTP port">
-            <input type="number" value={settings.smtp_port || 465} onChange={(e) => update('smtp_port', parseInt(e.target.value))} className={inputCls} placeholder="465" />
-          </Field>
-          <Field label="SMTP username">
-            <input type="text" value={settings.smtp_user || ''} onChange={(e) => update('smtp_user', e.target.value)} className={inputCls} placeholder="user@example.com" />
-          </Field>
-          <Field label="SMTP password">
-            <input type="password" value={settings.smtp_pass || ''} onChange={(e) => update('smtp_pass', e.target.value)} className={inputCls} placeholder="••••••••••••" />
-          </Field>
-          <Field label="From name">
-            <input type="text" value={settings.smtp_from_name || ''} onChange={(e) => update('smtp_from_name', e.target.value)} className={inputCls} placeholder="My Site" />
-          </Field>
-          <Field label="From email">
-            <input type="email" value={settings.smtp_from_email || ''} onChange={(e) => update('smtp_from_email', e.target.value)} className={inputCls} placeholder="noreply@example.com" />
-          </Field>
-        </div>
-        <div className="mt-4 space-y-3">
-          <Toggle
-            label="Use TLS/SSL encryption"
-            hint="Recommended for port 465"
-            checked={settings.smtp_secure}
-            onChange={(v) => update('smtp_secure', v)}
+
+        {/* Test email */}
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            type="email"
+            placeholder="Test email recipient..."
+            value={testEmailTo}
+            onChange={(e) => setTestEmailTo(e.target.value)}
+            className="text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
           />
-          <div className="pt-2">
-            <button
-              onClick={handleTestEmail}
-              disabled={testEmailMutation.isPending || !settings.smtp_enabled}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${testEmailMutation.isPending ? 'animate-spin' : ''}`} />
-              {testEmailMutation.isPending ? 'Sending...' : 'Send test email'}
-            </button>
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Verify SMTP configuration is working</p>
-          </div>
+          <button
+            onClick={handleTestEmail}
+            disabled={testEmailMutation.isPending || !testEmailTo.trim()}
+            className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-gray-300 border border-white/[0.08] rounded-md hover:bg-white/[0.04] hover:text-white disabled:opacity-40 transition-colors"
+          >
+            <Send className="w-3.5 h-3.5" />
+            Send test
+          </button>
         </div>
       </section>
     </div>

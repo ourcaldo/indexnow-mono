@@ -1,12 +1,12 @@
-import { LoadingSpinner } from '@indexnow/ui'
-
-export default function Loading() {
+export default function OrdersLoading() {
   return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="flex flex-col items-center gap-4">
-        <LoadingSpinner size="lg" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading orders...</p>
+    <div className="space-y-6">
+      <div className="h-6 w-20 bg-white/5 rounded animate-pulse" />
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="h-12 bg-white/[0.02] rounded animate-pulse" />
+        ))}
       </div>
     </div>
-  )
+  );
 }

@@ -1,187 +1,217 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
-import {
-  RefreshCw, Users, AlertTriangle, Receipt, Key,
-  TrendingUp, CheckCircle, Clock, BarChart2, ArrowUpRight,
-} from 'lucide-react';
+import { RefreshCw, ArrowRight } from 'lucide-react';
 import { useAdminDashboard } from '@/hooks';
 
-function KpiItem({ label, value, href, alert }: { label: string; value: number | string; href?: string; alert?: boolean }) {
-  const text = typeof value === 'number' ? value.toLocaleString() : value;
-  return (
-    <div className="flex-1 min-w-0 px-5 py-4 first:pl-0 last:pr-0">
-      {href ? (
-        <Link href={href} className="group block">
-          <div className={`text-2xl font-bold tabular-nums tracking-tight ${alert && Number(value) > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{text}</div>
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-xs text-gray-500 dark:text-gray-400">{label}</span>
-            <ArrowUpRight className="w-3 h-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-        </Link>
-      ) : (
-        <div>
-          <div className={`text-2xl font-bold tabular-nums tracking-tight ${alert && Number(value) > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{text}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Divider() {
-  return <div className="w-px self-stretch bg-gray-200 dark:bg-gray-800 my-3" />;
-}
-
-function StatRow({ label, items, href }: {
+function Metric({
+  value,
+  label,
+  alert,
+}: {
+  value: number;
   label: string;
-  items: { key: string; value: number | string; sub?: string; alert?: boolean }[];
-  href?: string;
+  alert?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-0 border-b border-gray-100 dark:border-gray-800/60 last:border-0 py-4">
-      <div className="w-32 flex-shrink-0 pt-0.5">
-        {href ? (
-          <Link href={href} className="group flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
-            {label}
-            <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </Link>
-        ) : (
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</span>
-        )}
+    <div className="min-w-0">
+      <div
+        className={`text-2xl font-semibold tabular-nums tracking-tight ${
+          alert && value > 0 ? 'text-red-400' : 'text-white'
+        }`}
+      >
+        {value.toLocaleString()}
       </div>
-      <div className="flex flex-wrap gap-x-8 gap-y-2">
-        {items.map((item) => (
-          <div key={item.key}>
-            <span className={`text-sm font-semibold tabular-nums ${item.alert && Number(item.value) > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
-              {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
-            </span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-1.5">{item.key}</span>
-            {item.sub && <div className="text-xs text-gray-400 dark:text-gray-500">{item.sub}</div>}
-          </div>
-        ))}
-      </div>
+      <div className="text-xs text-gray-500 mt-0.5">{label}</div>
     </div>
   );
 }
 
-export default function AdminDashboard() {
+function SectionLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 text-[13px] text-gray-500 hover:text-white transition-colors"
+    >
+      {label}
+      <ArrowRight className="w-3 h-3" />
+    </Link>
+  );
+}
+
+export default function DashboardPage() {
   const { data: stats, isLoading, isFetching, refetch } = useAdminDashboard();
 
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-6 w-28 bg-white/5 rounded animate-pulse" />
+            <div className="h-3 w-40 bg-white/5 rounded mt-2 animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-7 w-12 bg-white/5 rounded animate-pulse" />
+              <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">System overview</p>
+          <h1 className="text-lg font-semibold text-white">Dashboard</h1>
+          <p className="text-[13px] text-gray-500 mt-0.5">System overview</p>
         </div>
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-gray-400 border border-white/[0.08] rounded-md hover:bg-white/[0.04] hover:text-gray-200 transition-colors disabled:opacity-40"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 flex gap-4">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} className="flex-1">
-                <div className="h-7 w-12 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-3 w-20 bg-gray-100 dark:bg-gray-700/50 rounded" />
-              </div>
-            ))}
+      {/* Top metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
+        <Metric value={stats?.users.total ?? 0} label="Total users" />
+        <Metric value={stats?.users.newThisWeek ?? 0} label="New this week" />
+        <Metric value={stats?.users.activeToday ?? 0} label="Active today" />
+        <Metric value={stats?.transactions.total ?? 0} label="Total orders" />
+        <Metric value={stats?.transactions.pendingCount ?? 0} label="Pending orders" />
+        <Metric value={stats?.errors.critical ?? 0} label="Critical errors" alert />
+      </div>
+
+      {/* Sections */}
+      <div className="space-y-8">
+        {/* Users */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-white">Users</h2>
+            <SectionLink href="/users" label="View all" />
           </div>
-          <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg p-5 space-y-4">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="flex gap-6">
-                <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-3 w-32 bg-gray-100 dark:bg-gray-700/50 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* KPI strip */}
-          <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg px-5">
-            <div className="flex items-stretch">
-              <KpiItem label="Total users"    value={stats?.users.total ?? 0}              href="/users" />
-              <Divider />
-              <KpiItem label="New this week"  value={stats?.users.newThisWeek ?? 0}        href="/users" />
-              <Divider />
-              <KpiItem label="Total orders"   value={stats?.transactions.total ?? 0}       href="/orders" />
-              <Divider />
-              <KpiItem label="Pending"        value={stats?.transactions.pendingCount ?? 0} href="/orders" />
-              <Divider />
-              <KpiItem label="Critical errors" value={stats?.errors.critical ?? 0}         href="/errors" alert />
-              <Divider />
-              <KpiItem label="Keywords tracked" value={stats?.keywords.total ?? 0} />
+          <div className="grid grid-cols-3 gap-6 text-sm">
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {(stats?.users.total ?? 0).toLocaleString()}
+              </span>
+              <span className="text-gray-500 ml-1.5">total</span>
+            </div>
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {stats?.users.newThisWeek ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">new this week</span>
+            </div>
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {stats?.users.activeToday ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">active today</span>
             </div>
           </div>
+        </section>
 
-          {/* Detail rows */}
-          <div className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-lg px-5">
-            <StatRow
-              label="Users"
-              href="/users"
-              items={[
-                { key: 'total', value: stats?.users.total ?? 0 },
-                { key: 'new this week', value: stats?.users.newThisWeek ?? 0 },
-                { key: 'active today', value: stats?.users.activeToday ?? 0, sub: 'from activity logs' },
-              ]}
-            />
-            <StatRow
-              label="Orders"
-              href="/orders"
-              items={[
-                { key: 'total', value: stats?.transactions.total ?? 0 },
-                { key: 'completed this month', value: stats?.transactions.completedThisMonth ?? 0 },
-                { key: 'pending', value: stats?.transactions.pendingCount ?? 0, sub: stats?.transactions.pendingCount ? 'awaiting confirmation' : 'none pending' },
-              ]}
-            />
-            <StatRow
-              label="Rank Tracking"
-              items={[
-                { key: 'keywords', value: stats?.keywords.total ?? 0 },
-                { key: 'checked today', value: stats?.keywords.checkedToday ?? 0 },
-              ]}
-            />
-            <StatRow
-              label="Errors"
-              href="/errors"
-              items={[
-                { key: 'critical', value: stats?.errors.critical ?? 0, alert: true },
-                { key: 'unresolved', value: stats?.errors.unresolved ?? 0, alert: true },
-                { key: 'last 24h', value: stats?.errors.last24h ?? 0 },
-              ]}
-            />
+        <div className="border-t border-white/[0.06]" />
+
+        {/* Orders */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-white">Orders</h2>
+            <SectionLink href="/orders" label="View all" />
           </div>
+          <div className="grid grid-cols-3 gap-6 text-sm">
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {(stats?.transactions.total ?? 0).toLocaleString()}
+              </span>
+              <span className="text-gray-500 ml-1.5">total</span>
+            </div>
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {stats?.transactions.completedThisMonth ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">completed this month</span>
+            </div>
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {stats?.transactions.pendingCount ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">pending</span>
+            </div>
+          </div>
+        </section>
 
-          {/* Quick nav */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {[
-              { label: 'Manage users', href: '/users', icon: Users },
-              { label: 'View orders', href: '/orders', icon: Receipt },
-              { label: 'Activity log', href: '/activity', icon: BarChart2 },
-              { label: 'Error logs', href: '/errors', icon: AlertTriangle },
-            ].map(({ label, href, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-colors"
+        <div className="border-t border-white/[0.06]" />
+
+        {/* Rank Tracking */}
+        <section>
+          <div className="mb-4">
+            <h2 className="text-sm font-medium text-white">Rank Tracking</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-6 text-sm">
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {(stats?.keywords.total ?? 0).toLocaleString()}
+              </span>
+              <span className="text-gray-500 ml-1.5">keywords</span>
+            </div>
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {stats?.keywords.checkedToday ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">checked today</span>
+            </div>
+          </div>
+        </section>
+
+        <div className="border-t border-white/[0.06]" />
+
+        {/* Errors */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-white">Errors</h2>
+            <SectionLink href="/errors" label="View all" />
+          </div>
+          <div className="grid grid-cols-3 gap-6 text-sm">
+            <div>
+              <span
+                className={`font-medium tabular-nums ${
+                  (stats?.errors.critical ?? 0) > 0 ? 'text-red-400' : 'text-white'
+                }`}
               >
-                <Icon className="w-3 h-3" />
-                {label}
-              </Link>
-            ))}
+                {stats?.errors.critical ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">critical</span>
+            </div>
+            <div>
+              <span
+                className={`font-medium tabular-nums ${
+                  (stats?.errors.unresolved ?? 0) > 0 ? 'text-amber-400' : 'text-white'
+                }`}
+              >
+                {stats?.errors.unresolved ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">unresolved</span>
+            </div>
+            <div>
+              <span className="text-white font-medium tabular-nums">
+                {stats?.errors.last24h ?? 0}
+              </span>
+              <span className="text-gray-500 ml-1.5">last 24h</span>
+            </div>
           </div>
-        </>
-      )}
+        </section>
+      </div>
     </div>
   );
 }

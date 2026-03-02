@@ -1,29 +1,15 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { ErrorState } from '@indexnow/ui'
-import { logger } from '@indexnow/shared'
+import { useEffect } from 'react';
 
-export default function OrdersError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
-  useEffect(() => {
-    logger.error({ error: error instanceof Error ? error : undefined }, 'Orders page error')
-  }, [error])
-
+export default function OrdersError({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => { console.error('Orders error:', error); }, [error]);
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-4">
-      <ErrorState
-        title="Failed to load orders"
-        message={error.message || 'An error occurred while loading the orders list.'}
-        errorId={error.digest}
-        onRetry={reset}
-        showHomeButton
-      />
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="text-center space-y-3">
+        <p className="text-sm text-gray-400">Failed to load orders</p>
+        <button onClick={reset} className="px-3 py-1.5 text-sm text-white bg-white/10 rounded-md hover:bg-white/[0.15] transition-colors">Retry</button>
+      </div>
     </div>
-  )
+  );
 }

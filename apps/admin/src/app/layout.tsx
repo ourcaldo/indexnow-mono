@@ -1,29 +1,25 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { AdminClientProviders } from '@/components/providers/AdminClientProviders'
-import { AdminSidebar } from '@/components/AdminSidebar'
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { AdminClientProviders } from '@/components/providers/AdminClientProviders';
+import { Sidebar } from '@/components/Sidebar';
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'IndexNow Studio Admin',
-  description: 'Administration dashboard for IndexNow Studio. Manage users, packages, and platform settings.',
-}
+  title: 'IndexNow Admin',
+  description: 'IndexNow Studio administration panel',
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50 dark:bg-[#0c0c14]`}>
+    <html lang="en" className="dark">
+      <body className={`${inter.variable} font-sans antialiased bg-[#0a0a12] text-gray-100`}>
         <AdminClientProviders>
-          <div className="flex min-h-screen">
-            <AdminSidebar />
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar />
             <main className="flex-1 overflow-y-auto">
-              <div className="px-8 py-8">
+              <div className="mx-auto max-w-6xl px-6 py-6 lg:px-8 lg:py-8">
                 {children}
               </div>
             </main>
@@ -31,6 +27,5 @@ export default function RootLayout({
         </AdminClientProviders>
       </body>
     </html>
-  )
+  );
 }
-
