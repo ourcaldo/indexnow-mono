@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   MoreHorizontal, Shield, Package, Ban,
+  X, ExternalLink, Calendar, CheckCircle, AlertTriangle, Activity, Clock, Copy, Check,
 } from 'lucide-react';
-import { useAdminUsers, useChangeUserRole, useSuspendUser, type UserProfile } from '@/hooks';
+import { useAdminUsers, useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfile } from '@/hooks';
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Modal } from '@/components/Modal';
 
 /* ─── Shared components ──────────────────────────────────── */
@@ -46,6 +46,160 @@ function StatusPill({ verified }: { verified: boolean }) {
       <span className={`w-1.5 h-1.5 rounded-full ${verified ? 'bg-emerald-500' : 'bg-amber-500'}`} />
       {verified ? 'Verified' : 'Unverified'}
     </span>
+  );
+}
+
+/* ─── Copyable ID ────────────────────────────────────────── */
+
+function CopyableId({ id, full }: { id: string; full?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group text-sm text-gray-700 hover:text-gray-900 transition-colors" title={`Click to copy: ${id}`}>
+      <span className="font-mono">{full ? id : id.slice(0, 8)}</span>
+      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
+    </button>
+  );
+}
+
+/* ─── Slide-over detail row ──────────────────────────────── */
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between px-4 py-2.5 border-b border-gray-50 last:border-0 gap-3">
+      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
+      <span className="text-sm text-gray-700 text-right">{children}</span>
+    </div>
+  );
+}
+
+/* ─── Slide-over panel ───────────────────────────────────── */
+
+function UserSlideOver({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { data: user, isLoading } = useQuery({
+    queryKey: ['admin', 'users', userId],
+    queryFn: async () => {
+      const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
+      if (!response.ok) throw new Error('Failed to fetch user');
+      const data = await response.json();
+      return data.data?.user as UserProfile | null;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: activityData } = useAdminUserActivity(userId, 1);
+  const recentLogs = (activityData?.logs ?? []).slice(0, 5);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/20 z-40 transition-opacity" onClick={onClose} />
+      <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-gray-900 truncate">User Detail</h2>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => window.open(`/users/${userId}`, '_blank')}
+              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              title="Open in new tab"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-gray-50 rounded-lg animate-pulse" />)}
+            </div>
+          ) : !user ? (
+            <p className="text-sm text-gray-500 text-center py-12">User not found</p>
+          ) : (
+            <>
+              {/* Profile header */}
+              <div className="flex items-center gap-3">
+                <Avatar name={user.full_name || ''} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold text-gray-900">{user.full_name || 'Unnamed User'}</div>
+                  <div className="text-sm text-gray-500">{user.email}</div>
+                </div>
+              </div>
+
+              {/* User ID */}
+              <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 flex items-center justify-between">
+                <span className="text-sm text-gray-500">User ID</span>
+                <CopyableId id={user.user_id} full />
+              </div>
+
+              {/* Account info */}
+              <div className="bg-white rounded-lg border border-gray-100">
+                <DetailRow label="Role">
+                  <RoleBadge role={user.role} />
+                </DetailRow>
+                <DetailRow label="Status">
+                  <StatusPill verified={!!user.email_verified} />
+                </DetailRow>
+                <DetailRow label="Package">{user.package?.name || '\u2014'}</DetailRow>
+                <DetailRow label="Joined">{format(new Date(user.created_at), 'MMM d, yyyy')}</DetailRow>
+                {user.last_sign_in_at && (
+                  <DetailRow label="Last sign in">{formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true })}</DetailRow>
+                )}
+                {user.phone_number && <DetailRow label="Phone">{user.phone_number}</DetailRow>}
+              </div>
+
+              {/* Subscription */}
+              {user.package && (
+                <div className="bg-white rounded-lg border border-gray-100">
+                  <div className="px-4 py-2 border-b border-gray-50">
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Subscription</span>
+                  </div>
+                  <DetailRow label="Package">{user.package.name}</DetailRow>
+                  {user.subscribed_at && <DetailRow label="Subscribed">{format(new Date(user.subscribed_at), 'MMM d, yyyy')}</DetailRow>}
+                  {user.expires_at && <DetailRow label="Expires">{format(new Date(user.expires_at), 'MMM d, yyyy')}</DetailRow>}
+                  {user.daily_quota_used !== undefined && <DetailRow label="Daily quota used">{user.daily_quota_used}</DetailRow>}
+                </div>
+              )}
+
+              {/* Recent Activity */}
+              {recentLogs.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-100">
+                  <div className="px-4 py-2 border-b border-gray-50">
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {recentLogs.map((log: any) => (
+                      <div key={log.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                        <span className="text-sm text-gray-700 truncate">{log.event_type || log.action}</span>
+                        <span className="text-sm text-gray-500 whitespace-nowrap tabular-nums">{format(new Date(log.created_at), 'MMM d, HH:mm')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -105,11 +259,11 @@ function ActionsDropdown({
 
 export default function UsersPage() {
   useAdminPageViewLogger('users', 'Users List');
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const limit = 25;
 
   // Modal state
@@ -135,6 +289,8 @@ export default function UsersPage() {
     const matchRole = roleFilter === 'all' || u.role === roleFilter;
     return matchSearch && matchRole;
   });
+
+  const handleCloseSlideOver = useCallback(() => setSelectedUserId(null), []);
 
   const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
 
@@ -225,11 +381,12 @@ export default function UsersPage() {
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-10">#</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">User</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Role</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Package</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Status</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Joined</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">ID</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">User</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Role</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Package</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Status</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Joined</th>
                     <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-14">Actions</th>
                   </tr>
                 </thead>
@@ -237,23 +394,24 @@ export default function UsersPage() {
                   {filtered.map((user: UserProfile, index: number) => (
                     <tr
                       key={user.id}
-                      onClick={() => router.push(`/users/${user.user_id}`)}
+                      onClick={() => setSelectedUserId(user.user_id)}
                       className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors"
                     >
-                      <td className="px-3 py-3.5 text-center text-xs text-gray-400 tabular-nums">{(page - 1) * limit + index + 1}</td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 py-3.5 text-center text-sm text-gray-700 tabular-nums">{(page - 1) * limit + index + 1}</td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{user.user_id.slice(0, 8)}</td>
+                      <td className="px-3 py-3.5">
                         <div className="flex items-center gap-3">
                           <Avatar name={user.full_name || ''} />
                           <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">{user.full_name || 'Unnamed'}</div>
+                            <div className="text-sm text-gray-700 truncate">{user.full_name || 'Unnamed'}</div>
                             <div className="text-xs text-gray-500 truncate">{user.email}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5"><RoleBadge role={user.role} /></td>
-                      <td className="px-5 py-3.5 text-sm text-gray-600">{user.package?.name || '\u2014'}</td>
-                      <td className="px-5 py-3.5"><StatusPill verified={!!user.email_verified} /></td>
-                      <td className="px-5 py-3.5 text-xs text-gray-500 tabular-nums">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</td>
+                      <td className="px-3 py-3.5"><RoleBadge role={user.role} /></td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700">{user.package?.name || '\u2014'}</td>
+                      <td className="px-3 py-3.5"><StatusPill verified={!!user.email_verified} /></td>
+                      <td className="px-3 py-3.5 text-sm text-gray-700 tabular-nums">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</td>
                       <td className="px-3 py-3.5 text-center">
                         <ActionsDropdown
                           user={user}
@@ -266,7 +424,7 @@ export default function UsersPage() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-sm text-gray-400">No users found</td>
+                      <td colSpan={8} className="py-16 text-center text-sm text-gray-400">No users found</td>
                     </tr>
                   )}
                 </tbody>
@@ -387,6 +545,9 @@ export default function UsersPage() {
           </button>
         </div>
       </Modal>
+
+      {/* Slide-over user detail */}
+      {selectedUserId && <UserSlideOver userId={selectedUserId} onClose={handleCloseSlideOver} />}
     </div>
   );
 }
