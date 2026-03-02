@@ -88,6 +88,8 @@ export default function OrdersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
+                    <th className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-10">#</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Order ID</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Customer</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Package</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Amount</th>
@@ -96,8 +98,12 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order: any) => (
+                  {orders.map((order: any, index: number) => (
                     <tr key={order.id} onClick={() => router.push(`/orders/${order.id}`)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
+                      <td className="px-3 py-3.5 text-center text-xs text-gray-400 tabular-nums">{(page - 1) * limit + index + 1}</td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-medium text-blue-600 tabular-nums">{order.order_id || order.transaction_id || order.id?.slice(0, 8)}</span>
+                      </td>
                       <td className="px-5 py-3.5">
                         <div className="text-sm font-medium text-gray-900 truncate">{order.user?.full_name || order.user?.email || 'Unknown'}</div>
                         <div className="text-xs text-gray-500 truncate">{order.user?.email}</div>
@@ -112,7 +118,7 @@ export default function OrdersPage() {
                       <td className="px-5 py-3.5 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(order.created_at), 'MMM d, yyyy')}</td>
                     </tr>
                   ))}
-                  {orders.length === 0 && <tr><td colSpan={5} className="py-16 text-center text-sm text-gray-400">No orders found</td></tr>}
+                  {orders.length === 0 && <tr><td colSpan={7} className="py-16 text-center text-sm text-gray-400">No orders found</td></tr>}
                 </tbody>
               </table>
             </div>
