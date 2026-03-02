@@ -150,6 +150,7 @@ export class ServerActivityLogger {
       userId,
       eventType,
       actionDescription: actionDescriptions[eventType] || eventType,
+      targetType: 'session',
       success,
       errorMessage,
       request,
@@ -165,14 +166,23 @@ export class ServerActivityLogger {
     request?: NextRequest,
     metadata?: Record<string, unknown>
   ) {
+    // Allow targetType/targetId override via metadata for non-user entities (e.g. orders, settings)
+    const explicitTargetType = metadata?.targetType as string | undefined;
+    const explicitTargetId = metadata?.targetId as string | undefined;
+    const targetType = explicitTargetType ?? (targetUserId ? 'user' : undefined);
+    const targetId = explicitTargetId ?? targetUserId;
+
+    // Remove targetType/targetId from metadata to avoid duplication in the JSON column
+    const { targetType: _tt, targetId: _ti, ...cleanMetadata } = metadata || {};
+
     return this.logActivity({
       userId,
       eventType: ActivityEventTypes.USER_MANAGEMENT,
       actionDescription: actionDescription || `Admin action: ${action}`,
-      targetType: targetUserId ? 'user' : undefined,
-      targetId: targetUserId,
+      targetType,
+      targetId,
       request,
-      metadata: { adminAction: true, action, ...metadata },
+      metadata: { adminAction: true, action, ...cleanMetadata },
     });
   }
 }

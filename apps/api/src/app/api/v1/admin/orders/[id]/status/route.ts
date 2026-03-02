@@ -341,10 +341,12 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
     await ActivityLogger.logAdminAction(
       adminUser.id,
       'order_status_update',
-      orderId,
+      undefined,
       `Updated order ${currentTransaction.id} status from ${currentTransaction.status} to ${status}`,
       request,
       {
+        targetType: 'order',
+        targetId: orderId,
         previousStatus: currentTransaction.status,
         newStatus: status,
         orderId,

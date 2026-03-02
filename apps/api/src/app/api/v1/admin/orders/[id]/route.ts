@@ -512,10 +512,12 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
     await ActivityLogger.logAdminAction(
       adminUser.id,
       'order_detail_view',
-      orderId,
+      undefined,
       `Viewed order details for ${order.id}`,
       request,
       {
+        targetType: 'order',
+        targetId: orderId,
         orderDetailView: true,
         orderId,
         orderStatus: order.status,

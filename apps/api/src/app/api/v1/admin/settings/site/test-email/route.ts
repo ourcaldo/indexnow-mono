@@ -151,6 +151,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
                 'Tested SMTP email configuration',
                 undefined,
                 {
+                    targetType: 'settings',
                     section: 'site_settings',
                     action: 'test_smtp',
                     adminEmail: adminUser.email,

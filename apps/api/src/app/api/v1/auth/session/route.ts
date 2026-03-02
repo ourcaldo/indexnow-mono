@@ -160,6 +160,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           userId: data.session.user.id,
           eventType: 'session_established',
           actionDescription: 'User session restored from stored tokens',
+          targetType: 'session',
           request,
         });
 

@@ -13,6 +13,21 @@ const DAYS_OPTIONS = [
   { label: '90 days', value: '90' },
 ];
 
+const ENTITY_LABELS: Record<string, { label: string; color: string }> = {
+  user:            { label: 'User',            color: 'bg-blue-50 text-blue-700' },
+  session:         { label: 'Session',         color: 'bg-green-50 text-green-700' },
+  order:           { label: 'Order',           color: 'bg-amber-50 text-amber-700' },
+  payment_gateway: { label: 'Payment',         color: 'bg-purple-50 text-purple-700' },
+  settings:        { label: 'Settings',        color: 'bg-gray-100 text-gray-700' },
+  user_action:     { label: 'User Action',     color: 'bg-cyan-50 text-cyan-700' },
+};
+
+function EntityBadge({ type }: { type?: string }) {
+  if (!type) return <span className="text-gray-300">&mdash;</span>;
+  const cfg = ENTITY_LABELS[type] ?? { label: type.replace(/_/g, ' '), color: 'bg-gray-100 text-gray-600' };
+  return <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${cfg.color}`}>{cfg.label}</span>;
+}
+
 export default function ActivityPage() {
   const router = useRouter();
   const [days, setDays] = useState('7');
@@ -67,7 +82,7 @@ export default function ActivityPage() {
                         {log.action_description && <div className="text-xs text-gray-500 truncate mt-0.5">{log.action_description}</div>}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-gray-600 truncate">{log.user_name || log.user_email || '\u2014'}</td>
-                      <td className="px-5 py-3.5 text-xs text-gray-500">{log.target_type || '\u2014'}</td>
+                      <td className="px-5 py-3.5"><EntityBadge type={log.target_type} /></td>
                       <td className="px-5 py-3.5 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(log.created_at), 'MMM d, HH:mm')}</td>
                     </tr>
                   ))}

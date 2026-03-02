@@ -56,6 +56,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
         'Accessed payment gateway settings',
         request,
         {
+          targetType: 'payment_gateway',
           section: 'payment_gateways',
           action: 'view_gateways',
           adminEmail: adminUser.email || 'unknown',
@@ -200,6 +201,8 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
         `Created new payment gateway: ${gateway.name}`,
         request,
         {
+          targetType: 'payment_gateway',
+          targetId: gateway.id,
           section: 'payment_gateways',
           action: 'create_gateway',
           adminEmail: adminUser.email || 'unknown',

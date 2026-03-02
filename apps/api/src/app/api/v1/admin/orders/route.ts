@@ -36,6 +36,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       'Accessed order management interface',
       request,
       {
+        targetType: 'order',
         section: 'order_management',
         adminUser: adminUser.email,
       }
