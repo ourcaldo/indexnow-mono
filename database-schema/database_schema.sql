@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS indb_payment_packages (
   description TEXT,
   price DECIMAL(10,2) NOT NULL DEFAULT 0,
   currency VARCHAR(10) DEFAULT 'USD',
-  billing_period VARCHAR(20) DEFAULT 'monthly' CHECK (billing_period IN ('monthly', 'quarterly', 'biannual', 'annual', 'lifetime', 'one-time')),
+  billing_period VARCHAR(20) DEFAULT 'monthly' CHECK (billing_period IN ('monthly', 'annual', 'lifetime', 'one-time')),
   
   -- Quota limits (rank tracker)
   daily_quota INTEGER DEFAULT 0, -- Legacy, kept for backward compat

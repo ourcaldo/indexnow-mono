@@ -15,7 +15,7 @@ function parseFeatures(raw: unknown): string[] {
   return [];
 }
 
-const BILLING_PERIODS = ['monthly', 'quarterly', 'biannual', 'annual'] as const;
+const BILLING_PERIODS = ['monthly', 'annual'] as const;
 
 function emptyPackage(): Partial<PaymentPackage> {
   return { name: '', slug: '', description: '', price: 0, currency: 'USD', billing_period: 'monthly', features: [], quota_limits: { max_keywords: 10, max_domains: 1 }, is_active: true, sort_order: 0, pricing_tiers: {} };
