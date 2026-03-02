@@ -33,6 +33,7 @@ export interface UserProfile {
   };
   email?: string;
   email_confirmed_at?: string;
+  email_verified?: boolean;
   last_sign_in_at?: string;
 }
 

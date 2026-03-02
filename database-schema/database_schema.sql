@@ -137,6 +137,24 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON indb_auth_user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON indb_auth_user_profiles(role);
 
+-- Sync email_confirmed_at from auth.users → email_verified on indb_auth_user_profiles
+CREATE OR REPLACE FUNCTION sync_email_verified_from_auth()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.email_confirmed_at IS NOT NULL AND (OLD.email_confirmed_at IS NULL OR OLD.email_confirmed_at IS DISTINCT FROM NEW.email_confirmed_at) THEN
+    UPDATE public.indb_auth_user_profiles
+    SET email_verified = TRUE
+    WHERE user_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_email_confirmed
+AFTER UPDATE OF email_confirmed_at ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION sync_email_verified_from_auth();
+
 -- User settings/preferences
 CREATE TABLE IF NOT EXISTS indb_auth_user_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

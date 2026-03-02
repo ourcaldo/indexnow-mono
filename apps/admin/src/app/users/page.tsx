@@ -250,7 +250,7 @@ export default function UsersPage() {
                       </td>
                       <td className="px-5 py-3.5"><RoleBadge role={user.role} /></td>
                       <td className="px-5 py-3.5 text-sm text-gray-600">{user.package?.name || '\u2014'}</td>
-                      <td className="px-5 py-3.5"><StatusPill verified={!!user.email_confirmed_at} /></td>
+                      <td className="px-5 py-3.5"><StatusPill verified={!!user.email_verified} /></td>
                       <td className="px-5 py-3.5 text-xs text-gray-500 tabular-nums">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</td>
                       <td className="px-3 py-3.5 text-center">
                         <ActionsDropdown
