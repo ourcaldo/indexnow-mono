@@ -24,18 +24,20 @@ function displayMessage(msg: unknown): string {
   return String(msg);
 }
 
+/** Each card takes exactly 1/5 of the visible strip (minus gaps).
+ *  We use a CSS custom property set by StatCardStrip so width stays in sync. */
 function StatBadge({ label, value, accent, active, onClick }: {
   label: string; value: number; accent?: string; active?: boolean; onClick?: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl border p-4 text-left transition-all min-w-[140px] flex-shrink-0 ${
+      className={`stat-card rounded-xl border px-5 py-4 text-left transition-all flex-shrink-0 ${
         active ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
       <div className={`text-2xl font-bold tabular-nums ${accent || 'text-gray-900'}`}>{value.toLocaleString()}</div>
-      <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+      <div className="text-xs text-gray-500 mt-1">{label}</div>
     </button>
   );
 }
@@ -50,6 +52,9 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 /* ─── Scrollable stat card strip with arrow buttons ──────── */
 
+const CARD_GAP = 12; // gap-3 = 12px
+const VISIBLE_CARDS = 5;
+
 function StatCardStrip({ stats, severity, onSeverityClick }: {
   stats: ErrorStats | null | undefined;
   severity: SeverityFilter;
@@ -59,6 +64,15 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(false);
 
+  /** Width of one card (derived from container).
+   *  Formula: (containerWidth - gaps) / VISIBLE_CARDS  */
+  const getCardWidth = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return 200;
+    const totalGaps = CARD_GAP * (VISIBLE_CARDS - 1);
+    return (el.clientWidth - totalGaps) / VISIBLE_CARDS;
+  }, []);
+
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -66,22 +80,34 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
     setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }, []);
 
+  /* Sync card widths via CSS custom property */
+  const syncCardWidth = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const w = getCardWidth();
+    el.style.setProperty('--card-w', `${w}px`);
+  }, [getCardWidth]);
+
   useEffect(() => {
+    syncCardWidth();
     checkScroll();
     const el = scrollRef.current;
     if (!el) return;
     el.addEventListener('scroll', checkScroll, { passive: true });
-    window.addEventListener('resize', checkScroll);
+    const onResize = () => { syncCardWidth(); checkScroll(); };
+    window.addEventListener('resize', onResize);
     return () => {
       el.removeEventListener('scroll', checkScroll);
-      window.removeEventListener('resize', checkScroll);
+      window.removeEventListener('resize', onResize);
     };
-  }, [checkScroll]);
+  }, [checkScroll, syncCardWidth]);
 
+  /** Scroll by exactly one card + gap */
   const scroll = (dir: 'left' | 'right') => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
+    const step = getCardWidth() + CARD_GAP;
+    el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' });
   };
 
   return (
@@ -102,7 +128,10 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
         className="flex gap-3 px-8 py-5 overflow-x-auto"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        <style>{`.stat-scroll::-webkit-scrollbar { display: none; }`}</style>
+        <style>{`
+          .stat-scroll::-webkit-scrollbar { display: none; }
+          .stat-card { width: var(--card-w, 180px); }
+        `}</style>
         <StatBadge label="All Errors" value={stats?.summary?.totalErrors ?? 0} active={severity === 'all'} onClick={() => onSeverityClick('all')} />
         <StatBadge label="Critical" value={stats?.summary?.criticalErrors ?? 0} accent={(stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-600' : undefined} active={severity === 'critical'} onClick={() => onSeverityClick('critical')} />
         <StatBadge label="Error" value={stats?.summary?.highErrors ?? 0} accent={(stats?.summary?.highErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={severity === 'error'} onClick={() => onSeverityClick('error')} />
