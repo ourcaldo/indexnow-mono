@@ -58,8 +58,8 @@ function CopyableId({ id, label, full }: { id: string; label?: string; full?: bo
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group text-xs text-gray-600 hover:text-gray-900 transition-colors" title={`Click to copy${label ? ` ${label}` : ''}: ${id}`}>
-      <span className={full ? 'font-mono' : 'font-mono'}>{full ? id : id.slice(0, 8)}</span>
+    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group text-sm text-gray-700 hover:text-gray-900 transition-colors" title={`Click to copy${label ? ` ${label}` : ''}: ${id}`}>
+      <span className="font-mono">{full ? id : id.slice(0, 8)}</span>
       {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
     </button>
   );
@@ -75,7 +75,7 @@ function IdWithOpenButton({ id, href, label }: { id: string; href: string; label
   };
   return (
     <span className="inline-flex items-center gap-1.5">
-      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-xs text-gray-600 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
+      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-sm text-gray-700 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
         {id}
         {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
       </button>
@@ -150,12 +150,12 @@ function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{format(new Date(activity.created_at), 'MMM d, yyyy HH:mm:ss')}</p>
+                <p className="text-sm text-gray-500 mt-1">{format(new Date(activity.created_at), 'MMM d, yyyy HH:mm:ss')}</p>
               </div>
 
               {/* ID */}
               <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 flex items-center justify-between">
-                <span className="text-xs text-gray-500">Activity ID</span>
+                <span className="text-sm text-gray-500">Activity ID</span>
                 <CopyableId id={activity.id} label="Activity ID" full />
               </div>
 
@@ -167,10 +167,10 @@ function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void
                   <DetailRow label="Entity"><EntityBadge type={activity.target_type} /></DetailRow>
                 )}
                 {activity.target_id && (
-                  <DetailRow label="Target ID"><span className="font-mono text-xs text-gray-500">{activity.target_id}</span></DetailRow>
+                  <DetailRow label="Target ID"><span className="font-mono">{activity.target_id}</span></DetailRow>
                 )}
                 {activity.error_message && (
-                  <DetailRow label="Error"><span className="text-red-600 text-xs">{activity.error_message}</span></DetailRow>
+                  <DetailRow label="Error"><span className="text-red-600">{activity.error_message}</span></DetailRow>
                 )}
               </div>
 
@@ -195,7 +195,7 @@ function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void
                     <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Technical</span>
                   </div>
                   <DetailRow label="IP Address">{activity.ip_address}</DetailRow>
-                  {activity.user_agent && <DetailRow label="User Agent"><span className="text-xs break-all">{activity.user_agent}</span></DetailRow>}
+                  {activity.user_agent && <DetailRow label="User Agent"><span className="break-all">{activity.user_agent}</span></DetailRow>}
                 </div>
               )}
 
@@ -217,8 +217,8 @@ function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between px-3.5 py-2.5 border-b border-gray-50 last:border-0 gap-3">
-      <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-xs text-gray-900 text-right">{children}</span>
+      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
+      <span className="text-sm text-gray-700 text-right">{children}</span>
     </div>
   );
 }

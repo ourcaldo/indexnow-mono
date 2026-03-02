@@ -20,7 +20,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   return (
     <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-4">
       <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-900 text-right max-w-[60%] break-all">{children}</span>
+      <span className="text-sm text-gray-700 text-right max-w-[60%] break-all">{children}</span>
     </div>
   );
 }
@@ -33,7 +33,7 @@ function CopyableId({ id, label }: { id: string; label?: string }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group font-mono text-xs text-gray-500 hover:text-gray-900 transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
+    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group font-mono text-sm text-gray-700 hover:text-gray-900 transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
       {id}
       {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
     </button>
@@ -49,7 +49,7 @@ function IdWithOpenButton({ id, href, label }: { id: string; href: string; label
   };
   return (
     <span className="inline-flex items-center gap-1.5">
-      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-sm text-gray-600 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
+      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-sm text-gray-700 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
         {id}
         {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
       </button>
@@ -117,7 +117,7 @@ export default function ActivityDetailPage() {
           <InfoRow label="Event type">{activity.event_type}</InfoRow>
           {activity.action_description && <InfoRow label="Description">{activity.action_description}</InfoRow>}
           {activity.target_type && <InfoRow label="Target type">{activity.target_type}</InfoRow>}
-          {activity.target_id && <InfoRow label="Target ID"><span className="font-mono text-xs text-gray-500">{activity.target_id}</span></InfoRow>}
+          {activity.target_id && <InfoRow label="Target ID"><span className="font-mono">{activity.target_id}</span></InfoRow>}
           {activity.error_message && <InfoRow label="Error"><span className="text-red-600">{activity.error_message}</span></InfoRow>}
         </InfoCard>
 
