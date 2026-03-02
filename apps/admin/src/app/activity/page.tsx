@@ -282,7 +282,7 @@ export default function ActivityPage() {
                   {logs.map((log: any, idx: number) => (
                     <tr key={log.id} onClick={() => setSelectedLogId(log.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
                       <td className="px-5 py-3.5 text-xs text-gray-400 tabular-nums">{offset + idx + 1}</td>
-                      <td className="px-3 py-3.5 text-sm text-gray-600 tabular-nums">{log.id.slice(0, 8)}</td>
+                      <td className="px-3 py-3.5 text-xs text-gray-500 tabular-nums">{log.id.slice(0, 8)}</td>
                       <td className="px-3 py-3.5">
                         <div className="text-xs font-mono text-gray-500 truncate max-w-[140px]" title={log.user_id || ''}>{log.user_id ? log.user_id.slice(0, 8) : '\u2014'}</div>
                         {log.user_name && log.user_name !== 'Unknown User' && (
