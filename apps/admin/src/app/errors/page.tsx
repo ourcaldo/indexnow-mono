@@ -63,6 +63,10 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  /* ── Drag-to-scroll state (refs to avoid re-renders) ── */
+  const dragState = useRef({ active: false, startX: 0, scrollStart: 0, moved: false });
 
   /** Width of one card (derived from container).
    *  Formula: (containerWidth - gaps) / VISIBLE_CARDS  */
@@ -87,6 +91,31 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
     const w = getCardWidth();
     el.style.setProperty('--card-w', `${w}px`);
   }, [getCardWidth]);
+
+  /* ── Mouse / touch drag handlers ── */
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragState.current = { active: true, startX: e.clientX, scrollStart: el.scrollLeft, moved: false };
+    setIsDragging(true);
+    el.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    const ds = dragState.current;
+    if (!ds.active) return;
+    const dx = e.clientX - ds.startX;
+    if (Math.abs(dx) > 3) ds.moved = true;
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = ds.scrollStart - dx;
+  }, []);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    dragState.current.active = false;
+    setIsDragging(false);
+    const el = scrollRef.current;
+    if (el) el.releasePointerCapture(e.pointerId);
+  }, []);
 
   useEffect(() => {
     syncCardWidth();
@@ -122,11 +151,16 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
         </button>
       )}
 
-      {/* Cards */}
+      {/* Cards — drag to scroll */}
       <div
         ref={scrollRef}
-        className="flex gap-3 px-8 py-5 overflow-x-auto"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className={`flex gap-3 px-8 py-5 overflow-x-auto select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-y' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onClickCapture={(e) => { if (dragState.current.moved) { e.stopPropagation(); e.preventDefault(); } }}
       >
         <style>{`
           .stat-scroll::-webkit-scrollbar { display: none; }
