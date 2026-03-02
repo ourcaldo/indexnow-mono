@@ -4,6 +4,7 @@ import { type AdminUser } from '@indexnow/auth'
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser, context) => {
   // Extract ID from route params
@@ -50,6 +51,20 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
         return data;
       }
     );
+
+    try {
+      await ActivityLogger.logAdminAction(
+        adminUser.id,
+        'payment_gateway_set_default',
+        undefined,
+        `Set payment gateway ${id} as default`,
+        request,
+        {
+          targetType: 'payment_gateway',
+          targetId: id,
+        }
+      );
+    } catch (_) { /* non-critical */ }
 
     return formatSuccess({ gateway: result });
   } catch (error) {

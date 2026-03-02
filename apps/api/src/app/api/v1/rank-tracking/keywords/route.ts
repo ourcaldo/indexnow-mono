@@ -18,6 +18,7 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { type AuthenticatedRequest } from '@/lib/core/api-middleware';
 import { supabaseAdmin } from '@indexnow/database';
 import { z } from 'zod';
@@ -219,6 +220,17 @@ export const POST = authenticatedApiWrapper(
         }
       }
 
+      try {
+        await ActivityLogger.logActivity({
+          userId: auth.userId,
+          eventType: 'keyword_create',
+          actionDescription: `Added ${results.length} keyword(s)`,
+          targetType: 'keyword',
+          request,
+          metadata: { count: results.length, skipped, domainId: domain_id },
+        });
+      } catch (_) { /* non-critical */ }
+
       return formatSuccess({ created: results.length, keywords: results, skipped }, undefined, 201);
     }
 
@@ -266,6 +278,18 @@ export const POST = authenticatedApiWrapper(
       logger.warn({ keywordId: result.id, error: enqueueErr }, 'Failed to enqueue rank check — keyword saved but check skipped');
     }
 
+    try {
+      await ActivityLogger.logActivity({
+        userId: auth.userId,
+        eventType: 'keyword_create',
+        actionDescription: `Added keyword: ${keyword}`,
+        targetType: 'keyword',
+        targetId: result.id,
+        request,
+        metadata: { keyword, domain },
+      });
+    } catch (_) { /* non-critical */ }
+
     return formatSuccess({ created: 1, keywords: [result] }, undefined, 201);
   }
 );
@@ -296,6 +320,18 @@ export const DELETE = authenticatedApiWrapper(
     const { keywordIds } = parseResult.data;
 
     const count = await rankTrackingService.deleteKeywords(keywordIds, auth.userId);
+
+    try {
+      await ActivityLogger.logActivity({
+        userId: auth.userId,
+        eventType: 'keyword_delete',
+        actionDescription: `Deleted ${count} keyword(s)`,
+        targetType: 'keyword',
+        request,
+        metadata: { count, keywordIds },
+      });
+    } catch (_) { /* non-critical */ }
+
     return formatSuccess({ count });
   }
 );

@@ -5,6 +5,7 @@ import type { Json, Database } from '@indexnow/shared';
 import { type AdminUser } from '@indexnow/auth';
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware';
 import { formatSuccess } from '@/lib/core/api-response-formatter';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 const updatePackageSchema = z
   .object({
@@ -126,6 +127,21 @@ export const PATCH = adminApiWrapper(
       return result;
     }
 
+    try {
+      await ActivityLogger.logAdminAction(
+        adminUser.id,
+        'package_update',
+        undefined,
+        `Updated package ${id}`,
+        request,
+        {
+          targetType: 'package',
+          targetId: id,
+          updatedFields: Object.keys(validated),
+        }
+      );
+    } catch (_) { /* non-critical */ }
+
     return formatSuccess({ package: result.data }, undefined, 200);
   }
 );
@@ -177,6 +193,20 @@ export const DELETE = adminApiWrapper(
     if (result instanceof NextResponse) {
       return result;
     }
+
+    try {
+      await ActivityLogger.logAdminAction(
+        adminUser.id,
+        'package_delete',
+        undefined,
+        `Deleted package ${id}`,
+        request,
+        {
+          targetType: 'package',
+          targetId: id,
+        }
+      );
+    } catch (_) { /* non-critical */ }
 
     return formatSuccess({ success: true }, undefined, 200);
   }

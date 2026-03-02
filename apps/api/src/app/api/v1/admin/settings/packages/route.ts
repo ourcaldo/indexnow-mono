@@ -13,6 +13,7 @@ import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 // Use Pick from Database types for correct schema
 type PaymentPackageRow = {
@@ -164,6 +165,23 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
         return data;
       }
     );
+
+    try {
+      await ActivityLogger.logAdminAction(
+        adminUser.id,
+        'package_create',
+        undefined,
+        `Created package: ${newPackage.name}`,
+        request,
+        {
+          targetType: 'package',
+          targetId: newPackage.id,
+          packageName: newPackage.name,
+          packageSlug: newPackage.slug,
+          price: newPackage.price,
+        }
+      );
+    } catch (_) { /* non-critical */ }
 
     return formatSuccess({ package: newPackage }, undefined, 201);
   } catch (error) {

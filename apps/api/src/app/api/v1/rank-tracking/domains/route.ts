@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -219,6 +220,18 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
         return data;
       }
     );
+
+    try {
+      await ActivityLogger.logActivity({
+        userId: auth.userId,
+        eventType: 'domain_create',
+        actionDescription: `Added domain: ${cleanDomain}`,
+        targetType: 'domain',
+        targetId: newDomain.id,
+        request,
+        metadata: { domainName: cleanDomain },
+      });
+    } catch (_) { /* non-critical */ }
 
     return formatSuccess({ data: newDomain }, undefined, 201);
   } catch (error) {

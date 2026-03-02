@@ -84,6 +84,7 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
       await logActivity({
         eventType: 'page_view',
         actionDescription: `Visited ${pageTitle || pagePath}`,
+        targetType: 'page',
         metadata: {
           pagePath,
           pageTitle: pageTitle || null,
@@ -100,6 +101,7 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
       await logActivity({
         eventType,
         actionDescription: details || eventType,
+        targetType: 'dashboard',
         metadata: {
           dashboardActivity: true,
           ...metadata,
@@ -114,6 +116,7 @@ export const useActivityLogger = (): UseActivityLoggerReturn => {
       await logActivity({
         eventType,
         actionDescription: details,
+        targetType: 'billing',
         metadata: {
           billingActivity: true,
           ...metadata,

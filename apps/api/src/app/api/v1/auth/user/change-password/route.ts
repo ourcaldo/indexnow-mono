@@ -7,6 +7,7 @@ import {
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { checkRouteRateLimit } from '@/lib/rate-limiting/route-rate-limit';
 import { z } from 'zod';
 
@@ -90,6 +91,16 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
       );
       return formatError(passwordError);
     }
+
+    try {
+      await ActivityLogger.logActivity({
+        userId: auth.userId,
+        eventType: 'password_change',
+        actionDescription: 'User changed their password',
+        targetType: 'security',
+        request: request as unknown as import('next/server').NextRequest,
+      });
+    } catch (_) { /* non-critical */ }
 
     return formatSuccess({ message: 'Password changed successfully' });
   } catch (error) {

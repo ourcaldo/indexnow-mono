@@ -17,6 +17,7 @@ import {
     formatError
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 const siteSettingsUpdateSchema = z.object({
     id: z.string().min(1, 'Settings ID is required'),
@@ -157,6 +158,20 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
             adminEmail: adminUser.email,
             updatedFields: Object.keys(updatePayload).filter(key => key !== 'updated_at')
         }, 'Site settings updated');
+
+        try {
+          await ActivityLogger.logAdminAction(
+            adminUser.id,
+            'site_settings_update',
+            undefined,
+            `Updated site settings: ${Object.keys(updatePayload).filter(k => k !== 'updated_at').join(', ')}`,
+            request,
+            {
+              targetType: 'settings',
+              updatedFields: Object.keys(updatePayload).filter(k => k !== 'updated_at'),
+            }
+          );
+        } catch (_) { /* non-critical */ }
 
         return formatSuccess({ settings: updatedSettings });
     } catch (error) {

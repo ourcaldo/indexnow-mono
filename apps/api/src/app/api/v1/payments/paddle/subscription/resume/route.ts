@@ -13,6 +13,7 @@ import {
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 // Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
@@ -112,6 +113,17 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       return data;
     }
   );
+
+  try {
+    await ActivityLogger.logActivity({
+      userId: auth.userId,
+      eventType: 'subscription_resume',
+      actionDescription: 'Resumed subscription',
+      targetType: 'subscription',
+      request,
+      metadata: { subscriptionId },
+    });
+  } catch (_) { /* non-critical */ }
 
   return formatSuccess({
     subscription: updatedSub,

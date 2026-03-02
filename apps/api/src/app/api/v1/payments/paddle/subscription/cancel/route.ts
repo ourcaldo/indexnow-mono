@@ -25,6 +25,7 @@ import {
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 // Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
@@ -168,6 +169,17 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
         .eq('user_id', auth.userId);
     }
   );
+
+  try {
+    await ActivityLogger.logActivity({
+      userId: auth.userId,
+      eventType: 'subscription_cancel',
+      actionDescription: refundEligible ? 'Canceled subscription with refund' : 'Scheduled subscription cancellation',
+      targetType: 'subscription',
+      request,
+      metadata: { subscriptionId, refundEligible, daysActive },
+    });
+  } catch (_) { /* non-critical */ }
 
   return formatSuccess({
     action: refundEligible ? 'immediate_cancellation' : 'scheduled_cancellation',

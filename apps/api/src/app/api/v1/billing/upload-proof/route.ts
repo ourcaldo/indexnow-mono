@@ -182,6 +182,16 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
       }
     );
 
+    try {
+      await ActivityLogger.logActivity({
+        userId: auth.userId,
+        eventType: 'payment_proof_upload',
+        actionDescription: 'Uploaded payment proof',
+        targetType: 'billing',
+        request,
+      });
+    } catch (_) { /* non-critical */ }
+
     return formatSuccess({
       message: 'Payment proof uploaded successfully',
       file_url: publicUrl,

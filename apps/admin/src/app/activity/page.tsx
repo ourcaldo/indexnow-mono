@@ -17,8 +17,17 @@ const ENTITY_LABELS: Record<string, { label: string; color: string }> = {
   user:            { label: 'User',            color: 'bg-blue-50 text-blue-700' },
   session:         { label: 'Session',         color: 'bg-green-50 text-green-700' },
   order:           { label: 'Order',           color: 'bg-amber-50 text-amber-700' },
-  payment_gateway: { label: 'Payment',         color: 'bg-purple-50 text-purple-700' },
+  payment_gateway: { label: 'Payment GW',      color: 'bg-purple-50 text-purple-700' },
   settings:        { label: 'Settings',        color: 'bg-gray-100 text-gray-700' },
+  package:         { label: 'Package',         color: 'bg-indigo-50 text-indigo-700' },
+  domain:          { label: 'Domain',          color: 'bg-teal-50 text-teal-700' },
+  keyword:         { label: 'Keyword',         color: 'bg-pink-50 text-pink-700' },
+  subscription:    { label: 'Subscription',    color: 'bg-orange-50 text-orange-700' },
+  billing:         { label: 'Billing',         color: 'bg-yellow-50 text-yellow-700' },
+  security:        { label: 'Security',        color: 'bg-red-50 text-red-700' },
+  page:            { label: 'Page View',       color: 'bg-slate-50 text-slate-600' },
+  dashboard:       { label: 'Dashboard',       color: 'bg-sky-50 text-sky-700' },
+  job:             { label: 'Job',             color: 'bg-violet-50 text-violet-700' },
   user_action:     { label: 'User Action',     color: 'bg-cyan-50 text-cyan-700' },
 };
 

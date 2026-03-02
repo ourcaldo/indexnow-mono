@@ -5,6 +5,7 @@ import { type AdminUser } from '@indexnow/auth';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 const updateGatewaySchema = z
   .object({
@@ -109,6 +110,21 @@ export const PATCH = adminApiWrapper(
         }
       );
 
+      try {
+        await ActivityLogger.logAdminAction(
+          adminUser.id,
+          'payment_gateway_update',
+          undefined,
+          `Updated payment gateway ${id}`,
+          request,
+          {
+            targetType: 'payment_gateway',
+            targetId: id,
+            updatedFields: Object.keys(updateData),
+          }
+        );
+      } catch (_) { /* non-critical */ }
+
       return formatSuccess({ gateway: result });
     } catch (error) {
       const structuredError = await ErrorHandlingService.createError(
@@ -160,6 +176,20 @@ export const DELETE = adminApiWrapper(
           return { success: true };
         }
       );
+
+      try {
+        await ActivityLogger.logAdminAction(
+          adminUser.id,
+          'payment_gateway_delete',
+          undefined,
+          `Deleted payment gateway ${id}`,
+          request,
+          {
+            targetType: 'payment_gateway',
+            targetId: id,
+          }
+        );
+      } catch (_) { /* non-critical */ }
 
       return formatSuccess({ success: true });
     } catch (error) {
