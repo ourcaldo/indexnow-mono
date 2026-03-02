@@ -7,17 +7,14 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
-const updateGatewaySchema = z
-  .object({
-    name: z.string().max(255).optional(),
-    slug: z.string().max(100).optional(),
-    description: z.string().max(2000).nullable().optional(),
-    is_active: z.boolean().optional(),
-    is_default: z.boolean().optional(),
-    configuration: z.record(z.string(), z.unknown()).optional(),
-    api_credentials: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const updateGatewaySchema = z.object({
+  name: z.string().max(255).optional(),
+  slug: z.string().max(100).optional(),
+  is_active: z.boolean().optional(),
+  is_default: z.boolean().optional(),
+  configuration: z.record(z.string(), z.unknown()).optional(),
+  api_credentials: z.record(z.string(), z.unknown()).optional(),
+});
 
 export const PATCH = adminApiWrapper(
   async (request: NextRequest, adminUser: AdminUser, context) => {
@@ -73,16 +70,16 @@ export const PATCH = adminApiWrapper(
       } as Record<string, Json>,
     };
 
-    const updateData = {
-      name: body.name,
-      slug: body.slug,
-      description: body.description,
-      is_active: body.is_active,
-      is_default: body.is_default,
-      configuration: (body.configuration || {}) as Json,
-      api_credentials: (body.api_credentials || {}) as Json,
+    // Only include fields that were explicitly provided to avoid overwriting with undefined
+    const updateData: Record<string, Json | string | boolean | null> = {
       updated_at: new Date().toISOString(),
     };
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.slug !== undefined) updateData.slug = body.slug;
+    if (body.is_active !== undefined) updateData.is_active = body.is_active;
+    if (body.is_default !== undefined) updateData.is_default = body.is_default;
+    if (body.configuration !== undefined) updateData.configuration = body.configuration as Json;
+    if (body.api_credentials !== undefined) updateData.api_credentials = body.api_credentials as Json;
 
     try {
       const result = await SecureServiceRoleWrapper.executeSecureOperation(

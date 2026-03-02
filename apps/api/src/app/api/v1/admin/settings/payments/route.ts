@@ -35,15 +35,14 @@ interface CreateGatewayRequest {
   configuration?: Record<string, unknown>;
 }
 
-const createGatewaySchema = z
-  .object({
-    name: z.string().min(1).max(255),
-    slug: z.string().min(1).max(100),
-    is_active: z.boolean().optional(),
-    is_default: z.boolean().optional(),
-    configuration: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const createGatewaySchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z.string().min(1).max(100),
+  is_active: z.boolean().optional(),
+  is_default: z.boolean().optional(),
+  configuration: z.record(z.string(), z.unknown()).optional(),
+  api_credentials: z.record(z.string(), z.unknown()).optional(),
+});
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
   try {
@@ -104,10 +103,18 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
       }
     );
 
-    // (#V7 M-26) Strip api_credentials before returning — they contain secrets
-    const safeGateways = (gateways as PaymentGatewayRow[]).map(
-      ({ api_credentials: _creds, ...rest }) => rest
-    );
+    // (#V7 M-26) Mask api_credentials — show which keys exist without revealing values
+    const safeGateways = (gateways as PaymentGatewayRow[]).map((gw) => {
+      const creds = gw.api_credentials as Record<string, unknown> | null;
+      const maskedCreds: Record<string, string> = {};
+      if (creds && typeof creds === 'object') {
+        for (const key of Object.keys(creds)) {
+          const val = String(creds[key] || '');
+          maskedCreds[key] = val ? `••••${val.slice(-4)}` : '';
+        }
+      }
+      return { ...gw, api_credentials: maskedCreds };
+    });
 
     return formatSuccess({ gateways: safeGateways });
   } catch (error) {
@@ -180,6 +187,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
             configuration: (body.configuration ?? null) as
               | import('@indexnow/shared').PaymentGatewayConfiguration
               | null,
+            api_credentials: (body.api_credentials ?? null) as Json | null,
           })
           .select()
           .single();

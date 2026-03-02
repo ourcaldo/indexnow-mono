@@ -20,9 +20,28 @@ export default function PaymentsPage() {
 
   const [editing, setEditing] = useState<Partial<UI_PaymentGateway> | null>(null);
 
-  const startEdit = (gw: UI_PaymentGateway) => setEditing({ ...gw });
+  const startEdit = (gw: UI_PaymentGateway) => setEditing({ ...gw, api_credentials: { api_key: '', webhook_secret: '' } as any });
   const startCreate = () => setEditing(emptyGateway());
-  const handleSave = async () => { if (!editing) return; await saveMutation.mutateAsync(editing); setEditing(null); };
+  const handleSave = async () => {
+    if (!editing) return;
+    // Only send api_credentials if user entered new values (not empty)
+    const creds = editing.api_credentials as Record<string, string> | undefined;
+    const payload: Partial<UI_PaymentGateway> = { ...editing };
+    if (creds) {
+      const cleanCreds: Record<string, string> = {};
+      let hasValues = false;
+      for (const [k, v] of Object.entries(creds)) {
+        if (v && !v.startsWith('••••')) { cleanCreds[k] = v; hasValues = true; }
+      }
+      if (hasValues) {
+        payload.api_credentials = cleanCreds as any;
+      } else {
+        delete payload.api_credentials;
+      }
+    }
+    await saveMutation.mutateAsync(payload);
+    setEditing(null);
+  };
   const handleDelete = async (id: string) => { if (!confirm('Delete this payment gateway?')) return; await deleteMutation.mutateAsync(id); };
   const handleSetDefault = async (id: string) => await setDefaultMutation.mutateAsync(id);
 
@@ -51,8 +70,8 @@ export default function PaymentsPage() {
           <div className="pt-2 border-t border-gray-100">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">API Credentials</h4>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs text-gray-500 mb-1.5">API Key</label><input type="password" value={(editing.api_credentials as any)?.api_key ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { ...editing.api_credentials, api_key: e.target.value } as any })} className={inputClass} /></div>
-              <div><label className="block text-xs text-gray-500 mb-1.5">Webhook Secret</label><input type="password" value={(editing.api_credentials as any)?.webhook_secret ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { ...editing.api_credentials, webhook_secret: e.target.value } as any })} className={inputClass} /></div>
+              <div><label className="block text-xs text-gray-500 mb-1.5">API Key</label><input type="password" placeholder={editing.id ? 'Enter new value to update' : ''} value={(editing.api_credentials as any)?.api_key ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { ...editing.api_credentials, api_key: e.target.value } as any })} className={inputClass} /></div>
+              <div><label className="block text-xs text-gray-500 mb-1.5">Webhook Secret</label><input type="password" placeholder={editing.id ? 'Enter new value to update' : ''} value={(editing.api_credentials as any)?.webhook_secret ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { ...editing.api_credentials, webhook_secret: e.target.value } as any })} className={inputClass} /></div>
             </div>
           </div>
           <div className="flex items-center gap-6 pt-2 border-t border-gray-100">
