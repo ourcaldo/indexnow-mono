@@ -1,13 +1,13 @@
 import { defineConfig } from 'tsup'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig((options) => ({
   entry: ['src/index.ts'],
   format: ['cjs', 'esm'],
   dts: true,
   splitting: false,
   sourcemap: true,
-  clean: true,
+  clean: !options.watch,
   esbuildOptions(options) {
     options.alias = {
       '@/lib/utils': path.resolve(__dirname, 'src/lib/utils'),
@@ -23,4 +23,4 @@ export default defineConfig({
     '@indexnow/auth',
     '@indexnow/database'
   ],
-})
+}))
