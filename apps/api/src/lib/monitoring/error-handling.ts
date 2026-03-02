@@ -168,14 +168,13 @@ export class ErrorHandlingService {
     }
 
     // Record error in database (async, don't block response)
-    this.recordErrorInDatabase(structuredError).catch((dbError) => {
-      logger.error({ errorId, dbError: dbError.message }, 'Failed to record error in database');
-    });
+    // First, try to get sentry event_id so we can store it alongside the error
+    let sentryEventId: string | undefined;
 
-    // Also send to Sentry for server-side error tracking
+    // Send to Sentry for server-side error tracking
     if (typeof window === 'undefined') {
       try {
-        trackServerError(error instanceof Error ? error : new Error(errorMessage), {
+        sentryEventId = trackServerError(error instanceof Error ? error : new Error(errorMessage), {
           errorId,
           errorType: type,
           severity: structuredError.severity,
@@ -190,13 +189,17 @@ export class ErrorHandlingService {
       }
     }
 
+    this.recordErrorInDatabase(structuredError, sentryEventId).catch((dbError) => {
+      logger.error({ errorId, dbError: dbError.message }, 'Failed to record error in database');
+    });
+
     return structuredError;
   }
 
   /**
    * Record error in database for tracking and analytics using secure service role wrapper
    */
-  private static async recordErrorInDatabase(error: StructuredError): Promise<void> {
+  private static async recordErrorInDatabase(error: StructuredError, sentryEventId?: string): Promise<void> {
     try {
       const operationContext = {
         userId: error.userId || 'system',
@@ -224,6 +227,7 @@ export class ErrorHandlingService {
         status_code: error.statusCode,
         metadata: error.metadata || null,
         stack_trace: error.stack || null,
+        sentry_event_id: sentryEventId || null,
         created_at: error.timestamp.toISOString(),
       });
     } catch (dbError) {

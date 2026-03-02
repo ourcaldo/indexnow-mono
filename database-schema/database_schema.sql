@@ -706,6 +706,10 @@ CREATE TABLE IF NOT EXISTS indb_system_error_logs (
   status_code INTEGER,
   metadata JSONB,
   
+  -- Sentry integration
+  sentry_event_id VARCHAR(32),    -- Sentry event ID returned by captureException
+  sentry_issue_id VARCHAR(32),    -- Sentry issue (group) ID for bidirectional sync
+  
   -- Resolution tracking
   resolved_at TIMESTAMPTZ,
   resolved_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -720,6 +724,7 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_severity ON indb_system_error_logs(sev
 CREATE INDEX IF NOT EXISTS idx_error_logs_error_type ON indb_system_error_logs(error_type);
 CREATE INDEX IF NOT EXISTS idx_error_logs_created_at ON indb_system_error_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_error_logs_unresolved ON indb_system_error_logs(created_at DESC) WHERE resolved_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_error_logs_sentry_issue ON indb_system_error_logs(sentry_issue_id) WHERE sentry_issue_id IS NOT NULL;
 
 
 -- ============================================================

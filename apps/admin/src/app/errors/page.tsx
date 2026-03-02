@@ -76,6 +76,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => void }) {
   const { data: errorDetail, isLoading } = useAdminErrorDetail(errorId);
   const errorAction = useErrorAction(errorId);
+  const [showResolveConfirm, setShowResolveConfirm] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -85,6 +86,21 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
   }, [onClose]);
 
   const err = errorDetail?.error || errorDetail as any;
+  const sentry = (errorDetail as any)?.sentry as { eventId?: string; issueId?: string; url?: string; siblingCount?: number; configured?: boolean } | undefined;
+
+  const handleResolve = () => {
+    // Show confirmation if there are sibling errors
+    if (sentry?.siblingCount && sentry.siblingCount > 0) {
+      setShowResolveConfirm(true);
+    } else {
+      errorAction.mutate('resolve');
+    }
+  };
+
+  const confirmResolve = () => {
+    setShowResolveConfirm(false);
+    errorAction.mutate('resolve');
+  };
 
   return (
     <>
@@ -97,6 +113,16 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-sm font-semibold text-gray-900 truncate">Error Detail</h2>
           <div className="flex items-center gap-1">
+            {sentry?.url && (
+              <button
+                onClick={() => window.open(sentry.url!, '_blank')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
+                title="Open in Sentry"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 72 66" fill="currentColor"><path d="M29 2.26a3.68 3.68 0 0 0-6.37 0L.55 45.16a3.68 3.68 0 0 0 3.18 5.52h7.46a3.68 3.68 0 0 0 3.18-1.84l11.87-20.54a12.07 12.07 0 0 1 10.47 11.96h-5.26a3.68 3.68 0 0 0 0 7.36h12.62V40.3a19.43 19.43 0 0 0-16.86-19.26L41.97 2.26a3.68 3.68 0 0 0 6.37 0l21.11 36.53a3.68 3.68 0 0 1-3.18 5.52h-7.46"/></svg>
+                Sentry
+              </button>
+            )}
             <button
               onClick={() => { window.open(`/errors/${errorId}`, '_blank'); }}
               className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -163,7 +189,27 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                     </button>
                   </DetailRow>
                 )}
+                {sentry?.issueId && (
+                  <DetailRow label="Sentry Issue">
+                    <button
+                      onClick={() => sentry.url && window.open(sentry.url, '_blank')}
+                      className="text-sm text-purple-600 hover:text-purple-700 font-medium font-mono"
+                    >
+                      #{sentry.issueId}
+                    </button>
+                  </DetailRow>
+                )}
               </div>
+
+              {/* Sentry grouped info */}
+              {sentry?.siblingCount != null && sentry.siblingCount > 0 && (
+                <div className="bg-purple-50 border border-purple-100 rounded-lg px-3.5 py-2.5">
+                  <p className="text-xs text-purple-700">
+                    This error is grouped with <span className="font-semibold">{sentry.siblingCount} other unresolved error{sentry.siblingCount > 1 ? 's' : ''}</span> in Sentry.
+                    Resolving will resolve all of them.
+                  </p>
+                </div>
+              )}
 
               {/* Stack trace */}
               {err.stack_trace && (
@@ -187,10 +233,33 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                   className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors">
                   <Eye className="w-4 h-4" /> Acknowledge
                 </button>
-                <button onClick={() => errorAction.mutate('resolve')} disabled={errorAction.isPending}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors">
-                  <CheckCircle className="w-4 h-4" /> Mark Resolved
-                </button>
+
+                {/* Resolve with group confirmation */}
+                {showResolveConfirm ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                    <p className="text-xs text-amber-800">
+                      This will also resolve <span className="font-semibold">{sentry?.siblingCount} related error{(sentry?.siblingCount ?? 0) > 1 ? 's' : ''}</span> grouped under the same Sentry issue and mark the issue as resolved in Sentry.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={confirmResolve} disabled={errorAction.isPending}
+                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors">
+                        Resolve All
+                      </button>
+                      <button onClick={() => setShowResolveConfirm(false)}
+                        className="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={handleResolve} disabled={errorAction.isPending}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors">
+                    <CheckCircle className="w-4 h-4" />
+                    {sentry?.siblingCount && sentry.siblingCount > 0
+                      ? `Mark Resolved (+ ${sentry.siblingCount} related)`
+                      : 'Mark Resolved'}
+                  </button>
+                )}
               </div>
             </>
           )}

@@ -3,6 +3,13 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { adminApiWrapper, formatError, createStandardError } from '@/lib/core/api-response-middleware';
 import { formatSuccess, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import {
+  fetchSentryEvent,
+  resolveSentryIssue,
+  getSentryIssueUrl,
+  getSentrySearchUrl,
+  isSentryApiConfigured,
+} from '@/lib/integrations/sentry-api';
 
 type SystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Row'];
 type SystemErrorLogUpdate = Database['public']['Tables']['indb_system_error_logs']['Update'];
@@ -46,12 +53,53 @@ export const GET = adminApiWrapper(async (
 
       const systemError = error as SystemErrorLog;
 
+      // Lazy-fetch Sentry issue_id if we have event_id but no issue_id
+      let sentryIssueId = (systemError as any).sentry_issue_id as string | null;
+      const sentryEventId = (systemError as any).sentry_event_id as string | null;
+
+      if (sentryEventId && !sentryIssueId && isSentryApiConfigured()) {
+        try {
+          const sentryEvent = await fetchSentryEvent(sentryEventId);
+          if (sentryEvent?.groupID) {
+            sentryIssueId = sentryEvent.groupID;
+            // Persist the issue_id for future lookups (fire-and-forget)
+            supabaseAdmin
+              .from('indb_system_error_logs')
+              .update({ sentry_issue_id: sentryIssueId } as any)
+              .eq('id', errorId)
+              .then(() => {});
+          }
+        } catch {
+          // Non-critical — don't fail the request
+        }
+      }
+
+      // Build Sentry URL — prefer direct issue link, fall back to search
+      let sentryUrl: string | null = null;
+      if (sentryIssueId) {
+        sentryUrl = getSentryIssueUrl(sentryIssueId);
+      } else {
+        sentryUrl = getSentrySearchUrl(errorId);
+      }
+
+      // Count sibling errors sharing the same Sentry issue (for group-aware resolve)
+      let siblingCount = 0;
+      if (sentryIssueId) {
+        const { count } = await supabaseAdmin
+          .from('indb_system_error_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('sentry_issue_id' as any, sentryIssueId)
+          .neq('id', errorId)
+          .is('resolved_at', null);
+        siblingCount = count ?? 0;
+      }
+
       // Get user info if user_id exists
       let userInfo = null;
       if (systemError.user_id) {
         const { data: user } = await supabaseAdmin
           .from('indb_auth_user_profiles')
-          .select('email, full_name') // Note: email might not exist in profile, checking runtime
+          .select('email, full_name')
           .eq('user_id', systemError.user_id)
           .single();
         userInfo = user;
@@ -71,7 +119,14 @@ export const GET = adminApiWrapper(async (
       return {
         error: systemError,
         userInfo,
-        relatedErrors: (relatedErrors || []) as Pick<SystemErrorLog, 'id' | 'error_type' | 'message' | 'severity' | 'created_at'>[]
+        relatedErrors: (relatedErrors || []) as Pick<SystemErrorLog, 'id' | 'error_type' | 'message' | 'severity' | 'created_at'>[],
+        sentry: {
+          eventId: sentryEventId,
+          issueId: sentryIssueId,
+          url: sentryUrl,
+          siblingCount,
+          configured: isSentryApiConfigured(),
+        },
       };
     }
   );
@@ -130,6 +185,7 @@ export const PATCH = adminApiWrapper(async (
         updateData.acknowledged_by = adminUser.id;
       }
 
+      // Update the primary error
       const { data, error } = await supabaseAdmin
         .from('indb_system_error_logs')
         .update(updateData)
@@ -139,7 +195,73 @@ export const PATCH = adminApiWrapper(async (
 
       if (error) throw error;
 
-      return { error: data as SystemErrorLog, action, updatedAt: new Date().toISOString() };
+      const updatedError = data as SystemErrorLog;
+      let sentryResolved = false;
+      let siblingResolved = 0;
+
+      // On resolve: sync to Sentry + resolve siblings sharing the same issue
+      if (action === 'resolve') {
+        const sentryIssueId = (updatedError as any).sentry_issue_id as string | null;
+        const sentryEventId = (updatedError as any).sentry_event_id as string | null;
+
+        // If we have an issue_id, resolve in Sentry and resolve all siblings
+        if (sentryIssueId && isSentryApiConfigured()) {
+          // Resolve the Sentry issue
+          sentryResolved = await resolveSentryIssue(sentryIssueId);
+
+          // Resolve all unresolved sibling errors sharing the same Sentry issue
+          const { data: resolvedSiblings } = await supabaseAdmin
+            .from('indb_system_error_logs')
+            .update({
+              resolved_at: updateData.resolved_at,
+              resolved_by: adminUser.id,
+            })
+            .eq('sentry_issue_id' as any, sentryIssueId)
+            .neq('id', errorId)
+            .is('resolved_at', null)
+            .select('id');
+
+          siblingResolved = resolvedSiblings?.length ?? 0;
+        } else if (sentryEventId && isSentryApiConfigured()) {
+          // Try to fetch the issue_id from Sentry event, then resolve
+          try {
+            const sentryEvent = await fetchSentryEvent(sentryEventId);
+            if (sentryEvent?.groupID) {
+              // Persist issue_id for future
+              await supabaseAdmin
+                .from('indb_system_error_logs')
+                .update({ sentry_issue_id: sentryEvent.groupID } as any)
+                .eq('id', errorId);
+
+              sentryResolved = await resolveSentryIssue(sentryEvent.groupID);
+
+              // Resolve siblings
+              const { data: resolvedSiblings } = await supabaseAdmin
+                .from('indb_system_error_logs')
+                .update({
+                  resolved_at: updateData.resolved_at,
+                  resolved_by: adminUser.id,
+                  sentry_issue_id: sentryEvent.groupID,
+                } as any)
+                .eq('sentry_issue_id' as any, sentryEvent.groupID)
+                .neq('id', errorId)
+                .is('resolved_at', null)
+                .select('id');
+
+              siblingResolved = resolvedSiblings?.length ?? 0;
+            }
+          } catch {
+            // Non-critical
+          }
+        }
+      }
+
+      return {
+        error: updatedError,
+        action,
+        updatedAt: new Date().toISOString(),
+        sentry: { resolved: sentryResolved, siblingResolved },
+      };
     }
   );
 

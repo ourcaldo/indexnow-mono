@@ -45,7 +45,10 @@ export function useErrorAction(
       return data;
     },
     onSuccess: () => {
+      // Invalidate both the detail and the list (group-aware resolve may affect siblings)
       queryClient.invalidateQueries({ queryKey: ['admin', 'errors', errorId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'errors'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'error-stats'] });
     },
   });
 }

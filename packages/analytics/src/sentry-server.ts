@@ -43,18 +43,32 @@ export function initializeServerSentry() {
 }
 
 /**
- * Track server-side error
+ * Track server-side error with searchable tags.
+ * Returns the Sentry event_id string if captured, or undefined.
  */
-export function trackServerError(error: Error, context?: Record<string, unknown>) {
+export function trackServerError(error: Error, context?: Record<string, unknown>): string | undefined {
   const config = getAnalyticsConfig();
-  if (!config.sentry.enabled) return;
+  if (!config.sentry.enabled) return undefined;
 
   try {
-    Sentry.captureException(error, {
-      extra: { ...context, runtime: 'server' },
+    let eventId: string | undefined;
+    Sentry.withScope((scope) => {
+      // Set searchable tags (indexed by Sentry, supports search queries)
+      if (context?.errorId) scope.setTag('errorId', String(context.errorId));
+      if (context?.errorType) scope.setTag('errorType', String(context.errorType));
+      if (context?.severity) scope.setTag('severity', String(context.severity));
+      if (context?.endpoint) scope.setTag('endpoint', String(context.endpoint));
+      if (context?.statusCode) scope.setTag('statusCode', String(context.statusCode));
+
+      // Keep the full context as extras for debugging
+      scope.setExtras({ ...context, runtime: 'server' });
+
+      eventId = Sentry.captureException(error);
     });
+    return eventId;
   } catch (err) {
     // Silent fail
+    return undefined;
   }
 }
 
