@@ -194,14 +194,35 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
 
     if (currentSubscription) {
       // Active subscription from subscriptions table
+      // Derive amount from pricing_tiers (price/currency/billing_period columns no longer exist on packages)
+      const subPricingTiers = currentSubscription.package?.pricing_tiers as Record<string, { regular_price?: number; promo_price?: number; paddle_price_id?: string }> | null;
+      // Find billing period by matching paddle_price_id, or default to first available
+      let subBillingPeriod = 'monthly';
+      let subTierAmount = 0;
+      if (subPricingTiers) {
+        for (const [period, tier] of Object.entries(subPricingTiers)) {
+          if (tier && currentSubscription.paddle_price_id && tier.paddle_price_id === currentSubscription.paddle_price_id) {
+            subBillingPeriod = period;
+            subTierAmount = tier.promo_price ?? tier.regular_price ?? 0;
+            break;
+          }
+        }
+        if (!subTierAmount) {
+          const first = Object.entries(subPricingTiers)[0];
+          if (first) {
+            subBillingPeriod = first[0];
+            subTierAmount = first[1]?.promo_price ?? first[1]?.regular_price ?? 0;
+          }
+        }
+      }
       subscriptionData = {
         package_name: currentSubscription.package?.name ?? 'Unknown',
         package_slug: currentSubscription.package?.slug ?? '',
         subscription_status: currentSubscription.status,
         subscription_end_date: currentSubscription.end_date,
         subscription_start_date: currentSubscription.start_date,
-        amount_paid: currentSubscription.package?.price ?? 0,
-        billing_period: currentSubscription.package?.billing_period ?? 'monthly',
+        amount_paid: subTierAmount,
+        billing_period: subBillingPeriod,
       };
     } else if (userProfile.package_id && userProfile.package) {
       // Fall back to profile package
@@ -212,14 +233,19 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         : null;
       const isExpired = endDate ? endDate < now : true;
 
+      // Derive from pricing_tiers
+      const pkgPricingTiers = pkg.pricing_tiers as Record<string, { regular_price?: number; promo_price?: number }> | null;
+      const firstPeriod = pkgPricingTiers ? Object.keys(pkgPricingTiers)[0] : 'monthly';
+      const fallbackTier = firstPeriod ? pkgPricingTiers?.[firstPeriod] : null;
+
       subscriptionData = {
         package_name: pkg.name,
         package_slug: pkg.slug,
         subscription_status: isExpired ? 'expired' : 'active',
         subscription_end_date: userProfile.subscription_end_date,
         subscription_start_date: userProfile.subscription_start_date,
-        amount_paid: pkg.price,
-        billing_period: pkg.billing_period,
+        amount_paid: fallbackTier?.promo_price ?? fallbackTier?.regular_price ?? 0,
+        billing_period: firstPeriod ?? 'monthly',
       };
     }
 

@@ -7,6 +7,7 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 
 // UUID validation for transaction_id from FormData

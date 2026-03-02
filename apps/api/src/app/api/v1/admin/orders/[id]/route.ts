@@ -32,6 +32,7 @@ interface OrderWithRelations {
   status: string;
   amount: number;
   currency: string;
+  billing_period: string | null;
   payment_method: string | null;
   proof_url: string | null;
   transaction_id: string | null;
@@ -45,8 +46,6 @@ interface OrderWithRelations {
     slug: string;
     description: string | null;
     pricing_tiers: Json;
-    currency: string | null;
-    billing_period: string | null;
     features: Json;
   } | null;
   gateway: {
@@ -271,6 +270,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
     transaction_status: order.status,
     amount: order.amount,
     currency: order.currency,
+    billing_period: order.billing_period || null,
     payment_method: order.payment_method,
     payment_proof_url: order.proof_url,
     gateway_transaction_id: order.transaction_id,
@@ -288,8 +288,6 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
           slug: order.package.slug,
           description: order.package.description,
           pricing_tiers: order.package.pricing_tiers,
-          currency: order.package.currency || 'USD',
-          billing_period: order.package.billing_period || 'monthly',
           features: order.package.features || {},
         }
       : null,

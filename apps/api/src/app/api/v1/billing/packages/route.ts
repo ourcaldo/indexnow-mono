@@ -29,9 +29,6 @@ interface TransformedPackage {
   name: string;
   slug: string;
   description: string | null;
-  price: number;
-  currency: string;
-  billing_period: string;
   features: PackageFeatures | null;
   quota_limits: PackageQuotaLimits | null;
   is_popular: boolean;
@@ -131,9 +128,6 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       name: pkg.name,
       slug: pkg.slug,
       description: pkg.description,
-      price: pkg.price,
-      currency: pkg.currency,
-      billing_period: pkg.billing_period,
       features: pkg.features,
       quota_limits: pkg.quota_limits,
       is_popular: pkg.is_popular,

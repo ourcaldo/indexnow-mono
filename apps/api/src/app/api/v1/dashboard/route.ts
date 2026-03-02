@@ -174,8 +174,10 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         }
 
         if (pricingTiers && typeof pricingTiers === 'object') {
-          const billingPeriod = rawPackage.billing_period || 'monthly';
-          const tierData = (pricingTiers as PricingTiers)[billingPeriod];
+          // Find the first available tier to get the price
+          const tiers = pricingTiers as PricingTiers;
+          const firstPeriod = Object.keys(tiers)[0] || 'monthly';
+          const tierData = tiers[firstPeriod];
 
           if (tierData) {
             transformedPackage = {

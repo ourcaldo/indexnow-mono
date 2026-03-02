@@ -44,28 +44,24 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 /**
  * Strict JSON types for database columns
  */
-export interface PackageFeatures {
-  rank_tracking: boolean;
-  keyword_research: boolean;
-  api_access: boolean;
-  custom_reports: boolean;
-  priority_support: boolean;
-  [key: string]: boolean | string | number | undefined;
-}
+/**
+ * Package features — display-only string array shown in pricing UI.
+ * e.g. ["10 Keywords", "1 Domain", "Daily rank checks"]
+ */
+export type PackageFeatures = string[];
 
 export interface PackageQuotaLimits {
-  daily_keywords: number;
-  monthly_keywords?: number;
-  max_domains: number;
+  max_keywords?: number;
+  max_domains?: number;
   [key: string]: number | undefined;
 }
 
+/** @deprecated Use PricingTierDetails with PackagePricingTiers (Record<string, PricingTierDetails>) instead */
 export interface PackagePricingTier {
   name: string;
   price: number;
   currency: string;
   billing_period: 'monthly' | 'annual' | 'lifetime' | 'one-time';
-  paddle_price_id?: string;
 }
 
 export interface PricingTierDetails {
@@ -1043,11 +1039,6 @@ export type Database = {
           name: string;
           slug: string;
           description: string | null;
-          price: number;
-          currency: string;
-          billing_period: 'monthly' | 'annual' | 'lifetime' | 'one-time';
-          daily_quota: number;
-          monthly_quota: number | null;
           features: PackageFeatures | null;
           quota_limits: PackageQuotaLimits | null;
           pricing_tiers: PackagePricingTier[] | PackagePricingTiers | null;
@@ -1055,8 +1046,6 @@ export type Database = {
           is_active: boolean;
           is_popular: boolean;
           sort_order: number;
-          paddle_price_id: string | null;
-          stripe_price_id: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -1066,11 +1055,6 @@ export type Database = {
           name: string;
           slug: string;
           description?: string | null;
-          price: number;
-          currency?: string;
-          billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time';
-          daily_quota: number;
-          monthly_quota?: number | null;
           features?: PackageFeatures | null;
           quota_limits?: PackageQuotaLimits | null;
           pricing_tiers?: PackagePricingTier[] | PackagePricingTiers | null;
@@ -1078,8 +1062,6 @@ export type Database = {
           is_active?: boolean;
           is_popular?: boolean;
           sort_order?: number;
-          paddle_price_id?: string | null;
-          stripe_price_id?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;
@@ -1089,11 +1071,6 @@ export type Database = {
           name?: string;
           slug?: string;
           description?: string | null;
-          price?: number;
-          currency?: string;
-          billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time';
-          daily_quota?: number;
-          monthly_quota?: number | null;
           features?: PackageFeatures | null;
           quota_limits?: PackageQuotaLimits | null;
           pricing_tiers?: PackagePricingTier[] | PackagePricingTiers | null;
@@ -1101,8 +1078,6 @@ export type Database = {
           is_active?: boolean;
           is_popular?: boolean;
           sort_order?: number;
-          paddle_price_id?: string | null;
-          stripe_price_id?: string | null;
           created_at?: string;
           updated_at?: string;
           deleted_at?: string | null;

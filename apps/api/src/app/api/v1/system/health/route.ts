@@ -6,7 +6,7 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { cacheService } from '@/lib/cache/redis-cache';
 
 interface ServiceStatus {
-  status: 'connected' | 'disconnected' | 'degraded' | 'unconfigured';
+  status: 'connected' | 'disconnected' | 'degraded' | 'unconfigured' | 'db-managed';
   latencyMs?: number;
   error?: string;
 }

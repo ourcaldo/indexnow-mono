@@ -1,0 +1,19 @@
+{
+  "name": "@indexnow/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.js",
+    "./next": "./next.js",
+    "./library": "./library.js"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9",
+    "typescript": "^5"
+  }
+}

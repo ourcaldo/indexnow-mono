@@ -18,7 +18,7 @@ function parseFeatures(raw: unknown): string[] {
 const BILLING_PERIODS = ['monthly', 'annual'] as const;
 
 function emptyPackage(): Partial<PaymentPackage> {
-  return { name: '', slug: '', description: '', price: 0, currency: 'USD', billing_period: 'monthly', features: [], quota_limits: { max_keywords: 10, max_domains: 1 }, is_active: true, sort_order: 0, pricing_tiers: {} };
+  return { name: '', slug: '', description: '', features: [], quota_limits: { max_keywords: 10, max_domains: 1 }, is_active: true, sort_order: 0, pricing_tiers: {} };
 }
 
 const inputClass = "w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
@@ -181,7 +181,7 @@ function PackageEditor({ initialData, onSave, onCancel, isPending }: {
   const addTier = (period: string) => {
     setTiers(prev => ({
       ...prev,
-      [period]: { period: period as PricingTier['period'], period_label: period.charAt(0).toUpperCase() + period.slice(1), regular_price: editing.price ?? 0, promo_price: 0, paddle_price_id: '' },
+      [period]: { period: period as PricingTier['period'], period_label: period.charAt(0).toUpperCase() + period.slice(1), regular_price: 0, promo_price: 0, paddle_price_id: '' },
     }));
   };
 

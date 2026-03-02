@@ -36,9 +36,6 @@ interface PaymentPackage {
   name: string
   slug: string
   description: string
-  price: number
-  currency: string
-  billing_period: string
   features: string[]
   quota_limits: { max_keywords?: number; max_domains?: number; keywords_limit?: number }
   is_popular: boolean
@@ -124,7 +121,7 @@ interface SubscriptionData {
 function getPricing(pkg: PaymentPackage, period: string) {
   const key = period === 'yearly' ? 'annual' : period
   const tier = pkg.pricing_tiers?.[key]
-  if (!tier) return { price: pkg.price ?? 0 }
+  if (!tier) return { price: 0 }
   const price = tier.promo_price || tier.regular_price
   const orig =
     tier.promo_price && tier.promo_price < tier.regular_price ? tier.regular_price : undefined

@@ -9,7 +9,7 @@ import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface PricingTier {
-  period: 'monthly' | 'quarterly' | 'biannual' | 'annual';
+  period: 'monthly' | 'annual';
   period_label: string;
   regular_price: number;
   promo_price: number;
@@ -21,9 +21,6 @@ export interface PaymentPackage {
   name: string;
   slug: string;
   description: string;
-  price: number;
-  currency: string;
-  billing_period: string;
   features: string[];
   quota_limits: {
     max_keywords?: number;
@@ -32,7 +29,6 @@ export interface PaymentPackage {
   is_active: boolean;
   is_popular?: boolean;
   sort_order: number;
-  paddle_price_id?: string;
   pricing_tiers?: Record<string, PricingTier>;
   created_at: string;
   updated_at: string;

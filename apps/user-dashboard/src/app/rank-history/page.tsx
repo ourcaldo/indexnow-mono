@@ -1023,7 +1023,7 @@ export default function RankHistoryPage() {
               ) : pageSlice.length === 0 ? (
                 <tr>
                   <td colSpan={colSpanTotal} className="py-16 text-center text-sm text-gray-400 dark:text-gray-500">
-                    {search ? 'No keywords match your filter.' : 'No keywords tracked for this period.'}
+                    No keywords tracked for this period.
                   </td>
                 </tr>
               ) : (

@@ -55,13 +55,8 @@ CREATE TABLE IF NOT EXISTS indb_payment_packages (
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(100) NOT NULL UNIQUE,
   description TEXT,
-  price DECIMAL(10,2) NOT NULL DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'USD',
-  billing_period VARCHAR(20) DEFAULT 'monthly' CHECK (billing_period IN ('monthly', 'annual', 'lifetime', 'one-time')),
   
-  -- Quota limits (rank tracker)
-  daily_quota INTEGER DEFAULT 0, -- Legacy, kept for backward compat
-  monthly_quota INTEGER DEFAULT 0, -- Legacy, kept for backward compat
+  -- Quota limits (rank tracker: max_keywords, max_domains)
   quota_limits JSONB DEFAULT '{}'::jsonb, -- { max_keywords, max_domains }
   
   -- Features & pricing
@@ -71,9 +66,6 @@ CREATE TABLE IF NOT EXISTS indb_payment_packages (
   is_active BOOLEAN DEFAULT TRUE,
   is_popular BOOLEAN DEFAULT FALSE,
   sort_order INTEGER DEFAULT 0,
-  
-  -- External IDs (Paddle)
-  paddle_price_id VARCHAR(100), -- Top-level Paddle price ID (single-tier packages)
   
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1242,11 +1234,23 @@ VALUES (
 ON CONFLICT (slug) DO NOTHING;
 
 -- Insert default payment packages (#221 - required for registration/default-package assignment)
-INSERT INTO indb_payment_packages (name, slug, description, price, quota_limits, features, is_active, sort_order) VALUES
-  ('Free', 'free', 'Basic free plan with limited access', 0.00, '{"max_keywords": 10, "max_domains": 1}'::jsonb, '["10 Keywords", "1 Domain"]'::jsonb, true, 0),
-  ('Starter', 'starter', 'Starter plan for small websites', 9.99, '{"max_keywords": 50, "max_domains": 3}'::jsonb, '["50 Keywords", "3 Domains", "Weekly rank checks"]'::jsonb, true, 1),
-  ('Pro', 'pro', 'Professional plan for growing businesses', 29.99, '{"max_keywords": 200, "max_domains": 10}'::jsonb, '["200 Keywords", "10 Domains", "Daily rank checks", "Priority support"]'::jsonb, true, 2),
-  ('Enterprise', 'enterprise', 'Enterprise plan with unlimited access', 99.99, '{"max_keywords": -1, "max_domains": -1}'::jsonb, '["Unlimited Keywords", "Unlimited Domains", "Real-time rank checks", "Priority support", "Dedicated support"]'::jsonb, true, 3)
+INSERT INTO indb_payment_packages (name, slug, description, quota_limits, features, pricing_tiers, is_active, sort_order) VALUES
+  ('Free', 'free', 'Basic free plan with limited access',
+    '{"max_keywords": 10, "max_domains": 1}'::jsonb,
+    '["10 Keywords", "1 Domain"]'::jsonb,
+    '{}'::jsonb, true, 0),
+  ('Starter', 'starter', 'Starter plan for small websites',
+    '{"max_keywords": 50, "max_domains": 3}'::jsonb,
+    '["50 Keywords", "3 Domains", "Weekly rank checks"]'::jsonb,
+    '{"monthly": {"regular_price": 9.99}, "annual": {"regular_price": 99.99}}'::jsonb, true, 1),
+  ('Pro', 'pro', 'Professional plan for growing businesses',
+    '{"max_keywords": 200, "max_domains": 10}'::jsonb,
+    '["200 Keywords", "10 Domains", "Daily rank checks", "Priority support"]'::jsonb,
+    '{"monthly": {"regular_price": 29.99}, "annual": {"regular_price": 299.99}}'::jsonb, true, 2),
+  ('Enterprise', 'enterprise', 'Enterprise plan with unlimited access',
+    '{"max_keywords": -1, "max_domains": -1}'::jsonb,
+    '["Unlimited Keywords", "Unlimited Domains", "Real-time rank checks", "Priority support", "Dedicated support"]'::jsonb,
+    '{"monthly": {"regular_price": 99.99}, "annual": {"regular_price": 999.99}}'::jsonb, true, 3)
 ON CONFLICT (slug) DO NOTHING;
 
 -- Insert keyword countries (expanded with major markets #246)

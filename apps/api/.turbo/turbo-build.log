@@ -1,0 +1,190 @@
+
+> api@0.1.0 build C:\Users\Administrator\Desktop\indexnow-main\indexnow-dev\apps\api
+> next build --webpack
+
+⚠ turbopack.root should be absolute, using: C:\Users\Administrator\Desktop\indexnow-main\indexnow-dev
+▲ Next.js 16.1.4 (webpack)
+- Environments: .env
+- Experiments (use with caution):
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  · clientTraceMetadata
+
+  Creating an optimized production build ...
+[@sentry/nextjs] It appears you've configured a `sentry.server.config.ts` file. Please ensure to put this file's content into the `register()` function of a Next.js instrumentation hook instead. To ensure correct functionality of the SDK, `Sentry.init` must be called inside `instrumentation.ts`. Learn more about setting up an instrumentation hook in Next.js: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation. You can safely delete the `sentry.server.config.ts` file afterward.
+warn  - It seems like you don't have a global error handler set up. It is recommended that you add a global-error.js file with Sentry instrumentation so that React rendering errors are reported to Sentry. Read more: https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/#react-render-errors-in-app-router (you can suppress this warning by setting SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING=1 as environment variable)
+[@sentry/nextjs] The Sentry SDK has enabled source map generation for your Next.js app. If you don't want to serve Source Maps to your users, either set the `sourcemaps.deleteSourcemapsAfterUpload` option to true, or manually delete the source maps after the build. In future Sentry SDK versions `sourcemaps.deleteSourcemapsAfterUpload` will default to `true`. If you do not want to generate and upload sourcemaps, set the `sourcemaps.disable` option in `withSentryConfig()`.
+⚠ Compiled with warnings in 40s
+
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/classes/index.js
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/index.js
+./src/lib/queues/QueueManager.ts
+
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+require.extensions is not supported by webpack. Use a loader instead.
+
+Import trace for requested module:
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+../../packages/mail/src/index.ts
+./src/lib/queues/workers/email.worker.ts
+./src/lib/queues/workers/index.ts
+
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+require.extensions is not supported by webpack. Use a loader instead.
+
+Import trace for requested module:
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+../../packages/mail/src/index.ts
+./src/lib/queues/workers/email.worker.ts
+./src/lib/queues/workers/index.ts
+
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+require.extensions is not supported by webpack. Use a loader instead.
+
+Import trace for requested module:
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+../../packages/mail/src/index.ts
+./src/lib/queues/workers/email.worker.ts
+./src/lib/queues/workers/index.ts
+
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/classes/child-processor.js
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/classes/index.js
+../../node_modules/.pnpm/bullmq@5.67.1/node_modules/bullmq/dist/esm/index.js
+./src/lib/queues/QueueManager.ts
+./src/app/api/admin/bull-board/[[...path]]/route.ts
+
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+require.extensions is not supported by webpack. Use a loader instead.
+
+Import trace for requested module:
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+../../packages/mail/src/index.ts
+./src/app/api/v1/admin/users/[id]/reset-password/route.ts
+
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+require.extensions is not supported by webpack. Use a loader instead.
+
+Import trace for requested module:
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+../../packages/mail/src/index.ts
+./src/app/api/v1/admin/users/[id]/reset-password/route.ts
+
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+require.extensions is not supported by webpack. Use a loader instead.
+
+Import trace for requested module:
+../../node_modules/.pnpm/handlebars@4.7.8/node_modules/handlebars/lib/index.js
+../../packages/mail/src/index.ts
+./src/app/api/v1/admin/users/[id]/reset-password/route.ts
+
+  Running TypeScript ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/64) ...
+  Generating static pages using 7 workers (16/64) 
+  Generating static pages using 7 workers (32/64) 
+  Generating static pages using 7 workers (48/64) 
+✓ Generating static pages using 7 workers (64/64) in 5.0s
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /_not-found
+├ ƒ /api/admin/bull-board/[[...path]]
+├ ƒ /api/v1/activity
+├ ƒ /api/v1/admin/activity
+├ ƒ /api/v1/admin/activity/[id]
+├ ƒ /api/v1/admin/dashboard
+├ ƒ /api/v1/admin/errors
+├ ƒ /api/v1/admin/errors/[id]
+├ ƒ /api/v1/admin/errors/critical
+├ ƒ /api/v1/admin/errors/stats
+├ ƒ /api/v1/admin/orders
+├ ƒ /api/v1/admin/orders/[id]
+├ ƒ /api/v1/admin/orders/[id]/status
+├ ƒ /api/v1/admin/packages
+├ ƒ /api/v1/admin/rank-tracker/trigger-manual-check
+├ ƒ /api/v1/admin/settings/packages
+├ ƒ /api/v1/admin/settings/packages/[id]
+├ ƒ /api/v1/admin/settings/payments
+├ ƒ /api/v1/admin/settings/payments/[id]
+├ ƒ /api/v1/admin/settings/payments/[id]/default
+├ ƒ /api/v1/admin/settings/site
+├ ƒ /api/v1/admin/settings/site/test-email
+├ ƒ /api/v1/admin/users
+├ ƒ /api/v1/admin/users/[id]
+├ ƒ /api/v1/admin/users/[id]/activity
+├ ƒ /api/v1/admin/users/[id]/api-stats
+├ ƒ /api/v1/admin/users/[id]/change-package
+├ ƒ /api/v1/admin/users/[id]/extend-subscription
+├ ƒ /api/v1/admin/users/[id]/quota-usage
+├ ƒ /api/v1/admin/users/[id]/reset-password
+├ ƒ /api/v1/admin/users/[id]/reset-quota
+├ ƒ /api/v1/admin/users/[id]/security
+├ ƒ /api/v1/admin/verify-role
+├ ƒ /api/v1/auth/callback
+├ ƒ /api/v1/auth/detect-location
+├ ƒ /api/v1/auth/login
+├ ƒ /api/v1/auth/logout
+├ ƒ /api/v1/auth/register
+├ ƒ /api/v1/auth/resend-verification
+├ ƒ /api/v1/auth/session
+├ ƒ /api/v1/auth/user/change-password
+├ ƒ /api/v1/auth/user/profile
+├ ƒ /api/v1/auth/user/quota
+├ ƒ /api/v1/auth/user/settings
+├ ƒ /api/v1/auth/user/trial-eligibility
+├ ƒ /api/v1/auth/user/trial-status
+├ ƒ /api/v1/auth/verify
+├ ƒ /api/v1/billing/history
+├ ƒ /api/v1/billing/orders/[id]
+├ ƒ /api/v1/billing/overview
+├ ƒ /api/v1/billing/packages
+├ ƒ /api/v1/billing/packages/[id]
+├ ƒ /api/v1/billing/payment
+├ ƒ /api/v1/billing/payment-gateways
+├ ƒ /api/v1/billing/transactions/[id]
+├ ƒ /api/v1/billing/upload-proof
+├ ƒ /api/v1/dashboard
+├ ƒ /api/v1/integrations/seranking/health
+├ ƒ /api/v1/integrations/seranking/health/metrics
+├ ƒ /api/v1/integrations/seranking/keyword-data
+├ ƒ /api/v1/integrations/seranking/keyword-data/bulk
+├ ƒ /api/v1/integrations/seranking/quota/history
+├ ƒ /api/v1/integrations/seranking/quota/status
+├ ƒ /api/v1/notifications/dismiss/[id]
+├ ƒ /api/v1/payments/paddle/config
+├ ƒ /api/v1/payments/paddle/customer-portal
+├ ƒ /api/v1/payments/paddle/subscription/cancel
+├ ƒ /api/v1/payments/paddle/subscription/my-subscription
+├ ƒ /api/v1/payments/paddle/subscription/pause
+├ ƒ /api/v1/payments/paddle/subscription/refund-window-info
+├ ƒ /api/v1/payments/paddle/subscription/resume
+├ ƒ /api/v1/payments/paddle/subscription/update
+├ ƒ /api/v1/payments/paddle/webhook
+├ ƒ /api/v1/public/settings
+├ ƒ /api/v1/rank-tracking/check-rank
+├ ƒ /api/v1/rank-tracking/countries
+├ ƒ /api/v1/rank-tracking/domains
+├ ƒ /api/v1/rank-tracking/keyword-usage
+├ ƒ /api/v1/rank-tracking/keywords
+├ ƒ /api/v1/rank-tracking/keywords/add-tag
+├ ƒ /api/v1/rank-tracking/keywords/bulk-delete
+├ ƒ /api/v1/rank-tracking/rank-history
+├ ƒ /api/v1/rank-tracking/weekly-trends
+├ ƒ /api/v1/system/health
+└ ƒ /api/v1/system/status
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

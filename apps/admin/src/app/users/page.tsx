@@ -505,7 +505,7 @@ export default function UsersPage() {
                 <div className="text-sm font-medium text-gray-900">{pkg.name}
                   {pkg.id === targetUser?.package_id && <span className="text-xs text-gray-400 ml-2">(current)</span>}
                 </div>
-                <div className="text-xs text-gray-500">{pkg.currency} {pkg.price}/{pkg.billing_period}</div>
+                <div className="text-xs text-gray-500">{Object.entries(pkg.pricing_tiers || {}).map(([p, t]: [string, any]) => `$${t?.regular_price ?? 0}/${p}`).join(', ') || 'Free'}</div>
               </div>
             </label>
           ))}

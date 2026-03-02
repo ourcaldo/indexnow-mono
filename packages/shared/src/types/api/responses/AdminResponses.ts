@@ -93,6 +93,7 @@ export interface AdminOrderTransaction {
   transaction_status: string; // 'pending' | 'proof_uploaded' | 'completed' | 'failed'
   amount: number;
   currency: string;
+  billing_period: string | null;
   payment_method: string | null;
   payment_proof_url: string | null;
   gateway_transaction_id: string | null;
@@ -109,8 +110,6 @@ export interface AdminOrderTransaction {
     slug: string;
     description: string | null;
     pricing_tiers: Json;
-    currency: string;
-    billing_period: string;
     features: Json;
   } | null;
   gateway: {

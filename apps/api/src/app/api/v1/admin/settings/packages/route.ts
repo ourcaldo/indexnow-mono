@@ -21,11 +21,6 @@ type PaymentPackageRow = {
   name: string;
   slug: string;
   description: string | null;
-  price: number;
-  currency: string;
-  billing_period: string;
-  daily_quota: number;
-  monthly_quota: number | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -36,9 +31,6 @@ interface CreatePackageRequest {
   name: string;
   slug: string;
   description?: string;
-  price: number;
-  daily_quota: number;
-  billing_period?: 'monthly' | 'annual' | 'lifetime' | 'one-time';
   is_active?: boolean;
   sort_order?: number;
 }
@@ -48,9 +40,6 @@ const createPackageSchema = z
     name: z.string().min(1).max(255),
     slug: z.string().min(1).max(100),
     description: z.string().max(2000).optional(),
-    price: z.number().nonnegative(),
-    daily_quota: z.number().int().nonnegative(),
-    billing_period: z.enum(['monthly', 'annual', 'lifetime', 'one-time']).optional(),
     is_active: z.boolean().optional(),
     sort_order: z.number().int().optional(),
   })
@@ -148,10 +137,6 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
             name: body.name,
             slug: body.slug,
             description: body.description ?? null,
-            price: body.price,
-            daily_quota: body.daily_quota,
-            currency: 'USD',
-            billing_period: body.billing_period ?? 'monthly',
             is_active: body.is_active ?? false,
             sort_order: body.sort_order ?? 0,
           })
@@ -178,7 +163,6 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
           targetId: newPackage.id,
           packageName: newPackage.name,
           packageSlug: newPackage.slug,
-          price: newPackage.price,
         }
       );
     } catch (_) { /* non-critical */ }

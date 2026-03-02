@@ -99,7 +99,7 @@ export default function OrderDetailPage() {
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-gray-900 tabular-nums">{o.currency?.toUpperCase()} {Number(o.amount ?? 0).toLocaleString()}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{o.package?.billing_period || 'one-time'}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{o.billing_period || 'one-time'}</div>
           </div>
         </div>
       </div>

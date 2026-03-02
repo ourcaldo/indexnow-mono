@@ -35,6 +35,7 @@ interface TransactionRow {
   transaction_status: string | null;
   amount: number;
   currency: string;
+  billing_period: string | null;
   payment_method: string | null;
   proof_url: string | null;
   transaction_id: string | null;
@@ -51,8 +52,6 @@ interface TransactionRow {
     slug: string;
     description: string | null;
     pricing_tiers: Json;
-    currency: string | null;
-    billing_period: string | null;
     features: Json;
   } | null;
   gateway: {
@@ -285,6 +284,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
     transaction_status: updatedTransaction.status,
     amount: updatedTransaction.amount,
     currency: updatedTransaction.currency,
+    billing_period: updatedTransaction.billing_period || null,
     payment_method: updatedTransaction.payment_method,
     payment_proof_url: updatedTransaction.proof_url || null, // Map proof_url
     gateway_transaction_id: updatedTransaction.transaction_id || null, // Map transaction_id
@@ -302,8 +302,6 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
           slug: updatedTransaction.package.slug,
           description: updatedTransaction.package.description,
           pricing_tiers: updatedTransaction.package.pricing_tiers as Json,
-          currency: updatedTransaction.package.currency || 'USD',
-          billing_period: updatedTransaction.package.billing_period || 'monthly',
           features: updatedTransaction.package.features as Json,
         }
       : null,
