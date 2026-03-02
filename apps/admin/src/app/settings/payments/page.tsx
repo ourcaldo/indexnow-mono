@@ -20,7 +20,7 @@ export default function PaymentsPage() {
 
   const [editing, setEditing] = useState<Partial<UI_PaymentGateway> | null>(null);
 
-  const startEdit = (gw: UI_PaymentGateway) => setEditing({ ...gw, api_credentials: { api_key: '', webhook_secret: '' } as any });
+  const startEdit = (gw: UI_PaymentGateway) => setEditing({ ...gw, api_credentials: { webhook_secret: '' } as any });
   const startCreate = () => setEditing(emptyGateway());
   const handleSave = async () => {
     if (!editing) return;
@@ -68,11 +68,9 @@ export default function PaymentsPage() {
               </select></div>
           </div>
           <div className="pt-2 border-t border-gray-100">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">API Credentials</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs text-gray-500 mb-1.5">API Key</label><input type="password" placeholder={editing.id ? 'Enter new value to update' : ''} value={(editing.api_credentials as any)?.api_key ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { ...editing.api_credentials, api_key: e.target.value } as any })} className={inputClass} /></div>
-              <div><label className="block text-xs text-gray-500 mb-1.5">Webhook Secret</label><input type="password" placeholder={editing.id ? 'Enter new value to update' : ''} value={(editing.api_credentials as any)?.webhook_secret ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { ...editing.api_credentials, webhook_secret: e.target.value } as any })} className={inputClass} /></div>
-            </div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Webhook Secret</h4>
+            <p className="text-xs text-gray-400 mb-2">Used to verify incoming Paddle webhook signatures. Client token is set via environment variable.</p>
+            <div><input type="password" placeholder={editing.id ? 'Enter new value to update' : 'pdl_ntfset_...'} value={(editing.api_credentials as any)?.webhook_secret ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { webhook_secret: e.target.value } as any })} className={inputClass} /></div>
           </div>
           <div className="flex items-center gap-6 pt-2 border-t border-gray-100">
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" checked={!!(editing.configuration as any)?.sandbox} onChange={(e) => setEditing({ ...editing, configuration: { ...editing.configuration, sandbox: e.target.checked } as any })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Sandbox mode</label>
