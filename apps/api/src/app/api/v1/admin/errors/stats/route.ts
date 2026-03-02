@@ -1,7 +1,7 @@
 /**
  * Error Statistics API Endpoint
  * Provides comprehensive error tracking statistics for admin dashboard
- * Updated for Phase 3: Shows ALL error types, not just rank-check errors
+ * Uses direct queries instead of RPCs for compatibility
  */
 
 import { NextRequest } from 'next/server';
@@ -26,10 +26,11 @@ interface StatsResult {
     totalErrors: number;
     criticalErrors: number;
     highErrors: number;
+    warningErrors: number;
+    infoErrors: number;
     unresolvedErrors: number;
   };
   distributions: {
-    byType: Record<string, number>;
     bySeverity: Record<string, number>;
     byEndpoint: EndpointCount[];
   };
@@ -71,30 +72,47 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       const timeFilter = getTimeFilter(timeRange);
       const previousTimeFilter = getPreviousTimeFilter(timeRange);
 
-      // Total errors in current period
-      const { count: totalErrors, error: totalError } = await supabaseAdmin
+      // Fetch a batch of recent errors to compute distributions in JS
+      const { data: recentErrors, error: batchError, count: totalErrors } = await supabaseAdmin
         .from('indb_system_error_logs')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', timeFilter);
-      if (totalError) throw totalError;
+        .select('message, error_type, severity, endpoint', { count: 'exact' })
+        .gte('created_at', timeFilter)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (batchError) throw batchError;
 
-      // Critical errors in current period
-      const { count: criticalErrors, error: criticalError } = await supabaseAdmin
-        .from('indb_system_error_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('severity', 'critical')
-        .gte('created_at', timeFilter);
-      if (criticalError) throw criticalError;
+      const rows = recentErrors || [];
+      const total = totalErrors || 0;
 
-      // High severity errors in current period
-      const { count: highErrors, error: highError } = await supabaseAdmin
-        .from('indb_system_error_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('severity', 'error')
-        .gte('created_at', timeFilter);
-      if (highError) throw highError;
+      // Compute severity counts from rows
+      const severityCounts: Record<string, number> = {};
+      for (const r of rows) {
+        severityCounts[r.severity] = (severityCounts[r.severity] || 0) + 1;
+      }
 
-      // Unresolved errors in current period
+      // Compute endpoint distribution from rows
+      const epMap: Record<string, number> = {};
+      for (const r of rows) {
+        if (r.endpoint) epMap[r.endpoint] = (epMap[r.endpoint] || 0) + 1;
+      }
+      const topEndpoints: EndpointCount[] = Object.entries(epMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([ep, count]) => ({ endpoint: ep, count }));
+
+      // Compute top errors (grouped by message)
+      const errorMap: Record<string, ErrorCount> = {};
+      for (const r of rows) {
+        if (!errorMap[r.message]) {
+          errorMap[r.message] = { message: r.message, error_type: r.error_type, severity: r.severity, count: 0 };
+        }
+        errorMap[r.message].count++;
+      }
+      const topErrors = Object.values(errorMap)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Unresolved count
       const { count: unresolvedErrors, error: unresolvedError } = await supabaseAdmin
         .from('indb_system_error_logs')
         .select('*', { count: 'exact', head: true })
@@ -102,52 +120,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         .gte('created_at', timeFilter);
       if (unresolvedError) throw unresolvedError;
 
-      // Errors by type distribution (SQL GROUP BY via RPC)
-      const { data: typeDistributionData, error: typeError } = await (
-        supabaseAdmin.rpc as Function
-      )('get_error_type_distribution', { p_since: timeFilter });
-      if (typeError) throw typeError;
-      const typeDistribution: Record<string, number> = typeDistributionData || {};
-
-      // Errors by severity distribution (SQL GROUP BY via RPC)
-      const { data: severityDistributionData, error: severityError } = await (
-        supabaseAdmin.rpc as Function
-      )('get_error_severity_distribution', { p_since: timeFilter });
-      if (severityError) throw severityError;
-      const severityDistribution: Record<string, number> = severityDistributionData || {};
-
-      // Most common errors (top 5 by message)
-      const { data: commonErrors, error: commonError } = await supabaseAdmin
-        .from('indb_system_error_logs')
-        .select('message, error_type, severity')
-        .gte('created_at', timeFilter)
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (commonError) throw commonError;
-
-      // Group by message and count occurrences
-      const errorCounts = (commonErrors || []).reduce(
-        (acc, error) => {
-          const key = error.message;
-          if (!acc[key]) {
-            acc[key] = {
-              message: error.message,
-              error_type: error.error_type,
-              severity: error.severity,
-              count: 0,
-            };
-          }
-          acc[key].count++;
-          return acc;
-        },
-        {} as Record<string, ErrorCount>
-      );
-
-      const topErrors = Object.values(errorCounts)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Error trend (compare with previous period)
+      // Previous period count for trend
       const { count: previousPeriodErrors, error: trendError } = await supabaseAdmin
         .from('indb_system_error_logs')
         .select('*', { count: 'exact', head: true })
@@ -155,38 +128,24 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         .lt('created_at', timeFilter);
       if (trendError) throw trendError;
 
-      // Calculate trend percentage
       const trend =
         previousPeriodErrors && previousPeriodErrors > 0
-          ? (((totalErrors || 0) - previousPeriodErrors) / previousPeriodErrors) * 100
-          : (totalErrors || 0) > 0
+          ? (((total) - previousPeriodErrors) / previousPeriodErrors) * 100
+          : total > 0
             ? 100
             : 0;
 
-      // Most affected endpoints (top 5 via RPC GROUP BY)
-      const { data: endpointRows, error: endpointError } = await (supabaseAdmin.rpc as Function)(
-        'get_error_endpoint_distribution',
-        { p_since: timeFilter, p_limit: 5 }
-      );
-      if (endpointError) throw endpointError;
-
-      const topEndpoints: EndpointCount[] = (endpointRows || []).map(
-        (row: { endpoint: string; count: number }) => ({
-          endpoint: row.endpoint,
-          count: Number(row.count),
-        })
-      );
-
       return {
         summary: {
-          totalErrors: totalErrors || 0,
-          criticalErrors: criticalErrors || 0,
-          highErrors: highErrors || 0,
+          totalErrors: total,
+          criticalErrors: severityCounts['critical'] || 0,
+          highErrors: severityCounts['error'] || 0,
+          warningErrors: severityCounts['warning'] || 0,
+          infoErrors: (severityCounts['info'] || 0) + (severityCounts['debug'] || 0),
           unresolvedErrors: unresolvedErrors || 0,
         },
         distributions: {
-          byType: typeDistribution,
-          bySeverity: severityDistribution,
+          bySeverity: severityCounts,
           byEndpoint: topEndpoints,
         },
         topErrors,
@@ -194,7 +153,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           value: Math.round(trend * 10) / 10,
           direction: trend > 5 ? 'up' : trend < -5 ? 'down' : 'stable',
           previousPeriodCount: previousPeriodErrors || 0,
-          currentPeriodCount: totalErrors || 0,
+          currentPeriodCount: total,
         },
         timeRange,
       };

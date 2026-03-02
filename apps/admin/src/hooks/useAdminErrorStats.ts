@@ -7,10 +7,11 @@ export interface ErrorStats {
     totalErrors: number;
     criticalErrors: number;
     highErrors: number;
+    warningErrors: number;
+    infoErrors: number;
     unresolvedErrors: number;
   };
   distributions: {
-    byType: Record<string, number>;
     bySeverity: Record<string, number>;
     byEndpoint: Array<{ endpoint: string; count: number }>;
   };
@@ -29,23 +30,38 @@ export interface ErrorStats {
   timeRange: string;
 }
 
-export interface CriticalError {
+export interface ErrorLogEntry {
   id: string;
   error_type: string;
   severity: string;
   message: string;
+  user_message?: string;
+  user_id?: string;
   endpoint?: string;
   http_method?: string;
-  stack_trace?: string;
+  status_code?: number;
   created_at: string;
-  user_id?: string;
+  acknowledged_at?: string;
+  resolved_at?: string;
 }
 
 export type TimeRange = '24h' | '7d' | '30d';
+export type SeverityFilter = 'all' | 'critical' | 'error' | 'warning' | 'info' | 'debug';
 
 export interface ErrorDashboardData {
   stats: ErrorStats | null;
-  criticalErrors: CriticalError[];
+}
+
+export interface ErrorListData {
+  errors: ErrorLogEntry[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
 }
 
 async function fetchErrorStats(timeRange: TimeRange): Promise<ErrorStats | null> {
@@ -55,19 +71,9 @@ async function fetchErrorStats(timeRange: TimeRange): Promise<ErrorStats | null>
   return data.data ?? null;
 }
 
-async function fetchCriticalErrors(): Promise<CriticalError[]> {
-  const response = await authenticatedFetch(`${ADMIN_ENDPOINTS.CRITICAL_ERRORS}?limit=20`);
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.data?.criticalErrors ?? [];
-}
-
 async function fetchErrorDashboard(timeRange: TimeRange): Promise<ErrorDashboardData> {
-  const [stats, criticalErrors] = await Promise.all([
-    fetchErrorStats(timeRange),
-    fetchCriticalErrors(),
-  ]);
-  return { stats, criticalErrors };
+  const stats = await fetchErrorStats(timeRange);
+  return { stats };
 }
 
 export function useAdminErrorStats(
@@ -76,6 +82,51 @@ export function useAdminErrorStats(
   return useQuery({
     queryKey: ['admin', 'error-stats', timeRange],
     queryFn: () => fetchErrorDashboard(timeRange),
-    refetchInterval: 30_000, // Auto-refresh every 30 seconds
+    refetchInterval: 30_000,
+  });
+}
+
+async function fetchErrorList(
+  page: number,
+  severity: SeverityFilter,
+  timeRange: TimeRange
+): Promise<ErrorListData> {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: '50',
+    sortBy: 'created_at',
+    sortOrder: 'desc',
+  });
+
+  if (severity !== 'all') {
+    params.set('severity', severity);
+  }
+
+  // Map time range to dateFrom filter
+  const now = new Date();
+  const offsetMs =
+    timeRange === '24h' ? 24 * 60 * 60 * 1000 :
+    timeRange === '7d' ? 7 * 24 * 60 * 60 * 1000 :
+    30 * 24 * 60 * 60 * 1000;
+  params.set('dateFrom', new Date(now.getTime() - offsetMs).toISOString());
+
+  const response = await authenticatedFetch(`${ADMIN_ENDPOINTS.ERRORS}?${params.toString()}`);
+  if (!response.ok) return { errors: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
+  const data = await response.json();
+  return {
+    errors: data.data?.errors ?? [],
+    pagination: data.data?.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
+  };
+}
+
+export function useAdminErrorList(
+  page: number,
+  severity: SeverityFilter,
+  timeRange: TimeRange
+): UseQueryResult<ErrorListData, Error> {
+  return useQuery({
+    queryKey: ['admin', 'error-list', page, severity, timeRange],
+    queryFn: () => fetchErrorList(page, severity, timeRange),
+    refetchInterval: 30_000,
   });
 }
