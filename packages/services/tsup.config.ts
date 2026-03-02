@@ -10,6 +10,8 @@ export default defineConfig({
     external: [
         '@supabase/supabase-js',
         '@indexnow/database',
+        '@indexnow/database/client',
         '@indexnow/shared',
+        '@indexnow/supabase-client',
     ],
 })
