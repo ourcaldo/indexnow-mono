@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAdminActivity } from '@/hooks';
+import { RefreshCw, ChevronLeft, ChevronRight, X, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
+import { useAdminActivity, useAdminActivityDetail } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
@@ -39,16 +39,167 @@ function EntityBadge({ type }: { type?: string }) {
   return <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${cfg.color}`}>{cfg.label}</span>;
 }
 
+function ShortId({ id }: { id: string }) {
+  return (
+    <span className="font-mono text-[11px] text-gray-400" title={id}>
+      {id.slice(0, 8)}
+    </span>
+  );
+}
+
+/* ─── Slide-over panel ───────────────────────────────────── */
+
+function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void }) {
+  const router = useRouter();
+  const { data: activity, isLoading } = useAdminActivityDetail(logId);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/20 z-40 transition-opacity" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-gray-900 truncate">Activity Detail</h2>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { window.open(`/activity/${logId}`, '_blank'); }}
+              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              title="Open in new tab"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-gray-50 rounded-lg animate-pulse" />)}
+            </div>
+          ) : !activity ? (
+            <p className="text-sm text-gray-500 text-center py-12">Activity not found</p>
+          ) : (
+            <>
+              {/* Title + Status */}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-base font-semibold text-gray-900">{activity.event_type}</span>
+                  {activity.success ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-50 text-emerald-700">
+                      <CheckCircle className="w-3 h-3" /> Success
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-50 text-red-700">
+                      <XCircle className="w-3 h-3" /> Failed
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{format(new Date(activity.created_at), 'MMM d, yyyy HH:mm:ss')}</p>
+              </div>
+
+              {/* ID */}
+              <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 flex items-center justify-between">
+                <span className="text-xs text-gray-500">Activity ID</span>
+                <span className="font-mono text-xs text-gray-600 select-all">{activity.id}</span>
+              </div>
+
+              {/* Details */}
+              <div className="bg-white rounded-lg border border-gray-100">
+                <DetailRow label="Event type">{activity.event_type}</DetailRow>
+                {activity.action_description && <DetailRow label="Description">{activity.action_description}</DetailRow>}
+                {activity.target_type && (
+                  <DetailRow label="Entity"><EntityBadge type={activity.target_type} /></DetailRow>
+                )}
+                {activity.target_id && (
+                  <DetailRow label="Target ID"><span className="font-mono text-xs text-gray-500">{activity.target_id}</span></DetailRow>
+                )}
+                {activity.error_message && (
+                  <DetailRow label="Error"><span className="text-red-600 text-xs">{activity.error_message}</span></DetailRow>
+                )}
+              </div>
+
+              {/* User */}
+              {activity.user_id && (
+                <div className="bg-white rounded-lg border border-gray-100">
+                  <div className="px-3.5 py-2 border-b border-gray-50">
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">User</span>
+                  </div>
+                  {activity.user_name && <DetailRow label="Name">{activity.user_name}</DetailRow>}
+                  {activity.user_email && <DetailRow label="Email">{activity.user_email}</DetailRow>}
+                  <DetailRow label="User ID">
+                    <button onClick={() => router.push(`/users/${activity.user_id}`)} className="text-xs text-blue-600 hover:text-blue-700 font-medium font-mono">{activity.user_id}</button>
+                  </DetailRow>
+                </div>
+              )}
+
+              {/* Technical */}
+              {activity.ip_address && (
+                <div className="bg-white rounded-lg border border-gray-100">
+                  <div className="px-3.5 py-2 border-b border-gray-50">
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Technical</span>
+                  </div>
+                  <DetailRow label="IP Address">{activity.ip_address}</DetailRow>
+                  {activity.user_agent && <DetailRow label="User Agent"><span className="text-xs break-all">{activity.user_agent}</span></DetailRow>}
+                </div>
+              )}
+
+              {/* Metadata */}
+              {activity.metadata && Object.keys(activity.metadata).length > 0 && (
+                <div>
+                  <div className="mb-1.5"><span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Metadata</span></div>
+                  <pre className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded-lg p-3 overflow-x-auto font-mono leading-relaxed">{JSON.stringify(activity.metadata, null, 2)}</pre>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between px-3.5 py-2.5 border-b border-gray-50 last:border-0 gap-3">
+      <span className="text-xs text-gray-500 flex-shrink-0">{label}</span>
+      <span className="text-xs text-gray-900 text-right">{children}</span>
+    </div>
+  );
+}
+
+/* ─── Main page ──────────────────────────────────────────── */
+
 export default function ActivityPage() {
   useAdminPageViewLogger('activity', 'Activity Logs');
-  const router = useRouter();
   const [days, setDays] = useState('7');
   const [page, setPage] = useState(1);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
   const { data, isLoading, isFetching, refetch } = useAdminActivity({ days, page, limit: 50 });
   const logs = data?.logs ?? [];
   const totalPages = data?.pagination?.totalPages ?? 1;
   const total = data?.pagination?.total ?? 0;
+  const limit = data?.pagination?.limit ?? 50;
+  const offset = (page - 1) * limit;
+
+  const handleClose = useCallback(() => setSelectedLogId(null), []);
 
   return (
     <div className="space-y-6">
@@ -80,25 +231,34 @@ export default function ActivityPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Event</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">User</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Entity</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Time</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3 w-10">#</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">ID</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">User</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Event</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Entity</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((log: any) => (
-                    <tr key={log.id} onClick={() => router.push(`/activity/${log.id}`)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
-                      <td className="px-5 py-3.5">
-                        <div className="text-sm font-medium text-gray-900 truncate">{log.event_type}</div>
-                        {log.action_description && <div className="text-xs text-gray-500 truncate mt-0.5">{log.action_description}</div>}
+                  {logs.map((log: any, idx: number) => (
+                    <tr key={log.id} onClick={() => setSelectedLogId(log.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
+                      <td className="px-5 py-3.5 text-xs text-gray-400 tabular-nums">{offset + idx + 1}</td>
+                      <td className="px-3 py-3.5"><ShortId id={log.id} /></td>
+                      <td className="px-3 py-3.5">
+                        <div className="text-xs font-mono text-gray-500 truncate max-w-[140px]" title={log.user_id || ''}>{log.user_id ? log.user_id.slice(0, 8) : '\u2014'}</div>
+                        {log.user_name && log.user_name !== 'Unknown User' && (
+                          <div className="text-[11px] text-gray-400 truncate max-w-[140px]">({log.user_name})</div>
+                        )}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-gray-600 truncate">{log.user_name || log.user_email || '\u2014'}</td>
-                      <td className="px-5 py-3.5"><EntityBadge type={log.target_type} /></td>
-                      <td className="px-5 py-3.5 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(log.created_at), 'MMM d, HH:mm')}</td>
+                      <td className="px-3 py-3.5">
+                        <div className="text-sm font-medium text-gray-900 truncate max-w-[220px]">{log.event_type}</div>
+                        {log.action_description && <div className="text-xs text-gray-500 truncate max-w-[220px] mt-0.5">{log.action_description}</div>}
+                      </td>
+                      <td className="px-3 py-3.5"><EntityBadge type={log.target_type} /></td>
+                      <td className="px-3 py-3.5 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(log.created_at), 'MMM d, HH:mm')}</td>
                     </tr>
                   ))}
-                  {logs.length === 0 && <tr><td colSpan={4} className="py-16 text-center text-sm text-gray-400">No activity found</td></tr>}
+                  {logs.length === 0 && <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">No activity found</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -114,6 +274,9 @@ export default function ActivityPage() {
           </>
         )}
       </div>
+
+      {/* Slide-over detail panel */}
+      {selectedLogId && <SlideOverPanel logId={selectedLogId} onClose={handleClose} />}
     </div>
   );
 }

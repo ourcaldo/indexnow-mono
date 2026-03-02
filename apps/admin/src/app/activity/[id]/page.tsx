@@ -68,11 +68,16 @@ export default function ActivityDetailPage() {
             </span>
           )}
         </div>
-        <p className="text-sm text-gray-500 mt-1">{format(new Date(activity.created_at), 'MMM d, yyyy HH:mm:ss')}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="font-mono text-xs text-gray-400 select-all" title="Activity ID">{activity.id}</span>
+          <span className="text-gray-300">&middot;</span>
+          <span className="text-sm text-gray-500">{format(new Date(activity.created_at), 'MMM d, yyyy HH:mm:ss')}</span>
+        </div>
       </div>
 
       <div className="space-y-4">
         <InfoCard title="Event Details">
+          <InfoRow label="Activity ID"><span className="font-mono text-xs text-gray-500 select-all">{activity.id}</span></InfoRow>
           <InfoRow label="Event type">{activity.event_type}</InfoRow>
           {activity.action_description && <InfoRow label="Description">{activity.action_description}</InfoRow>}
           {activity.target_type && <InfoRow label="Target type">{activity.target_type}</InfoRow>}
