@@ -152,8 +152,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
       user_email: userEmail,
       event_type: log.event_type,
       action_description: (details.actionDescription as string) || (details.description as string) || null,
-      target_type: (details.targetType as string) || (details.target_type as string) || null,
-      target_id: (details.targetId as string) || (details.target_id as string) || null,
+      target_type: log.target_type || (details.targetType as string) || (details.target_type as string) || null,
+      target_id: log.target_id || (details.targetId as string) || (details.target_id as string) || null,
       ip_address: log.ip_address,
       user_agent: log.user_agent,
       metadata: log.details, // Use details as metadata
