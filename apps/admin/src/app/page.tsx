@@ -1,41 +1,65 @@
 'use client';
 
 import Link from 'next/link';
-import { RefreshCw, ArrowRight } from 'lucide-react';
+import {
+  RefreshCw, Users, ShoppingCart, Zap, AlertTriangle, ArrowUpRight,
+} from 'lucide-react';
 import { useAdminDashboard } from '@/hooks';
 
-function Metric({
-  value,
-  label,
-  alert,
+function StatCard({
+  icon: Icon, iconBg, iconColor, value, label, sub, href, alert,
 }: {
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
   value: number;
   label: string;
+  sub?: string;
+  href?: string;
   alert?: boolean;
 }) {
-  return (
-    <div className="min-w-0">
-      <div
-        className={`text-2xl font-semibold tabular-nums tracking-tight ${
-          alert && value > 0 ? 'text-red-400' : 'text-white'
-        }`}
-      >
+  const inner = (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 group hover:shadow-md hover:border-gray-300 transition-all">
+      <div className="flex items-start justify-between">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg}`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+        </div>
+        {href && <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />}
+      </div>
+      <div className={`text-[28px] font-bold mt-4 tabular-nums leading-none ${alert && value > 0 ? 'text-red-600' : 'text-gray-900'}`}>
         {value.toLocaleString()}
       </div>
-      <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+      <div className="text-sm text-gray-500 mt-1.5">{label}</div>
+      {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
+    </div>
+  );
+  return href ? <Link href={href} className="block">{inner}</Link> : inner;
+}
+
+function SectionCard({ title, href, children }: { title: string; href?: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {href && (
+          <Link href={href} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+            View all &rarr;
+          </Link>
+        )}
+      </div>
+      {children}
     </div>
   );
 }
 
-function SectionLink({ href, label }: { href: string; label: string }) {
+function MetricRow({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-1 text-[13px] text-gray-500 hover:text-white transition-colors"
-    >
-      {label}
-      <ArrowRight className="w-3 h-3" />
-    </Link>
+    <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className={`text-sm font-semibold tabular-nums ${accent || 'text-gray-900'}`}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </span>
+    </div>
   );
 }
 
@@ -44,19 +68,20 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="h-6 w-28 bg-white/5 rounded animate-pulse" />
-            <div className="h-3 w-40 bg-white/5 rounded mt-2 animate-pulse" />
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-8">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-7 w-12 bg-white/5 rounded animate-pulse" />
-              <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+      <div className="space-y-6">
+        <div className="h-8 w-32 bg-gray-100 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="h-8 w-16 bg-gray-100 rounded mt-4 animate-pulse" />
+              <div className="h-4 w-24 bg-gray-50 rounded mt-2 animate-pulse" />
             </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-44 animate-pulse" />
           ))}
         </div>
       </div>
@@ -64,153 +89,68 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-white">Dashboard</h1>
-          <p className="text-[13px] text-gray-500 mt-0.5">System overview</p>
+          <h1 className="text-xl font-bold text-gray-900">Overview</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Monitor your platform at a glance</p>
         </div>
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-gray-400 border border-white/[0.08] rounded-md hover:bg-white/[0.04] hover:text-gray-200 transition-colors disabled:opacity-40"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-all disabled:opacity-40"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
-      {/* Top metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
-        <Metric value={stats?.users.total ?? 0} label="Total users" />
-        <Metric value={stats?.users.newThisWeek ?? 0} label="New this week" />
-        <Metric value={stats?.users.activeToday ?? 0} label="Active today" />
-        <Metric value={stats?.transactions.total ?? 0} label="Total orders" />
-        <Metric value={stats?.transactions.pendingCount ?? 0} label="Pending orders" />
-        <Metric value={stats?.errors.critical ?? 0} label="Critical errors" alert />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Users} iconBg="bg-blue-50" iconColor="text-blue-600"
+          value={stats?.users.total ?? 0} label="Total Users"
+          sub={`+${stats?.users.newThisWeek ?? 0} this week`} href="/users"
+        />
+        <StatCard
+          icon={ShoppingCart} iconBg="bg-emerald-50" iconColor="text-emerald-600"
+          value={stats?.transactions.total ?? 0} label="Total Orders"
+          sub={`${stats?.transactions.pendingCount ?? 0} pending`} href="/orders"
+        />
+        <StatCard
+          icon={Zap} iconBg="bg-violet-50" iconColor="text-violet-600"
+          value={stats?.users.activeToday ?? 0} label="Active Today"
+          sub={`${stats?.keywords.checkedToday ?? 0} keywords checked`}
+        />
+        <StatCard
+          icon={AlertTriangle} iconBg="bg-red-50" iconColor="text-red-600"
+          value={stats?.errors.critical ?? 0} label="Critical Errors"
+          sub={`${stats?.errors.unresolved ?? 0} unresolved`} href="/errors" alert
+        />
       </div>
 
-      {/* Sections */}
-      <div className="space-y-8">
-        {/* Users */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-white">Users</h2>
-            <SectionLink href="/users" label="View all" />
-          </div>
-          <div className="grid grid-cols-3 gap-6 text-sm">
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {(stats?.users.total ?? 0).toLocaleString()}
-              </span>
-              <span className="text-gray-500 ml-1.5">total</span>
-            </div>
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {stats?.users.newThisWeek ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">new this week</span>
-            </div>
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {stats?.users.activeToday ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">active today</span>
-            </div>
-          </div>
-        </section>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SectionCard title="Users" href="/users">
+          <MetricRow label="Total registered" value={stats?.users.total ?? 0} />
+          <MetricRow label="New this week" value={stats?.users.newThisWeek ?? 0} accent="text-blue-600" />
+          <MetricRow label="Active today" value={stats?.users.activeToday ?? 0} accent="text-emerald-600" />
+        </SectionCard>
 
-        <div className="border-t border-white/[0.06]" />
+        <SectionCard title="Orders" href="/orders">
+          <MetricRow label="All time" value={stats?.transactions.total ?? 0} />
+          <MetricRow label="Completed this month" value={stats?.transactions.completedThisMonth ?? 0} accent="text-emerald-600" />
+          <MetricRow label="Pending" value={stats?.transactions.pendingCount ?? 0} accent="text-amber-600" />
+        </SectionCard>
 
-        {/* Orders */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-white">Orders</h2>
-            <SectionLink href="/orders" label="View all" />
-          </div>
-          <div className="grid grid-cols-3 gap-6 text-sm">
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {(stats?.transactions.total ?? 0).toLocaleString()}
-              </span>
-              <span className="text-gray-500 ml-1.5">total</span>
-            </div>
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {stats?.transactions.completedThisMonth ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">completed this month</span>
-            </div>
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {stats?.transactions.pendingCount ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">pending</span>
-            </div>
-          </div>
-        </section>
+        <SectionCard title="Rank Tracking">
+          <MetricRow label="Total keywords" value={stats?.keywords.total ?? 0} />
+          <MetricRow label="Checked today" value={stats?.keywords.checkedToday ?? 0} accent="text-violet-600" />
+        </SectionCard>
 
-        <div className="border-t border-white/[0.06]" />
-
-        {/* Rank Tracking */}
-        <section>
-          <div className="mb-4">
-            <h2 className="text-sm font-medium text-white">Rank Tracking</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-6 text-sm">
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {(stats?.keywords.total ?? 0).toLocaleString()}
-              </span>
-              <span className="text-gray-500 ml-1.5">keywords</span>
-            </div>
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {stats?.keywords.checkedToday ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">checked today</span>
-            </div>
-          </div>
-        </section>
-
-        <div className="border-t border-white/[0.06]" />
-
-        {/* Errors */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-white">Errors</h2>
-            <SectionLink href="/errors" label="View all" />
-          </div>
-          <div className="grid grid-cols-3 gap-6 text-sm">
-            <div>
-              <span
-                className={`font-medium tabular-nums ${
-                  (stats?.errors.critical ?? 0) > 0 ? 'text-red-400' : 'text-white'
-                }`}
-              >
-                {stats?.errors.critical ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">critical</span>
-            </div>
-            <div>
-              <span
-                className={`font-medium tabular-nums ${
-                  (stats?.errors.unresolved ?? 0) > 0 ? 'text-amber-400' : 'text-white'
-                }`}
-              >
-                {stats?.errors.unresolved ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">unresolved</span>
-            </div>
-            <div>
-              <span className="text-white font-medium tabular-nums">
-                {stats?.errors.last24h ?? 0}
-              </span>
-              <span className="text-gray-500 ml-1.5">last 24h</span>
-            </div>
-          </div>
-        </section>
+        <SectionCard title="System Health" href="/errors">
+          <MetricRow label="Critical errors" value={stats?.errors.critical ?? 0} accent={(stats?.errors.critical ?? 0) > 0 ? 'text-red-600' : undefined} />
+          <MetricRow label="Unresolved" value={stats?.errors.unresolved ?? 0} accent={(stats?.errors.unresolved ?? 0) > 0 ? 'text-amber-600' : undefined} />
+          <MetricRow label="Last 24 hours" value={stats?.errors.last24h ?? 0} />
+        </SectionCard>
       </div>
     </div>
   );

@@ -16,71 +16,50 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const { user } = await authService.signIn(email, password);
-      if (!user) {
-        setError('Invalid credentials');
-        return;
-      }
+      if (!user) { setError('Invalid credentials'); return; }
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { setError(err.message || 'Failed to sign in'); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a12]">
-      <div className="w-full max-w-sm px-6">
-        <div className="flex items-center gap-2 mb-8">
-          <Lock className="w-4 h-4 text-gray-500" />
-          <span className="text-sm text-gray-400">Admin</span>
+    <div className="flex min-h-screen items-center justify-center bg-[#f8f9fb]">
+      <div className="w-full max-w-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8">
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-gray-900">Admin Panel</span>
+          </div>
+
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Welcome back</h1>
+          <p className="text-sm text-gray-500 mb-8">Sign in to access the admin dashboard.</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus
+                className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                placeholder="admin@example.com" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+                className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                placeholder="Enter your password" />
+            </div>
+            {error && <div className="text-sm text-red-600 font-medium">{error}</div>}
+            <button type="submit" disabled={loading}
+              className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all disabled:opacity-40">
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+
+          <p className="text-xs text-gray-400 text-center mt-6">Restricted to super admin accounts only.</p>
         </div>
-
-        <h1 className="text-xl font-semibold text-white mb-1">Sign in</h1>
-        <p className="text-[13px] text-gray-500 mb-8">
-          Restricted to super admin accounts only.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-[13px] text-gray-400 mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2.5 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
-              placeholder="admin@example.com"
-            />
-          </div>
-          <div>
-            <label className="block text-[13px] text-gray-400 mb-1.5">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-md px-3 py-2.5 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-white/[0.15] transition-colors"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && (
-            <div className="text-[13px] text-red-400">{error}</div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 text-[13px] font-medium text-white bg-white/10 rounded-md hover:bg-white/[0.15] transition-colors disabled:opacity-40"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
       </div>
     </div>
   );

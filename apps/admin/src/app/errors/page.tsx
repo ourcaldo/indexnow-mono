@@ -2,9 +2,18 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, Minus, AlertTriangle, AlertOctagon, ShieldAlert, Eye, CheckCircle2 } from 'lucide-react';
 import { useAdminErrorStats, type TimeRange, type CriticalError } from '@/hooks';
 import { format } from 'date-fns';
+
+function StatBadge({ label, value, accent }: { label: string; value: number; accent?: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className={`text-2xl font-bold tabular-nums ${accent || 'text-gray-900'}`}>{value.toLocaleString()}</div>
+      <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+    </div>
+  );
+}
 
 export default function ErrorsPage() {
   const router = useRouter();
@@ -14,225 +23,134 @@ export default function ErrorsPage() {
   const stats = data?.stats;
   const criticalErrors = data?.criticalErrors ?? [];
 
-  const TrendIcon =
-    stats?.trend?.direction === 'up'
-      ? TrendingUp
-      : stats?.trend?.direction === 'down'
-        ? TrendingDown
-        : Minus;
+  const TrendIcon = stats?.trend?.direction === 'up' ? TrendingUp : stats?.trend?.direction === 'down' ? TrendingDown : Minus;
+  const trendColor = stats?.trend?.direction === 'up' ? 'text-red-600' : stats?.trend?.direction === 'down' ? 'text-emerald-600' : 'text-gray-400';
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-white">Errors</h1>
-          <p className="text-[13px] text-gray-500 mt-0.5">
-            {stats?.summary?.totalErrors?.toLocaleString() ?? 0} total in range
-          </p>
+          <h1 className="text-xl font-bold text-gray-900">Errors</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{stats?.summary?.totalErrors?.toLocaleString() ?? 0} total in selected range</p>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-gray-400 border border-white/[0.08] rounded-md hover:bg-white/[0.04] hover:text-gray-200 transition-colors disabled:opacity-40"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
+        <button onClick={() => refetch()} disabled={isFetching} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-all disabled:opacity-40">
+          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
 
-      {/* Time range */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 w-fit">
         {(['24h', '7d', '30d'] as TimeRange[]).map((range) => (
-          <button
-            key={range}
-            onClick={() => setTimeRange(range)}
-            className={`px-3 py-1.5 text-[13px] rounded-md transition-colors ${
-              timeRange === range
-                ? 'bg-white/[0.07] text-white'
-                : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]'
-            }`}
-          >
-            {range}
-          </button>
+          <button key={range} onClick={() => setTimeRange(range)}
+            className={`px-3.5 py-1.5 text-sm font-medium rounded-md transition-all ${timeRange === range ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >{range}</button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-10 bg-white/[0.02] rounded animate-pulse" />
-          ))}
-        </div>
+        <div className="grid grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>
       ) : (
-        <div className="space-y-8">
-          {/* Summary metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
-            <div>
-              <div className="text-2xl font-semibold text-white tabular-nums">
-                {stats?.summary?.totalErrors?.toLocaleString() ?? 0}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">Total errors</div>
-            </div>
-            <div>
-              <div
-                className={`text-2xl font-semibold tabular-nums ${
-                  (stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-400' : 'text-white'
-                }`}
-              >
-                {stats?.summary?.criticalErrors ?? 0}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">Critical</div>
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-white tabular-nums">
-                {stats?.summary?.highErrors ?? 0}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">High</div>
-            </div>
-            <div>
-              <div
-                className={`text-2xl font-semibold tabular-nums ${
-                  (stats?.summary?.unresolvedErrors ?? 0) > 0 ? 'text-amber-400' : 'text-white'
-                }`}
-              >
-                {stats?.summary?.unresolvedErrors ?? 0}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">Unresolved</div>
-            </div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatBadge label="Total errors" value={stats?.summary?.totalErrors ?? 0} />
+            <StatBadge label="Critical" value={stats?.summary?.criticalErrors ?? 0} accent={(stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-600' : undefined} />
+            <StatBadge label="High" value={stats?.summary?.highErrors ?? 0} />
+            <StatBadge label="Unresolved" value={stats?.summary?.unresolvedErrors ?? 0} accent={(stats?.summary?.unresolvedErrors ?? 0) > 0 ? 'text-amber-600' : undefined} />
           </div>
 
-          {/* Trend */}
           {stats?.trend && (
-            <div className="flex items-center gap-2 text-sm">
-              <TrendIcon
-                className={`w-4 h-4 ${
-                  stats.trend.direction === 'up'
-                    ? 'text-red-400'
-                    : stats.trend.direction === 'down'
-                      ? 'text-emerald-400'
-                      : 'text-gray-500'
-                }`}
-              />
-              <span className="text-gray-400">
-                {stats.trend.currentPeriodCount} current vs {stats.trend.previousPeriodCount}{' '}
-                previous
+            <div className="flex items-center gap-2 px-1">
+              <TrendIcon className={`w-4 h-4 ${trendColor}`} />
+              <span className="text-sm text-gray-600">
+                {stats.trend.currentPeriodCount} current vs {stats.trend.previousPeriodCount} previous period
               </span>
             </div>
           )}
 
-          <div className="border-t border-white/[0.06]" />
-
-          {/* Top error types */}
           {stats?.topErrors && stats.topErrors.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-white mb-3">Top errors</h2>
-              <div>
-                <div className="grid grid-cols-[1fr_100px_80px_60px] gap-4 px-3 py-2 text-[11px] text-gray-600 uppercase tracking-wide">
-                  <span>Message</span>
-                  <span>Type</span>
-                  <span>Severity</span>
-                  <span className="text-right">Count</span>
-                </div>
-                <div className="border-t border-white/[0.04]">
-                  {stats.topErrors.map((err, i) => (
-                    <div
-                      key={i}
-                      className="grid grid-cols-[1fr_100px_80px_60px] gap-4 px-3 py-2.5 border-b border-white/[0.04] last:border-0"
-                    >
-                      <span className="text-[13px] text-gray-300 truncate">{err.message}</span>
-                      <span className="text-[12px] text-gray-500 truncate">{err.error_type}</span>
-                      <span
-                        className={`text-[12px] ${
-                          err.severity === 'critical'
-                            ? 'text-red-400'
-                            : err.severity === 'high'
-                              ? 'text-amber-400'
-                              : 'text-gray-500'
-                        }`}
-                      >
-                        {err.severity}
-                      </span>
-                      <span className="text-[13px] text-white font-medium tabular-nums text-right">
-                        {err.count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="px-5 py-3.5 border-b border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900">Top Errors</h3>
               </div>
-            </section>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Message</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Type</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Severity</th>
+                      <th className="text-right text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.topErrors.map((err: any, i: number) => (
+                      <tr key={i} className="border-b border-gray-50 last:border-0">
+                        <td className="px-5 py-3 text-sm text-gray-900 truncate max-w-[300px]">{err.message}</td>
+                        <td className="px-5 py-3 text-xs text-gray-500">{err.error_type}</td>
+                        <td className="px-5 py-3">
+                          <span className={`inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 ${
+                            err.severity === 'critical' ? 'bg-red-50 text-red-700 ring-red-600/20' :
+                            err.severity === 'high' ? 'bg-amber-50 text-amber-700 ring-amber-600/20' :
+                            'bg-gray-50 text-gray-600 ring-gray-500/20'
+                          }`}>{err.severity}</span>
+                        </td>
+                        <td className="px-5 py-3 text-sm font-semibold text-gray-900 tabular-nums text-right">{err.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
-          {/* By endpoint */}
           {stats?.distributions?.byEndpoint && stats.distributions.byEndpoint.length > 0 && (
-            <>
-              <div className="border-t border-white/[0.06]" />
-              <section>
-                <h2 className="text-sm font-medium text-white mb-3">By endpoint</h2>
-                <div className="space-y-1">
-                  {stats.distributions.byEndpoint.slice(0, 10).map((ep) => (
-                    <div
-                      key={ep.endpoint}
-                      className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0"
-                    >
-                      <span className="text-[13px] text-gray-300 font-mono truncate max-w-[70%]">
-                        {ep.endpoint}
-                      </span>
-                      <span className="text-[13px] text-gray-400 tabular-nums">{ep.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="px-5 py-3.5 border-b border-gray-100"><h3 className="text-sm font-semibold text-gray-900">By Endpoint</h3></div>
+              <div className="px-5 py-1">
+                {stats.distributions.byEndpoint.slice(0, 10).map((ep: any) => (
+                  <div key={ep.endpoint} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                    <span className="text-sm text-gray-700 font-mono truncate max-w-[70%]">{ep.endpoint}</span>
+                    <span className="text-sm text-gray-500 tabular-nums">{ep.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
-          <div className="border-t border-white/[0.06]" />
-
-          {/* Critical errors list */}
-          <section>
-            <h2 className="text-sm font-medium text-white mb-3">
-              Recent critical errors
-              {criticalErrors.length > 0 && (
-                <span className="text-gray-500 font-normal ml-1.5">({criticalErrors.length})</span>
-              )}
-            </h2>
-
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="px-5 py-3.5 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">Recent Critical Errors {criticalErrors.length > 0 && <span className="text-gray-400 font-normal ml-1">({criticalErrors.length})</span>}</h3>
+            </div>
             {criticalErrors.length === 0 ? (
-              <p className="text-sm text-gray-600 py-4">No critical errors</p>
+              <div className="py-12 text-center">
+                <CheckCircle2 className="w-8 h-8 text-emerald-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No critical errors</p>
+              </div>
             ) : (
-              <div>
-                <div className="grid grid-cols-[1fr_100px_120px] gap-4 px-3 py-2 text-[11px] text-gray-600 uppercase tracking-wide">
-                  <span>Error</span>
-                  <span>Type</span>
-                  <span>Time</span>
-                </div>
-                <div className="border-t border-white/[0.04]">
-                  {criticalErrors.map((err: CriticalError) => (
-                    <div
-                      key={err.id}
-                      onClick={() => router.push(`/errors/${err.id}`)}
-                      className="grid grid-cols-[1fr_100px_120px] gap-4 px-3 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] cursor-pointer transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-[13px] text-gray-200 truncate">{err.message}</div>
-                        {err.endpoint && (
-                          <div className="text-[11px] text-gray-600 font-mono mt-0.5 truncate">
-                            {err.http_method} {err.endpoint}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center text-[12px] text-gray-500 truncate">
-                        {err.error_type}
-                      </div>
-                      <div className="flex items-center text-[12px] text-gray-600 tabular-nums">
-                        {format(new Date(err.created_at), 'MMM d, HH:mm')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Error</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Type</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-5 py-3">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {criticalErrors.map((err: CriticalError) => (
+                      <tr key={err.id} onClick={() => router.push(`/errors/${err.id}`)} className="border-b border-gray-50 last:border-0 hover:bg-red-50/40 cursor-pointer transition-colors">
+                        <td className="px-5 py-3.5">
+                          <div className="text-sm font-medium text-gray-900 truncate">{err.message}</div>
+                          {err.endpoint && <div className="text-[11px] text-gray-500 font-mono mt-0.5 truncate">{err.http_method} {err.endpoint}</div>}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-gray-500">{err.error_type}</td>
+                        <td className="px-5 py-3.5 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(err.created_at), 'MMM d, HH:mm')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </section>
+          </div>
         </div>
       )}
     </div>

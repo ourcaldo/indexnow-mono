@@ -7,8 +7,8 @@ export default function OrdersError({ error, reset }: { error: Error; reset: () 
   return (
     <div className="flex items-center justify-center min-h-[40vh]">
       <div className="text-center space-y-3">
-        <p className="text-sm text-gray-400">Failed to load orders</p>
-        <button onClick={reset} className="px-3 py-1.5 text-sm text-white bg-white/10 rounded-md hover:bg-white/[0.15] transition-colors">Retry</button>
+        <p className="text-sm text-gray-500">Failed to load orders</p>
+        <button onClick={reset} className="px-3 py-1.5 text-sm text-white bg-gray-900 rounded-md hover:bg-gray-800 transition-colors">Retry</button>
       </div>
     </div>
   );

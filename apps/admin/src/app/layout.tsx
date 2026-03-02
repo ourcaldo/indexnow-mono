@@ -13,13 +13,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-[#0a0a12] text-gray-100`}>
+    <html lang="en">
+      <body className={`${inter.variable} font-sans antialiased bg-[#f8f9fb] text-gray-900`}>
         <AdminClientProviders>
           <div className="flex h-screen overflow-hidden">
             <Sidebar />
             <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto max-w-6xl px-6 py-6 lg:px-8 lg:py-8">
+              <div className="mx-auto max-w-[1100px] px-8 py-8">
                 {children}
               </div>
             </main>
