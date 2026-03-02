@@ -69,7 +69,10 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       quota: { max_keywords: number; [key: string]: number | undefined } | null;
     };
 
-    const limit = usageData.quota?.max_keywords || 10; // Default fallback
+    if (usageData.quota?.max_keywords == null) {
+      throw new Error('User package is missing max_keywords in quota_limits');
+    }
+    const limit = usageData.quota.max_keywords;
     const isUnlimited = limit === -1;
 
     return formatSuccess({

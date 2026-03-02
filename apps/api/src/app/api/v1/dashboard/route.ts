@@ -207,12 +207,15 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     // Process Quota — account-level limits from package
     const keywordsUsed = keywordCountResult.count || 0;
     const quotaLimits = profile?.package?.quota_limits;
-    const keywordsLimit = quotaLimits?.max_keywords ?? 10;
+    if (!quotaLimits || quotaLimits.max_keywords == null || quotaLimits.max_domains == null) {
+      throw new Error('User package is missing quota_limits configuration');
+    }
+    const keywordsLimit = quotaLimits.max_keywords;
     const isKeywordsUnlimited = keywordsLimit === -1;
 
     // Domain quota from package
     const domainsUsed = domainsResult.data?.length || 0;
-    const domainsLimit = quotaLimits?.max_domains ?? 1;
+    const domainsLimit = quotaLimits.max_domains;
     const isDomainsUnlimited = domainsLimit === -1;
 
     const quota = {

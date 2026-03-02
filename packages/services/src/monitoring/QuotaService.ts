@@ -51,10 +51,15 @@ export class QuotaService {
       .eq('user_id', userId)
       .single();
 
-    if (error || !profile) return 10; // default free limit
+    if (error || !profile) {
+      throw new Error(`Failed to fetch package for user ${userId}: ${error?.message || 'profile not found'}`);
+    }
 
     const pkg = Array.isArray(profile.package) ? profile.package[0] : profile.package;
     const quotaLimits = pkg?.quota_limits as Record<string, number> | null;
-    return quotaLimits?.max_keywords ?? 10;
+    if (quotaLimits?.max_keywords == null) {
+      throw new Error(`User ${userId} package is missing max_keywords in quota_limits`);
+    }
+    return quotaLimits.max_keywords;
   }
 }

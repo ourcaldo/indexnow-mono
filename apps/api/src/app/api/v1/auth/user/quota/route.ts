@@ -75,9 +75,12 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       ? quotaData.profile.package[0]
       : quotaData.profile.package;
 
-    const quotaLimits = (packageData?.quota_limits ?? {}) as Record<string, number>;
-    const maxKeywords = quotaLimits.max_keywords ?? 10;
-    const maxDomains = quotaLimits.max_domains ?? 1;
+    const quotaLimits = packageData?.quota_limits as Record<string, number> | null;
+    if (!quotaLimits || quotaLimits.max_keywords == null || quotaLimits.max_domains == null) {
+      throw new Error('User package is missing quota_limits configuration');
+    }
+    const maxKeywords = quotaLimits.max_keywords;
+    const maxDomains = quotaLimits.max_domains;
     const isKeywordsUnlimited = maxKeywords === -1;
     const isDomainsUnlimited = maxDomains === -1;
 

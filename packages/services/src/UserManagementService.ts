@@ -125,8 +125,8 @@ export interface UserProfile {
     domains: number;
   };
   quotaLimits: {
-    keywords: number;
-    domains: number;
+    keywords: number | null;
+    domains: number | null;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -637,8 +637,8 @@ export class UserManagementService {
         domains: 0,
       },
       quotaLimits: {
-        keywords: quotas?.['max_keywords'] || 10,
-        domains: quotas?.['max_domains'] || 1,
+        keywords: quotas?.['max_keywords'] ?? null,
+        domains: quotas?.['max_domains'] ?? null,
       },
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
