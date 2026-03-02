@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { useAdminActivityDetail } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default function ActivityDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  useAdminPageViewLogger('activity', 'Activity Detail', { activityId: id });
   const { data: activity, isLoading } = useAdminActivityDetail(id);
 
   if (isLoading) {

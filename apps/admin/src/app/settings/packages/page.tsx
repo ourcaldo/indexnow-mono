@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, X } from 'lucide-react';
 import { useAdminPackages, useSavePackage, useDeletePackage, type PaymentPackage, type PricingTier } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 
 function emptyPackage(): Partial<PaymentPackage> {
   return { name: '', slug: '', description: '', price: 0, currency: 'USD', billing_period: 'monthly', features: [], quota_limits: { concurrent_jobs: 1, keywords_limit: 10 }, is_active: true, sort_order: 0, pricing_tiers: [] };
@@ -11,6 +12,7 @@ function emptyPackage(): Partial<PaymentPackage> {
 const inputClass = "w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
 export default function PackagesPage() {
+  useAdminPageViewLogger('settings', 'Packages');
   const { data: packages, isLoading } = useAdminPackages();
   const saveMutation = useSavePackage();
   const deleteMutation = useDeletePackage();

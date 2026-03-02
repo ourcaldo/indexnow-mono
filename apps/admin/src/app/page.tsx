@@ -5,6 +5,7 @@ import {
   RefreshCw, Users, ShoppingCart, Zap, AlertTriangle, ArrowUpRight,
 } from 'lucide-react';
 import { useAdminDashboard } from '@/hooks';
+import { useAdminPageViewLogger, useAdminDashboardLogger } from '@indexnow/ui';
 
 function StatCard({
   icon: Icon, iconBg, iconColor, value, label, sub, href, alert,
@@ -64,6 +65,8 @@ function MetricRow({ label, value, accent }: { label: string; value: string | nu
 }
 
 export default function DashboardPage() {
+  useAdminPageViewLogger('dashboard', 'Overview');
+  const { logStatsRefresh } = useAdminDashboardLogger();
   const { data: stats, isLoading, isFetching, refetch } = useAdminDashboard();
 
   if (isLoading) {
@@ -96,7 +99,7 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-500 mt-0.5">Monitor your platform at a glance</p>
         </div>
         <button
-          onClick={() => refetch()}
+          onClick={() => { refetch(); logStatsRefresh(); }}
           disabled={isFetching}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-all disabled:opacity-40"
         >

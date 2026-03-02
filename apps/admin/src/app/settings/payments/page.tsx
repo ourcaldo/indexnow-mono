@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Save, Star, StarOff, X } from 'lucide-react';
 import { useAdminPaymentSettings, useSavePaymentGateway, useDeletePaymentGateway, useSetDefaultPaymentGateway, type UI_PaymentGateway } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 
 function emptyGateway(): Partial<UI_PaymentGateway> {
   return { name: '', slug: 'paddle', is_active: true, is_default: false, configuration: {} as any, api_credentials: {} as any };
@@ -11,6 +12,7 @@ function emptyGateway(): Partial<UI_PaymentGateway> {
 const inputClass = "w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
 export default function PaymentsPage() {
+  useAdminPageViewLogger('settings', 'Payments');
   const { data: gateways, isLoading } = useAdminPaymentSettings();
   const saveMutation = useSavePaymentGateway();
   const deleteMutation = useDeletePaymentGateway();

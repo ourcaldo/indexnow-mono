@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, RefreshCw, ChevronLeft, ChevronRight, ShoppingCart, Clock, CheckCircle2 } from 'lucide-react';
 import { useAdminOrders } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -31,6 +32,7 @@ function MiniStat({ icon: Icon, iconBg, label, value }: { icon: React.ElementTyp
 }
 
 export default function OrdersPage() {
+  useAdminPageViewLogger('orders', 'Orders List');
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');

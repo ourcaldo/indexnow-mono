@@ -1,299 +1,117 @@
-﻿'use client'
+﻿/**
+ * Admin Activity Logger — client-side page-view & observation tracking.
+ *
+ * Mutations (suspend, update order, etc.) are already logged server-side via
+ * ActivityLogger.logAdminAction() — we intentionally do NOT duplicate those here.
+ *
+ * This hook covers what the server cannot see:
+ *   - Which admin pages were viewed (browsing pattern)
+ *   - Dashboard stats refreshes
+ *
+ * All calls go through the standard POST /api/v1/activity endpoint, which is
+ * authenticated (works for any logged-in user, including admins).
+ */
+'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { type Json, ADMIN_ENDPOINTS, logger } from '@indexnow/shared'
-import { authService, type AuthUser, authenticatedFetch } from '@indexnow/supabase-client'
+import { useEffect, useRef, useCallback } from 'react'
+import { type Json, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared'
+import { authService, authenticatedFetch } from '@indexnow/supabase-client'
 
-interface AdminActivityMetadata {
-  section?: string
-  action?: string
-  adminEmail?: string
-  [key: string]: Json | undefined
+// Module-level dedup: prevents duplicate page views across multiple hook instances
+const loggedAdminPageViews = new Set<string>()
+
+interface ActivityLogRequest {
+  eventType: string
+  actionDescription: string
+  targetType: string
+  targetId?: string
+  metadata?: Record<string, Json>
 }
 
-export interface UseAdminActivityLoggerReturn {
-  logAdminActivity: (eventType: string, description: string, metadata?: AdminActivityMetadata) => Promise<void>;
-}
-
-export function useAdminActivityLogger(): UseAdminActivityLoggerReturn {
-  const [user, setUser] = useState<AuthUser | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    const getCurrentUser = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser()
-        if (!cancelled) setUser(currentUser)
-      } catch (error) {
-        logger.error({ error: error instanceof Error ? error : undefined }, 'Error getting current user')
-      }
-    }
-    getCurrentUser()
-    return () => { cancelled = true }
-  }, [])
-
-  const logAdminActivity = useCallback(async (
-    eventType: string,
-    description: string,
-    metadata?: AdminActivityMetadata
-  ) => {
+/**
+ * Core hook — thin wrapper around POST /api/v1/activity with admin context.
+ */
+export function useAdminActivityLogger() {
+  const logActivity = useCallback(async (request: ActivityLogRequest) => {
     try {
-      if (!user?.id) {
-        logger.warn('Cannot log admin activity: No authenticated user')
-        return
-      }
+      const user = await authService.getCurrentUser()
+      if (!user) return
 
-      const response = await authenticatedFetch(ADMIN_ENDPOINTS.ACTIVITY, {
+      await authenticatedFetch(ACTIVITY_ENDPOINTS.LOG, {
         method: 'POST',
         body: JSON.stringify({
-          eventType,
-          description,
+          ...request,
           metadata: {
             adminAction: true,
-            adminEmail: user.email,
-            ...metadata
-          }
-        })
+            ...request.metadata,
+          },
+        }),
       })
-
-      if (!response.ok) {
-        logger.error('Failed to log admin activity: ' + response.status)
+    } catch (err) {
+      // Activity logging is non-critical — silently swallow failures
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(
+          { error: err instanceof Error ? err : undefined },
+          '[admin-activity-logger] Failed to log (non-critical)'
+        )
       }
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error logging admin activity')
     }
-  }, [user])
+  }, [])
 
-  return { logAdminActivity }
+  return { logActivity }
 }
 
+/**
+ * Auto-fires a single admin_page_view event when the component mounts.
+ * Deduplicates by `section + pageName` at both instance and module level.
+ */
 export function useAdminPageViewLogger(
-  pageSection: string,
+  section: string,
   pageName: string,
-  metadata?: AdminActivityMetadata
+  metadata?: Record<string, Json>
 ) {
-  const { logAdminActivity } = useAdminActivityLogger()
+  const { logActivity } = useAdminActivityLogger()
   const hasLogged = useRef(false)
-  // Stabilize metadata reference to prevent infinite re-renders from object identity changes
-  const metadataKey = JSON.stringify(metadata ?? {})
 
   useEffect(() => {
-    if (!hasLogged.current) {
-      hasLogged.current = true // Set immediately to prevent double-fire
-      const parsedMetadata = JSON.parse(metadataKey) as AdminActivityMetadata
-      logAdminActivity(
-        'admin_page_view',
-        `Accessed admin ${pageName} page`,
-        {
-          section: pageSection,
-          action: 'page_view',
-          pageName,
-          ...parsedMetadata
-        }
-      ).catch(() => {
-        // (#132) Reset flag on failure so next effect run retries
-        hasLogged.current = false
-      })
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- metadataKey is a stable serialized version of metadata
-  }, [logAdminActivity, pageSection, pageName, metadataKey])
+    const key = `admin:${section}:${pageName}`
+    if (hasLogged.current || loggedAdminPageViews.has(key)) return
 
-  return { logAdminActivity }
+    hasLogged.current = true
+    loggedAdminPageViews.add(key)
+
+    logActivity({
+      eventType: 'admin_page_view',
+      actionDescription: `Admin viewed ${pageName}`,
+      targetType: 'admin_page',
+      metadata: {
+        section,
+        pageName,
+        ...metadata,
+      },
+    }).catch(() => {
+      // Reset on failure so next mount retries
+      hasLogged.current = false
+      loggedAdminPageViews.delete(key)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logActivity, section, pageName])
 }
 
-// Specialized hooks for different admin sections
+/**
+ * Dashboard-specific logger for stats refresh (an observable read action).
+ */
 export function useAdminDashboardLogger() {
-  const { logAdminActivity } = useAdminActivityLogger()
+  const { logActivity } = useAdminActivityLogger()
 
-  const logDashboardView = () => logAdminActivity(
-    'admin_dashboard_view',
-    'Viewed admin dashboard statistics',
-    { section: 'dashboard', action: 'view_stats' }
-  )
+  const logStatsRefresh = useCallback(() => {
+    logActivity({
+      eventType: 'admin_stats_refresh',
+      actionDescription: 'Admin refreshed dashboard statistics',
+      targetType: 'admin_page',
+      metadata: { section: 'dashboard' },
+    })
+  }, [logActivity])
 
-  const logStatsRefresh = () => logAdminActivity(
-    'admin_stats_view',
-    'Refreshed dashboard statistics',
-    { section: 'dashboard', action: 'refresh_stats' }
-  )
-
-  return { logDashboardView, logStatsRefresh, logAdminActivity }
-}
-
-export function useAdminOrderLogger() {
-  const { logAdminActivity } = useAdminActivityLogger()
-
-  const logOrderView = (orderId: string, orderDetails?: { amount?: number; status?: string }) => logAdminActivity(
-    'admin_order_view',
-    `Viewed order details: ${orderId}`,
-    {
-      section: 'orders',
-      action: 'view_order',
-      orderId,
-      orderAmount: orderDetails?.amount,
-      orderStatus: orderDetails?.status
-    }
-  )
-
-  const logOrderStatusUpdate = (orderId: string, oldStatus: string, newStatus: string) => logAdminActivity(
-    'order_status_update',
-    `Updated order ${orderId} status from ${oldStatus} to ${newStatus}`,
-    {
-      section: 'orders',
-      action: 'update_status',
-      orderId,
-      oldStatus,
-      newStatus
-    }
-  )
-
-  const logOrderApproval = (orderId: string, amount: number) => logAdminActivity(
-    'order_approve',
-    `Approved order ${orderId} for amount ${amount}`,
-    {
-      section: 'orders',
-      action: 'approve_order',
-      orderId,
-      approvedAmount: amount
-    }
-  )
-
-  const logOrderRejection = (orderId: string, reason?: string) => logAdminActivity(
-    'order_reject',
-    `Rejected order ${orderId}${reason ? `: ${reason}` : ''}`,
-    {
-      section: 'orders',
-      action: 'reject_order',
-      orderId,
-      rejectionReason: reason
-    }
-  )
-
-  return {
-    logOrderView,
-    logOrderStatusUpdate,
-    logOrderApproval,
-    logOrderRejection,
-    logAdminActivity
-  }
-}
-
-export function useAdminSettingsLogger() {
-  const { logAdminActivity } = useAdminActivityLogger()
-
-  const logSettingsView = (settingsType: string) => logAdminActivity(
-    `${settingsType}_settings_view`,
-    `Accessed ${settingsType} settings`,
-    { section: 'settings', action: 'view_settings', settingsType }
-  )
-
-  const logSettingsUpdate = (settingsType: string, updatedFields: string[]) => logAdminActivity(
-    `${settingsType}_settings_update`,
-    `Updated ${settingsType} settings: ${updatedFields.join(', ')}`,
-    {
-      section: 'settings',
-      action: 'update_settings',
-      settingsType,
-      updatedFields: updatedFields.join(', ')
-    }
-  )
-
-  const logPackageCreate = (packageName: string, price: number) => logAdminActivity(
-    'package_create',
-    `Created new package: ${packageName} ($${price})`,
-    {
-      section: 'packages',
-      action: 'create_package',
-      packageName,
-      packagePrice: price
-    }
-  )
-
-  const logPackageUpdate = (packageId: string, packageName: string) => logAdminActivity(
-    'package_update',
-    `Updated package: ${packageName}`,
-    {
-      section: 'packages',
-      action: 'update_package',
-      packageId,
-      packageName
-    }
-  )
-
-  const logGatewayCreate = (gatewayName: string) => logAdminActivity(
-    'payment_gateway_create',
-    `Created payment gateway: ${gatewayName}`,
-    {
-      section: 'payment_gateways',
-      action: 'create_gateway',
-      gatewayName
-    }
-  )
-
-  return {
-    logSettingsView,
-    logSettingsUpdate,
-    logPackageCreate,
-    logPackageUpdate,
-    logGatewayCreate,
-    logAdminActivity
-  }
-}
-
-export function useAdminUserLogger() {
-  const { logAdminActivity } = useAdminActivityLogger()
-
-  const logUserView = (targetUserId: string, targetUserEmail: string) => logAdminActivity(
-    'user_management',
-    `Viewed user profile: ${targetUserEmail}`,
-    {
-      section: 'user_management',
-      action: 'view_user',
-      targetUserId,
-      targetUserEmail
-    }
-  )
-
-  const logUserRoleChange = (targetUserId: string, targetUserEmail: string, oldRole: string, newRole: string) => logAdminActivity(
-    'user_role_change',
-    `Changed user ${targetUserEmail} role from ${oldRole} to ${newRole}`,
-    {
-      section: 'user_management',
-      action: 'change_role',
-      targetUserId,
-      targetUserEmail,
-      oldRole,
-      newRole
-    }
-  )
-
-  const logUserSuspension = (targetUserId: string, targetUserEmail: string) => logAdminActivity(
-    'user_suspend',
-    `Suspended user: ${targetUserEmail}`,
-    {
-      section: 'user_management',
-      action: 'suspend_user',
-      targetUserId,
-      targetUserEmail
-    }
-  )
-
-  const logUserQuotaReset = (targetUserId: string, targetUserEmail: string) => logAdminActivity(
-    'user_quota_reset',
-    `Reset quota for user: ${targetUserEmail}`,
-    {
-      section: 'user_management',
-      action: 'reset_quota',
-      targetUserId,
-      targetUserEmail
-    }
-  )
-
-  return {
-    logUserView,
-    logUserRoleChange,
-    logUserSuspension,
-    logUserQuotaReset,
-    logAdminActivity
-  }
+  return { logStatsRefresh }
 }

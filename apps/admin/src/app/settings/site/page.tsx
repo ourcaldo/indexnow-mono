@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Send } from 'lucide-react';
 import { useAdminSiteSettings, useSaveSiteSettings, useTestEmail, type UI_SiteSettings } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 
 function FormCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -38,6 +39,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 const inputClass = "w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
 
 export default function SiteSettingsPage() {
+  useAdminPageViewLogger('settings', 'Site Settings');
   const { data: settings, isLoading } = useAdminSiteSettings();
   const saveMutation = useSaveSiteSettings();
   const testEmailMutation = useTestEmail();

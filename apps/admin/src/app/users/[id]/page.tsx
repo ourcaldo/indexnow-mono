@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfile } from '@/hooks';
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import {
@@ -60,6 +61,7 @@ export default function UserDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const userId = params.id as string;
+  useAdminPageViewLogger('users', 'User Detail', { userId });
 
   // Modal states
   const [roleModal, setRoleModal] = useState(false);

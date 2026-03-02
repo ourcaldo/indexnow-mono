@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, TrendingUp, TrendingDown, Minus, AlertTriangle, AlertOctagon, ShieldAlert, Eye, CheckCircle2 } from 'lucide-react';
 import { useAdminErrorStats, type TimeRange, type CriticalError } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 function StatBadge({ label, value, accent }: { label: string; value: number; accent?: string }) {
@@ -16,6 +17,7 @@ function StatBadge({ label, value, accent }: { label: string; value: number; acc
 }
 
 export default function ErrorsPage() {
+  useAdminPageViewLogger('errors', 'Error Logs');
   const router = useRouter();
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
 

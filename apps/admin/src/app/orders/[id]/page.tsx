@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useAdminOrderDetail, useUpdateOrderStatus } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -39,6 +40,7 @@ export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const orderId = params.id as string;
+  useAdminPageViewLogger('orders', 'Order Detail', { orderId });
   const [notes, setNotes] = useState('');
 
   const { data: order, isLoading } = useAdminOrderDetail(orderId);

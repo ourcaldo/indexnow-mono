@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import {
   Search, RefreshCw, ChevronLeft, ChevronRight,
   MoreHorizontal, Shield, Package, Ban,
@@ -103,6 +104,7 @@ function ActionsDropdown({
 /* ─── Page ───────────────────────────────────────────────── */
 
 export default function UsersPage() {
+  useAdminPageViewLogger('users', 'Users List');
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');

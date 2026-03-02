@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle, Eye } from 'lucide-react';
 import { useAdminErrorDetail, useErrorAction } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -34,6 +35,7 @@ export default function ErrorDetailPage() {
   const params = useParams();
   const router = useRouter();
   const errorId = params.id as string;
+  useAdminPageViewLogger('errors', 'Error Detail', { errorId });
 
   const { data: errorDetail, isLoading } = useAdminErrorDetail(errorId);
   const errorAction = useErrorAction(errorId);

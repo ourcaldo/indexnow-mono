@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAdminActivity } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 const DAYS_OPTIONS = [
@@ -29,6 +30,7 @@ const ENTITY_LABELS: Record<string, { label: string; color: string }> = {
   dashboard:       { label: 'Dashboard',       color: 'bg-sky-50 text-sky-700' },
   job:             { label: 'Job',             color: 'bg-violet-50 text-violet-700' },
   user_action:     { label: 'User Action',     color: 'bg-cyan-50 text-cyan-700' },
+  admin_page:      { label: 'Admin Page',      color: 'bg-neutral-50 text-neutral-700' },
 };
 
 function EntityBadge({ type }: { type?: string }) {
@@ -38,6 +40,7 @@ function EntityBadge({ type }: { type?: string }) {
 }
 
 export default function ActivityPage() {
+  useAdminPageViewLogger('activity', 'Activity Logs');
   const router = useRouter();
   const [days, setDays] = useState('7');
   const [page, setPage] = useState(1);

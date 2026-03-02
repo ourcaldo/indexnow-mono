@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { useAdminUserActivity } from '@/hooks';
+import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
 
 export default function UserActivityPage() {
   const params = useParams();
   const router = useRouter();
   const userId = params.id as string;
+  useAdminPageViewLogger('users', 'User Activity', { userId });
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useAdminUserActivity(userId, page);
