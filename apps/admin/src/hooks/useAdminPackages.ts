@@ -25,14 +25,16 @@ export interface PaymentPackage {
   currency: string;
   billing_period: string;
   features: string[];
+  daily_quota: number;
+  monthly_quota?: number;
   quota_limits: {
-    concurrent_jobs?: number;
     keywords_limit?: number;
   };
   is_active: boolean;
   is_popular?: boolean;
   sort_order: number;
-  pricing_tiers?: PricingTier[];
+  paddle_price_id?: string;
+  pricing_tiers?: Record<string, PricingTier>;
   created_at: string;
   updated_at: string;
 }

@@ -59,8 +59,6 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
           (pkg.quota_limits as Record<string, number> | null)?.keywords_limit ??
           (pkg.features as Record<string, number> | null)?.max_keywords ??
           0,
-        concurrent_jobs:
-          (pkg.quota_limits as Record<string, number> | null)?.concurrent_jobs ?? 1,
       },
       pricing_tiers: pkg.pricing_tiers ?? {},
       is_popular: pkg.is_popular ?? false,
