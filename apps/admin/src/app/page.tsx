@@ -71,20 +71,22 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-        <div className="h-8 w-32 bg-gray-100 rounded-lg animate-pulse" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white min-h-full">
+        <div className="px-8 py-5 border-b border-gray-200">
+          <div className="h-6 w-32 bg-gray-100 rounded-lg animate-pulse" />
+        </div>
+        <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div key={i} className="rounded-xl border border-gray-200 p-5">
               <div className="w-10 h-10 bg-gray-100 rounded-lg animate-pulse" />
               <div className="h-8 w-16 bg-gray-100 rounded mt-4 animate-pulse" />
               <div className="h-4 w-24 bg-gray-50 rounded mt-2 animate-pulse" />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="px-8 pb-6 grid grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-44 animate-pulse" />
+            <div key={i} className="rounded-xl border border-gray-200 p-5 h-44 animate-pulse" />
           ))}
         </div>
       </div>
@@ -92,8 +94,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-white min-h-full">
+      {/* ─── Page header ─────────────────────────────────── */}
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Overview</h1>
           <p className="text-sm text-gray-500 mt-0.5">Monitor your platform at a glance</p>
@@ -108,7 +111,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Users} iconBg="bg-blue-50" iconColor="text-blue-600"
           value={stats?.users.total ?? 0} label="Total Users"
@@ -131,7 +134,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="px-8 pb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SectionCard title="Users" href="/users">
           <MetricRow label="Total registered" value={stats?.users.total ?? 0} />
           <MetricRow label="New this week" value={stats?.users.newThisWeek ?? 0} accent="text-blue-600" />

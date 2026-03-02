@@ -35,12 +35,12 @@ export default function PackagesPage() {
     await deleteMutation.mutateAsync(id);
   };
 
-  if (isLoading) return <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-24 animate-pulse" />)}</div>;
+  if (isLoading) return <div className="bg-white min-h-full"><div className="px-8 py-5 border-b border-gray-200"><div className="h-6 w-32 bg-gray-100 rounded animate-pulse" /></div><div className="px-8 py-5 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-24 animate-pulse" />)}</div></div>;
 
   if (editing) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white min-h-full">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
           <h1 className="text-xl font-bold text-gray-900">{editing.id ? 'Edit Package' : 'New Package'}</h1>
           <div className="flex items-center gap-2">
             <button onClick={() => setEditing(null)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
@@ -52,7 +52,8 @@ export default function PackagesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5 max-w-2xl">
+        <div className="px-8 py-6">
+          <div className="rounded-xl border border-gray-200 p-6 space-y-5 max-w-2xl">
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Name</label>
               <input type="text" value={editing.name ?? ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className={inputClass} /></div>
@@ -88,13 +89,14 @@ export default function PackagesPage() {
               <input type="checkbox" checked={!!editing.is_popular} onChange={(e) => setEditing({ ...editing, is_popular: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Popular</label>
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-white min-h-full">
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Packages</h1>
           <p className="text-sm text-gray-500 mt-0.5">{(packages ?? []).length} packages configured</p>
@@ -105,13 +107,13 @@ export default function PackagesPage() {
       </div>
 
       {(packages ?? []).length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 py-16 text-center">
+        <div className="py-16 text-center">
           <p className="text-sm text-gray-400">No packages yet. Create your first package.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {(packages ?? []).map((pkg: PaymentPackage) => (
-            <div key={pkg.id} onClick={() => startEdit(pkg)} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-gray-300 cursor-pointer transition-all group">
+            <div key={pkg.id} onClick={() => startEdit(pkg)} className="rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 cursor-pointer transition-all group">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h3 className="text-base font-semibold text-gray-900">{pkg.name}</h3>

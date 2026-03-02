@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="rounded-xl border border-gray-200">
       <div className="px-5 py-3.5 border-b border-gray-100"><h3 className="text-sm font-semibold text-gray-900">{title}</h3></div>
       <div className="px-5 py-1">{children}</div>
     </div>
@@ -69,16 +69,20 @@ export default function ActivityDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-4">
-        <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
-        {Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-32 animate-pulse" />)}
+      <div className="bg-white min-h-full">
+        <div className="px-8 py-5 border-b border-gray-200">
+          <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
+        </div>
+        <div className="px-8 py-5 space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-32 animate-pulse" />)}
+        </div>
       </div>
     );
   }
 
   if (!activity) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 flex flex-col items-center justify-center py-24 space-y-3">
+      <div className="bg-white min-h-full flex flex-col items-center justify-center py-24 space-y-3">
         <p className="text-sm text-gray-500">Activity not found</p>
         <button onClick={() => router.push('/activity')} className="text-sm text-blue-600 hover:text-blue-700 font-medium">Back to activity</button>
       </div>
@@ -86,12 +90,13 @@ export default function ActivityDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-      <button onClick={() => router.push('/activity')} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Activity
-      </button>
+    <div className="bg-white min-h-full">
+      {/* ─── Back nav + header ────────────────────────────── */}
+      <div className="px-8 py-5 border-b border-gray-200">
+        <button onClick={() => router.push('/activity')} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-3">
+          <ArrowLeft className="w-4 h-4" /> Activity
+        </button>
 
-      <div>
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-gray-900">{activity.event_type}</h1>
           {activity.success ? (
@@ -111,7 +116,8 @@ export default function ActivityDetailPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      {/* ─── Content ─────────────────────────────────────── */}
+      <div className="px-8 py-6 space-y-4">
         <InfoCard title="Event Details">
           <InfoRow label="Activity ID"><CopyableId id={activity.id} label="Activity ID" /></InfoRow>
           <InfoRow label="Event type">{activity.event_type}</InfoRow>
@@ -139,7 +145,7 @@ export default function ActivityDetailPage() {
         )}
 
         {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="rounded-xl border border-gray-200">
             <div className="px-5 py-3.5 border-b border-gray-100"><h3 className="text-sm font-semibold text-gray-900">Metadata</h3></div>
             <div className="p-5">
               <pre className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg p-4 overflow-x-auto font-mono">{JSON.stringify(activity.metadata, null, 2)}</pre>

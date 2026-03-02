@@ -36,7 +36,7 @@ function Avatar({ name }: { name: string }) {
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="rounded-xl border border-gray-200">
       <div className="px-5 py-3.5 border-b border-gray-100">
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
       </div>
@@ -111,9 +111,8 @@ export default function UserDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-        <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white min-h-full">
+        <div className="px-8 py-5 border-b border-gray-200">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-gray-100 animate-pulse" />
             <div className="space-y-2">
@@ -122,9 +121,9 @@ export default function UserDetailPage() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 h-48 animate-pulse" />
+            <div key={i} className="rounded-xl border border-gray-200 h-48 animate-pulse" />
           ))}
         </div>
       </div>
@@ -133,7 +132,7 @@ export default function UserDetailPage() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 flex flex-col items-center justify-center py-24 space-y-4">
+      <div className="bg-white min-h-full flex flex-col items-center justify-center py-24 space-y-4">
         <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
           <AlertTriangle className="w-6 h-6 text-gray-400" />
         </div>
@@ -146,14 +145,12 @@ export default function UserDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-      <button onClick={() => router.push('/users')} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-        <ArrowLeft className="w-4 h-4" />
-        Users
-      </button>
-
-      {/* Profile header card */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div className="bg-white min-h-full">
+      <div className="px-8 py-5 border-b border-gray-200">
+        <button onClick={() => router.push('/users')} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-3">
+          <ArrowLeft className="w-4 h-4" />
+          Users
+        </button>
         <div className="flex items-start gap-5">
           <Avatar name={user.full_name || ''} />
           <div className="flex-1 min-w-0">
@@ -177,7 +174,7 @@ export default function UserDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+      <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
         {/* Left column – info cards */}
         <div className="space-y-4">
           <InfoCard title="Profile">
@@ -219,7 +216,7 @@ export default function UserDetailPage() {
 
         {/* Right column – actions & activity */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <div className="rounded-xl border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-2">
               <Link href={`/users/${userId}/activity`} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
@@ -251,7 +248,7 @@ export default function UserDetailPage() {
           </div>
 
           {/* Latest activity */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <div className="rounded-xl border border-gray-200">
             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Latest Activity</h3>
               <Link href={`/users/${userId}/activity`} className="text-xs text-blue-600 hover:text-blue-700 font-medium">

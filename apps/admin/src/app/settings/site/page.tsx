@@ -7,7 +7,7 @@ import { useAdminPageViewLogger } from '@indexnow/ui';
 
 function FormCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="rounded-xl border border-gray-200">
       <div className="px-6 py-4 border-b border-gray-100">
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
@@ -67,12 +67,13 @@ export default function SiteSettingsPage() {
   };
 
   if (isLoading) {
-    return <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-48 animate-pulse" />)}</div>;
+    return <div className="bg-white min-h-full"><div className="px-8 py-5 border-b border-gray-200"><div className="h-6 w-32 bg-gray-100 rounded animate-pulse" /></div><div className="px-8 py-5 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-48 animate-pulse" />)}</div></div>;
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-white min-h-full">
+      {/* ─── Page header ─────────────────────────────────── */}
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Site Settings</h1>
           <p className="text-sm text-gray-500 mt-0.5">General platform configuration</p>
@@ -82,6 +83,9 @@ export default function SiteSettingsPage() {
           <Save className="w-4 h-4" /> {saveMsg || 'Save changes'}
         </button>
       </div>
+
+      {/* ─── Form content ────────────────────────────────── */}
+      <div className="px-8 py-6 space-y-6 max-w-3xl">
 
       <FormCard title="General" description="Basic site information">
         <Field label="Site name" description="Displayed in browser title and emails">
@@ -124,6 +128,7 @@ export default function SiteSettingsPage() {
           </div>
         </div>
       </FormCard>
+      </div>
     </div>
   );
 }

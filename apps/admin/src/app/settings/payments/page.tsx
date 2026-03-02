@@ -26,12 +26,12 @@ export default function PaymentsPage() {
   const handleDelete = async (id: string) => { if (!confirm('Delete this payment gateway?')) return; await deleteMutation.mutateAsync(id); };
   const handleSetDefault = async (id: string) => await setDefaultMutation.mutateAsync(id);
 
-  if (isLoading) return <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>;
+  if (isLoading) return <div className="bg-white min-h-full"><div className="px-8 py-5 border-b border-gray-200"><div className="h-6 w-32 bg-gray-100 rounded animate-pulse" /></div><div className="px-8 py-5 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div></div>;
 
   if (editing) {
     return (
-      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white min-h-full">
+        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
           <h1 className="text-xl font-bold text-gray-900">{editing.id ? 'Edit Gateway' : 'New Gateway'}</h1>
           <div className="flex items-center gap-2">
             <button onClick={() => setEditing(null)} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"><X className="w-4 h-4" /> Cancel</button>
@@ -39,7 +39,8 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5 max-w-2xl">
+        <div className="px-8 py-6">
+          <div className="rounded-xl border border-gray-200 p-6 space-y-5 max-w-2xl">
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Gateway name</label><input type="text" value={editing.name ?? ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className={inputClass} /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1.5">Type</label>
@@ -58,14 +59,15 @@ export default function PaymentsPage() {
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" checked={!!(editing.configuration as any)?.sandbox} onChange={(e) => setEditing({ ...editing, configuration: { ...editing.configuration, sandbox: e.target.checked } as any })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Sandbox mode</label>
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" checked={editing.is_active !== false} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Active</label>
           </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-white min-h-full">
+      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Payment Gateways</h1>
           <p className="text-sm text-gray-500 mt-0.5">{(gateways ?? []).length} gateways configured</p>
@@ -74,11 +76,11 @@ export default function PaymentsPage() {
       </div>
 
       {(gateways ?? []).length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 py-16 text-center"><p className="text-sm text-gray-400">No payment gateways configured</p></div>
+        <div className="px-8 py-16 text-center"><p className="text-sm text-gray-400">No payment gateways configured</p></div>
       ) : (
-        <div className="space-y-3">
+        <div className="px-8 py-6 space-y-3">
           {(gateways ?? []).map((gw: UI_PaymentGateway) => (
-            <div key={gw.id} onClick={() => startEdit(gw)} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md hover:border-gray-300 cursor-pointer transition-all flex items-center justify-between">
+            <div key={gw.id} onClick={() => startEdit(gw)} className="rounded-xl border border-gray-200 p-5 hover:border-gray-300 cursor-pointer transition-all flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${gw.is_active ? 'bg-emerald-50' : 'bg-gray-100'}`}>
                   <span className={`text-xs font-bold ${gw.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>{gw.slug?.slice(0, 2).toUpperCase()}</span>
