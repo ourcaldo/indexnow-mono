@@ -109,6 +109,16 @@ export default function ErrorDetailPage() {
               {err.endpoint && <InfoRow label="Endpoint"><span className="font-mono text-xs break-all">{err.http_method} {err.endpoint}</span></InfoRow>}
               {err.status_code && <InfoRow label="Status code">{err.status_code}</InfoRow>}
               {err.user_id && <InfoRow label="User"><button onClick={() => router.push(`/users/${err.user_id}`)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">{err.user_id.slice(0, 12)}...</button></InfoRow>}
+              {sentry?.issueId && (
+                <InfoRow label="Sentry Issue">
+                  <button
+                    onClick={() => sentry.url && window.open(sentry.url, '_blank')}
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium font-mono"
+                  >
+                    #{sentry.issueId}
+                  </button>
+                </InfoRow>
+              )}
             </InfoCard>
 
             {err.stack_trace && (

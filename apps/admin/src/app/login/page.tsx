@@ -58,7 +58,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-xs text-gray-400 text-center mt-6">Restricted to super admin accounts only.</p>
+
         </div>
       </div>
     </div>
