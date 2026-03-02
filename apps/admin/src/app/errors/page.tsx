@@ -29,7 +29,7 @@ export default function ErrorsPage() {
   const trendColor = stats?.trend?.direction === 'up' ? 'text-red-600' : stats?.trend?.direction === 'down' ? 'text-emerald-600' : 'text-gray-400';
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Errors</h1>

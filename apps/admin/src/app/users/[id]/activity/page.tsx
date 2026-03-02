@@ -20,7 +20,7 @@ export default function UserActivityPage() {
   const totalPages = data?.pagination?.totalPages ?? 1;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
       <button onClick={() => router.push(`/users/${userId}`)} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
         <ArrowLeft className="w-4 h-4" />
         {user?.name || 'User'}

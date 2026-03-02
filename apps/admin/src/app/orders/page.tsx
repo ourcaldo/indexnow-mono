@@ -46,7 +46,7 @@ export default function OrdersPage() {
   const summary = data?.summary;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Orders</h1>

@@ -26,11 +26,11 @@ export default function PaymentsPage() {
   const handleDelete = async (id: string) => { if (!confirm('Delete this payment gateway?')) return; await deleteMutation.mutateAsync(id); };
   const handleSetDefault = async (id: string) => await setDefaultMutation.mutateAsync(id);
 
-  if (isLoading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>;
+  if (isLoading) return <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>;
 
   if (editing) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">{editing.id ? 'Edit Gateway' : 'New Gateway'}</h1>
           <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Payment Gateways</h1>

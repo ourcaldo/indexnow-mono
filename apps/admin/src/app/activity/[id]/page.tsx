@@ -69,7 +69,7 @@ export default function ActivityDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-4">
         <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
         {Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-white rounded-xl border border-gray-200 h-32 animate-pulse" />)}
       </div>
@@ -78,7 +78,7 @@ export default function ActivityDetailPage() {
 
   if (!activity) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-3">
+      <div className="mx-auto max-w-[1100px] px-8 py-8 flex flex-col items-center justify-center py-24 space-y-3">
         <p className="text-sm text-gray-500">Activity not found</p>
         <button onClick={() => router.push('/activity')} className="text-sm text-blue-600 hover:text-blue-700 font-medium">Back to activity</button>
       </div>
@@ -86,7 +86,7 @@ export default function ActivityDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1100px] px-8 py-8 space-y-6">
       <button onClick={() => router.push('/activity')} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Activity
       </button>

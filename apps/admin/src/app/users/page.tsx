@@ -326,7 +326,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="-mx-8 -my-8 bg-white min-h-full">
+    <div className="bg-white min-h-full">
       {/* ─── Page header ─────────────────────────────────── */}
       <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
         <div>
