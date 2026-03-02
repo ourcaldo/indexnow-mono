@@ -1,7 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, CheckCircle, XCircle, Copy, Check, SquareArrowOutUpRight } from 'lucide-react';
 import { useAdminActivityDetail } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
@@ -21,6 +22,41 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
       <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
       <span className="text-sm text-gray-900 text-right max-w-[60%] break-all">{children}</span>
     </div>
+  );
+}
+
+function CopyableId({ id, label }: { id: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group font-mono text-xs text-gray-500 hover:text-gray-900 transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
+      {id}
+      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
+    </button>
+  );
+}
+
+function IdWithOpenButton({ id, href, label }: { id: string; href: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-sm text-gray-600 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
+        {id}
+        {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
+      </button>
+      <button onClick={() => window.open(href, '_blank')} className="p-0.5 rounded text-gray-300 hover:text-blue-600 transition-colors" title={`Open ${label ?? 'detail'} in new tab`}>
+        <SquareArrowOutUpRight className="w-3.5 h-3.5" />
+      </button>
+    </span>
   );
 }
 
@@ -69,7 +105,7 @@ export default function ActivityDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2 mt-1">
-          <span className="font-mono text-xs text-gray-400 select-all" title="Activity ID">{activity.id}</span>
+          <CopyableId id={activity.id} label="Activity ID" />
           <span className="text-gray-300">&middot;</span>
           <span className="text-sm text-gray-500">{format(new Date(activity.created_at), 'MMM d, yyyy HH:mm:ss')}</span>
         </div>
@@ -77,7 +113,7 @@ export default function ActivityDetailPage() {
 
       <div className="space-y-4">
         <InfoCard title="Event Details">
-          <InfoRow label="Activity ID"><span className="font-mono text-xs text-gray-500 select-all">{activity.id}</span></InfoRow>
+          <InfoRow label="Activity ID"><CopyableId id={activity.id} label="Activity ID" /></InfoRow>
           <InfoRow label="Event type">{activity.event_type}</InfoRow>
           {activity.action_description && <InfoRow label="Description">{activity.action_description}</InfoRow>}
           {activity.target_type && <InfoRow label="Target type">{activity.target_type}</InfoRow>}
@@ -90,7 +126,7 @@ export default function ActivityDetailPage() {
             {activity.user_name && <InfoRow label="Name">{activity.user_name}</InfoRow>}
             {activity.user_email && <InfoRow label="Email">{activity.user_email}</InfoRow>}
             <InfoRow label="User ID">
-              <button onClick={() => router.push(`/users/${activity.user_id}`)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">{activity.user_id}</button>
+              <IdWithOpenButton id={activity.user_id!} href={`/users/${activity.user_id}`} label="User ID" />
             </InfoRow>
           </InfoCard>
         )}

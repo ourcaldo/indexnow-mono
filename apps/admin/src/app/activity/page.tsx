@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, ChevronLeft, ChevronRight, X, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, X, ExternalLink, CheckCircle, XCircle, Copy, Check, SquareArrowOutUpRight } from 'lucide-react';
 import { useAdminActivity, useAdminActivityDetail } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
@@ -39,10 +39,49 @@ function EntityBadge({ type }: { type?: string }) {
   return <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${cfg.color}`}>{cfg.label}</span>;
 }
 
-function ShortId({ id }: { id: string }) {
+function useCopyToClipboard() {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copy = useCallback((text: string, key?: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(key ?? text);
+    setTimeout(() => setCopiedId(null), 1500);
+  }, []);
+  return { copiedId, copy };
+}
+
+function CopyableId({ id, label, full }: { id: string; label?: string; full?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
   return (
-    <span className="font-mono text-[11px] text-gray-400" title={id}>
-      {id.slice(0, 8)}
+    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group text-xs text-gray-600 hover:text-gray-900 transition-colors" title={`Click to copy${label ? ` ${label}` : ''}: ${id}`}>
+      <span className={full ? 'font-mono' : 'font-mono'}>{full ? id : id.slice(0, 8)}</span>
+      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
+    </button>
+  );
+}
+
+function IdWithOpenButton({ id, href, label }: { id: string; href: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-xs text-gray-600 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
+        {id}
+        {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); window.open(href, '_blank'); }} className="p-0.5 rounded text-gray-300 hover:text-blue-600 transition-colors" title={`Open ${label ?? 'detail'} in new tab`}>
+        <SquareArrowOutUpRight className="w-3 h-3" />
+      </button>
     </span>
   );
 }
@@ -117,7 +156,7 @@ function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void
               {/* ID */}
               <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 flex items-center justify-between">
                 <span className="text-xs text-gray-500">Activity ID</span>
-                <span className="font-mono text-xs text-gray-600 select-all">{activity.id}</span>
+                <CopyableId id={activity.id} label="Activity ID" full />
               </div>
 
               {/* Details */}
@@ -144,7 +183,7 @@ function SlideOverPanel({ logId, onClose }: { logId: string; onClose: () => void
                   {activity.user_name && <DetailRow label="Name">{activity.user_name}</DetailRow>}
                   {activity.user_email && <DetailRow label="Email">{activity.user_email}</DetailRow>}
                   <DetailRow label="User ID">
-                    <button onClick={() => router.push(`/users/${activity.user_id}`)} className="text-xs text-blue-600 hover:text-blue-700 font-medium font-mono">{activity.user_id}</button>
+                    <IdWithOpenButton id={activity.user_id!} href={`/users/${activity.user_id}`} label="User ID" />
                   </DetailRow>
                 </div>
               )}
@@ -243,7 +282,7 @@ export default function ActivityPage() {
                   {logs.map((log: any, idx: number) => (
                     <tr key={log.id} onClick={() => setSelectedLogId(log.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
                       <td className="px-5 py-3.5 text-xs text-gray-400 tabular-nums">{offset + idx + 1}</td>
-                      <td className="px-3 py-3.5"><ShortId id={log.id} /></td>
+                      <td className="px-3 py-3.5 text-sm text-gray-600 tabular-nums">{log.id.slice(0, 8)}</td>
                       <td className="px-3 py-3.5">
                         <div className="text-xs font-mono text-gray-500 truncate max-w-[140px]" title={log.user_id || ''}>{log.user_id ? log.user_id.slice(0, 8) : '\u2014'}</div>
                         {log.user_name && log.user_name !== 'Unknown User' && (
