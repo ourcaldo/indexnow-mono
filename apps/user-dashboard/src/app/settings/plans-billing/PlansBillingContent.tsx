@@ -37,7 +37,7 @@ interface PaymentPackage {
   slug: string
   description: string
   features: string[]
-  quota_limits: { max_keywords?: number; max_domains?: number; keywords_limit?: number }
+  quota_limits: { max_keywords?: number; max_domains?: number }
   is_popular: boolean
   is_current: boolean
   free_trial_enabled?: boolean
@@ -93,11 +93,16 @@ interface BillingData {
   }
 }
 
-interface KeywordUsageData {
-  keywords_used: number
-  keywords_limit: number
+interface QuotaEntry {
+  used: number
+  limit: number
   is_unlimited: boolean
-  remaining_quota: number
+  remaining: number
+}
+
+interface KeywordUsageData {
+  keywords: QuotaEntry
+  domains: QuotaEntry
 }
 
 interface PackagesData {
@@ -273,7 +278,7 @@ export default function BillingPage() {
 
   const sub = billingData?.currentSubscription ?? null
   const stats = billingData?.billingStats ?? null
-  const pct = keywordUsage ? usagePct(keywordUsage.keywords_used, keywordUsage.keywords_limit, keywordUsage.is_unlimited) : 0
+  const pct = keywordUsage ? usagePct(keywordUsage.keywords.used, keywordUsage.keywords.limit, keywordUsage.keywords.is_unlimited) : 0
 
   /* ═══════════════════════ RENDER ═══════════════════════ */
 
@@ -314,9 +319,9 @@ export default function BillingPage() {
               <div className="flex items-baseline justify-between text-sm mb-1.5">
                 <span className="text-gray-500 dark:text-gray-400">Keywords</span>
                 <span className="text-gray-900 dark:text-white font-medium tabular-nums">
-                  {keywordUsage.keywords_used}
+                  {keywordUsage.keywords.used}
                   <span className="text-gray-400 dark:text-gray-500 font-normal">
-                    {' / '}{keywordUsage.is_unlimited ? '∞' : (keywordUsage.keywords_limit ?? 0).toLocaleString()}
+                    {' / '}{keywordUsage.keywords.is_unlimited ? '∞' : (keywordUsage.keywords.limit ?? 0).toLocaleString()}
                   </span>
                 </span>
               </div>

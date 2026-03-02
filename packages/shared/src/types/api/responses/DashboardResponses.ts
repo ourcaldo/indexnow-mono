@@ -24,8 +24,6 @@ export interface DashboardPackageInfo {
   name: string;
   slug: string;
   description: string | null;
-  currency: string;
-  billing_period: string;
   features: string[] | null;
   quota_limits: Record<string, number> | null;
   is_active: boolean;
@@ -39,8 +37,6 @@ export interface DashboardProfileInfo {
   id: string;
   email: string | null;
   package: DashboardPackageInfo | null;
-  daily_quota_limit: number;
-  daily_quota_used: number;
   is_trial_active: boolean;
   trial_ends_at: string | null;
   package_id: string | null;
@@ -58,12 +54,11 @@ export interface DashboardQuota {
     /** -1 when unlimited */
     remaining: number;
   };
-  daily_checks: {
+  domains: {
     used: number;
     limit: number;
     is_unlimited: boolean;
     remaining: number;
-    exhausted: boolean;
   };
 }
 
@@ -136,9 +131,8 @@ export interface PublicSettingsPackage {
   description: string;
   features: string[];
   quota_limits: {
-    daily_urls: number;
-    keywords_limit: number;
-    concurrent_jobs: number;
+    max_keywords: number;
+    max_domains: number;
   };
   pricing_tiers: Record<string, unknown>;
   is_popular: boolean;

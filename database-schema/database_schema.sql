@@ -94,13 +94,10 @@ CREATE TABLE IF NOT EXISTS indb_auth_user_profiles (
   email_verified BOOLEAN DEFAULT FALSE,
   avatar_url TEXT,
   
-  -- Subscription & Quota
+  -- Subscription
   package_id UUID REFERENCES indb_payment_packages(id),
   subscription_start_date TIMESTAMPTZ,
   subscription_end_date TIMESTAMPTZ,
-  daily_quota_limit INTEGER DEFAULT 100,
-  daily_quota_used INTEGER DEFAULT 0,
-  quota_reset_date DATE,
   
   -- Account Status
   is_active BOOLEAN DEFAULT TRUE,
@@ -966,11 +963,6 @@ BEGIN
     SET api_quota_used = api_quota_used + amount,
         updated_at = NOW()
     WHERE user_id = target_user_id;
-  ELSIF resource_type = 'daily_urls' THEN
-    UPDATE indb_auth_user_profiles 
-    SET daily_quota_used = daily_quota_used + amount,
-        updated_at = NOW()
-    WHERE user_id = target_user_id;
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
@@ -1016,8 +1008,8 @@ ALTER TABLE indb_security_audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON indb_auth_user_profiles
   FOR SELECT USING (auth.uid() = user_id);
 -- SECURITY: Users can only update safe profile fields. Sensitive fields (role, package_id,
--- daily_quota_limit, is_suspended, is_active, is_trial_active, trial_ends_at, subscription_*,
--- quota_reset_date) are protected and can only be changed by admin policies or service role.
+-- is_suspended, is_active, is_trial_active, trial_ends_at, subscription_*)
+-- are protected and can only be changed by admin policies or service role.
 CREATE POLICY "Users can update own profile fields" ON indb_auth_user_profiles
   FOR UPDATE USING (auth.uid() = user_id)
   WITH CHECK (
@@ -1026,9 +1018,6 @@ CREATE POLICY "Users can update own profile fields" ON indb_auth_user_profiles
     role = (SELECT role FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
     -- Prevent self-modification of subscription/quota/status fields
     package_id IS NOT DISTINCT FROM (SELECT package_id FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
-    daily_quota_limit = (SELECT daily_quota_limit FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
-    daily_quota_used = (SELECT daily_quota_used FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
-    quota_reset_date IS NOT DISTINCT FROM (SELECT quota_reset_date FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
     is_suspended = (SELECT is_suspended FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
     is_active = (SELECT is_active FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
     is_trial_active = (SELECT is_trial_active FROM indb_auth_user_profiles WHERE user_id = auth.uid()) AND
@@ -1448,62 +1437,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;
 
--- 3. Atomic Quota Consumption
--- Consumes user quota atomically, returns false if insufficient
-CREATE OR REPLACE FUNCTION consume_user_quota(
-  target_user_id UUID,
-  quota_amount INTEGER
-)
-RETURNS BOOLEAN AS $$
-DECLARE
-  current_usage INTEGER;
-  current_quota_limit INTEGER;
-BEGIN
-  -- Security Check
-  IF auth.uid() != target_user_id AND NOT EXISTS (
-    SELECT 1 FROM indb_auth_user_profiles 
-    WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
-  ) THEN
-    RAISE EXCEPTION 'Unauthorized';
-  END IF;
-
-  -- Lock the user profile and get both usage and limit in a single SELECT
-  SELECT daily_quota_used, daily_quota_limit
-  INTO current_usage, current_quota_limit
-  FROM indb_auth_user_profiles
-  WHERE user_id = target_user_id
-  FOR UPDATE;
-
-  -- Check if user exists
-  IF current_usage IS NULL THEN
-    RAISE EXCEPTION 'User profile not found';
-  END IF;
-
-  -- Check if unlimited (-1) or sufficient
-  IF current_quota_limit = -1 THEN
-    -- Unlimited, just track usage
-    UPDATE indb_auth_user_profiles
-    SET daily_quota_used = daily_quota_used + quota_amount,
-        updated_at = NOW()
-    WHERE user_id = target_user_id;
-    RETURN TRUE;
-  END IF;
-
-  IF (current_usage + quota_amount) > current_quota_limit THEN
-    RETURN FALSE; -- Insufficient quota
-  END IF;
-
-  -- Consume quota
-  UPDATE indb_auth_user_profiles
-  SET daily_quota_used = daily_quota_used + quota_amount,
-      updated_at = NOW()
-  WHERE user_id = target_user_id;
-
-  RETURN TRUE;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public;
-
 -- 3.5. Atomic order activation: update transaction + activate user plan
 -- (Merged from migrations/001_atomic_order_activation.sql)
 CREATE OR REPLACE FUNCTION activate_order_with_plan(
@@ -1562,8 +1495,6 @@ BEGIN
        SET package_id              = v_txn.package_id,
            subscription_start_date = NOW(),
            subscription_end_date   = v_expiry_date,
-           daily_quota_used        = 0,
-           quota_reset_date        = CURRENT_DATE,
            updated_at              = NOW()
      WHERE user_id = v_txn.user_id;
   END IF;
@@ -1821,10 +1752,6 @@ BEGIN
   INSERT INTO indb_keyword_rankings (keyword_id, position, url, check_date, device_type, country_id)
   VALUES (p_keyword_id, p_position, p_url, p_check_date, p_device_type, v_country_id);
 
-  -- Increment user quota atomically
-  UPDATE indb_auth_user_profiles
-  SET daily_quota_used = daily_quota_used + 1, updated_at = NOW()
-  WHERE user_id = p_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;

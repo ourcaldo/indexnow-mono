@@ -1,60 +1,60 @@
 /**
- * QuotaService — Server-side quota management utility.
+ * QuotaService — Server-side account quota management utility.
  *
- * NOTE (#43): This service uses `supabaseAdmin` (service-role key client).
- * It is consumed exclusively by `RankTrackingService` which runs in
- * server-side API routes. It is NOT exported from the package barrel.
+ * Account-level limits are defined in indb_payment_packages.quota_limits JSONB:
+ *   { max_keywords: number, max_domains: number }
  *
- * For client-side quota checks, use the quota hooks in `@indexnow/ui`
- * (useQuotaValidation, useGlobalQuotaManager).
+ * Usage is derived by counting actual rows (indb_rank_keywords, indb_keyword_domains).
+ * There is NO daily quota — limits are permanent for the subscription duration.
  */
-// (#V7 L-08) Alias is misleading: `supabaseBrowser` is actually the admin/service-role client
-// re-exported as `typedSupabaseAdmin`. Renaming the import for clarity.
 import { typedSupabaseAdmin as supabaseServiceRole } from '@indexnow/database';
-
 import { logger } from '@indexnow/shared';
 
 export class QuotaService {
   /**
-   * Consume quota for a user using atomic RPC.
-   * Returns true if successful, false if insufficient quota.
+   * Check if user can add more keywords based on their package limit.
+   * Returns true if the user has remaining keyword capacity.
    */
-  static async consumeQuota(userId: string, count: number): Promise<boolean> {
-    const { data, error } = await supabaseServiceRole.rpc('consume_user_quota', {
-      target_user_id: userId,
-      quota_amount: count,
-    });
+  static async canAddKeyword(userId: string, count: number = 1): Promise<boolean> {
+    try {
+      // Get current keyword count
+      const { count: currentCount, error: countError } = await supabaseServiceRole
+        .from('indb_rank_keywords')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_active', true);
 
-    if (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error consuming quota');
-      // Fail closed: if error, assume quota consumption failed
+      if (countError) {
+        logger.error({ error: countError instanceof Error ? countError : undefined }, 'Error counting keywords');
+        return false;
+      }
+
+      // Get package limit
+      const limit = await QuotaService.getKeywordLimit(userId);
+      if (limit === -1) return true; // unlimited
+
+      return (currentCount || 0) + count <= limit;
+    } catch (err) {
+      logger.error({ error: err instanceof Error ? err : undefined }, 'Error in canAddKeyword');
       return false;
     }
-
-    return !!data;
   }
 
   /**
-   * Check if user has enough quota without consuming it.
-   * This is a "soft" check for UI/pre-validation.
-   * Always rely on consumeQuota() for the actual operation.
+   * Get the max_keywords limit for a user from their package.
+   * Returns -1 for unlimited, or the numeric limit.
    */
-  static async checkQuota(userId: string, count: number): Promise<boolean> {
+  static async getKeywordLimit(userId: string): Promise<number> {
     const { data: profile, error } = await supabaseServiceRole
       .from('indb_auth_user_profiles')
-      .select('daily_quota_used, daily_quota_limit')
+      .select('package:indb_payment_packages(quota_limits)')
       .eq('user_id', userId)
       .single();
 
-    if (error || !profile) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error checking quota');
-      return false;
-    }
+    if (error || !profile) return 10; // default free limit
 
-    // -1 indicates unlimited quota
-    const p = profile as { daily_quota_used: number; daily_quota_limit: number };
-    if (p.daily_quota_limit === -1) return true;
-
-    return p.daily_quota_used + count <= p.daily_quota_limit;
+    const pkg = Array.isArray(profile.package) ? profile.package[0] : profile.package;
+    const quotaLimits = pkg?.quota_limits as Record<string, number> | null;
+    return quotaLimits?.max_keywords ?? 10;
   }
 }

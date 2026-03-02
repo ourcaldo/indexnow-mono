@@ -58,11 +58,11 @@ export class RankTrackingService {
     }
   ): Promise<{ id: string; user_id: string; keyword: string; [key: string]: unknown }> {
     // (#V7 H-05) Typed core fields instead of loose Record<string, unknown>
-    // 1. Check & Consume Quota
-    const quotaConsumed = await QuotaService.consumeQuota(userId, 1);
-    if (!quotaConsumed) {
+    // 1. Check keyword capacity against package limit
+    const canAdd = await QuotaService.canAddKeyword(userId, 1);
+    if (!canAdd) {
       throw ErrorHandlingService.createError({
-        message: 'Insufficient quota to track new keyword',
+        message: 'Keyword limit reached for your current plan',
         type: ErrorType.VALIDATION,
         severity: ErrorSeverity.MEDIUM,
       });

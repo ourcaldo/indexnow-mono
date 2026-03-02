@@ -164,7 +164,6 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
         newPackageId: packageId,
         newPackageName: packageData.name,
         newPackageSlug: packageData.slug,
-        resetQuota: true,
         endpoint: '/api/v1/admin/users/[id]/change-package',
       },
       ipAddress: getClientIP(request),
@@ -177,8 +176,6 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
         'package_id',
         'subscribed_at',
         'expires_at',
-        'daily_quota_used',
-        'daily_quota_reset_date',
         'updated_at',
       ],
       whereConditions: { user_id: userId },
@@ -189,8 +186,6 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
           packageData.slug === 'free'
             ? null
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        daily_quota_used: 0,
-        daily_quota_reset_date: new Date().toISOString().split('T')[0],
         updated_at: new Date().toISOString(),
       },
     },
@@ -204,8 +199,6 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
             packageData.slug === 'free'
               ? null
               : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          daily_quota_used: 0,
-          daily_quota_reset_date: new Date().toISOString().split('T')[0],
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId);

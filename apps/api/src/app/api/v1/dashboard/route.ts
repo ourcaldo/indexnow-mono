@@ -29,8 +29,6 @@ interface PackageData {
   name: string;
   slug: string;
   description: string | null;
-  currency: string;
-  billing_period: string;
   features: string[] | null;
   quota_limits: Record<string, number> | null;
   is_active: boolean;
@@ -42,8 +40,6 @@ interface UserProfileWithPackage {
   id: string;
   email?: string | null;
   package?: PackageData | null;
-  daily_quota_limit: number;
-  daily_quota_used: number;
   is_trial_active: boolean;
   trial_ends_at: string | null;
   package_id: string | null;
@@ -98,7 +94,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
               `
                             *,
                             package:indb_payment_packages(
-                                id, name, slug, description, currency, billing_period,
+                                id, name, slug, description,
                                 features, quota_limits, is_active, pricing_tiers
                             )
                         `
@@ -182,7 +178,6 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
           if (tierData) {
             transformedPackage = {
               ...rawPackage,
-              currency: 'USD',
               price: tierData.promo_price || tierData.regular_price,
               pricing_tiers: pricingTiers,
             };
@@ -198,8 +193,6 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       const profileData = userProfileResult.data;
       profile = {
         id: profileData.id ?? profileData.user_id,
-        daily_quota_limit: profileData.daily_quota_limit,
-        daily_quota_used: profileData.daily_quota_used,
         is_trial_active: profileData.is_trial_active,
         trial_ends_at: profileData.trial_ends_at,
         package_id: profileData.package_id,
@@ -211,15 +204,16 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       };
     }
 
-    // Process Quota
+    // Process Quota — account-level limits from package
     const keywordsUsed = keywordCountResult.count || 0;
     const quotaLimits = profile?.package?.quota_limits;
-    const keywordsLimit = quotaLimits?.keywords_limit || 10;
+    const keywordsLimit = quotaLimits?.max_keywords ?? 10;
     const isKeywordsUnlimited = keywordsLimit === -1;
 
-    const dailyQuotaUsed = profile?.daily_quota_used || 0;
-    const dailyQuotaLimit = profile?.daily_quota_limit || 50;
-    const isDailyUnlimited = false; // Daily quota usually has a limit
+    // Domain quota from package
+    const domainsUsed = domainsResult.data?.length || 0;
+    const domainsLimit = quotaLimits?.max_domains ?? 1;
+    const isDomainsUnlimited = domainsLimit === -1;
 
     const quota = {
       keywords: {
@@ -228,12 +222,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         is_unlimited: isKeywordsUnlimited,
         remaining: isKeywordsUnlimited ? -1 : Math.max(0, keywordsLimit - keywordsUsed),
       },
-      daily_checks: {
-        used: dailyQuotaUsed,
-        limit: dailyQuotaLimit,
-        is_unlimited: isDailyUnlimited,
-        remaining: Math.max(0, dailyQuotaLimit - dailyQuotaUsed),
-        exhausted: dailyQuotaUsed >= dailyQuotaLimit,
+      domains: {
+        used: domainsUsed,
+        limit: domainsLimit,
+        is_unlimited: isDomainsUnlimited,
+        remaining: isDomainsUnlimited ? -1 : Math.max(0, domainsLimit - domainsUsed),
       },
     };
 

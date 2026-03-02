@@ -87,7 +87,7 @@ export default function Dashboard() {
 
   // Plan info
   const planName = profile?.package?.name || 'Free'
-  const kwLimit = profile?.package?.quota_limits?.keywords_limit ?? 0
+  const kwLimit = profile?.package?.quota_limits?.max_keywords ?? 0
   const kwUsed = keywordUsage?.used ?? profile?.keywords_used ?? 0
 
   const getPosition = (kw: Keyword): number | null => {

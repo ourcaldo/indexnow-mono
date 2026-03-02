@@ -6,18 +6,16 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
-
-// (#V7 L-13) UserProfileRow removed — was unused (query uses RPC, not direct table select)
-type _UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
+import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 
 /**
  * GET /api/v1/auth/user/quota
- * Get current user quota information including daily usage, limits, and package details
+ * Get current user quota information — account-level limits from their package.
+ * Limits: max_keywords, max_domains (permanent for the subscription duration).
  */
 export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
-    const quotaData = (await SecureServiceRoleWrapper.executeWithUserSession(
+    const quotaData = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
       {
         userId: auth.userId,
@@ -36,9 +34,6 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
           .select(
             `
             user_id,
-            daily_quota_used,
-            daily_quota_limit,
-            quota_reset_date,
             package_id,
             package:indb_payment_packages(
               id,
@@ -53,76 +48,54 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         if (profileError) throw new Error('Failed to fetch quota data');
         if (!profile) throw new Error('User profile not found');
 
-        return profile;
+        // Count actual keyword usage
+        const { count: keywordCount, error: kwError } = await db
+          .from('indb_rank_keywords')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', auth.userId)
+          .eq('is_active', true);
+
+        if (kwError) throw new Error('Failed to count keywords');
+
+        // Count actual domain usage
+        const { count: domainCount, error: domError } = await db
+          .from('indb_keyword_domains')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', auth.userId)
+          .eq('is_active', true);
+
+        if (domError) throw new Error('Failed to count domains');
+
+        return { profile, keywordCount: keywordCount || 0, domainCount: domainCount || 0 };
       }
-    )) as {
-      package: Record<string, any> | Record<string, any>[] | null;
-      daily_quota_limit: number;
-      daily_quota_used: number;
-      quota_reset_date: string | null;
-    };
+    );
 
     // Extract package data safely
-    const packageData = Array.isArray(quotaData.package) ? quotaData.package[0] : quotaData.package;
-    const dailyLimit = packageData?.quota_limits?.daily_urls ?? quotaData.daily_quota_limit ?? 0;
-    const isUnlimited = dailyLimit === -1;
-    const dailyQuotaUsed = quotaData.daily_quota_used ?? 0;
+    const packageData = Array.isArray(quotaData.profile.package)
+      ? quotaData.profile.package[0]
+      : quotaData.profile.package;
 
-    // Check if quota needs to be reset (new day)
-    const today = new Date().toISOString().split('T')[0];
-    const resetDate = quotaData.quota_reset_date;
-    let finalQuotaUsed = dailyQuotaUsed;
-
-    if (resetDate !== today) {
-      // Reset quota for new day - wrapped in SecureServiceRoleWrapper for audit trail
-      await SecureServiceRoleWrapper.executeWithUserSession(
-        asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
-          operation: 'reset_daily_quota',
-          source: 'auth/user/quota',
-          reason: 'Automatic daily quota reset on new day',
-          metadata: {
-            endpoint: '/api/v1/auth/user/quota',
-            method: 'GET',
-            previousDate: resetDate,
-            newDate: today,
-            quotaReset: true,
-          },
-          ipAddress: getClientIP(request) ?? undefined,
-          userAgent: request.headers.get('user-agent') ?? undefined,
-        },
-        { table: 'indb_auth_user_profiles', operationType: 'update' },
-        async (db) => {
-          const { error } = await db
-            .from('indb_auth_user_profiles')
-            .update({
-              daily_quota_used: 0,
-              quota_reset_date: today,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', auth.userId);
-
-          if (error) throw new Error('Failed to reset quota');
-          return null;
-        }
-      );
-
-      finalQuotaUsed = 0;
-    }
-
-    const remainingQuota = isUnlimited ? -1 : Math.max(0, dailyLimit - finalQuotaUsed);
-    const quotaExhausted = !isUnlimited && finalQuotaUsed >= dailyLimit;
+    const quotaLimits = (packageData?.quota_limits ?? {}) as Record<string, number>;
+    const maxKeywords = quotaLimits.max_keywords ?? 10;
+    const maxDomains = quotaLimits.max_domains ?? 1;
+    const isKeywordsUnlimited = maxKeywords === -1;
+    const isDomainsUnlimited = maxDomains === -1;
 
     return formatSuccess({
       quota: {
-        daily_quota_used: finalQuotaUsed,
-        daily_quota_limit: dailyLimit,
-        is_unlimited: isUnlimited,
-        quota_exhausted: quotaExhausted,
-        daily_limit_reached: quotaExhausted,
+        keywords: {
+          used: quotaData.keywordCount,
+          limit: maxKeywords,
+          remaining: isKeywordsUnlimited ? -1 : Math.max(0, maxKeywords - quotaData.keywordCount),
+          is_unlimited: isKeywordsUnlimited,
+        },
+        domains: {
+          used: quotaData.domainCount,
+          limit: maxDomains,
+          remaining: isDomainsUnlimited ? -1 : Math.max(0, maxDomains - quotaData.domainCount),
+          is_unlimited: isDomainsUnlimited,
+        },
         package_name: packageData?.name ?? 'Free',
-        remaining_quota: remainingQuota,
       },
     });
   } catch (error) {

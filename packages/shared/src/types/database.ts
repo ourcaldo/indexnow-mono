@@ -321,9 +321,6 @@ export type Database = {
           package_id: string | null;
           subscription_start_date: string | null;
           subscription_end_date: string | null;
-          daily_quota_limit: number;
-          daily_quota_used: number;
-          quota_reset_date: string | null;
           is_active: boolean;
           is_suspended: boolean;
           is_trial_active: boolean;
@@ -349,9 +346,6 @@ export type Database = {
           package_id?: string | null;
           subscription_start_date?: string | null;
           subscription_end_date?: string | null;
-          daily_quota_limit?: number;
-          daily_quota_used?: number;
-          quota_reset_date?: string | null;
           is_active?: boolean;
           is_suspended?: boolean;
           is_trial_active?: boolean;
@@ -377,9 +371,6 @@ export type Database = {
           package_id?: string | null;
           subscription_start_date?: string | null;
           subscription_end_date?: string | null;
-          daily_quota_limit?: number;
-          daily_quota_used?: number;
-          quota_reset_date?: string | null;
           is_active?: boolean;
           is_suspended?: boolean;
           is_trial_active?: boolean;
@@ -1958,13 +1949,6 @@ export type Database = {
           domain: string;
           keyword_count: number;
         }[];
-      };
-      consume_user_quota: {
-        Args: {
-          target_user_id: string;
-          quota_amount: number;
-        };
-        Returns: boolean;
       };
       activate_order_with_plan: {
         Args: {

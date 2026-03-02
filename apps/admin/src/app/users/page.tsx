@@ -175,7 +175,6 @@ function UserSlideOver({ userId, onClose }: { userId: string; onClose: () => voi
                   <DetailRow label="Package">{user.package.name}</DetailRow>
                   {user.subscribed_at && <DetailRow label="Subscribed">{format(new Date(user.subscribed_at), 'MMM d, yyyy')}</DetailRow>}
                   {user.expires_at && <DetailRow label="Expires">{format(new Date(user.expires_at), 'MMM d, yyyy')}</DetailRow>}
-                  {user.daily_quota_used !== undefined && <DetailRow label="Daily quota used">{user.daily_quota_used}</DetailRow>}
                 </div>
               )}
 

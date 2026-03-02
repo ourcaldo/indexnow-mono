@@ -20,15 +20,13 @@ export interface UserProfile {
   package_id?: string;
   subscribed_at?: string;
   expires_at?: string;
-  daily_quota_used?: number;
-  daily_quota_reset_date?: string;
   package?: {
     id: string;
     name: string;
     slug: string;
     quota_limits: {
-      concurrent_jobs: number;
-      keywords_limit: number;
+      max_keywords: number;
+      max_domains: number;
     };
   };
   email?: string;

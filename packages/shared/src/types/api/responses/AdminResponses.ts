@@ -63,9 +63,6 @@ export interface AdminUserProfile {
   email_notifications: boolean;
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
-  daily_quota_limit?: number;
-  daily_quota_used?: number;
-  daily_quota_reset_date?: string;
   subscription_ends_at?: string;
   subscribed_at?: string | null;
   expires_at?: string | null;
@@ -76,8 +73,6 @@ export interface AdminUserProfile {
     slug: string;
     description: string | null;
     pricing_tiers: Json;
-    currency: string;
-    billing_period: string;
     features: Json;
     subscribed_at?: string | null;
     expires_at?: string | null;

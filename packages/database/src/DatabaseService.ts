@@ -65,7 +65,7 @@ export class DatabaseService {
     const { data, error } = await this.supabase
       .from('indb_auth_user_profiles')
       .select(
-        'id, user_id, full_name, phone_number, country, role, is_active, is_suspended, is_trial_active, trial_ends_at, subscription_end_date, package_id, daily_quota_used, daily_quota_limit, created_at, updated_at'
+        'id, user_id, full_name, phone_number, country, role, is_active, is_suspended, is_trial_active, trial_ends_at, subscription_end_date, package_id, created_at, updated_at'
       )
       .eq('user_id', userId)
       .returns<UserProfile>()

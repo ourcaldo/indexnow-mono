@@ -68,8 +68,8 @@ export interface UserProfile {
     name: string
     slug: string
     quota_limits: {
-      keywords_limit: number
-      daily_checks_limit: number
+      max_keywords: number
+      max_domains: number
     }
   } | null
   keywords_used?: number
@@ -78,10 +78,19 @@ export interface UserProfile {
 }
 
 export interface QuotaInfo {
-  daily_quota_used: number
-  daily_quota_limit: number
-  is_unlimited: boolean
-  remaining_quota: number
+  keywords: {
+    used: number
+    limit: number
+    remaining: number
+    is_unlimited: boolean
+  }
+  domains: {
+    used: number
+    limit: number
+    remaining: number
+    is_unlimited: boolean
+  }
+  package_name: string
 }
 
 export interface KeywordUsage {
@@ -113,8 +122,8 @@ export interface BillingPackage {
     paddle_price_id?: string
   }>
   quota_limits: {
-    keywords_limit: number
-    daily_checks_limit: number
+    max_keywords: number
+    max_domains: number
   }
   features: string[]
   is_active: boolean

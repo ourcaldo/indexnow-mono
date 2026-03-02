@@ -199,8 +199,8 @@ export default function UserDetailPage() {
             {user.expires_at && <InfoRow label="Expires">{format(new Date(user.expires_at), 'MMM d, yyyy')}</InfoRow>}
             {user.package?.quota_limits && (
               <>
-                <InfoRow label="Concurrent jobs">{user.package.quota_limits.concurrent_jobs ?? '\u2014'}</InfoRow>
-                <InfoRow label="Keywords limit">{user.package.quota_limits.keywords_limit ?? '\u2014'}</InfoRow>
+                <InfoRow label="Max keywords">{user.package.quota_limits.max_keywords === -1 ? 'Unlimited' : (user.package.quota_limits.max_keywords ?? '\u2014')}</InfoRow>
+                <InfoRow label="Max domains">{user.package.quota_limits.max_domains === -1 ? 'Unlimited' : (user.package.quota_limits.max_domains ?? '\u2014')}</InfoRow>
               </>
             )}
           </InfoCard>

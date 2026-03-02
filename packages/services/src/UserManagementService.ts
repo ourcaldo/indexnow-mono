@@ -71,11 +71,8 @@ export interface UserSettings {
 }
 
 export interface UserQuota {
-  dailyUrls: { used: number; limit: number; percentage: number; remaining: number };
   keywords: { used: number; limit: number; percentage: number; remaining: number };
-  rankChecks: { used: number; limit: number; percentage: number; remaining: number };
-  apiCalls: { used: number; limit: number; percentage: number; remaining: number };
-  storage: { used: number; limit: number; percentage: number; remaining: number };
+  domains: { used: number; limit: number; percentage: number; remaining: number };
 }
 
 export interface CreateUserRequest {
@@ -124,20 +121,12 @@ export interface UserProfile {
   subscriptionEndsAt?: Date;
   packageId?: string;
   quotaUsage: {
-    dailyUrls: number;
     keywords: number;
-    rankChecks: number;
-    apiCalls: number;
-    storage: number;
+    domains: number;
   };
   quotaLimits: {
-    dailyUrls: number;
     keywords: number;
-    rankChecks: number;
-    apiCalls: number;
-    storage: number;
-    concurrentJobs: number;
-    historicalData: number;
+    domains: number;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -455,13 +444,12 @@ export class UserManagementService {
   }
 
   /**
-   * Reset user quota
+   * Reset user quota — no longer applicable.
+   * Keyword/domain limits are account-level and derived from the package.
    */
-  async resetUserQuota(userId: string): Promise<void> {
-    await db.updateUserProfile(userId, {
-      daily_quota_used: 0,
-      quota_reset_date: new Date().toISOString().split('T')[0],
-    });
+  async resetUserQuota(_userId: string): Promise<void> {
+    // No-op: there is no daily quota to reset.
+    // Limits are permanent per package (max_keywords, max_domains).
   }
 
   /**
@@ -559,15 +547,6 @@ export class UserManagementService {
   }
 
   /**
-   * Get daily URL usage
-   */
-  private async getDailyUrlUsage(userId: string): Promise<number> {
-    // This should query a jobs table, but for now we'll return the used quota from profile
-    const profile = await db.getUserProfile(userId);
-    return profile?.daily_quota_used || 0;
-  }
-
-  /**
    * Get keyword usage
    */
   private async getKeywordUsage(userId: string): Promise<number> {
@@ -654,20 +633,12 @@ export class UserManagementService {
         : undefined,
       packageId: data.package_id || undefined,
       quotaUsage: {
-        dailyUrls: data.daily_quota_used || 0,
-        keywords: 0, // Should be fetched separately or cached
-        rankChecks: 0,
-        apiCalls: 0,
-        storage: 0,
+        keywords: 0, // Should be fetched separately via count query
+        domains: 0,
       },
       quotaLimits: {
-        dailyUrls: data.daily_quota_limit || quotas?.['pages'] || 100,
-        keywords: quotas?.['keywords'] || 10,
-        rankChecks: quotas?.['rank_checks'] || 100,
-        apiCalls: quotas?.['api_calls'] || 1000,
-        storage: quotas?.['storage_mb'] ? quotas['storage_mb'] * 1024 * 1024 : 1024 * 1024 * 100,
-        concurrentJobs: quotas?.['concurrent_jobs'] || 1,
-        historicalData: quotas?.['historical_days'] || 30,
+        keywords: quotas?.['max_keywords'] || 10,
+        domains: quotas?.['max_domains'] || 1,
       },
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),

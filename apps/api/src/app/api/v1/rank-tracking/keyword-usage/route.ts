@@ -17,7 +17,8 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
 interface PackageQuota {
   quota_limits: {
-    keywords_limit: number;
+    max_keywords: number;
+    max_domains?: number;
     [key: string]: number | undefined;
   } | null;
 }
@@ -65,10 +66,10 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       }
     )) as {
       count: number;
-      quota: { keywords_limit: number; [key: string]: number | undefined } | null;
+      quota: { max_keywords: number; [key: string]: number | undefined } | null;
     };
 
-    const limit = usageData.quota?.keywords_limit || 10; // Default fallback
+    const limit = usageData.quota?.max_keywords || 10; // Default fallback
     const isUnlimited = limit === -1;
 
     return formatSuccess({

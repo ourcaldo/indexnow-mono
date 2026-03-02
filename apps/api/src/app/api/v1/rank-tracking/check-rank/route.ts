@@ -77,25 +77,6 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       return formatError(notFoundError);
     }
 
-    // Check and consume user daily quota atomically (prevents TOCTOU race)
-    const { data: quotaConsumed, error: quotaError } = await (supabaseAdmin.rpc as Function)(
-      'consume_user_quota',
-      { target_user_id: auth.userId, quota_amount: 1 }
-    );
-
-    if (quotaError || !quotaConsumed) {
-      const quotaErr = await ErrorHandlingService.createError(
-        ErrorType.RATE_LIMIT,
-        'Daily quota exceeded. Quota resets daily.',
-        {
-          severity: ErrorSeverity.MEDIUM,
-          userId: auth.userId,
-          statusCode: 429,
-        }
-      );
-      return formatError(quotaErr);
-    }
-
     // Perform rank check via Firecrawl
     const domainName = keywordData.domain;
     if (!domainName) {
@@ -127,7 +108,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       deviceType
     );
 
-    // Save result to database (quota already consumed atomically above)
+    // Save result to database
     await SecureServiceRoleWrapper.executeSecureOperation(
       {
         userId: auth.userId,

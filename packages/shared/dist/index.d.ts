@@ -3771,9 +3771,6 @@ type Database = {
                     package_id: string | null;
                     subscription_start_date: string | null;
                     subscription_end_date: string | null;
-                    daily_quota_limit: number;
-                    daily_quota_used: number;
-                    quota_reset_date: string | null;
                     is_active: boolean;
                     is_suspended: boolean;
                     is_trial_active: boolean;
@@ -3799,9 +3796,6 @@ type Database = {
                     package_id?: string | null;
                     subscription_start_date?: string | null;
                     subscription_end_date?: string | null;
-                    daily_quota_limit?: number;
-                    daily_quota_used?: number;
-                    quota_reset_date?: string | null;
                     is_active?: boolean;
                     is_suspended?: boolean;
                     is_trial_active?: boolean;
@@ -3827,9 +3821,6 @@ type Database = {
                     package_id?: string | null;
                     subscription_start_date?: string | null;
                     subscription_end_date?: string | null;
-                    daily_quota_limit?: number;
-                    daily_quota_used?: number;
-                    quota_reset_date?: string | null;
                     is_active?: boolean;
                     is_suspended?: boolean;
                     is_trial_active?: boolean;
@@ -5383,13 +5374,6 @@ type Database = {
                     keyword_count: number;
                 }[];
             };
-            consume_user_quota: {
-                Args: {
-                    target_user_id: string;
-                    quota_amount: number;
-                };
-                Returns: boolean;
-            };
             activate_order_with_plan: {
                 Args: {
                     p_transaction_id: string;
@@ -5924,9 +5908,6 @@ interface AdminUserProfile {
     email_notifications: boolean;
     email_confirmed_at: string | null;
     last_sign_in_at: string | null;
-    daily_quota_limit?: number;
-    daily_quota_used?: number;
-    daily_quota_reset_date?: string;
     subscription_ends_at?: string;
     subscribed_at?: string | null;
     expires_at?: string | null;
@@ -5937,8 +5918,6 @@ interface AdminUserProfile {
         slug: string;
         description: string | null;
         pricing_tiers: Json;
-        currency: string;
-        billing_period: string;
         features: Json;
         subscribed_at?: string | null;
         expires_at?: string | null;
@@ -6082,8 +6061,6 @@ interface DashboardPackageInfo {
     name: string;
     slug: string;
     description: string | null;
-    currency: string;
-    billing_period: string;
     features: string[] | null;
     quota_limits: Record<string, number> | null;
     is_active: boolean;
@@ -6096,8 +6073,6 @@ interface DashboardProfileInfo {
     id: string;
     email: string | null;
     package: DashboardPackageInfo | null;
-    daily_quota_limit: number;
-    daily_quota_used: number;
     is_trial_active: boolean;
     trial_ends_at: string | null;
     package_id: string | null;
@@ -6114,12 +6089,11 @@ interface DashboardQuota {
         /** -1 when unlimited */
         remaining: number;
     };
-    daily_checks: {
+    domains: {
         used: number;
         limit: number;
         is_unlimited: boolean;
         remaining: number;
-        exhausted: boolean;
     };
 }
 /** Trial eligibility section of the dashboard aggregate */
@@ -6200,9 +6174,8 @@ interface PublicSettingsPackage {
     description: string;
     features: string[];
     quota_limits: {
-        daily_urls: number;
-        keywords_limit: number;
-        concurrent_jobs: number;
+        max_keywords: number;
+        max_domains: number;
     };
     pricing_tiers: Record<string, unknown>;
     is_popular: boolean;
