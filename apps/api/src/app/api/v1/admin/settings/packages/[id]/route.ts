@@ -19,7 +19,11 @@ const updatePackageSchema = z
     is_active: z.boolean().optional(),
     is_popular: z.boolean().optional(),
     sort_order: z.number().int().optional(),
-    pricing_tiers: z.array(z.record(z.string(), z.unknown())).optional(),
+    pricing_tiers: z.union([z.record(z.string(), z.unknown()), z.array(z.record(z.string(), z.unknown()))]).optional(),
+    price: z.number().nonnegative().optional(),
+    daily_quota: z.number().int().optional(),
+    monthly_quota: z.number().int().nullable().optional(),
+    paddle_price_id: z.string().max(100).nullable().optional(),
   })
   .strict();
 
@@ -84,12 +88,16 @@ export const PATCH = adminApiWrapper(
       ...(validated.description !== undefined && { description: validated.description }),
       ...(validated.currency !== undefined && { currency: validated.currency }),
       ...(validated.billing_period !== undefined && { billing_period: validated.billing_period }),
-      features: validated.features || [],
-      quota_limits: validated.quota_limits || {},
+      ...(validated.features !== undefined && { features: validated.features }),
+      ...(validated.quota_limits !== undefined && { quota_limits: validated.quota_limits }),
       ...(validated.is_active !== undefined && { is_active: validated.is_active }),
       ...(validated.is_popular !== undefined && { is_popular: validated.is_popular }),
       ...(validated.sort_order !== undefined && { sort_order: validated.sort_order }),
-      pricing_tiers: validated.pricing_tiers || [],
+      ...(validated.pricing_tiers !== undefined && { pricing_tiers: validated.pricing_tiers }),
+      ...(validated.price !== undefined && { price: validated.price }),
+      ...(validated.daily_quota !== undefined && { daily_quota: validated.daily_quota }),
+      ...(validated.monthly_quota !== undefined && { monthly_quota: validated.monthly_quota }),
+      ...(validated.paddle_price_id !== undefined && { paddle_price_id: validated.paddle_price_id }),
       updated_at: new Date().toISOString(),
     };
 

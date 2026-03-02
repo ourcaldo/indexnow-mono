@@ -54,11 +54,15 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
             )
           : [],
       quota_limits: {
-        daily_urls: pkg.daily_quota ?? 0,
-        keywords_limit:
+        max_keywords:
+          (pkg.quota_limits as Record<string, number> | null)?.max_keywords ??
           (pkg.quota_limits as Record<string, number> | null)?.keywords_limit ??
           (pkg.features as Record<string, number> | null)?.max_keywords ??
-          0,
+          10,
+        max_domains:
+          (pkg.quota_limits as Record<string, number> | null)?.max_domains ??
+          (pkg.features as Record<string, number> | null)?.max_domains ??
+          1,
       },
       pricing_tiers: pkg.pricing_tiers ?? {},
       is_popular: pkg.is_popular ?? false,

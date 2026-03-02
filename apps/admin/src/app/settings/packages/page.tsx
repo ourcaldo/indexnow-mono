@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, Save, X, Package, Pencil, CheckCircle2, XCircle, Star, Key, ArrowUpDown, ChevronRight, Globe, CreditCard } from 'lucide-react';
+import { Plus, Trash2, Save, X, Package, Pencil, CheckCircle2, XCircle, Star, Key, ArrowUpDown, ChevronRight, Globe2, CreditCard } from 'lucide-react';
 import { useAdminPackages, useSavePackage, useDeletePackage, type PaymentPackage, type PricingTier } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 
@@ -18,7 +18,7 @@ function parseFeatures(raw: unknown): string[] {
 const BILLING_PERIODS = ['monthly', 'quarterly', 'biannual', 'annual'] as const;
 
 function emptyPackage(): Partial<PaymentPackage> {
-  return { name: '', slug: '', description: '', price: 0, currency: 'USD', billing_period: 'monthly', features: [], daily_quota: 100, quota_limits: { keywords_limit: 10 }, is_active: true, sort_order: 0, pricing_tiers: {} };
+  return { name: '', slug: '', description: '', price: 0, currency: 'USD', billing_period: 'monthly', features: [], quota_limits: { max_keywords: 10, max_domains: 1 }, is_active: true, sort_order: 0, pricing_tiers: {} };
 }
 
 const inputClass = "w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
@@ -77,21 +77,30 @@ function PackageCard({ pkg, onEdit, onDelete }: {
         {/* Description */}
         <p className="text-xs text-gray-500 line-clamp-2 mt-2 mb-4 min-h-[2rem]">{pkg.description || 'No description'}</p>
 
-        {/* Price */}
-        <div className="mb-4">
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-gray-900 tabular-nums">{pkg.currency} {pkg.price.toLocaleString()}</span>
-            <span className="text-xs text-gray-400 font-medium">/ {pkg.billing_period}</span>
+        {/* Pricing from tiers */}
+        {pkg.pricing_tiers && Object.keys(pkg.pricing_tiers).length > 0 ? (
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
+            {Object.entries(pkg.pricing_tiers as Record<string, { regular_price?: number; promo_price?: number; paddle_price_id?: string }>).map(([period, tier]) => (
+              <div key={period} className="flex items-baseline gap-1">
+                <span className="text-lg font-bold text-gray-900 tabular-nums">${tier.promo_price || tier.regular_price || 0}</span>
+                <span className="text-[11px] text-gray-400">/{period}</span>
+                {tier.paddle_price_id && <span className="text-[9px] font-mono text-emerald-500 ml-0.5">linked</span>}
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="mb-4">
+            <span className="text-xs text-gray-400 italic">No pricing tiers</span>
+          </div>
+        )}
 
         {/* Quota badges */}
         <div className="flex flex-wrap gap-2 mb-4">
           <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-xs font-medium text-blue-700">
-            <Globe className="w-3 h-3" /> {pkg.daily_quota ?? 0} URLs/day
+            <Key className="w-3 h-3" /> {(pkg.quota_limits?.max_keywords ?? 0) === -1 ? 'Unlimited' : (pkg.quota_limits?.max_keywords ?? 0)} keywords
           </div>
           <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-violet-50 text-xs font-medium text-violet-700">
-            <Key className="w-3 h-3" /> {pkg.quota_limits?.keywords_limit ?? 0} keywords
+            <Globe2 className="w-3 h-3" /> {(pkg.quota_limits?.max_domains ?? 0) === -1 ? 'Unlimited' : (pkg.quota_limits?.max_domains ?? 0)} domains
           </div>
           {pkg.pricing_tiers && Object.keys(pkg.pricing_tiers).length > 0 && (
             <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-xs font-medium text-emerald-700">
@@ -223,41 +232,17 @@ function PackageEditor({ initialData, onSave, onCancel, isPending }: {
 
         <hr className="border-gray-100" />
 
-        {/* Pricing */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Limits */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Price</label>
-            <input type="number" value={editing.price ?? 0} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} className={inputClass} />
+            <label className={labelClass}>Max Keywords</label>
+            <input type="number" value={editing.quota_limits?.max_keywords ?? 10} onChange={(e) => setEditing({ ...editing, quota_limits: { ...editing.quota_limits, max_keywords: Number(e.target.value) } })} className={inputClass} />
+            <p className="text-[11px] text-gray-400 mt-1">-1 = unlimited</p>
           </div>
           <div>
-            <label className={labelClass}>Currency</label>
-            <select value={editing.currency ?? 'USD'} onChange={(e) => setEditing({ ...editing, currency: e.target.value })} className={inputClass}>
-              <option value="USD">USD</option><option value="IDR">IDR</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>Billing Period</label>
-            <select value={editing.billing_period ?? 'monthly'} onChange={(e) => setEditing({ ...editing, billing_period: e.target.value })} className={inputClass}>
-              <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="biannual">Biannual</option><option value="annual">Annual</option>
-            </select>
-          </div>
-        </div>
-
-        <hr className="border-gray-100" />
-
-        {/* Quotas */}
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className={labelClass}>Daily URL Quota</label>
-            <input type="number" value={editing.daily_quota ?? 100} onChange={(e) => setEditing({ ...editing, daily_quota: Number(e.target.value) })} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Monthly URL Quota</label>
-            <input type="number" value={editing.monthly_quota ?? 0} onChange={(e) => setEditing({ ...editing, monthly_quota: Number(e.target.value) })} className={inputClass} placeholder="0 = unlimited" />
-          </div>
-          <div>
-            <label className={labelClass}>Keywords Limit</label>
-            <input type="number" value={editing.quota_limits?.keywords_limit ?? 10} onChange={(e) => setEditing({ ...editing, quota_limits: { ...editing.quota_limits, keywords_limit: Number(e.target.value) } })} className={inputClass} />
+            <label className={labelClass}>Max Domains</label>
+            <input type="number" value={editing.quota_limits?.max_domains ?? 1} onChange={(e) => setEditing({ ...editing, quota_limits: { ...editing.quota_limits, max_domains: Number(e.target.value) } })} className={inputClass} />
+            <p className="text-[11px] text-gray-400 mt-1">-1 = unlimited</p>
           </div>
         </div>
 

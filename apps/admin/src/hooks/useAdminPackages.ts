@@ -25,10 +25,9 @@ export interface PaymentPackage {
   currency: string;
   billing_period: string;
   features: string[];
-  daily_quota: number;
-  monthly_quota?: number;
   quota_limits: {
-    keywords_limit?: number;
+    max_keywords?: number;
+    max_domains?: number;
   };
   is_active: boolean;
   is_popular?: boolean;

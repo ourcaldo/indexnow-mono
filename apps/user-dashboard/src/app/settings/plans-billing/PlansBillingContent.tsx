@@ -40,7 +40,7 @@ interface PaymentPackage {
   currency: string
   billing_period: string
   features: string[]
-  quota_limits: { daily_urls?: number; keywords_limit?: number; rank_tracking_limit?: number }
+  quota_limits: { max_keywords?: number; max_domains?: number; keywords_limit?: number }
   is_popular: boolean
   is_current: boolean
   free_trial_enabled?: boolean
