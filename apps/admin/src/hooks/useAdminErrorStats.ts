@@ -10,6 +10,7 @@ export interface ErrorStats {
     warningErrors: number;
     infoErrors: number;
     unresolvedErrors: number;
+    resolvedErrors: number;
   };
   distributions: {
     bySeverity: Record<string, number>;

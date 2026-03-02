@@ -31,10 +31,10 @@ export function useAdminErrorDetail(errorId: string): UseQueryResult<ErrorDetail
 
 export function useErrorAction(
   errorId: string
-): UseMutationResult<unknown, Error, 'acknowledge' | 'resolve'> {
+): UseMutationResult<unknown, Error, 'acknowledge' | 'resolve' | 'unresolve'> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (action: 'acknowledge' | 'resolve') => {
+    mutationFn: async (action: 'acknowledge' | 'resolve' | 'unresolve') => {
       const response = await authenticatedFetch(ADMIN_ENDPOINTS.ERROR_BY_ID(errorId), {
         method: 'PATCH',
         body: JSON.stringify({ action }),

@@ -65,6 +65,7 @@ export default function ErrorDetailPage() {
 
   const err = errorDetail.error || errorDetail;
   const sentry = (errorDetail as any).sentry as { eventId?: string; issueId?: string; url?: string; siblingCount?: number; configured?: boolean } | undefined;
+  const resolverInfo = (errorDetail as any).resolverInfo as { email?: string; full_name?: string } | undefined;
 
   return (
     <div className="bg-white min-h-full overflow-x-hidden">
@@ -106,7 +107,28 @@ export default function ErrorDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
           <div className="min-w-0 space-y-4">
             <InfoCard title="Details">
-              <InfoRow label="Status">{err.resolved_at ? 'Resolved' : err.acknowledged_at ? 'Acknowledged' : 'Unresolved'}</InfoRow>
+              <InfoRow label="Status">
+                <span className={err.resolved_at ? 'text-emerald-600 font-medium' : err.acknowledged_at ? 'text-blue-600 font-medium' : 'text-amber-600 font-medium'}>
+                  {err.resolved_at ? 'Resolved' : err.acknowledged_at ? 'Acknowledged' : 'Unresolved'}
+                </span>
+              </InfoRow>
+              <InfoRow label="Recorded">{format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}</InfoRow>
+              {err.acknowledged_at && (
+                <InfoRow label="Acknowledged">{format(new Date(err.acknowledged_at), 'MMM d, yyyy HH:mm:ss')}</InfoRow>
+              )}
+              {err.resolved_at && (
+                <InfoRow label="Resolved">
+                  <div className="text-right">
+                    <div>{format(new Date(err.resolved_at), 'MMM d, yyyy HH:mm:ss')}</div>
+                    {resolverInfo && (
+                      <div className="text-xs text-gray-400 mt-0.5">by {resolverInfo.full_name || resolverInfo.email || 'Admin'}</div>
+                    )}
+                    {!resolverInfo && err.resolved_by === null && (
+                      <div className="text-xs text-gray-400 mt-0.5">by Sentry webhook</div>
+                    )}
+                  </div>
+                </InfoRow>
+              )}
               {err.endpoint && <InfoRow label="Endpoint"><span className="font-mono text-xs break-all">{err.http_method} {err.endpoint}</span></InfoRow>}
               {err.status_code && <InfoRow label="Status code">{err.status_code}</InfoRow>}
               {err.user_id && <InfoRow label="User"><button onClick={() => router.push(`/users/${err.user_id}`)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">{err.user_id.slice(0, 12)}...</button></InfoRow>}
@@ -158,6 +180,8 @@ export default function ErrorDetailPage() {
                 <ErrorResolveActions
                   sentry={sentry}
                   isPending={errorAction.isPending}
+                  isResolved={!!err.resolved_at}
+                  isAcknowledged={!!err.acknowledged_at}
                   onAction={(action) => errorAction.mutate(action)}
                 />
               </div>

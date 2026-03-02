@@ -29,6 +29,7 @@ interface StatsResult {
     warningErrors: number;
     infoErrors: number;
     unresolvedErrors: number;
+    resolvedErrors: number;
   };
   distributions: {
     bySeverity: Record<string, number>;
@@ -120,6 +121,14 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         .gte('created_at', timeFilter);
       if (unresolvedError) throw unresolvedError;
 
+      // Resolved count
+      const { count: resolvedErrors, error: resolvedError } = await supabaseAdmin
+        .from('indb_system_error_logs')
+        .select('*', { count: 'exact', head: true })
+        .not('resolved_at', 'is', null)
+        .gte('created_at', timeFilter);
+      if (resolvedError) throw resolvedError;
+
       // Previous period count for trend
       const { count: previousPeriodErrors, error: trendError } = await supabaseAdmin
         .from('indb_system_error_logs')
@@ -143,6 +152,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           warningErrors: severityCounts['warning'] || 0,
           infoErrors: (severityCounts['info'] || 0) + (severityCounts['debug'] || 0),
           unresolvedErrors: unresolvedErrors || 0,
+          resolvedErrors: resolvedErrors || 0,
         },
         distributions: {
           bySeverity: severityCounts,

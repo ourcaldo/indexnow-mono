@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, ExternalLink, X, Copy, Check } from 'lucide-react';
-import { useAdminErrorStats, useAdminErrorList, useAdminErrorDetail, useErrorAction, type TimeRange, type SeverityFilter, type ErrorLogEntry } from '@/hooks';
+import { useAdminErrorStats, useAdminErrorList, useAdminErrorDetail, useErrorAction, type TimeRange, type SeverityFilter, type ErrorLogEntry, type ErrorStats } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { ErrorResolveActions } from '@/components/ErrorResolveActions';
 import { format } from 'date-fns';
@@ -30,7 +30,7 @@ function StatBadge({ label, value, accent, active, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl border p-4 text-left transition-all ${
+      className={`rounded-xl border p-4 text-left transition-all min-w-[140px] flex-shrink-0 ${
         active ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
@@ -47,6 +47,83 @@ const SEVERITY_COLORS: Record<string, string> = {
   info: 'bg-blue-50 text-blue-700 ring-blue-600/20',
   debug: 'bg-gray-50 text-gray-600 ring-gray-500/20',
 };
+
+/* ─── Scrollable stat card strip with arrow buttons ──────── */
+
+function StatCardStrip({ stats, severity, onSeverityClick }: {
+  stats: ErrorStats | null | undefined;
+  severity: SeverityFilter;
+  onSeverityClick: (s: SeverityFilter) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setShowLeft(el.scrollLeft > 4);
+    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll);
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll]);
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="relative border-b border-gray-200">
+      {/* Left arrow */}
+      {showLeft && (
+        <button
+          onClick={() => scroll('left')}
+          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4 text-gray-600" />
+        </button>
+      )}
+
+      {/* Cards */}
+      <div
+        ref={scrollRef}
+        className="flex gap-3 px-8 py-5 overflow-x-auto"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style>{`.stat-scroll::-webkit-scrollbar { display: none; }`}</style>
+        <StatBadge label="All Errors" value={stats?.summary?.totalErrors ?? 0} active={severity === 'all'} onClick={() => onSeverityClick('all')} />
+        <StatBadge label="Critical" value={stats?.summary?.criticalErrors ?? 0} accent={(stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-600' : undefined} active={severity === 'critical'} onClick={() => onSeverityClick('critical')} />
+        <StatBadge label="Error" value={stats?.summary?.highErrors ?? 0} accent={(stats?.summary?.highErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={severity === 'error'} onClick={() => onSeverityClick('error')} />
+        <StatBadge label="Warning" value={stats?.summary?.warningErrors ?? 0} active={severity === 'warning'} onClick={() => onSeverityClick('warning')} />
+        <StatBadge label="Info / Debug" value={stats?.summary?.infoErrors ?? 0} active={severity === 'info'} onClick={() => onSeverityClick('info')} />
+        <StatBadge label="Unresolved" value={stats?.summary?.unresolvedErrors ?? 0} accent={(stats?.summary?.unresolvedErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={false} />
+        <StatBadge label="Resolved" value={stats?.summary?.resolvedErrors ?? 0} accent={(stats?.summary?.resolvedErrors ?? 0) > 0 ? 'text-emerald-600' : undefined} active={false} />
+      </div>
+
+      {/* Right arrow */}
+      {showRight && (
+        <button
+          onClick={() => scroll('right')}
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <ChevronRight className="w-4 h-4 text-gray-600" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 /* ─── Copyable ID chip ───────────────────────────────────── */
 
@@ -87,6 +164,7 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
 
   const err = errorDetail?.error || errorDetail as any;
   const sentry = (errorDetail as any)?.sentry as { eventId?: string; issueId?: string; url?: string; siblingCount?: number; configured?: boolean } | undefined;
+  const resolverInfo = (errorDetail as any)?.resolverInfo as { email?: string; full_name?: string } | undefined;
 
   return (
     <>
@@ -159,6 +237,27 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                     {err.resolved_at ? 'Resolved' : err.acknowledged_at ? 'Acknowledged' : 'Unresolved'}
                   </span>
                 </DetailRow>
+                <DetailRow label="Recorded">
+                  {format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}
+                </DetailRow>
+                {err.acknowledged_at && (
+                  <DetailRow label="Acknowledged">
+                    {format(new Date(err.acknowledged_at), 'MMM d, yyyy HH:mm:ss')}
+                  </DetailRow>
+                )}
+                {err.resolved_at && (
+                  <DetailRow label="Resolved">
+                    <div className="text-right">
+                      <div>{format(new Date(err.resolved_at), 'MMM d, yyyy HH:mm:ss')}</div>
+                      {resolverInfo && (
+                        <div className="text-xs text-gray-400 mt-0.5">by {resolverInfo.full_name || resolverInfo.email || 'Admin'}</div>
+                      )}
+                      {!resolverInfo && err.resolved_by === null && (
+                        <div className="text-xs text-gray-400 mt-0.5">by Sentry webhook</div>
+                      )}
+                    </div>
+                  </DetailRow>
+                )}
                 {err.endpoint && (
                   <DetailRow label="Endpoint">
                     <span className="font-mono text-xs">{err.http_method} {err.endpoint}</span>
@@ -218,6 +317,8 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                 <ErrorResolveActions
                   sentry={sentry}
                   isPending={errorAction.isPending}
+                  isResolved={!!err.resolved_at}
+                  isAcknowledged={!!err.acknowledged_at}
                   onAction={(action) => errorAction.mutate(action)}
                 />
               </div>
@@ -287,18 +388,11 @@ export default function ErrorsPage() {
       </div>
 
       {isLoading ? (
-        <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-6 gap-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>
+        <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-7 gap-4">{Array.from({ length: 7 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>
       ) : (
         <>
-          {/* ─── Stat badges (clickable severity filters) ──── */}
-          <div className="px-8 py-5 border-b border-gray-200 grid grid-cols-2 lg:grid-cols-6 gap-3">
-            <StatBadge label="All Errors" value={stats?.summary?.totalErrors ?? 0} active={severity === 'all'} onClick={() => handleSeverityClick('all')} />
-            <StatBadge label="Critical" value={stats?.summary?.criticalErrors ?? 0} accent={(stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-600' : undefined} active={severity === 'critical'} onClick={() => handleSeverityClick('critical')} />
-            <StatBadge label="Error" value={stats?.summary?.highErrors ?? 0} accent={(stats?.summary?.highErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={severity === 'error'} onClick={() => handleSeverityClick('error')} />
-            <StatBadge label="Warning" value={stats?.summary?.warningErrors ?? 0} active={severity === 'warning'} onClick={() => handleSeverityClick('warning')} />
-            <StatBadge label="Info / Debug" value={stats?.summary?.infoErrors ?? 0} active={severity === 'info'} onClick={() => handleSeverityClick('info')} />
-            <StatBadge label="Unresolved" value={stats?.summary?.unresolvedErrors ?? 0} accent={(stats?.summary?.unresolvedErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={false} />
-          </div>
+          {/* ─── Stat badges with arrow scroll ─────────────── */}
+          <StatCardStrip stats={stats} severity={severity} onSeverityClick={handleSeverityClick} />
 
           {/* ─── Errors table ────────────────────────────────── */}
           {listLoading ? (
@@ -328,7 +422,7 @@ export default function ErrorsPage() {
                       return (
                         <tr key={err.id} onClick={() => setSelectedErrorId(err.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
                           <td className="pl-8 pr-3 py-3 text-xs text-gray-400 tabular-nums">{rowNum}</td>
-                          <td className="px-3 py-3 text-sm text-gray-900 font-mono">{err.id.slice(0, 8)}</td>
+                          <td className={`px-3 py-3 text-sm font-mono ${err.resolved_at ? 'text-emerald-600' : 'text-red-600'}`}>{err.id.slice(0, 8)}</td>
                           <td className="px-3 py-3">
                             <span className={`inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}>{err.severity}</span>
                           </td>

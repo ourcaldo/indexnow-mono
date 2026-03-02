@@ -138,6 +138,17 @@ export const GET = adminApiWrapper(async (
         userInfo = user;
       }
 
+      // Get resolver info if resolved_by exists
+      let resolverInfo = null;
+      if (systemError.resolved_by) {
+        const { data: resolver } = await supabaseAdmin
+          .from('indb_auth_user_profiles')
+          .select('email, full_name')
+          .eq('user_id', systemError.resolved_by)
+          .single();
+        resolverInfo = resolver;
+      }
+
       // Get related errors (same type, same user, same endpoint - last 24h)
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: relatedErrors } = await supabaseAdmin
@@ -152,6 +163,7 @@ export const GET = adminApiWrapper(async (
       return {
         error: systemError,
         userInfo,
+        resolverInfo,
         relatedErrors: (relatedErrors || []) as Pick<SystemErrorLog, 'id' | 'error_type' | 'message' | 'severity' | 'created_at'>[],
         sentry: {
           eventId: sentryEventId,
@@ -168,7 +180,7 @@ export const GET = adminApiWrapper(async (
 });
 
 const errorActionSchema = z.object({
-  action: z.enum(['resolve', 'acknowledge']),
+  action: z.enum(['resolve', 'acknowledge', 'unresolve']),
 });
 
 /**
@@ -216,6 +228,9 @@ export const PATCH = adminApiWrapper(async (
       } else if (action === 'acknowledge') {
         updateData.acknowledged_at = new Date().toISOString();
         updateData.acknowledged_by = adminUser.id;
+      } else if (action === 'unresolve') {
+        updateData.resolved_at = null;
+        updateData.resolved_by = null;
       }
 
       // Update the primary error
@@ -231,6 +246,21 @@ export const PATCH = adminApiWrapper(async (
       const updatedError = data as SystemErrorLog;
       let sentryResolved = false;
       let siblingResolved = 0;
+
+      // On unresolve: reopen in Sentry
+      if (action === 'unresolve') {
+        const sentryIssueId = updatedError.sentry_issue_id;
+        if (sentryIssueId && isSentryApiConfigured()) {
+          const { unresolveSentryIssue } = await import('@/lib/integrations/sentry-api');
+          await unresolveSentryIssue(sentryIssueId);
+        }
+        return {
+          error: updatedError,
+          action,
+          updatedAt: new Date().toISOString(),
+          sentry: { resolved: false, siblingResolved: 0 },
+        };
+      }
 
       // On resolve: sync to Sentry + resolve siblings sharing the same issue
       if (action === 'resolve') {
