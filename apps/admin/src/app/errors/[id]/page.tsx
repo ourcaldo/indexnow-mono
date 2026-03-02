@@ -1,9 +1,10 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle, Eye, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { useAdminErrorDetail, useErrorAction } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
+import { ErrorResolveActions } from '@/components/ErrorResolveActions';
 import { format } from 'date-fns';
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -154,14 +155,11 @@ export default function ErrorDetailPage() {
                     <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-50" />
                   </button>
                 )}
-                <button onClick={() => errorAction.mutate('acknowledge')} disabled={errorAction.isPending}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors">
-                  <Eye className="w-4 h-4" /> Acknowledge
-                </button>
-                <button onClick={() => errorAction.mutate('resolve')} disabled={errorAction.isPending}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors">
-                  <CheckCircle className="w-4 h-4" /> Mark Resolved
-                </button>
+                <ErrorResolveActions
+                  sentry={sentry}
+                  isPending={errorAction.isPending}
+                  onAction={(action) => errorAction.mutate(action)}
+                />
               </div>
             </div>
 

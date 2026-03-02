@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { RefreshCw, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, ExternalLink, X, Eye, CheckCircle, Copy, Check } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, ExternalLink, X, Copy, Check } from 'lucide-react';
 import { useAdminErrorStats, useAdminErrorList, useAdminErrorDetail, useErrorAction, type TimeRange, type SeverityFilter, type ErrorLogEntry } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
+import { ErrorResolveActions } from '@/components/ErrorResolveActions';
 import { format } from 'date-fns';
 
 /** Safely display a message that might be an object or the literal string "[object Object]" */
@@ -76,7 +77,6 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => void }) {
   const { data: errorDetail, isLoading } = useAdminErrorDetail(errorId);
   const errorAction = useErrorAction(errorId);
-  const [showResolveConfirm, setShowResolveConfirm] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -87,20 +87,6 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
 
   const err = errorDetail?.error || errorDetail as any;
   const sentry = (errorDetail as any)?.sentry as { eventId?: string; issueId?: string; url?: string; siblingCount?: number; configured?: boolean } | undefined;
-
-  const handleResolve = () => {
-    // Show confirmation if there are sibling errors
-    if (sentry?.siblingCount && sentry.siblingCount > 0) {
-      setShowResolveConfirm(true);
-    } else {
-      errorAction.mutate('resolve');
-    }
-  };
-
-  const confirmResolve = () => {
-    setShowResolveConfirm(false);
-    errorAction.mutate('resolve');
-  };
 
   return (
     <>
@@ -228,38 +214,12 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
               )}
 
               {/* Actions */}
-              <div className="pt-2 space-y-2">
-                <button onClick={() => errorAction.mutate('acknowledge')} disabled={errorAction.isPending}
-                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors">
-                  <Eye className="w-4 h-4" /> Acknowledge
-                </button>
-
-                {/* Resolve with group confirmation */}
-                {showResolveConfirm ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                    <p className="text-xs text-amber-800">
-                      This will also resolve <span className="font-semibold">{sentry?.siblingCount} related error{(sentry?.siblingCount ?? 0) > 1 ? 's' : ''}</span> grouped under the same Sentry issue and mark the issue as resolved in Sentry.
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button onClick={confirmResolve} disabled={errorAction.isPending}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors">
-                        Resolve All
-                      </button>
-                      <button onClick={() => setShowResolveConfirm(false)}
-                        className="px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={handleResolve} disabled={errorAction.isPending}
-                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-40 transition-colors">
-                    <CheckCircle className="w-4 h-4" />
-                    {sentry?.siblingCount && sentry.siblingCount > 0
-                      ? `Mark Resolved (+ ${sentry.siblingCount} related)`
-                      : 'Mark Resolved'}
-                  </button>
-                )}
+              <div className="pt-2">
+                <ErrorResolveActions
+                  sentry={sentry}
+                  isPending={errorAction.isPending}
+                  onAction={(action) => errorAction.mutate(action)}
+                />
               </div>
             </>
           )}
