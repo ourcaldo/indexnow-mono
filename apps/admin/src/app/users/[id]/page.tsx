@@ -9,49 +9,19 @@ import { useAdminPageViewLogger } from '@indexnow/ui';
 import { useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfile } from '@/hooks';
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import {
-  ArrowLeft, Shield, Calendar, Package, AlertTriangle,
-  CheckCircle, Activity, Ban, Clock,
+  ArrowLeft, Shield, Package, AlertTriangle,
+  Activity, Ban, Clock,
 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import { Modal } from '@/components/Modal';
+import { UserDetailContent } from '@/components/UserDetailContent';
 
 async function fetchUserDetail(userId: string): Promise<UserProfile | null> {
   const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
   if (!response.ok) throw new Error('Failed to fetch user');
   const data = await response.json();
   return data.data?.user ?? null;
-}
-
-/* ─── Shared components ──────────────────────────────────── */
-
-function Avatar({ name }: { name: string }) {
-  const initials = (name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  return (
-    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-      <span className="text-xl font-bold text-white">{initials}</span>
-    </div>
-  );
-}
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-gray-200">
-      <div className="px-5 py-3.5 border-b border-gray-100">
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      </div>
-      <div className="px-5 py-1">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-4">
-      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-900 text-right">{children}</span>
-    </div>
-  );
 }
 
 /* ─── Page ───────────────────────────────────────────────── */
@@ -151,68 +121,11 @@ export default function UserDetailPage() {
           <ArrowLeft className="w-4 h-4" />
           Users
         </button>
-        <div className="flex items-start gap-5">
-          <Avatar name={user.full_name || ''} />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-gray-900">{user.full_name || 'Unnamed User'}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{user.email}</p>
-            <div className="flex items-center gap-3 mt-3">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ring-1 ${
-                user.role === 'super_admin' ? 'bg-purple-50 text-purple-700 ring-purple-600/20' :
-                user.role === 'admin' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' :
-                'bg-gray-50 text-gray-600 ring-gray-500/20'
-              }`}>
-                <Shield className="w-3 h-3" />
-                {user.role.replace(/_/g, ' ')}
-              </span>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.email_confirmed_at ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {user.email_confirmed_at ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                {user.email_confirmed_at ? 'Verified' : 'Unverified'}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
-        {/* Left column – info cards */}
-        <div className="space-y-4">
-          <InfoCard title="Profile">
-            <InfoRow label="User ID">{user.user_id}</InfoRow>
-            <InfoRow label="Full name">{user.full_name || '\u2014'}</InfoRow>
-            <InfoRow label="Email">
-              <span className="flex items-center gap-1.5">{user.email} {user.email_confirmed_at && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}</span>
-            </InfoRow>
-            <InfoRow label="Phone">{user.phone_number || '\u2014'}</InfoRow>
-            <InfoRow label="Role">{user.role.replace(/_/g, ' ')}</InfoRow>
-            <InfoRow label="Notifications">{user.email_notifications ? 'Enabled' : 'Disabled'}</InfoRow>
-          </InfoCard>
-
-          <InfoCard title="Subscription">
-            <InfoRow label="Package">
-              <span className="flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-gray-400" />
-                {user.package?.name || 'No package'}
-              </span>
-            </InfoRow>
-            {user.subscribed_at && <InfoRow label="Subscribed">{format(new Date(user.subscribed_at), 'MMM d, yyyy')}</InfoRow>}
-            {user.expires_at && <InfoRow label="Expires">{format(new Date(user.expires_at), 'MMM d, yyyy')}</InfoRow>}
-            {user.package?.quota_limits && (
-              <>
-                <InfoRow label="Max keywords">{user.package.quota_limits.max_keywords === -1 ? 'Unlimited' : (user.package.quota_limits.max_keywords ?? '\u2014')}</InfoRow>
-                <InfoRow label="Max domains">{user.package.quota_limits.max_domains === -1 ? 'Unlimited' : (user.package.quota_limits.max_domains ?? '\u2014')}</InfoRow>
-              </>
-            )}
-          </InfoCard>
-
-          <InfoCard title="Timeline">
-            <InfoRow label="Joined">
-              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" />{format(new Date(user.created_at), 'MMM d, yyyy')}</span>
-            </InfoRow>
-            <InfoRow label="Last sign in">{user.last_sign_in_at ? formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true }) : 'Never'}</InfoRow>
-            <InfoRow label="Updated">{formatDistanceToNow(new Date(user.updated_at), { addSuffix: true })}</InfoRow>
-          </InfoCard>
-        </div>
+      <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+        {/* Left column – shared detail content */}
+        <UserDetailContent user={user} variant="full" recentLogs={recentLogs} />
 
         {/* Right column – actions & activity */}
         <div className="space-y-4">

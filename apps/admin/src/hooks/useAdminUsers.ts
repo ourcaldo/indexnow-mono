@@ -29,6 +29,10 @@ export interface UserProfile {
       max_domains: number;
     };
   };
+  usage?: {
+    keywords_used: number;
+    domains_used: number;
+  };
   email?: string;
   email_confirmed_at?: string;
   email_verified?: boolean;

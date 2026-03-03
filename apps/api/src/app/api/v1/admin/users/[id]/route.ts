@@ -132,11 +132,27 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
     );
   }
 
+  // Fetch actual usage counts (keywords + domains) in parallel
+  const [keywordCountResult, domainCountResult] = await Promise.all([
+    supabaseAdmin
+      .from('indb_rank_keywords')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    supabaseAdmin
+      .from('indb_keyword_domains')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+  ]);
+
   const userWithAuthData = {
     ...profile,
     email: authUser?.user?.email || null,
     email_confirmed_at: authUser?.user?.email_confirmed_at || null,
     last_sign_in_at: authUser?.user?.last_sign_in_at || null,
+    usage: {
+      keywords_used: keywordCountResult.count ?? 0,
+      domains_used: domainCountResult.count ?? 0,
+    },
   };
 
   await ActivityLogger.logAdminAction(
