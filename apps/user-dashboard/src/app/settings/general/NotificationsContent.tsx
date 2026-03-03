@@ -3,45 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useActivityLogger } from '@indexnow/ui/hooks'
-import { useToast } from '@indexnow/ui'
+import { useToast, ToggleSwitch } from '@indexnow/ui'
 import { AUTH_ENDPOINTS } from '@indexnow/shared'
 import { authenticatedFetch } from '@indexnow/supabase-client'
 import { Loader2 } from 'lucide-react'
 import { useUserSettings } from '../../../lib/hooks'
-
-/* ─── Toggle Switch ─── */
-function Toggle({
-  checked,
-  onChange,
-  testId,
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-  testId?: string
-}) {
-  return (
-    <label className="relative inline-flex cursor-pointer items-center shrink-0">
-      <input
-        type="checkbox"
-        className="sr-only"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        data-testid={testId}
-      />
-      <div
-        className={`h-[22px] w-10 rounded-full transition-colors duration-200 ${
-          checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-        }`}
-      >
-        <div
-          className={`mt-[2px] ml-[2px] h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            checked ? 'translate-x-[18px]' : 'translate-x-0'
-          }`}
-        />
-      </div>
-    </label>
-  )
-}
 
 export default function NotificationsContent() {
   const { addToast } = useToast()
@@ -127,7 +93,7 @@ export default function NotificationsContent() {
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{item.label}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.desc}</p>
             </div>
-            <Toggle
+            <ToggleSwitch
               checked={notifications[item.key]}
               onChange={(v) => setNotifications((p) => ({ ...p, [item.key]: v }))}
               testId={`switch-${item.key}`}

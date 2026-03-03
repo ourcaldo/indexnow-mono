@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, RefreshCw, ChevronLeft, ChevronRight, ShoppingCart, Clock, CheckCircle2 } from 'lucide-react';
+import { Search, RefreshCw, ShoppingCart, Clock, CheckCircle2 } from 'lucide-react';
 import { useAdminOrders } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
+import { Pagination } from '@/components/shared-primitives';
 
 const STATUS_STYLES: Record<string, string> = {
   completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
@@ -126,15 +127,7 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-8 py-3 border-t border-gray-200">
-              <span className="text-xs text-gray-500 tabular-nums">Page {page} of {totalPages}</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
-              </div>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </div>

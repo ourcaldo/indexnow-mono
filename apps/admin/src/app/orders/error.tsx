@@ -1,15 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { RouteError } from '@/components/shared-primitives';
 
-export default function OrdersError({ error, reset }: { error: Error; reset: () => void }) {
-  useEffect(() => { console.error('Orders error:', error); }, [error]);
-  return (
-    <div className="flex items-center justify-center min-h-[40vh]">
-      <div className="text-center space-y-3">
-        <p className="text-sm text-gray-500">Failed to load orders</p>
-        <button onClick={reset} className="px-3 py-1.5 text-sm text-white bg-gray-900 rounded-md hover:bg-gray-800 transition-colors">Retry</button>
-      </div>
-    </div>
-  );
+export default function OrdersError(props: { error: Error; reset: () => void }) {
+  return <RouteError {...props} message="Failed to load orders" />;
 }

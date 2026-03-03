@@ -128,9 +128,9 @@ function UsageBar({
 
 export type ActivityLog = {
   id: string;
-  event_type?: string;
-  action?: string;
-  action_description?: string;
+  event_type?: string | null;
+  action?: string | null;
+  action_description?: string | null;
   created_at: string;
 };
 

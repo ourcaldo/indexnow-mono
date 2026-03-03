@@ -1,64 +1,11 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, Copy, Check, SquareArrowOutUpRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { useAdminActivityDetail } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-gray-200">
-      <div className="px-5 py-3.5 border-b border-gray-100"><h3 className="text-sm font-semibold text-gray-900">{title}</h3></div>
-      <div className="px-5 py-1">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-4">
-      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-700 text-right max-w-[60%] break-all">{children}</span>
-    </div>
-  );
-}
-
-function CopyableId({ id, label }: { id: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  return (
-    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group font-mono text-sm text-gray-700 hover:text-gray-900 transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
-      {id}
-      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
-    </button>
-  );
-}
-
-function IdWithOpenButton({ id, href, label }: { id: string; href: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-sm text-gray-700 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
-        {id}
-        {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
-      </button>
-      <button onClick={() => window.open(href, '_blank')} className="p-0.5 rounded text-gray-300 hover:text-blue-600 transition-colors" title={`Open ${label ?? 'detail'} in new tab`}>
-        <SquareArrowOutUpRight className="w-3.5 h-3.5" />
-      </button>
-    </span>
-  );
-}
+import { InfoCard, InfoRow, CopyableId, IdWithOpenButton } from '@/components/shared-primitives';
 
 export default function ActivityDetailPage() {
   const params = useParams();

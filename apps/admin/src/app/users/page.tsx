@@ -6,10 +6,11 @@ import { ADMIN_ENDPOINTS } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import {
-  Search, RefreshCw, ChevronLeft, ChevronRight,
+  Search, RefreshCw,
   MoreHorizontal, Shield, Package, Ban,
   X, ExternalLink,
 } from 'lucide-react';
+import { Pagination } from '@/components/shared-primitives';
 import { useAdminUsers, useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfile } from '@/hooks';
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import { formatDistanceToNow } from 'date-fns';
@@ -309,30 +310,12 @@ export default function UsersPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-8 py-3 border-t border-gray-200">
-              <span className="text-xs text-gray-500 tabular-nums">
-                Showing {(page - 1) * limit + 1}&ndash;{Math.min(page * limit, totalItems)} of {totalItems}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-xs text-gray-500 px-2 tabular-nums">Page {page} of {totalPages}</span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            label={`Showing ${(page - 1) * limit + 1}\u2013${Math.min(page * limit, totalItems)} of ${totalItems}`}
+          />
         </>
       )}
 

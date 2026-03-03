@@ -6,24 +6,7 @@ import { useAdminErrorDetail, useErrorAction } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { ErrorResolveActions } from '@/components/ErrorResolveActions';
 import { format } from 'date-fns';
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-gray-200">
-      <div className="px-5 py-3.5 border-b border-gray-100"><h3 className="text-sm font-semibold text-gray-900">{title}</h3></div>
-      <div className="px-5 py-1">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-4">
-      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-900 text-right max-w-[65%] break-all">{children}</span>
-    </div>
-  );
-}
+import { InfoCard, InfoRow } from '@/components/shared-primitives';
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical: 'bg-red-50 text-red-700 ring-red-600/20',

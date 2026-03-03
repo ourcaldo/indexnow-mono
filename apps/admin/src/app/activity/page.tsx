@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, ChevronLeft, ChevronRight, X, ExternalLink, CheckCircle, XCircle, Copy, Check, SquareArrowOutUpRight } from 'lucide-react';
+import { RefreshCw, X, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
 import { useAdminActivity, useAdminActivityDetail } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
+import { CopyableId, IdWithOpenButton, Pagination } from '@/components/shared-primitives';
 
 const DAYS_OPTIONS = [
   { label: '24h', value: '1' },
@@ -47,43 +48,6 @@ function useCopyToClipboard() {
     setTimeout(() => setCopiedId(null), 1500);
   }, []);
   return { copiedId, copy };
-}
-
-function CopyableId({ id, label, full }: { id: string; label?: string; full?: boolean }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  return (
-    <button onClick={handleCopy} className="inline-flex items-center gap-1.5 group text-sm text-gray-700 hover:text-gray-900 transition-colors" title={`Click to copy${label ? ` ${label}` : ''}: ${id}`}>
-      <span className="font-mono">{full ? id : id.slice(0, 8)}</span>
-      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
-    </button>
-  );
-}
-
-function IdWithOpenButton({ id, href, label }: { id: string; href: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <button onClick={handleCopy} className="inline-flex items-center gap-1 group text-sm text-gray-700 hover:text-gray-900 font-mono transition-colors" title={`Click to copy ${label ?? 'ID'}`}>
-        {id}
-        {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />}
-      </button>
-      <button onClick={(e) => { e.stopPropagation(); window.open(href, '_blank'); }} className="p-0.5 rounded text-gray-300 hover:text-blue-600 transition-colors" title={`Open ${label ?? 'detail'} in new tab`}>
-        <SquareArrowOutUpRight className="w-3 h-3" />
-      </button>
-    </span>
-  );
 }
 
 /* ─── Slide-over panel ───────────────────────────────────── */
@@ -304,15 +268,7 @@ export default function ActivityPage() {
               </tbody>
             </table>
           </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-8 py-3 border-t border-gray-200">
-              <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
-              </div>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
 

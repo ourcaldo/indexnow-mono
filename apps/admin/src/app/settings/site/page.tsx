@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Send } from 'lucide-react';
 import { useAdminSiteSettings, useSaveSiteSettings, useTestEmail, type UI_SiteSettings } from '@/hooks';
-import { useAdminPageViewLogger } from '@indexnow/ui';
+import { useAdminPageViewLogger, ToggleSwitch } from '@indexnow/ui';
 
 function FormCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -24,15 +24,6 @@ function Field({ label, description, children }: { label: string; description?: 
       {description && <p className="text-xs text-gray-400 mb-1.5">{description}</p>}
       {children}
     </div>
-  );
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button type="button" onClick={() => onChange(!checked)}
-      className={`relative w-10 h-[22px] rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}>
-      <span className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[18px]' : ''}`} />
-    </button>
   );
 }
 
@@ -96,11 +87,11 @@ export default function SiteSettingsPage() {
         </Field>
         <div className="flex items-center justify-between">
           <Field label="Maintenance mode" description="Block user access during maintenance"><div /></Field>
-          <Toggle checked={!!form.maintenance_mode} onChange={(v) => update('maintenance_mode', v)} />
+          <ToggleSwitch checked={!!form.maintenance_mode} onChange={(v) => update('maintenance_mode', v)} />
         </div>
         <div className="flex items-center justify-between">
           <Field label="Registration" description="Allow new user sign-ups"><div /></Field>
-          <Toggle checked={form.registration_enabled !== false} onChange={(v) => update('registration_enabled', v)} />
+          <ToggleSwitch checked={form.registration_enabled !== false} onChange={(v) => update('registration_enabled', v)} />
         </div>
       </FormCard>
 

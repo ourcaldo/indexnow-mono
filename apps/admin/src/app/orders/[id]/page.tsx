@@ -6,6 +6,7 @@ import { ArrowLeft, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useAdminOrderDetail, useUpdateOrderStatus } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { format } from 'date-fns';
+import { InfoCard, InfoRow } from '@/components/shared-primitives';
 
 const STATUS_STYLES: Record<string, string> = {
   completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
@@ -15,26 +16,6 @@ const STATUS_STYLES: Record<string, string> = {
   rejected: 'bg-red-50 text-red-700 ring-red-600/20',
   cancelled: 'bg-gray-50 text-gray-600 ring-gray-500/20',
 };
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-gray-200">
-      <div className="px-5 py-3.5 border-b border-gray-100">
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      </div>
-      <div className="px-5 py-1">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-4">
-      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-900 text-right">{children}</span>
-    </div>
-  );
-}
 
 export default function OrderDetailPage() {
   const params = useParams();
