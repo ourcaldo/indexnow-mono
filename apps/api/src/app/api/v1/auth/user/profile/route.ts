@@ -32,7 +32,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
           .select(
             `
             *,
-            package:indb_payment_packages(id, name, slug, description, currency, billing_period, features, quota_limits, is_active, pricing_tiers)
+            package:indb_payment_packages(id, name, slug, description, features, quota_limits, is_active, pricing_tiers)
           `
           )
           .eq('user_id', auth.userId)

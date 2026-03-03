@@ -53,8 +53,6 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
             slug,
             description,
             pricing_tiers,
-            currency,
-            billing_period,
             features,
             quota_limits,
             is_active
