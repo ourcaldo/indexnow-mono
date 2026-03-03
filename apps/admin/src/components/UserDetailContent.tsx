@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, Calendar, CheckCircle, AlertTriangle, Shield, Clock, Activity } from 'lucide-react';
+import { Package, Calendar, CheckCircle, AlertTriangle, Shield, Clock } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { UserProfile } from '@/hooks';
 
@@ -273,8 +273,8 @@ export function UserDetailContent({
         </InfoCard>
       )}
 
-      {/* Recent Activity */}
-      {recentLogs.length > 0 && (
+      {/* Recent Activity – only in compact (slide-over); full detail page has its own sidebar activity */}
+      {isCompact && recentLogs.length > 0 && (
         <InfoCard title="Recent Activity">
           <div className="divide-y divide-gray-50">
             {recentLogs.map((log) => (
@@ -287,11 +287,6 @@ export function UserDetailContent({
                     {format(new Date(log.created_at), 'MMM d, HH:mm')}
                   </span>
                 </div>
-                {!isCompact && log.action_description && (
-                  <div className="text-xs text-gray-500 mt-0.5 truncate">
-                    {log.action_description}
-                  </div>
-                )}
               </div>
             ))}
           </div>
