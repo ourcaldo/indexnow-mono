@@ -62,7 +62,6 @@ CREATE TABLE IF NOT EXISTS indb_payment_packages (
   -- Features & pricing
   features JSONB, -- Display features list (array of strings or key-value for UI)
   pricing_tiers JSONB DEFAULT '{}'::jsonb, -- { monthly: { regular_price, promo_price, paddle_price_id }, annual: { ... } }
-  free_trial_enabled BOOLEAN DEFAULT FALSE,
   is_active BOOLEAN DEFAULT TRUE,
   is_popular BOOLEAN DEFAULT FALSE,
   sort_order INTEGER DEFAULT 0,

@@ -126,7 +126,6 @@ export interface BillingPackage {
   }
   features: string[]
   is_active: boolean
-  free_trial_enabled?: boolean
 }
 
 // OrderDetails is now exported from @indexnow/shared as OrderDetailsResponse.

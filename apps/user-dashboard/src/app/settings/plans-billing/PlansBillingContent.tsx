@@ -40,7 +40,6 @@ interface PaymentPackage {
   quota_limits: { max_keywords?: number; max_domains?: number }
   is_popular: boolean
   is_current: boolean
-  free_trial_enabled?: boolean
   pricing_tiers: Record<string, PricingTier>
 }
 
@@ -174,7 +173,6 @@ export default function BillingPage() {
   /* UI state */
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly')
   const [subscribing, setSubscribing] = useState<string | null>(null)
-  const [startingTrial, setStartingTrial] = useState<string | null>(null)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -202,7 +200,6 @@ export default function BillingPage() {
   const dashBilling = dashboardData?.billing
   const currentPkgId = (dashProfile?.package_id as string) || dashBilling?.current_package_id || null
   const keywordUsage = dashboardData?.user?.quota as KeywordUsageData | undefined
-  const trialEligible = (dashboardData?.user?.trial as { eligible?: boolean })?.eligible ?? null
 
   const loading = billingLoading || historyLoading || dashLoading || pkgLoading
   const error = billingError
@@ -232,11 +229,6 @@ export default function BillingPage() {
   const handleSubscribe = (pkgId: string) => {
     setSubscribing(pkgId)
     window.location.href = checkoutUrl(pkgId, billingPeriod)
-  }
-
-  const handleStartTrial = (pkgId: string) => {
-    setStartingTrial(pkgId)
-    window.location.href = checkoutUrl(pkgId, 'monthly', true)
   }
 
   const handleCancelSuccess = () => {
@@ -375,7 +367,6 @@ export default function BillingPage() {
           {packages.map((pkg) => {
             const isCurrent = pkg.is_current || pkg.id === currentPkgId
             const pricing = getPricing(pkg, billingPeriod)
-            const trialOk = trialEligible && pkg.free_trial_enabled
             const isExpanded = expandedPlan === pkg.id
 
             return (
@@ -437,17 +428,7 @@ export default function BillingPage() {
                         <span className="text-xs text-gray-500 dark:text-gray-400">{f}</span>
                       </div>
                     ))}
-                    {trialOk && !isCurrent && (
-                      <div className="col-span-2 mt-2">
-                        <button
-                          onClick={() => handleStartTrial(pkg.id)}
-                          disabled={startingTrial === pkg.id}
-                          className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline disabled:opacity-50"
-                        >
-                          {startingTrial === pkg.id ? 'Starting...' : 'Start free 3-day trial →'}
-                        </button>
-                      </div>
-                    )}
+
                   </div>
                 )}
               </div>

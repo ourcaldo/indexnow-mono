@@ -61,10 +61,16 @@ export function useSavePackage(): UseMutationResult<unknown, Error, Partial<Paym
         : ADMIN_ENDPOINTS.PACKAGES;
       const method = packageData.id ? 'PATCH' : 'POST';
 
+      // Strip server-managed fields that the API schema doesn't accept
+      const { id: _id, created_at: _ca, updated_at: _ua, ...body } = packageData as Record<string, unknown>;
+      // Also strip any DB-returned fields not in the API update schema
+      delete body.deleted_at;
+      delete body.free_trial_enabled;
+
       const response = await authenticatedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(packageData),
+        body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error('Failed to save package');
       return response.json();

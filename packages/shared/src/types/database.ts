@@ -1033,7 +1033,6 @@ export type Database = {
           features: PackageFeatures | null;
           quota_limits: PackageQuotaLimits | null;
           pricing_tiers: PackagePricingTier[] | PackagePricingTiers | null;
-          free_trial_enabled: boolean;
           is_active: boolean;
           is_popular: boolean;
           sort_order: number;
@@ -1049,7 +1048,6 @@ export type Database = {
           features?: PackageFeatures | null;
           quota_limits?: PackageQuotaLimits | null;
           pricing_tiers?: PackagePricingTier[] | PackagePricingTiers | null;
-          free_trial_enabled?: boolean;
           is_active?: boolean;
           is_popular?: boolean;
           sort_order?: number;
@@ -1065,7 +1063,6 @@ export type Database = {
           features?: PackageFeatures | null;
           quota_limits?: PackageQuotaLimits | null;
           pricing_tiers?: PackagePricingTier[] | PackagePricingTiers | null;
-          free_trial_enabled?: boolean;
           is_active?: boolean;
           is_popular?: boolean;
           sort_order?: number;
