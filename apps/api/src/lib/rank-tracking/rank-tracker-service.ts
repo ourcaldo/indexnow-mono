@@ -46,7 +46,6 @@ export class RankTrackerService {
         .from('indb_rank_keywords')
         .update({
           last_checked: new Date().toISOString(),
-          is_active: true,
           position: result.position,
           previous_position: currentKeyword?.position ?? null,
         })

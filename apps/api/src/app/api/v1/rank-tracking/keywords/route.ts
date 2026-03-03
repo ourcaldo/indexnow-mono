@@ -6,7 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { RankTrackingService } from '@indexnow/services';
+import { RankTrackingService, QuotaService } from '@indexnow/services';
 // (#V7 L-17) Module-level instantiation: Next.js caches route modules, so this service
 // instance is shared across requests within the same Lambda/container lifetime.
 // This is intentional for connection pooling and caching; the service is stateless.
@@ -188,6 +188,21 @@ export const POST = authenticatedApiWrapper(
         .in('keyword', keywords);
 
       const existingSet = new Set((existingRows ?? []).map((r: { keyword: string }) => r.keyword.toLowerCase()));
+
+      // Calculate net new keywords and pre-check quota for entire batch
+      const newKeywords = keywords.filter(kw => !existingSet.has(kw.toLowerCase()));
+      if (newKeywords.length > 0) {
+        const canAdd = await QuotaService.canAddKeyword(auth.userId, newKeywords.length);
+        if (!canAdd) {
+          return formatError(
+            await ErrorHandlingService.createError(
+              ErrorType.VALIDATION,
+              'Keyword limit reached for your current plan',
+              { severity: ErrorSeverity.MEDIUM, userId: auth.userId, statusCode: 403 }
+            )
+          );
+        }
+      }
 
       for (const kw of keywords) {
         if (existingSet.has(kw.toLowerCase())) {

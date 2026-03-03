@@ -266,13 +266,12 @@ export class KeywordEnrichmentWorker {
             'keyword_bank_id',
             'intelligence_updated_at',
           ],
-          whereConditions: { is_active: true, keyword_bank_id: null },
+          whereConditions: { keyword_bank_id: null },
         },
         async () => {
           const { data, error } = await supabaseAdmin
             .from('indb_rank_keywords')
             .select('id, user_id, keyword, country_id, keyword_bank_id, intelligence_updated_at')
-            .eq('is_active', true)
             .is('keyword_bank_id', null) // Simple: get keywords that don't have bank reference
             .limit(limit);
 

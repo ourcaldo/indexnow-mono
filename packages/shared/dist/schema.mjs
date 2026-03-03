@@ -172,7 +172,6 @@ var AdminSchemas = {
       "suspend",
       "activate",
       "reset-password",
-      "reset-quota",
       "extend-subscription",
       "change-package"
     ]),
@@ -292,7 +291,6 @@ var apiRequestSchemas = {
       "suspend",
       "activate",
       "reset-password",
-      "reset-quota",
       "extend-subscription",
       "change-package"
     ]),

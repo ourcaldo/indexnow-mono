@@ -88,7 +88,7 @@ export default function Dashboard() {
   // Plan info
   const planName = profile?.package?.name || 'Free'
   const kwLimit = profile?.package?.quota_limits?.max_keywords ?? 0
-  const kwUsed = keywordUsage?.used ?? profile?.keywords_used ?? 0
+  const kwUsed = keywordUsage?.used ?? 0
 
   const getPosition = (kw: Keyword): number | null => {
     const r = Array.isArray(kw.recent_ranking) ? kw.recent_ranking[0] : kw.recent_ranking

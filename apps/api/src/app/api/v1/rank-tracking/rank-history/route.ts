@@ -89,7 +89,6 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       .from('indb_rank_keywords')
       .select('id, keyword, domain, country_id, device', { count: 'exact' })
       .eq('user_id', auth.userId)
-      .eq('is_active', true)
       .order('created_at', { ascending: true })
       .range(offset, offset + limit - 1);
 

@@ -81,8 +81,6 @@ export interface UserQuotaUsage {
   rank_tracking_checks: number;
   api_calls: number;
   is_unlimited?: boolean;
-  keywords_used?: number;
-  keywords_limit?: number;
 }
 
 export interface UserQuotaLimits {

@@ -52,8 +52,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         const { count: keywordCount, error: kwError } = await db
           .from('indb_rank_keywords')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', auth.userId)
-          .eq('is_active', true);
+          .eq('user_id', auth.userId);
 
         if (kwError) throw new Error('Failed to count keywords');
 
@@ -61,8 +60,7 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         const { count: domainCount, error: domError } = await db
           .from('indb_keyword_domains')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', auth.userId)
-          .eq('is_active', true);
+          .eq('user_id', auth.userId);
 
         if (domError) throw new Error('Failed to count domains');
 

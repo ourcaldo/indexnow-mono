@@ -72,7 +72,6 @@ export interface UserProfile {
       max_domains: number
     }
   } | null
-  keywords_used?: number
   subscription_status?: string
   subscription_end_date?: string | null
 }

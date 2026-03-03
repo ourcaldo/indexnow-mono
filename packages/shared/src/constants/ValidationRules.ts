@@ -272,7 +272,6 @@ export const AdminSchemas = {
       'suspend',
       'activate',
       'reset-password',
-      'reset-quota',
       'extend-subscription',
       'change-package',
     ]),

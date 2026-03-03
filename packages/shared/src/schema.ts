@@ -153,7 +153,6 @@ export const apiRequestSchemas = {
       'suspend',
       'activate',
       'reset-password',
-      'reset-quota',
       'extend-subscription',
       'change-package',
     ]),

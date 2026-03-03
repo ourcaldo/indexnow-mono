@@ -54,7 +54,6 @@ export const ADMIN_ENDPOINTS = {
   USER_ROLE: (id: string) => `${API_BASE.V1}/admin/users/${id}/role`,
   SUSPEND_USER: (id: string) => `${API_BASE.V1}/admin/users/${id}/suspend`,
   RESET_USER_PASSWORD: (id: string) => `${API_BASE.V1}/admin/users/${id}/reset-password`,
-  RESET_USER_QUOTA: (id: string) => `${API_BASE.V1}/admin/users/${id}/reset-quota`,
   EXTEND_SUBSCRIPTION: (id: string) => `${API_BASE.V1}/admin/users/${id}/extend-subscription`,
   CHANGE_PACKAGE: (id: string) => `${API_BASE.V1}/admin/users/${id}/change-package`,
   USER_SECURITY: (id: string) => `${API_BASE.V1}/admin/users/${id}/security`,
@@ -238,7 +237,7 @@ export const isValidEndpoint = (endpoint: string): boolean => {
   // Check dynamic admin endpoints
   const adminPatterns = [
     /^\/api\/v1\/admin\/users\/[a-f0-9-]+$/,
-    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|reset-quota|extend-subscription|change-package|security|quota-usage)$/,
+    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|extend-subscription|change-package|security|quota-usage)$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+\/status$/,
     /^\/api\/v1\/admin\/activity\/[a-f0-9-]+$/,

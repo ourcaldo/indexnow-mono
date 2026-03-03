@@ -1,5 +1,5 @@
-import { J as Json$1, c as changePasswordSchema, l as loginSchema, r as registerSchema, u as updateUserSettingsSchema } from './schema-8zTZSpg6.mjs';
-export { C as ChangePasswordRequest, D as DashboardStats, L as LoginRequest, R as RegisterRequest, a as ResetPasswordRequest, P as SchemaPaginatedResponse, U as UpdateUserSettingsRequest, b as apiRequestSchemas, f as forgotPasswordSchema, d as resetPasswordSchema, e as updateSiteSettingsSchema, g as updateUserProfileSchema } from './schema-8zTZSpg6.mjs';
+import { J as Json$1, c as changePasswordSchema, l as loginSchema, r as registerSchema, u as updateUserSettingsSchema } from './schema-BgaAGJaJ.mjs';
+export { C as ChangePasswordRequest, D as DashboardStats, L as LoginRequest, R as RegisterRequest, a as ResetPasswordRequest, P as SchemaPaginatedResponse, U as UpdateUserSettingsRequest, b as apiRequestSchemas, f as forgotPasswordSchema, d as resetPasswordSchema, e as updateSiteSettingsSchema, g as updateUserProfileSchema } from './schema-BgaAGJaJ.mjs';
 import { z } from 'zod';
 import React$1 from 'react';
 import { ClassValue } from 'clsx';
@@ -464,17 +464,17 @@ declare const PaymentSchemas: {
 declare const AdminSchemas: {
     readonly userManagement: z.ZodObject<{
         userId: z.ZodString;
-        action: z.ZodEnum<["suspend", "activate", "reset-password", "reset-quota", "extend-subscription", "change-package"]>;
+        action: z.ZodEnum<["suspend", "activate", "reset-password", "extend-subscription", "change-package"]>;
         reason: z.ZodString;
         additionalData: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
     }, "strip", z.ZodTypeAny, {
         userId: string;
-        action: "suspend" | "activate" | "reset-password" | "reset-quota" | "extend-subscription" | "change-package";
+        action: "suspend" | "activate" | "reset-password" | "extend-subscription" | "change-package";
         reason: string;
         additionalData?: Record<string, any> | undefined;
     }, {
         userId: string;
-        action: "suspend" | "activate" | "reset-password" | "reset-quota" | "extend-subscription" | "change-package";
+        action: "suspend" | "activate" | "reset-password" | "extend-subscription" | "change-package";
         reason: string;
         additionalData?: Record<string, any> | undefined;
     }>;
@@ -589,7 +589,6 @@ declare const ADMIN_ENDPOINTS: {
     readonly USER_ROLE: (id: string) => string;
     readonly SUSPEND_USER: (id: string) => string;
     readonly RESET_USER_PASSWORD: (id: string) => string;
-    readonly RESET_USER_QUOTA: (id: string) => string;
     readonly EXTEND_SUBSCRIPTION: (id: string) => string;
     readonly CHANGE_PACKAGE: (id: string) => string;
     readonly USER_SECURITY: (id: string) => string;
@@ -725,7 +724,6 @@ declare const ApiEndpoints: {
         readonly USER_ROLE: (id: string) => string;
         readonly SUSPEND_USER: (id: string) => string;
         readonly RESET_USER_PASSWORD: (id: string) => string;
-        readonly RESET_USER_QUOTA: (id: string) => string;
         readonly EXTEND_SUBSCRIPTION: (id: string) => string;
         readonly CHANGE_PACKAGE: (id: string) => string;
         readonly USER_SECURITY: (id: string) => string;
@@ -1242,8 +1240,6 @@ interface UserQuotaUsage {
     rank_tracking_checks: number;
     api_calls: number;
     is_unlimited?: boolean;
-    keywords_used?: number;
-    keywords_limit?: number;
 }
 interface UserQuotaLimits {
     rank_tracking_checks: number;

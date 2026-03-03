@@ -69,8 +69,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         let kwCountQuery = db
           .from('indb_rank_keywords')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .eq('is_active', true);
+          .eq('user_id', userId);
         if (domain) kwCountQuery = kwCountQuery.eq('domain', domain);
 
         let recentKwQuery = db
@@ -81,7 +80,6 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
                         `
           )
           .eq('user_id', userId)
-          .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(20);
         if (domain) recentKwQuery = recentKwQuery.eq('domain', domain);
@@ -117,9 +115,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
           // 4. Domains
           db
             .from('indb_keyword_domains')
-            .select('*')
+            .select('*', { count: 'exact' })
             .eq('user_id', userId)
-            .eq('is_active', true)
             .order('created_at', { ascending: false })
             .limit(100),
 
@@ -213,8 +210,8 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     const keywordsLimit = quotaLimits.max_keywords;
     const isKeywordsUnlimited = keywordsLimit === -1;
 
-    // Domain quota from package
-    const domainsUsed = domainsResult.data?.length || 0;
+    // Domain quota from package — use proper DB count, not .data?.length
+    const domainsUsed = domainsResult.count || 0;
     const domainsLimit = quotaLimits.max_domains;
     const isDomainsUnlimited = domainsLimit === -1;
 

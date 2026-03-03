@@ -21,7 +21,6 @@ async function processRankSchedule(job: Job): Promise<{ queued: number }> {
   const { data: keywords, error } = await supabaseAdmin
     .from('indb_rank_keywords')
     .select('id, user_id')
-    .eq('is_active', true)
     .or(`last_checked.is.null,last_checked.lt.${cutoff}`)
     .order('last_checked', { ascending: true, nullsFirst: true })
 

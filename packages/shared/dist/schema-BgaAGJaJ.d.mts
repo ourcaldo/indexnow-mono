@@ -254,17 +254,17 @@ interface DashboardStats {
 declare const apiRequestSchemas: {
     adminUserAction: z.ZodObject<{
         userId: z.ZodString;
-        action: z.ZodEnum<["suspend", "activate", "reset-password", "reset-quota", "extend-subscription", "change-package"]>;
+        action: z.ZodEnum<["suspend", "activate", "reset-password", "extend-subscription", "change-package"]>;
         reason: z.ZodString;
         additionalData: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     }, "strip", z.ZodTypeAny, {
         userId: string;
-        action: "suspend" | "activate" | "reset-password" | "reset-quota" | "extend-subscription" | "change-package";
+        action: "suspend" | "activate" | "reset-password" | "extend-subscription" | "change-package";
         reason: string;
         additionalData?: Record<string, unknown> | undefined;
     }, {
         userId: string;
-        action: "suspend" | "activate" | "reset-password" | "reset-quota" | "extend-subscription" | "change-package";
+        action: "suspend" | "activate" | "reset-password" | "extend-subscription" | "change-package";
         reason: string;
         additionalData?: Record<string, unknown> | undefined;
     }>;

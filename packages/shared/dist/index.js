@@ -321,7 +321,6 @@ var AdminSchemas = {
       "suspend",
       "activate",
       "reset-password",
-      "reset-quota",
       "extend-subscription",
       "change-package"
     ]),
@@ -499,7 +498,6 @@ var apiRequestSchemas = {
       "suspend",
       "activate",
       "reset-password",
-      "reset-quota",
       "extend-subscription",
       "change-package"
     ]),
@@ -911,7 +909,6 @@ var ADMIN_ENDPOINTS = {
   USER_ROLE: (id) => `${API_BASE.V1}/admin/users/${id}/role`,
   SUSPEND_USER: (id) => `${API_BASE.V1}/admin/users/${id}/suspend`,
   RESET_USER_PASSWORD: (id) => `${API_BASE.V1}/admin/users/${id}/reset-password`,
-  RESET_USER_QUOTA: (id) => `${API_BASE.V1}/admin/users/${id}/reset-quota`,
   EXTEND_SUBSCRIPTION: (id) => `${API_BASE.V1}/admin/users/${id}/extend-subscription`,
   CHANGE_PACKAGE: (id) => `${API_BASE.V1}/admin/users/${id}/change-package`,
   USER_SECURITY: (id) => `${API_BASE.V1}/admin/users/${id}/security`,
@@ -1047,7 +1044,7 @@ var isValidEndpoint = (endpoint) => {
   }
   const adminPatterns = [
     /^\/api\/v1\/admin\/users\/[a-f0-9-]+$/,
-    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|reset-quota|extend-subscription|change-package|security|quota-usage)$/,
+    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|extend-subscription|change-package|security|quota-usage)$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+$/,
     /^\/api\/v1\/admin\/orders\/[a-f0-9-]+\/status$/,
     /^\/api\/v1\/admin\/activity\/[a-f0-9-]+$/

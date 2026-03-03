@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { QuotaService } from '@indexnow/services';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import {
   authenticatedApiWrapper,
@@ -58,7 +59,6 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
           .from('indb_keyword_domains')
           .select('*', { count: 'exact' })
           .eq('user_id', auth.userId)
-          .eq('is_active', true)
           .order('created_at', { ascending: false })
           .range(offset, offset + limit - 1);
 
@@ -172,6 +172,17 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
         { severity: ErrorSeverity.MEDIUM, userId: auth.userId, statusCode: 403, userMessageKey: 'no_active_plan' }
       );
       return formatError(subscriptionError);
+    }
+
+    // Check domain quota before proceeding
+    const canAdd = await QuotaService.canAddDomain(auth.userId);
+    if (!canAdd) {
+      const quotaError = await ErrorHandlingService.createError(
+        ErrorType.VALIDATION,
+        'Domain limit reached for your current plan',
+        { severity: ErrorSeverity.MEDIUM, userId: auth.userId, statusCode: 403 }
+      );
+      return formatError(quotaError);
     }
 
     const cleanDomain = domain_name
