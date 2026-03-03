@@ -137,7 +137,7 @@ export default function Dashboard() {
             Subscribe to a plan to start tracking your keyword rankings and SEO performance.
           </p>
           <button
-            onClick={() => router.push('/settings?tab=billing')}
+            onClick={() => router.push('/settings/billing')}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
           >
             View Plans <ArrowRight className="w-4 h-4" />
@@ -270,7 +270,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Plan Usage</h3>
-              <a href="/settings?tab=billing" className="text-xs font-medium text-blue-600 dark:text-blue-400">Manage</a>
+              <a href="/settings/billing" className="text-xs font-medium text-blue-600 dark:text-blue-400">Manage</a>
             </div>
             <div className="flex items-center gap-2 mb-4">
               <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -315,7 +315,7 @@ export default function Dashboard() {
               <QuickActionBtn label="Add Keywords" icon={<Plus className="w-4 h-4" />} onClick={() => setAddKeywordsOpen(true)} />
               <QuickActionBtn label="Keyword Overview" icon={<Search className="w-4 h-4" />} onClick={() => router.push('/overview')} />
               <QuickActionBtn label="Rank History" icon={<BarChart3 className="w-4 h-4" />} onClick={() => router.push('/rank-history')} />
-              <QuickActionBtn label="Plans & Billing" icon={<Crown className="w-4 h-4" />} onClick={() => router.push('/settings?tab=billing')} />
+              <QuickActionBtn label="Plans & Billing" icon={<Crown className="w-4 h-4" />} onClick={() => router.push('/settings/billing')} />
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-/** /settings/general is no longer a valid route — redirect to the unified settings page. */
+/** /settings/general is no longer a valid route — redirect to /settings/profile. */
 export default function GeneralSettingsRedirect() {
-  redirect('/settings')
+  redirect('/settings/profile')
 }

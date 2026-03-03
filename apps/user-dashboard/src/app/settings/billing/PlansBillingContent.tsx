@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
-  ArrowUpRight,
   Calendar,
   Check,
   CreditCard,
@@ -566,29 +565,16 @@ export default function BillingPage() {
 
       {/* ── Payment method info ── */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-              <CreditCard className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Method</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Payments are handled securely by Paddle
-              </p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+            <CreditCard className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </div>
-          {subscriptionData?.hasSubscription && subscriptionData.subscription?.paddle_subscription_id && (
-            <a
-              href={`https://customer-portal.paddle.com/subscriptions/${subscriptionData.subscription.paddle_subscription_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3.5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              Manage
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </a>
-          )}
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">Payment Method</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Payments are handled securely by Paddle
+            </p>
+          </div>
         </div>
       </div>
 
