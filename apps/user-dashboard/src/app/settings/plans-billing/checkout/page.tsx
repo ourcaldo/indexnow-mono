@@ -307,7 +307,7 @@ function CheckoutPageContent() {
                   <Button
                     onClick={handleCheckout}
                     disabled={!isReady || processing}
-                    className="w-full h-11 text-sm font-medium"
+                    className="w-full h-11 text-sm font-medium bg-accent text-white hover:bg-accent/90 rounded-lg"
                     size="lg"
                     data-testid="button-complete-checkout"
                   >
