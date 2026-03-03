@@ -11,7 +11,7 @@ import {
   CheckoutLoading,
   PackageNotFound,
 } from '@indexnow/ui/checkout';
-import { PaymentSchemas, logger } from '@indexnow/shared';
+import { PaymentSchemas, logger, countries } from '@indexnow/shared';
 import { usePaddle } from '@indexnow/ui/providers';
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks';
 import { ArrowLeft, Loader2, Lock, ShieldCheck, CreditCard } from 'lucide-react';
@@ -73,12 +73,15 @@ function CheckoutPageContent() {
     if (!profile) return;
     const userName = profile.full_name || profile.email?.split('@')[0] || '';
     const nameParts = userName.split(' ');
+    // Normalize phone to +<digits> format
+    const rawPhone = profile.phone_number || '';
+    const phoneDigits = rawPhone.replace(/[^\d]/g, '');
     setForm((prev) => ({
       ...prev,
       first_name: nameParts[0] || '',
       last_name: nameParts.slice(1).join(' ') || '',
       email: profile.email || '',
-      phone: profile.phone_number || '',
+      phone: phoneDigits ? `+${phoneDigits}` : '',
       country: profile.country || 'ID',
     }));
   }, [profile]);
@@ -264,7 +267,7 @@ function CheckoutPageContent() {
                   </span>
                   <h2 className="text-sm font-semibold text-foreground">Account details</h2>
                 </div>
-                <CheckoutForm form={form} setForm={setForm} />
+                <CheckoutForm form={form} setForm={setForm} countries={countries} />
               </section>
 
               {/* Step 3 — Payment */}
