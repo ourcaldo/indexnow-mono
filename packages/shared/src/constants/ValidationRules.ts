@@ -235,10 +235,10 @@ const customerInfoSchema = z.object({
     .max(FIELD_LIMITS.NAME.max, 'Last name is too long'),
   email: BaseSchemas.email,
   phone: BaseSchemas.phone,
-  address: z.string().min(10, 'Address is too short').max(200, 'Address is too long'),
-  city: z.string().min(2, 'City is required').max(50, 'City name is too long'),
-  postalCode: z.string().min(3, 'Postal code is required').max(10, 'Postal code is too long'),
-  country: z.string().length(2, 'Invalid country code'),
+  address: z.string().max(200, 'Address is too long').optional().or(z.literal('')),
+  city: z.string().max(50, 'City name is too long').optional().or(z.literal('')),
+  postalCode: z.string().max(10, 'Postal code is too long').optional().or(z.literal('')),
+  country: z.string().min(2, 'Country code is required').max(3, 'Invalid country code'),
 });
 
 export const PaymentSchemas = {

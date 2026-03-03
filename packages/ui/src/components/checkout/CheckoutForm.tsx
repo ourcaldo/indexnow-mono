@@ -182,12 +182,18 @@ export const CheckoutForm = ({ form, setForm }: CheckoutFormProps) => {
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Indonesia">Indonesia</SelectItem>
-                <SelectItem value="Malaysia">Malaysia</SelectItem>
-                <SelectItem value="Singapore">Singapore</SelectItem>
-                <SelectItem value="Thailand">Thailand</SelectItem>
-                <SelectItem value="Philippines">Philippines</SelectItem>
-                <SelectItem value="Vietnam">Vietnam</SelectItem>
+                <SelectItem value="ID">Indonesia</SelectItem>
+                <SelectItem value="MY">Malaysia</SelectItem>
+                <SelectItem value="SG">Singapore</SelectItem>
+                <SelectItem value="TH">Thailand</SelectItem>
+                <SelectItem value="PH">Philippines</SelectItem>
+                <SelectItem value="VN">Vietnam</SelectItem>
+                <SelectItem value="US">United States</SelectItem>
+                <SelectItem value="GB">United Kingdom</SelectItem>
+                <SelectItem value="AU">Australia</SelectItem>
+                <SelectItem value="JP">Japan</SelectItem>
+                <SelectItem value="IN">India</SelectItem>
+                <SelectItem value="DE">Germany</SelectItem>
               </SelectContent>
             </Select>
           </div>

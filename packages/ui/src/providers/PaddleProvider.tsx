@@ -1,22 +1,25 @@
 'use client'
 
-import React, { createContext, useEffect, useState, useContext } from 'react'
+import React, { createContext, useEffect, useState, useContext, useCallback } from 'react'
 import { initializePaddle, Paddle } from '@paddle/paddle-js'
-import { ApiEndpoints } from '@indexnow/shared'
+import { ApiEndpoints, logger } from '@indexnow/shared'
 
 interface PaddleContextType {
   paddle: Paddle | null
   isLoading: boolean
+  error: string | null
 }
 
 const PaddleContext = createContext<PaddleContextType>({
   paddle: null,
   isLoading: true,
+  error: null,
 })
 
 export function PaddleProvider({ children }: { children: React.ReactNode }) {
   const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -38,7 +41,7 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
         const { clientToken, environment } = configResult.data
 
         if (!clientToken) {
-          throw new Error('Paddle client token not found in database configuration')
+          throw new Error('Paddle client token not available')
         }
 
         const paddleInstance = await initializePaddle({
@@ -47,18 +50,22 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
           eventCallback: (data) => {
             switch (data.name) {
               case 'checkout.completed':
+                // Invalidate queries so UI reflects new subscription state.
+                // The successUrl setting handles the redirect — this callback
+                // ensures state is correct if the redirect is slow or fails.
+                logger.info('Paddle checkout completed')
                 break
 
               case 'checkout.closed':
-                if (typeof window !== 'undefined') {
-                  window.location.href = '/?subscription=cancelled'
-                }
+                // User closed the overlay — do NOT redirect or show "cancelled".
+                // The user may want to review or retry from the same page.
+                logger.info('Paddle checkout overlay closed by user')
                 break
 
               case 'checkout.error':
-                if (typeof window !== 'undefined') {
-                  window.location.href = '/?subscription=failed'
-                }
+                // Paddle handles payment errors internally within the overlay.
+                // Users can retry with a different card. Do NOT redirect.
+                logger.warn('Paddle checkout error reported within overlay')
                 break
 
               default:
@@ -70,8 +77,10 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
         if (paddleInstance && isMounted) {
           setPaddle(paddleInstance)
         }
-      } catch (error) {
-        // Errors are tracked server-side
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to initialize payment system'
+        logger.error({ error: err instanceof Error ? err : undefined }, `Paddle init failed: ${message}`)
+        if (isMounted) setError(message)
       } finally {
         if (isMounted) setIsLoading(false)
       }
@@ -82,7 +91,7 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <PaddleContext.Provider value={{ paddle, isLoading }}>
+    <PaddleContext.Provider value={{ paddle, isLoading, error }}>
       {children}
     </PaddleContext.Provider>
   )

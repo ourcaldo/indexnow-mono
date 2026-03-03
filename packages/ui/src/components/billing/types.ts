@@ -2,17 +2,14 @@ export interface PaymentPackage {
   id: string;
   name: string;
   slug: string;
-  description: string;
-  price: number;
-  currency: string;
-  billing_period: string;
+  description?: string;
   features: string[];
   quota_limits: {
-    rank_tracking_limit: number;
-    concurrent_jobs_limit: number;
+    max_keywords?: number;
+    max_domains?: number;
   };
-  is_popular: boolean;
-  is_current: boolean;
+  is_popular?: boolean;
+  is_current?: boolean;
   pricing_tiers: Record<
     string,
     {
@@ -90,10 +87,18 @@ export interface BillingData {
 }
 
 export interface KeywordUsageData {
-  keywords_used: number;
-  keywords_limit: number;
-  is_unlimited: boolean;
-  remaining_quota: number;
+  keywords: {
+    used: number;
+    limit: number;
+    is_unlimited: boolean;
+    remaining: number;
+  };
+  domains: {
+    used: number;
+    limit: number;
+    is_unlimited: boolean;
+    remaining: number;
+  };
 }
 
 export interface RefundWindowInfo {

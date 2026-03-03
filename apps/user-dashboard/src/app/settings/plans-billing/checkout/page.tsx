@@ -11,8 +11,6 @@ import {
   CheckoutHeader,
   CheckoutLoading,
   PackageNotFound,
-  CheckoutSubmitButton,
-  PaymentMethodSelector,
 } from '@indexnow/ui/checkout';
 import { PaymentSchemas, logger } from '@indexnow/shared';
 import { usePaddle } from '@indexnow/ui/providers';
@@ -44,7 +42,11 @@ function CheckoutPageContent() {
 
   // URL parameters
   const [package_id] = useState(searchParams?.get('package'));
-  const [billing_period, setBillingPeriod] = useState(searchParams?.get('period') || 'monthly');
+  // Map 'yearly' → 'annual' to match pricing_tiers keys (C2 fix)
+  const rawPeriod = searchParams?.get('period') || 'monthly';
+  const [billing_period, setBillingPeriod] = useState(
+    rawPeriod === 'yearly' ? 'annual' : rawPeriod
+  );
   const [isTrialFlow, setIsTrialFlow] = useState(searchParams?.get('trial') === 'true');
 
   // React Query hooks — replace manual GET orchestration
@@ -53,8 +55,8 @@ function CheckoutPageContent() {
   const { data: trialData } = useTrialEligibility(isTrialFlow);
 
   // Derived state from hooks
-  const userId = (profile as unknown as Record<string, unknown>)?.id as string | null ?? null;
-  const selectedPackage = (pkgData as unknown as PaymentPackage) ?? null;
+  const userId = profile?.id ?? null;
+  const selectedPackage = pkgData as PaymentPackage | null ?? null;
   const loading = profileLoading || pkgLoading;
   const trialEligible = trialData?.eligible ?? null;
   const [processing, setProcessing] = useState(false);
@@ -81,9 +83,9 @@ function CheckoutPageContent() {
   // Auto-populate form fields from profile
   useEffect(() => {
     if (!profile) return;
-    const prof = profile as unknown as Record<string, string | null | undefined>;
+    const prof = profile;
     const userName = prof.full_name || prof.email?.split('@')[0] || '';
-    const nameParts = (userName as string).split(' ');
+    const nameParts = userName.split(' ');
     setForm(prev => ({
       ...prev,
       first_name: nameParts[0] || '',

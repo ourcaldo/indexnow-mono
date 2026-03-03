@@ -10,7 +10,6 @@ import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
-  formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
@@ -74,18 +73,19 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     return formatError(structuredError);
   }
 
-  // (#V7 L-14) STUB(M-13): Restore PaddleCustomerService and integrate here
-  // The URL below is a best-effort placeholder using the subscription management pattern.
-  // When PaddleCustomerService is restored, use:
-  // const portalUrl = await PaddleCustomerService.getCustomerPortalUrl(customerId);
-  logger.warn('STUB: Customer portal endpoint hit — returning placeholder URL');
+  // TODO: Implement Paddle Billing customer portal session via Paddle API
+  // Paddle Billing uses: POST https://api.paddle.com/customers/{customer_id}/portal-sessions
+  // This returns a short-lived portal URL that lets the customer manage payment methods and subscriptions.
+  // Requires: PADDLE_API_KEY env var and the customer's paddle_customer_id (not subscription_id).
+  // Reference: https://developer.paddle.com/api-reference/customer-portal-sessions/create-customer-portal-session
+  logger.warn('STUB: Customer portal endpoint hit — Paddle Billing portal session not yet implemented');
 
-  const portalUrl = `https://checkout.paddle.com/subscription/manage?subscription=${subscription.paddle_subscription_id}`;
-
-  return formatSuccess({
-    portal_url: portalUrl,
-    subscription_id: subscription.paddle_subscription_id,
-    message:
-      'This is a placeholder URL. Full portal integration requires PaddleCustomerService restoration.',
-  });
+  return NextResponse.json(
+    {
+      error: 'Customer portal not yet available',
+      message: 'Paddle Billing customer portal integration is pending. Use the Paddle dashboard to manage your subscription in the meantime.',
+      subscription_id: subscription.paddle_subscription_id,
+    },
+    { status: 501 }
+  );
 });

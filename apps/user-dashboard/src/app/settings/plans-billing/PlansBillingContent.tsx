@@ -231,11 +231,46 @@ export default function BillingPage() {
     window.location.href = checkoutUrl(pkgId, billingPeriod)
   }
 
-  const handleCancelSuccess = () => {
-    setShowCancelDialog(false)
-    addToast({ title: 'Subscription Canceled', description: 'Your subscription has been successfully canceled.' })
-    queryClient.invalidateQueries({ queryKey: ['subscription'] })
-    queryClient.invalidateQueries({ queryKey: ['billing-overview'] })
+  const [cancelLoading, setCancelLoading] = useState(false)
+
+  const handleCancelSubscription = async () => {
+    const paddleSubId = subscriptionData?.subscription?.paddle_subscription_id
+    if (!paddleSubId) {
+      addToast({ title: 'Error', description: 'No active subscription found to cancel.' })
+      return
+    }
+
+    setCancelLoading(true)
+    try {
+      const res = await fetch('/api/v1/payments/paddle/subscription/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId: paddleSubId }),
+      })
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        const msg = result?.error?.message || result?.message || 'Failed to cancel subscription'
+        handleApiError(new Error(msg))
+        return
+      }
+
+      setShowCancelDialog(false)
+      const isImmediate = result?.data?.action === 'immediate_cancellation'
+      addToast({
+        title: 'Subscription Canceled',
+        description: isImmediate
+          ? 'Your subscription has been canceled and a refund is being processed.'
+          : 'Your subscription will be canceled at the end of the current billing period.',
+      })
+      logBillingActivity('subscription_cancel', `Canceled subscription ${paddleSubId}`, { subscriptionId: paddleSubId, action: result?.data?.action })
+      refetchAll()
+    } catch (err) {
+      handleApiError(err instanceof Error ? err : new Error('Failed to cancel subscription'))
+    } finally {
+      setCancelLoading(false)
+    }
   }
 
   /* ── Loading ── */
@@ -521,10 +556,12 @@ export default function BillingPage() {
                 Keep plan
               </button>
               <button
-                onClick={handleCancelSuccess}
-                className="px-3.5 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+                className="px-3.5 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
-                Yes, cancel
+                {cancelLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {cancelLoading ? 'Canceling…' : 'Yes, cancel'}
               </button>
             </div>
           </div>

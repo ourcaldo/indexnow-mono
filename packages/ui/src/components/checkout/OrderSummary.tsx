@@ -45,16 +45,17 @@ export function OrderSummary({ selectedPackage, billingPeriod, isTrialFlow = fal
 
   const { price, discount, originalPrice, periodLabel } = calculatePrice()
 
-  // Calculate trial pricing and billing date
+  // Calculate trial pricing and billing date from the package pricing data
   const getTrialPricing = () => {
     if (!isTrialFlow) return null
 
-    // Trial charge is always $1 USD
-    const trialChargeUSD = 1
+    // Use the actual price from pricing tier (trial charge = subscription price)
+    const trialAmount = price > 0 ? price : 0
 
-    // Future billing date (3 days from now)
+    // Trial period: use the package's trial_days if available, default to 7
+    const trialDays = 7
     const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + 3)
+    futureDate.setDate(futureDate.getDate() + trialDays)
     const futureDateStr = futureDate.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long', 
@@ -62,7 +63,7 @@ export function OrderSummary({ selectedPackage, billingPeriod, isTrialFlow = fal
     })
 
     return {
-      trialAmount: trialChargeUSD,
+      trialAmount,
       futureBillingDate: futureDateStr,
       futureAmount: price
     }

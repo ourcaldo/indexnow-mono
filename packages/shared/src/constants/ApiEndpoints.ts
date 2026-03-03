@@ -125,10 +125,6 @@ export const BILLING_ENDPOINTS = {
   HISTORY: `${API_BASE.V1}/billing/history`,
   PACKAGES: `${API_BASE.V1}/billing/packages`,
   PACKAGE_BY_ID: (id: string) => `${API_BASE.V1}/billing/packages/${id}`,
-  PAYMENT: `${API_BASE.V1}/billing/payment`,
-  PAYMENT_GATEWAYS: `${API_BASE.V1}/billing/payment-gateways`,
-  UPLOAD_PROOF: `${API_BASE.V1}/billing/upload-proof`,
-  CANCEL_TRIAL: `${API_BASE.V1}/billing/cancel-trial`,
 
   // Orders (user-side)
   ORDER_BY_ID: (id: string) => `${API_BASE.V1}/billing/orders/${id}`,

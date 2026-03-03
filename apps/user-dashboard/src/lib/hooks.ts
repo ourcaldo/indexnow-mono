@@ -113,12 +113,11 @@ export interface BillingPackage {
   id: string
   name: string
   slug: string
-  price_monthly: number
-  price_yearly: number
-  pricing_tiers?: Record<string, {
+  pricing_tiers: Record<string, {
     regular_price: number
     promo_price?: number
     paddle_price_id?: string
+    discount_percentage?: number
   }>
   quota_limits: {
     max_keywords: number
@@ -453,22 +452,4 @@ export function useRankHistory(startDate: string, endDate: string, domain?: stri
   })
 }
 
-/**
- * Upload manual payment proof for an order.
- * Invalidates the order cache so the detail page reflects the new proof status.
- */
-export function useUploadPaymentProof() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ orderId, proofUrl }: { orderId: string; proofUrl: string }) =>
-      api<unknown>(BILLING_ENDPOINTS.UPLOAD_PROOF, {
-        method: 'POST',
-        body: JSON.stringify({ order_id: orderId, proof_url: proofUrl }),
-      }),
-    onSuccess: (_data, { orderId }) => {
-      // Refresh the affected order and billing history so status reflects immediately
-      qc.invalidateQueries({ queryKey: ['order', orderId] })
-      qc.invalidateQueries({ queryKey: ['billing-history'] })
-    },
-  })
-}
+

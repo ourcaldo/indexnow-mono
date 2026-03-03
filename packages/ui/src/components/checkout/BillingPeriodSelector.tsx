@@ -125,14 +125,14 @@ export function BillingPeriodSelector({
                         option.regular_price > 0 &&
                         option.regular_price !== option.promo_price && (
                           <span className="text-muted-foreground text-sm line-through">
-                            {formatCurrency(option.regular_price, selectedPackage.currency)}
+                            {formatCurrency(option.regular_price)}
                           </span>
                         )}
                       <span
                         className="text-foreground text-lg font-bold"
                         data-testid={`price-${option.period}`}
                       >
-                        {formatCurrency(finalPrice, selectedPackage.currency)}
+                        {formatCurrency(finalPrice)}
                       </span>
                     </div>
                   </div>

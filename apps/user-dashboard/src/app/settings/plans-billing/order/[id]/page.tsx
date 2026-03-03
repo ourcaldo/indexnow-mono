@@ -8,44 +8,28 @@ import {
   CardHeader,
   CardTitle,
   Button,
-  Input,
-  Label,
   Badge,
   Separator,
   useToast,
 } from '@indexnow/ui';
-import { Upload, CheckCircle, Clock, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { BILLING_ENDPOINTS, formatCurrency, logger, type Json } from '@indexnow/shared';
-import { authenticatedFetch } from '@indexnow/supabase-client';
+import { CheckCircle, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { formatCurrency } from '@indexnow/shared';
 import { useOrderDetails } from '@/lib/hooks';
 
 interface Transaction {
   id: string;
-  user_id: string;
-  package_id: string;
-  gateway_id: string;
   transaction_type: string;
   transaction_status: string;
   amount: number;
   currency: string;
-  payment_proof_url: string | null;
   billing_period: string;
   created_at: string;
-  metadata: Record<string, Json>;
+  payment_method: string;
   package: {
     id: string;
     name: string;
     description: string;
     features: string[];
-  };
-  gateway: {
-    id: string;
-    name: string;
-    configuration: {
-      bank_name?: string;
-      account_name?: string;
-      account_number?: string;
-    };
   };
   customer_info: {
     first_name: string;
@@ -60,9 +44,6 @@ export default function OrderCompletedPage() {
   const router = useRouter();
   const { addToast } = useToast();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [proofFile, setProofFile] = useState<File | null>(null);
 
   const { data: orderData, isLoading: loading } = useOrderDetails(params.id as string | undefined);
 
@@ -71,27 +52,18 @@ export default function OrderCompletedPage() {
     if (!orderData) return;
     setTransaction({
       id: orderData.order_id,
-      user_id: '',
-      package_id: (orderData.package as Record<string, string> | null)?.id || '',
-      gateway_id: '',
       transaction_type: 'purchase',
       transaction_status: orderData.status,
       amount: orderData.amount,
       currency: orderData.currency,
-      payment_proof_url: null,
       billing_period: orderData.billing_period || 'one-time',
       created_at: orderData.created_at,
-      metadata: orderData as unknown as Record<string, Json>,
+      payment_method: orderData.payment_method || 'Paddle',
       package: (orderData.package as Transaction['package']) || {
         id: '',
         name: 'Unknown Package',
         description: '',
         features: [],
-      },
-      gateway: {
-        id: '',
-        name: orderData.payment_method || 'Unknown Gateway',
-        configuration: {},
       },
       customer_info: (orderData.customer_info as Transaction['customer_info']) || {
         first_name: '',
@@ -101,92 +73,6 @@ export default function OrderCompletedPage() {
       },
     });
   }, [orderData]);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type and size
-      const allowedTypes = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/webp',
-        'application/pdf',
-      ];
-      const maxSize = 5 * 1024 * 1024; // 5MB
-
-      if (!allowedTypes.includes(file.type)) {
-        addToast({
-          type: 'error',
-          title: 'File Type Error',
-          description: 'Please upload JPG, PNG, WebP, or PDF files only',
-        });
-        return;
-      }
-
-      if (file.size > maxSize) {
-        addToast({
-          type: 'error',
-          title: 'File Size Error',
-          description: 'File size must be less than 5MB',
-        });
-        return;
-      }
-
-      setProofFile(file);
-    }
-  };
-
-  const handleUploadProof = async () => {
-    if (!proofFile || !transaction) return;
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('proof_file', proofFile);
-      formData.append('transaction_id', transaction.id);
-
-      const response = await authenticatedFetch(BILLING_ENDPOINTS.UPLOAD_PROOF, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload payment proof');
-      }
-
-      const result = await response.json();
-
-      // Update transaction status
-      setTransaction((prev) =>
-        prev
-          ? {
-              ...prev,
-              transaction_status: 'proof_uploaded',
-              payment_proof_url: result.file_url,
-            }
-          : null
-      );
-
-      addToast({
-        type: 'success',
-        title: 'Upload Successful',
-        description: 'Payment proof uploaded successfully! We will verify your payment soon.',
-      });
-
-      setShowUploadForm(false);
-      setProofFile(null);
-    } catch (error) {
-      logger.error({ error: error instanceof Error ? error : undefined }, 'Error uploading proof');
-      addToast({
-        type: 'error',
-        title: 'Upload Failed',
-        description: 'Failed to upload payment proof. Please try again.',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -200,7 +86,7 @@ export default function OrderCompletedPage() {
       case 'proof_uploaded':
         return (
           <Badge className="bg-warning text-warning-foreground">
-            <Upload className="mr-1 h-3 w-3" />
+            <Clock className="mr-1 h-3 w-3" />
             Waiting for Confirmation
           </Badge>
         );
@@ -358,11 +244,7 @@ export default function OrderCompletedPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-foreground font-semibold">Total Amount</span>
                     <span className="text-foreground text-xl font-bold">
-                      {transaction.amount !== null && transaction.amount !== undefined
-                        ? transaction.currency === 'USD'
-                          ? `$${transaction.amount}`
-                          : `Rp ${transaction.amount.toLocaleString('id-ID')}`
-                        : 'N/A'}
+                      {formatCurrency(transaction.amount, transaction.currency)}
                     </span>
                   </div>
                 </div>
@@ -393,10 +275,7 @@ export default function OrderCompletedPage() {
                   <div>
                     <p className="text-foreground text-sm font-medium">Phone</p>
                     <p className="text-muted-foreground text-sm">
-                      {transaction.customer_info.phone_number ||
-                        (transaction.metadata as Record<string, Record<string, string>>)
-                          ?.customer_info?.phone ||
-                        'N/A'}
+                      {transaction.customer_info.phone_number || 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -404,13 +283,13 @@ export default function OrderCompletedPage() {
             </Card>
           </div>
 
-          {/* Right Column - Payment Information (40%) */}
+          {/* Right Column - Payment Status (40%) */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Payment Instructions */}
+            {/* Payment Status */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-foreground text-lg font-semibold">
-                  Payment Instructions
+                  Payment Status
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -420,7 +299,7 @@ export default function OrderCompletedPage() {
                       <CheckCircle className="text-success mt-0.5 h-5 w-5 flex-shrink-0" />
                       <div>
                         <p className="text-foreground mb-1 font-medium">
-                          Payment Completed Successfully
+                          Payment Completed
                         </p>
                         <p className="text-muted-foreground text-sm">
                           Your payment has been processed and your package is now active.
@@ -435,7 +314,7 @@ export default function OrderCompletedPage() {
                       <div>
                         <p className="text-foreground mb-1 font-medium">Payment Processing</p>
                         <p className="text-muted-foreground text-sm">
-                          Your payment is being processed. You will be notified once it's completed.
+                          Your payment is being processed. You will be notified once it&apos;s completed.
                         </p>
                       </div>
                     </div>
@@ -445,40 +324,13 @@ export default function OrderCompletedPage() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-foreground text-sm font-medium">Payment Method</p>
-                    <p className="text-muted-foreground text-sm">{transaction.gateway.name}</p>
+                    <p className="text-muted-foreground text-sm">{transaction.payment_method}</p>
                   </div>
 
-                  {transaction.gateway.configuration?.bank_name && (
-                    <>
-                      <div>
-                        <p className="text-foreground text-sm font-medium">Bank</p>
-                        <p className="text-muted-foreground text-sm">
-                          {transaction.gateway.configuration.bank_name}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-foreground text-sm font-medium">Account Name</p>
-                        <p className="text-muted-foreground text-sm">
-                          {transaction.gateway.configuration.account_name}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-foreground text-sm font-medium">Account Number</p>
-                        <p className="text-muted-foreground font-mono text-sm">
-                          {transaction.gateway.configuration.account_number}
-                        </p>
-                      </div>
-                    </>
-                  )}
-
                   <div>
-                    <p className="text-foreground text-sm font-medium">Amount to Pay</p>
+                    <p className="text-foreground text-sm font-medium">Amount Paid</p>
                     <p className="text-foreground text-lg font-bold">
-                      {transaction.amount !== null && transaction.amount !== undefined
-                        ? transaction.currency === 'USD'
-                          ? `$${transaction.amount}`
-                          : `Rp ${transaction.amount.toLocaleString('id-ID')}`
-                        : 'N/A'}
+                      {formatCurrency(transaction.amount, transaction.currency)}
                     </p>
                   </div>
 
@@ -487,110 +339,6 @@ export default function OrderCompletedPage() {
                     <p className="text-muted-foreground font-mono text-sm">{transaction.id}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment Proof Upload */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground text-lg font-semibold">
-                  Payment Confirmation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {transaction.payment_proof_url ? (
-                  <div className="py-6 text-center">
-                    <CheckCircle className="text-success mx-auto mb-3 h-12 w-12" />
-                    <h3 className="text-foreground mb-2 font-semibold">Payment Proof Uploaded</h3>
-                    <p className="text-muted-foreground mb-4 text-sm">
-                      We have received your payment proof and will verify it soon.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(transaction.payment_proof_url!, '_blank')}
-                      className="border-border text-muted-foreground hover:bg-secondary"
-                    >
-                      View Uploaded Proof
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-muted-foreground text-center text-sm">
-                      {transaction.transaction_status === 'completed'
-                        ? 'Payment has been processed successfully. No further action required.'
-                        : 'Upload your payment proof here to speed up payment verification.'}
-                    </p>
-
-                    <Button
-                      onClick={() => setShowUploadForm(!showUploadForm)}
-                      disabled={transaction.transaction_status === 'completed'}
-                      className="bg-success hover:bg-success/90 text-success-foreground w-full disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {showUploadForm ? (
-                        <EyeOff className="mr-2 h-4 w-4" />
-                      ) : (
-                        <Eye className="mr-2 h-4 w-4" />
-                      )}
-                      {transaction.transaction_status === 'completed'
-                        ? 'Payment Completed'
-                        : showUploadForm
-                          ? 'Hide Upload Form'
-                          : 'Upload Payment Proof'}
-                    </Button>
-
-                    {showUploadForm && (
-                      <div className="border-border space-y-4 border-t pt-4">
-                        <div>
-                          <Label
-                            htmlFor="proof_file"
-                            className="text-foreground text-sm font-medium"
-                          >
-                            Select Payment Proof *
-                          </Label>
-                          <Input
-                            id="proof_file"
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={handleFileSelect}
-                            className="mt-1"
-                          />
-                          <p className="text-muted-foreground mt-1 text-xs">
-                            Supported formats: JPG, PNG, WebP, PDF (Max 5MB)
-                          </p>
-                        </div>
-
-                        {proofFile && (
-                          <div className="bg-secondary border-border rounded-lg border p-3">
-                            <p className="text-foreground text-sm font-medium">Selected File:</p>
-                            <p className="text-muted-foreground text-sm">{proofFile.name}</p>
-                            <p className="text-muted-foreground text-xs">
-                              Size: {(proofFile.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
-                        )}
-
-                        <Button
-                          onClick={handleUploadProof}
-                          disabled={!proofFile || uploading}
-                          className="bg-primary hover:bg-primary/90 text-primary-foreground w-full disabled:opacity-50"
-                        >
-                          {uploading ? (
-                            <>
-                              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="mr-2 h-4 w-4" />
-                              Upload Payment Proof
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
               </CardContent>
             </Card>
           </div>
