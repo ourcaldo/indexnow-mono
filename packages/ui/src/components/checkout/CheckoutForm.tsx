@@ -100,7 +100,7 @@ function CountrySearchDropdown({
         className={cn(
           'flex w-full items-center justify-between rounded-md border border-input bg-background px-3 h-10 text-sm',
           'ring-offset-background transition-colors',
-          'hover:bg-accent/50',
+          'hover:bg-muted/60',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
           !value && 'text-muted-foreground'
         )}
@@ -139,8 +139,8 @@ function CountrySearchDropdown({
                   className={cn(
                     'relative flex w-full items-center rounded-sm px-2 py-1.5 text-sm cursor-pointer select-none',
                     'outline-none transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground',
-                    value === c.code && 'bg-accent/60 font-medium'
+                    'hover:bg-muted',
+                    value === c.code && 'bg-muted font-medium'
                   )}
                 >
                   <Check
