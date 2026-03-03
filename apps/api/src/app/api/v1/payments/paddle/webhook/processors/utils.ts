@@ -8,6 +8,7 @@ import { logger } from '@/lib/monitoring/error-handling';
 
 export interface CustomData {
   userId?: string;
+  packageId?: string;
   packageSlug?: string;
   billingPeriod?: string;
 }
@@ -82,7 +83,7 @@ export async function logProcessorError(
 
 export async function getPackageIdFromSubscription(
   subscriptionId: string | null,
-  customData: CustomData & { packageId?: string }
+  customData: CustomData
 ): Promise<string> {
   if (subscriptionId) {
     const subscription = await SecureServiceRoleWrapper.executeSecureOperation(

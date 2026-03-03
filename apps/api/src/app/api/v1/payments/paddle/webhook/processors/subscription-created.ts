@@ -71,11 +71,11 @@ export async function processSubscriptionCreated(data: unknown) {
 
   await SecureServiceRoleWrapper.executeSecureOperation(
     {
-      userId,
+      userId: 'system',
       operation: 'create_subscription',
       reason: 'Paddle webhook subscription.created event',
       source: 'webhook.processors.subscription-created',
-      metadata: { subscription_id, customer_id, packageSlug },
+      metadata: { subscription_id, customer_id, packageSlug, actualUserId: userId },
     },
     {
       table: 'indb_payment_subscriptions',

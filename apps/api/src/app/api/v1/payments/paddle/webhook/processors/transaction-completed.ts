@@ -9,7 +9,7 @@
 
 import { supabaseAdmin, SecureServiceRoleWrapper, toJson, fromJson } from '@indexnow/database';
 import { Json, TransactionMetadata } from '@indexnow/shared';
-import { validateCustomData, safeGet, getPackageIdFromSubscription, CustomData } from './utils';
+import { validateCustomData, safeGet, getPackageIdFromSubscription } from './utils';
 
 interface PaymentDetails {
   method_details?: {
@@ -83,7 +83,7 @@ export async function processTransactionCompleted(data: unknown) {
 
   const packageId = await getPackageIdFromSubscription(
     subscription_id || null,
-    validatedData as CustomData & { packageId?: string }
+    validatedData
   );
 
   const transactionMetadata: TransactionMetadata = {
@@ -95,11 +95,11 @@ export async function processTransactionCompleted(data: unknown) {
 
   await SecureServiceRoleWrapper.executeSecureOperation(
     {
-      userId,
+      userId: 'system',
       operation: 'record_completed_transaction',
       reason: 'Paddle webhook transaction.completed event',
       source: 'webhook.processors.transaction-completed',
-      metadata: { transaction_id, subscription_id: subscription_id || null },
+      metadata: { transaction_id, subscription_id: subscription_id || null, actualUserId: userId },
     },
     {
       table: 'indb_payment_transactions',

@@ -78,11 +78,11 @@ export async function processTransactionPaymentFailed(data: unknown) {
 
   await SecureServiceRoleWrapper.executeSecureOperation(
     {
-      userId,
+      userId: 'system',
       operation: 'record_failed_transaction',
       reason: 'Paddle webhook transaction.payment_failed event',
       source: 'webhook.processors.transaction-payment-failed',
-      metadata: { transaction_id, subscription_id: subscription_id || null },
+      metadata: { transaction_id, subscription_id: subscription_id || null, actualUserId: userId },
     },
     {
       table: 'indb_payment_transactions',
