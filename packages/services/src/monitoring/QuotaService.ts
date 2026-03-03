@@ -93,6 +93,9 @@ export class QuotaService {
 
   /**
    * Internal: fetch quota_limits JSONB from the user's package.
+   *
+   * Users without an active plan get { max_keywords: 0, max_domains: 0 } (free-tier).
+   * Only throws if the user HAS a package but it's misconfigured (missing quota_limits).
    */
   private static async getQuotaLimits(userId: string): Promise<Record<string, number>> {
     const { data: profile, error } = await supabaseServiceRole
@@ -106,7 +109,13 @@ export class QuotaService {
     }
 
     const pkg = Array.isArray(profile.package) ? profile.package[0] : profile.package;
-    const quotaLimits = pkg?.quota_limits as Record<string, number> | null;
+
+    // No package assigned → free-tier (0 quota)
+    if (!pkg) {
+      return { max_keywords: 0, max_domains: 0 };
+    }
+
+    const quotaLimits = pkg.quota_limits as Record<string, number> | null;
     if (!quotaLimits) {
       throw new Error(`User ${userId} package is missing quota_limits`);
     }

@@ -80,20 +80,23 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
 
     // CRITICAL: Only return client_token (safe for frontend)
     // NEVER expose api_key or webhook_secret to frontend
-    const clientToken = apiCredentials.client_token;
+    //
+    // Priority: DB api_credentials.client_token → env NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
+    // The DB stores webhook_secret (server-only); the client token lives in env vars.
+    const clientToken =
+      apiCredentials.client_token || process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
 
     if (!clientToken) {
       const tokenError = await ErrorHandlingService.createError(
         ErrorType.DATABASE,
-        'Paddle client token not found in database',
+        'Paddle client token not found in database or environment variables',
         {
           severity: ErrorSeverity.HIGH,
           statusCode: 500,
-          // (#V7 M-24) Only expose safe diagnostic info —
-          // never include api_credentials_keys, they reveal secret names
           metadata: {
             gateway_id: gateway.id,
             has_api_credentials: !!apiCredentials,
+            has_env_token: !!process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
           },
         }
       );
@@ -101,10 +104,15 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
       return formatError(tokenError);
     }
 
+    // Resolve environment: DB configuration → env var → default 'sandbox'
+    const environment = configuration.environment
+      || (process.env.NEXT_PUBLIC_PADDLE_ENV as 'sandbox' | 'production' | undefined)
+      || 'sandbox';
+
     // Return safe configuration for frontend
     return formatSuccess({
       clientToken,
-      environment: configuration.environment || 'sandbox',
+      environment,
       isActive: gateway.is_active,
       isDefault: gateway.is_default,
     });

@@ -35,7 +35,6 @@ interface TransformedPackage {
   is_current: boolean;
   pricing_tiers: PackagePricingTiers | null;
   user_country: string | null;
-  free_trial_enabled: boolean;
 }
 
 /**
@@ -134,7 +133,6 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       is_current: userProfile ? pkg.id === userProfile.package_id : false,
       pricing_tiers: pkg.pricing_tiers as PackagePricingTiers | null,
       user_country: userProfile?.country ?? null,
-      free_trial_enabled: pkg.free_trial_enabled,
     }));
 
     return formatSuccess({
