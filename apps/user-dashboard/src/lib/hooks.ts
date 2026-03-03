@@ -57,6 +57,7 @@ export interface Keyword {
 
 export interface UserProfile {
   id: string
+  user_id: string
   name: string | null
   full_name?: string | null
   email?: string

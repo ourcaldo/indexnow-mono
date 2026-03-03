@@ -47,8 +47,8 @@ function CheckoutPageContent() {
   const { data: pkgData, isLoading: pkgLoading } = usePackageById(package_id);
   const { data: trialData } = useTrialEligibility(isTrialFlow);
 
-  // Derived state
-  const userId = profile?.id ?? null;
+  // Derived state — use user_id (auth.users FK), NOT id (profile table PK)
+  const userId = profile?.user_id ?? null;
   const selectedPackage = (pkgData as PaymentPackage | null) ?? null;
   const loading = profileLoading || pkgLoading;
   const trialEligible = trialData?.eligible ?? null;
