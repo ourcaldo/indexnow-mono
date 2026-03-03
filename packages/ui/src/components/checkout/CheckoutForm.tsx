@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '../input';
 import { Label } from '../label';
