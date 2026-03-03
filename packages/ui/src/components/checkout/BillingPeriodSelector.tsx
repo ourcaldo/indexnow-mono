@@ -1,12 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../card';
 import { formatCurrency } from '@indexnow/shared';
 import { type PaymentPackage } from '../billing/types';
 
 interface PricingTier {
-  period?: string; // Required when in array
+  period?: string;
   period_label?: string;
   regular_price: number;
   promo_price?: number;
@@ -40,7 +39,6 @@ export function BillingPeriodSelector({
   const pricingTiers = selectedPackage.pricing_tiers;
   const periodOrder = ['monthly', 'quarterly', 'biannual', 'annual'];
 
-  // Helper to get tier data regardless of structure (Array vs Record)
   const getTierForPeriod = (period: string): PricingTier | undefined => {
     if (Array.isArray(pricingTiers)) {
       return pricingTiers.find((t) => t.period === period);
@@ -71,77 +69,63 @@ export function BillingPeriodSelector({
   };
 
   return (
-    <Card className="border-border bg-background">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-foreground text-lg font-semibold">Billing Period</CardTitle>
-        <p className="text-muted-foreground text-sm">Choose your preferred billing cycle</p>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {periodOptions.map((option, index) => {
-            const discount = calculateDiscount(option.regular_price, option.promo_price);
-            const finalPrice = option.promo_price || option.regular_price;
-            const isSelected = selectedPeriod === option.period;
+    <div className="rounded-xl border border-border bg-background p-2">
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(periodOptions.length, 4)}, 1fr)` }}>
+        {periodOptions.map((option, index) => {
+          const discount = calculateDiscount(option.regular_price, option.promo_price);
+          const finalPrice = option.promo_price || option.regular_price;
+          const isSelected = selectedPeriod === option.period;
 
-            return (
-              <div
-                key={`${option.period}-${index}`}
-                className={`relative cursor-pointer rounded-lg border p-3 transition-all ${
-                  isSelected
-                    ? 'border-accent bg-accent/5'
-                    : 'border-border hover:border-accent hover:bg-secondary'
-                }`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (selectedPeriod !== option.period) {
-                    onPeriodChange(option.period);
-                  }
-                }}
-                data-testid={`billing-period-${option.period}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all ${
-                        isSelected ? 'border-accent bg-accent' : 'border-border bg-white'
-                      }`}
-                    >
-                      {isSelected && <div className="h-2 w-2 rounded-full bg-white"></div>}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-foreground font-medium">{option.period_label}</span>
-                      {discount > 0 && (
-                        <span className="bg-warning rounded-full px-2 py-0.5 text-xs font-medium text-white">
-                          {discount}% OFF
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="flex items-center space-x-2">
-                      {option.promo_price &&
-                        option.regular_price > 0 &&
-                        option.regular_price !== option.promo_price && (
-                          <span className="text-muted-foreground text-sm line-through">
-                            {formatCurrency(option.regular_price)}
-                          </span>
-                        )}
-                      <span
-                        className="text-foreground text-lg font-bold"
-                        data-testid={`price-${option.period}`}
-                      >
-                        {formatCurrency(finalPrice)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+          return (
+            <button
+              key={`${option.period}-${index}`}
+              type="button"
+              className={`relative rounded-lg px-3 py-3 text-center transition-all ${
+                isSelected
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'hover:bg-secondary text-foreground'
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (selectedPeriod !== option.period) {
+                  onPeriodChange(option.period);
+                }
+              }}
+              data-testid={`billing-period-${option.period}`}
+            >
+              {discount > 0 && (
+                <span
+                  className={`absolute -top-2 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-px text-[10px] font-semibold ${
+                    isSelected
+                      ? 'bg-white text-accent'
+                      : 'bg-accent/10 text-accent'
+                  }`}
+                >
+                  -{discount}%
+                </span>
+              )}
+              <span className={`block text-xs font-medium ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>
+                {option.period_label}
+              </span>
+              <span className="mt-0.5 block text-sm font-bold" data-testid={`price-${option.period}`}>
+                {formatCurrency(finalPrice)}
+              </span>
+              {option.promo_price &&
+                option.regular_price > 0 &&
+                option.regular_price !== option.promo_price && (
+                  <span
+                    className={`block text-[11px] line-through ${
+                      isSelected ? 'text-white/50' : 'text-muted-foreground/60'
+                    }`}
+                  >
+                    {formatCurrency(option.regular_price)}
+                  </span>
+                )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

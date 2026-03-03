@@ -1,204 +1,138 @@
-import React from 'react'
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from '../card'
-import { Input } from '../input'
-import { Label } from '../label'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '../select'
+import React from 'react';
+import { Input } from '../input';
+import { Label } from '../label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../select';
+
+const COUNTRIES = [
+  { value: 'ID', label: 'Indonesia' },
+  { value: 'MY', label: 'Malaysia' },
+  { value: 'SG', label: 'Singapore' },
+  { value: 'TH', label: 'Thailand' },
+  { value: 'PH', label: 'Philippines' },
+  { value: 'VN', label: 'Vietnam' },
+  { value: 'US', label: 'United States' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'AU', label: 'Australia' },
+  { value: 'JP', label: 'Japan' },
+  { value: 'IN', label: 'India' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'FR', label: 'France' },
+  { value: 'NL', label: 'Netherlands' },
+  { value: 'BR', label: 'Brazil' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'KR', label: 'South Korea' },
+] as const;
 
 export interface CheckoutFormData {
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  address: string
-  city: string
-  state: string
-  zip_code: string
-  country: string
-  description: string
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  country: string;
 }
 
 export interface CheckoutFormProps {
-  form: CheckoutFormData
-  setForm: React.Dispatch<React.SetStateAction<CheckoutFormData>>
+  form: CheckoutFormData;
+  setForm: React.Dispatch<React.SetStateAction<CheckoutFormData>>;
 }
 
 export const CheckoutForm = ({ form, setForm }: CheckoutFormProps) => {
+  const update = (field: keyof CheckoutFormData) => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
   return (
-    <Card className="border-border bg-card">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold text-foreground">
-          Personal & Billing Information
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Personal Information */}
-        <div className="space-y-4">
-          <h3 className="text-base font-medium text-foreground border-b border-border pb-2">
-            Personal Information
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="first_name" className="text-sm font-medium text-foreground">
-                First Name *
-              </Label>
-              <Input
-                id="first_name"
-                type="text"
-                required
-                value={form.first_name}
-                onChange={(e) => setForm(prev => ({ ...prev, first_name: e.target.value }))}
-                className="mt-1"
-                placeholder="Enter your first name"
-              />
-            </div>
-            <div>
-              <Label htmlFor="last_name" className="text-sm font-medium text-foreground">
-                Last Name
-              </Label>
-              <Input
-                id="last_name"
-                type="text"
-                value={form.last_name}
-                onChange={(e) => setForm(prev => ({ ...prev, last_name: e.target.value }))}
-                className="mt-1"
-                placeholder="Enter your last name"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email Address *
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                className="mt-1"
-                placeholder="Enter your email"
-              />
-            </div>
-            <div>
-              <Label htmlFor="phone" className="text-sm font-medium text-foreground">
-                Phone Number *
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                required
-                value={form.phone}
-                onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
-                className="mt-1"
-                placeholder="Enter your phone number"
-              />
-            </div>
-          </div>
+    <div className="rounded-xl border border-border bg-background p-5 space-y-4">
+      {/* Name row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="first_name" className="text-xs font-medium text-muted-foreground">
+            First name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="first_name"
+            type="text"
+            required
+            value={form.first_name}
+            onChange={update('first_name')}
+            className="mt-1.5 h-10"
+            placeholder="John"
+          />
         </div>
-
-        {/* Billing Address */}
-        <div className="space-y-4">
-          <h3 className="text-base font-medium text-foreground border-b border-border pb-2">
-            Billing Address
-          </h3>
-          <div>
-            <Label htmlFor="address" className="text-sm font-medium text-foreground">
-              Street Address
-            </Label>
-            <Input
-              id="address"
-              type="text"
-              value={form.address}
-              onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
-              className="mt-1"
-              placeholder="Enter your street address"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="city" className="text-sm font-medium text-foreground">
-                City
-              </Label>
-              <Input
-                id="city"
-                type="text"
-                value={form.city}
-                onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value }))}
-                className="mt-1"
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <Label htmlFor="state" className="text-sm font-medium text-foreground">
-                State/Province
-              </Label>
-              <Input
-                id="state"
-                type="text"
-                value={form.state}
-                onChange={(e) => setForm(prev => ({ ...prev, state: e.target.value }))}
-                className="mt-1"
-                placeholder="State"
-              />
-            </div>
-            <div>
-              <Label htmlFor="zip_code" className="text-sm font-medium text-foreground">
-                ZIP Code
-              </Label>
-              <Input
-                id="zip_code"
-                type="text"
-                value={form.zip_code}
-                onChange={(e) => setForm(prev => ({ ...prev, zip_code: e.target.value }))}
-                className="mt-1"
-                placeholder="ZIP"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="country" className="text-sm font-medium text-foreground">
-              Country
-            </Label>
-            <Select 
-              value={form.country} 
-              onValueChange={(value) => setForm(prev => ({ ...prev, country: value }))}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ID">Indonesia</SelectItem>
-                <SelectItem value="MY">Malaysia</SelectItem>
-                <SelectItem value="SG">Singapore</SelectItem>
-                <SelectItem value="TH">Thailand</SelectItem>
-                <SelectItem value="PH">Philippines</SelectItem>
-                <SelectItem value="VN">Vietnam</SelectItem>
-                <SelectItem value="US">United States</SelectItem>
-                <SelectItem value="GB">United Kingdom</SelectItem>
-                <SelectItem value="AU">Australia</SelectItem>
-                <SelectItem value="JP">Japan</SelectItem>
-                <SelectItem value="IN">India</SelectItem>
-                <SelectItem value="DE">Germany</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label htmlFor="last_name" className="text-xs font-medium text-muted-foreground">
+            Last name
+          </Label>
+          <Input
+            id="last_name"
+            type="text"
+            value={form.last_name}
+            onChange={update('last_name')}
+            className="mt-1.5 h-10"
+            placeholder="Doe"
+          />
         </div>
-      </CardContent>
-    </Card>
-  )
-}
+      </div>
+
+      {/* Email */}
+      <div>
+        <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">
+          Email address <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          required
+          value={form.email}
+          onChange={update('email')}
+          className="mt-1.5 h-10"
+          placeholder="john@example.com"
+        />
+      </div>
+
+      {/* Phone + Country row */}
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+        <div className="sm:col-span-3">
+          <Label htmlFor="phone" className="text-xs font-medium text-muted-foreground">
+            Phone number <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="phone"
+            type="tel"
+            required
+            value={form.phone}
+            onChange={update('phone')}
+            className="mt-1.5 h-10"
+            placeholder="+62 812 3456 7890"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor="country" className="text-xs font-medium text-muted-foreground">
+            Country
+          </Label>
+          <Select
+            value={form.country}
+            onValueChange={(value) => setForm((prev) => ({ ...prev, country: value }))}
+          >
+            <SelectTrigger className="mt-1.5 h-10">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent>
+              {COUNTRIES.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -4,10 +4,10 @@ import { Button } from '../button'
 
 export const CheckoutLoading = () => {
   return (
-    <div className="min-h-screen bg-secondary flex items-center justify-center">
-      <div className="flex items-center space-x-2">
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-accent" />
-        <span className="text-muted-foreground">Loading checkout...</span>
+        <span className="text-sm text-muted-foreground">Loading checkout…</span>
       </div>
     </div>
   )
@@ -19,13 +19,14 @@ export interface PackageNotFoundProps {
 
 export const PackageNotFound = ({ onBack }: PackageNotFoundProps) => {
   return (
-    <div className="min-h-screen bg-secondary flex items-center justify-center">
+    <div className="flex min-h-[60vh] items-center justify-center">
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-foreground mb-2">Package not found</h2>
-        <p className="text-muted-foreground mb-4">The selected package could not be found.</p>
-        <Button 
-          onClick={onBack} 
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        <h2 className="text-lg font-semibold text-foreground">Package not found</h2>
+        <p className="mt-1 text-sm text-muted-foreground">The selected package could not be found.</p>
+        <Button
+          onClick={onBack}
+          variant="outline"
+          className="mt-4"
         >
           Back to Billing
         </Button>
