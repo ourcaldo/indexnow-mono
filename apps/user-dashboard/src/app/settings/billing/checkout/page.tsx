@@ -63,7 +63,7 @@ function CheckoutPageContent() {
   });
 
   // Activity logging
-  usePageViewLogger('/settings/plans-billing/checkout', 'Checkout', {
+  usePageViewLogger('/settings/billing/checkout', 'Checkout', {
     section: 'billing_checkout',
   });
   const { logBillingActivity } = useActivityLogger();
@@ -89,7 +89,7 @@ function CheckoutPageContent() {
   // Redirect if no package selected
   useEffect(() => {
     if (!package_id) {
-      router.push('/settings/plans-billing');
+      router.push('/settings?tab=billing');
     }
   }, [package_id, router]);
 
@@ -203,7 +203,7 @@ function CheckoutPageContent() {
 
   // Package not found state
   if (!selectedPackage) {
-    return <PackageNotFound onBack={() => router.push('/settings/plans-billing')} />;
+    return <PackageNotFound onBack={() => router.push('/settings?tab=billing')} />;
   }
 
   const isReady = !paddleLoading && !!paddle && !!userId && !!form.email && !!form.first_name;
@@ -215,7 +215,7 @@ function CheckoutPageContent() {
         <div className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
             <button
-              onClick={() => router.push('/settings/plans-billing')}
+              onClick={() => router.push('/settings?tab=billing')}
               className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />

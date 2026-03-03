@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ArrowUpRight,
   Calendar,
+  Check,
   CreditCard,
   Loader2,
   Receipt,
@@ -138,8 +139,21 @@ function usageBarColor(pct: number) {
 
 /* ═══════════════════════ Component ═══════════════════════ */
 
+function getPricing(pkg: PaymentPackage, period: string) {
+  const key = period === 'yearly' ? 'annual' : period
+  const tier = pkg.pricing_tiers?.[key]
+  if (!tier) return { price: 0 }
+  const price = tier.promo_price || tier.regular_price
+  const orig =
+    tier.promo_price && tier.promo_price < tier.regular_price ? tier.regular_price : undefined
+  const disc = orig ? Math.round(((orig - price) / orig) * 100) : tier.discount_percentage
+  return { price, originalPrice: orig, discount: disc && disc > 0 ? disc : undefined }
+}
+
 export default function BillingPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [showPlanPicker, setShowPlanPicker] = useState(false)
+  const [planPickerPeriod, setPlanPickerPeriod] = useState<'monthly' | 'yearly'>('monthly')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -148,16 +162,21 @@ export default function BillingPage() {
   const { addToast } = useToast()
   const { handleApiError } = useApiError()
   const { logBillingActivity } = useActivityLogger()
-  usePageViewLogger('/settings/plans-billing', 'Billing & Subscriptions', { section: 'billing_management' })
+  usePageViewLogger('/settings/billing', 'Billing & Subscriptions', { section: 'billing_management' })
 
   /* ── Data ── */
 
   const { data: billingData, isLoading: billingLoading, error: billingError } = useBillingOverview()
   const { data: historyData, isLoading: historyLoading } = useBillingHistory(currentPage, itemsPerPage)
   const { data: dashboardData, isLoading: dashLoading } = useDashboardAggregate()
-  const { data: _publicSettings, isLoading: pkgLoading } = usePublicSettings()
+  const { data: publicSettings, isLoading: pkgLoading } = usePublicSettings()
   const { data: subscriptionData } = useSubscription()
 
+  const packages: PaymentPackage[] =
+    (publicSettings as unknown as { packages?: { packages?: PaymentPackage[] } })?.packages?.packages || []
+  const dashProfile = dashboardData?.user?.profile as Record<string, unknown> | undefined
+  const dashBilling = dashboardData?.billing as { current_package_id?: string } | undefined
+  const currentPkgId = (dashProfile?.package_id as string) || dashBilling?.current_package_id || null
   const keywordUsage = dashboardData?.user?.quota as KeywordUsageData | undefined
   const loading = billingLoading || historyLoading || dashLoading || pkgLoading
   const error = billingError
@@ -345,7 +364,7 @@ export default function BillingPage() {
               {/* Actions */}
               <div className="flex items-center gap-3 pt-1">
                 <button
-                  onClick={() => router.push('/settings/plans-billing/checkout?package=')}
+                  onClick={() => setShowPlanPicker(true)}
                   className="inline-flex items-center gap-2 rounded-lg bg-gray-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
                 >
                   <Zap className="h-4 w-4" />
@@ -371,7 +390,7 @@ export default function BillingPage() {
                 Get started with a plan to unlock keyword tracking and SEO insights.
               </p>
               <button
-                onClick={() => router.push('/settings/plans-billing/checkout?package=')}
+                onClick={() => setShowPlanPicker(true)}
                 className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
               >
                 <Zap className="h-4 w-4" />
@@ -572,6 +591,109 @@ export default function BillingPage() {
           )}
         </div>
       </div>
+
+      {/* ── Plan Picker Modal ── */}
+      {showPlanPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPlanPicker(false)} />
+          <div className="relative bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 max-w-lg w-full mx-4 p-6 shadow-xl max-h-[85vh] overflow-y-auto">
+            <button onClick={() => setShowPlanPicker(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Choose a plan</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Select a plan to continue to checkout.</p>
+
+            {/* Period toggle */}
+            <div className="flex items-center gap-1 mt-4 mb-5 text-sm">
+              <button
+                onClick={() => setPlanPickerPeriod('monthly')}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                  planPickerPeriod === 'monthly'
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setPlanPickerPeriod('yearly')}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                  planPickerPeriod === 'yearly'
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-medium'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              >
+                Annual
+              </button>
+            </div>
+
+            {/* Plans list */}
+            <div className="space-y-2">
+              {packages.map((pkg) => {
+                const isCurrent = pkg.is_current || pkg.id === currentPkgId
+                const pricing = getPricing(pkg, planPickerPeriod)
+
+                return (
+                  <button
+                    key={pkg.id}
+                    onClick={() => {
+                      if (!isCurrent) {
+                        setShowPlanPicker(false)
+                        router.push(`/settings/billing/checkout?package=${pkg.id}&period=${planPickerPeriod}`)
+                      }
+                    }}
+                    disabled={isCurrent}
+                    className={`w-full text-left rounded-xl border p-4 transition-colors ${
+                      isCurrent
+                        ? 'border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/10 cursor-default'
+                        : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-800/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{pkg.name}</span>
+                          {isCurrent && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-400">
+                              <Check className="h-3 w-3" /> Current
+                            </span>
+                          )}
+                          {pkg.is_popular && !isCurrent && (
+                            <span className="rounded-full bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                              Popular
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{pkg.description}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {pkg.quota_limits.max_keywords === -1 ? 'Unlimited' : pkg.quota_limits.max_keywords} keywords &middot; {pkg.quota_limits.max_domains === -1 ? 'Unlimited' : pkg.quota_limits.max_domains} domains
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <div className="flex items-baseline gap-1 justify-end">
+                          {pricing.originalPrice && pricing.originalPrice > pricing.price && (
+                            <span className="text-xs line-through text-gray-300 dark:text-gray-600">{formatCurrency(pricing.originalPrice)}</span>
+                          )}
+                          <span className="text-base font-bold text-gray-900 dark:text-white tabular-nums">{formatCurrency(pricing.price)}</span>
+                        </div>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">/{planPickerPeriod === 'yearly' ? 'year' : 'month'}</span>
+                        {pricing.discount && (
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">save {pricing.discount}%</p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {packages.length === 0 && (
+              <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No plans available.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Cancel dialog ── */}
       {showCancelDialog && (

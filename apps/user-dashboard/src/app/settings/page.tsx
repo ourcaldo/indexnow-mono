@@ -6,7 +6,7 @@ import { usePageViewLogger } from '@indexnow/ui/hooks'
 import ProfileContent from './general/ProfileContent'
 import SecurityContent from './general/SecurityContent'
 import NotificationsContent from './general/NotificationsContent'
-import BillingContent from './plans-billing/PlansBillingContent'
+import BillingContent from './billing/PlansBillingContent'
 
 const navItems = [
   { id: 'profile', label: 'My Profile' },
@@ -27,7 +27,7 @@ function SettingsPageContent() {
     if (tab) {
       // Support legacy tab= params
       if (tab === 'general') setActiveSection('profile')
-      else if (tab === 'plans-billing') setActiveSection('billing')
+      else if (tab === 'plans-billing' || tab === 'plans') setActiveSection('billing')
       else if (navItems.some((n) => n.id === tab)) setActiveSection(tab)
     }
   }, [searchParams])

@@ -441,7 +441,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                   Unlock more keywords and advanced features.
                 </p>
                 <button
-                  onClick={() => navigate('/settings?tab=plans-billing')}
+                  onClick={() => navigate('/settings?tab=billing')}
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
                 >
                   Upgrade now
@@ -459,7 +459,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
               onMouseLeave={hideTooltip}
             >
               <button
-                onClick={() => navigate('/settings?tab=plans-billing')}
+                onClick={() => navigate('/settings?tab=billing')}
                 className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
               >
                 <ArrowUpRight className="w-4 h-4" />
