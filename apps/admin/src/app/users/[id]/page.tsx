@@ -10,12 +10,11 @@ import { useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfi
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import {
   ArrowLeft, Shield, Package, AlertTriangle,
-  Activity, Ban, Clock,
+  Activity, Ban,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import Link from 'next/link';
 import { Modal } from '@/components/Modal';
-import { UserDetailContent } from '@/components/UserDetailContent';
+import { UserDetailContent, LatestActivity } from '@/components/UserDetailContent';
 
 async function fetchUserDetail(userId: string): Promise<UserProfile | null> {
   const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
@@ -161,34 +160,7 @@ export default function UserDetailPage() {
           </div>
 
           {/* Latest activity */}
-          <div className="rounded-xl border border-gray-200">
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Latest Activity</h3>
-              <Link href={`/users/${userId}/activity`} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                View all &rarr;
-              </Link>
-            </div>
-            {recentLogs.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <Clock className="w-5 h-5 text-gray-300 mx-auto mb-1.5" />
-                <p className="text-xs text-gray-400">No activity yet</p>
-              </div>
-            ) : (
-              <div className="px-5 py-2">
-                {recentLogs.map((log: any) => (
-                  <div key={log.id} className="py-2.5 border-b border-gray-50 last:border-0">
-                    <div className="text-sm text-gray-900">{log.event_type}</div>
-                    {log.action_description && (
-                      <div className="text-xs text-gray-500 mt-0.5 truncate">{log.action_description}</div>
-                    )}
-                    <div className="text-[11px] text-gray-400 mt-0.5 tabular-nums">
-                      {format(new Date(log.created_at), 'MMM d, HH:mm')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <LatestActivity logs={recentLogs} viewAllHref={`/users/${userId}/activity`} />
         </div>
       </div>
 
