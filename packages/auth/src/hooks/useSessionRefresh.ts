@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@indexnow/supabase-client';
-import { logger } from '@indexnow/shared';
+import { logger, AUTH_ENDPOINTS } from '@indexnow/shared';
 
 /**
  * Configuration for session refresh behavior
@@ -80,7 +80,7 @@ export function useSessionRefresh(options: UseSessionRefreshOptions = {}) {
       const timeUntilExpiry = expiresAtMs - now;
 
       if (timeUntilExpiry <= refreshWindowMs && timeUntilExpiry > 0) {
-        // Token is within the refresh window — proactively refresh
+        // Token is within the refresh window — proactively refresh via API proxy
         isRefreshing.current = true;
         lastRefreshAttempt.current = now;
 
@@ -88,15 +88,40 @@ export function useSessionRefresh(options: UseSessionRefreshOptions = {}) {
           `Session expires in ${Math.round(timeUntilExpiry / 1000)}s — proactively refreshing`
         );
 
-        const { error: refreshError } = await supabase.auth.refreshSession();
+        const refreshToken = session.refresh_token;
+        if (!refreshToken) {
+          isRefreshing.current = false;
+          return;
+        }
 
-        if (refreshError) {
+        try {
+          const refreshResponse = await fetch(AUTH_ENDPOINTS.REFRESH, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+            credentials: 'include',
+          });
+
+          if (refreshResponse.ok) {
+            const refreshResult = await refreshResponse.json();
+            const newTokens = refreshResult.data;
+
+            if (newTokens?.access_token && newTokens?.refresh_token) {
+              // Sync client-side SDK state with new tokens
+              await supabase.auth.setSession({
+                access_token: newTokens.access_token,
+                refresh_token: newTokens.refresh_token,
+              });
+              logger.info('Session proactively refreshed successfully via API');
+            }
+          } else {
+            logger.warn('Proactive session refresh failed — API returned non-OK status');
+          }
+        } catch (refreshErr) {
           logger.warn(
-            { error: refreshError },
-            'Proactive session refresh failed — Supabase will retry automatically'
+            { error: refreshErr instanceof Error ? refreshErr : undefined },
+            'Proactive session refresh failed'
           );
-        } else {
-          logger.info('Session proactively refreshed successfully');
         }
 
         isRefreshing.current = false;

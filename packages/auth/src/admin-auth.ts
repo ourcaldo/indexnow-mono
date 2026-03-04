@@ -1,21 +1,14 @@
-import { supabase as _supabase, authService } from '@indexnow/supabase-client';
-import { type Json, type Database, logger } from '@indexnow/shared';
-import type { SupabaseClient } from '@indexnow/database/client';
-
-// Re-assert the Database generic lost through the external package re-export chain during DTS generation.
-// `as unknown as` is required because the @supabase/ssr and @supabase/supabase-js packages
-// resolve different generic arities for SupabaseClient across workspace dependency versions.
-const supabase = _supabase as unknown as SupabaseClient<Database>;
-
-// AdminUser type is now defined in server-auth.ts and exported from index.ts
+import { authService, authenticatedFetch } from '@indexnow/supabase-client';
+import { type Json, logger, AUTH_ENDPOINTS } from '@indexnow/shared';
 
 /**
  * Client-side admin auth service.
- * Uses the browser Supabase client (cookies) to check the current user's role.
+ * Uses API proxy calls (never direct DB queries) to check admin role.
  */
 export class AdminAuthService {
   /**
    * Get current user with admin role information (client-side)
+   * Routes through AUTH_ENDPOINTS.PROFILE — no direct Supabase DB calls.
    */
   async getCurrentAdminUser() {
     try {
@@ -25,24 +18,23 @@ export class AdminAuthService {
       }
 
       try {
-        const { data: profiles, error } = await supabase
-          .from('indb_auth_user_profiles')
-          .select('role, full_name')
-          .eq('user_id', currentUser.id)
-          .limit(1);
+        // Fetch profile via API proxy — includes role and full_name
+        const response = await authenticatedFetch(AUTH_ENDPOINTS.PROFILE);
+        if (!response.ok) return null;
 
-        if (!error && profiles && profiles.length > 0) {
-          const profile = profiles[0];
-          const role = profile.role || 'user';
-          return {
-            id: currentUser.id,
-            email: currentUser.email,
-            name: profile.full_name || currentUser.name,
-            role,
-            isAdmin: role === 'admin' || role === 'super_admin',
-            isSuperAdmin: role === 'super_admin',
-          };
-        }
+        const result = await response.json();
+        const profile = result?.data?.profile;
+        if (!profile) return null;
+
+        const role = profile.role || 'user';
+        return {
+          id: currentUser.id,
+          email: currentUser.email,
+          name: profile.full_name || currentUser.name,
+          role,
+          isAdmin: role === 'admin' || role === 'super_admin',
+          isSuperAdmin: role === 'super_admin',
+        };
       } catch (err) {
         logger.warn(
           { error: err instanceof Error ? err : undefined },
