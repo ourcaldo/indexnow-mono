@@ -6,7 +6,11 @@
  *  - Sentry webhook endpoint → resolve/unresolve errors in our DB
  *  - ErrorSlideOver UI       → "Open in Sentry" button link
  *
- * Requires SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT env vars.
+ * Requires SENTRY_INTEGRATION_TOKEN, SENTRY_ORG, and SENTRY_PROJECT env vars.
+ *
+ * Note: SENTRY_INTEGRATION_TOKEN is the Internal Integration token for REST API calls.
+ * SENTRY_ORG_AUTH_TOKEN (separate var) is the Organization token used by @sentry/nextjs
+ * for source map uploads during builds — it is NOT used here.
  */
 
 import { logger } from '../monitoring/error-handling';
@@ -20,7 +24,7 @@ interface SentryConfig {
 }
 
 function getSentryConfig(): SentryConfig | null {
-  const authToken = process.env.SENTRY_AUTH_TOKEN;
+  const authToken = process.env.SENTRY_INTEGRATION_TOKEN;
   const org = process.env.SENTRY_ORG;
   const project = process.env.SENTRY_PROJECT;
 
@@ -30,7 +34,7 @@ function getSentryConfig(): SentryConfig | null {
 
 async function sentryFetch(path: string, options: RequestInit = {}) {
   const config = getSentryConfig();
-  if (!config) throw new Error('Sentry API not configured (missing SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT)');
+  if (!config) throw new Error('Sentry API not configured (missing SENTRY_INTEGRATION_TOKEN, SENTRY_ORG, or SENTRY_PROJECT)');
 
   const url = `${SENTRY_BASE}${path}`;
   const response = await fetch(url, {

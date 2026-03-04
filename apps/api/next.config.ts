@@ -46,12 +46,10 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  // Upload source maps to Sentry for readable stack traces
+  // Organization token for source map uploads (separate from SENTRY_INTEGRATION_TOKEN used at runtime)
+  authToken: process.env.SENTRY_ORG_AUTH_TOKEN,
   silent: !process.env.CI,
-  // Suppress source map warnings during build
   hideSourceMaps: true,
-  // Disable automatic server-side instrumentation (we use manual init)
   autoInstrumentServerFunctions: false,
-  // Tunnel Sentry events to avoid ad blockers (optional, set route if needed)
   // tunnelRoute: "/monitoring",
 });

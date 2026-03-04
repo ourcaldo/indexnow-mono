@@ -54,6 +54,8 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
+  // Organization token for source map uploads (separate from SENTRY_INTEGRATION_TOKEN used at runtime)
+  authToken: process.env.SENTRY_ORG_AUTH_TOKEN,
   silent: !process.env.CI,
   hideSourceMaps: true,
   autoInstrumentServerFunctions: false,
