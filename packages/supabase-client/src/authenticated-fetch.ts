@@ -1,6 +1,6 @@
 import { authService } from './auth-service';
 import { supabase } from './supabase-browser';
-import { logger } from '@indexnow/shared';
+import { logger, AUTH_ENDPOINTS } from '@indexnow/shared';
 
 /**
  * Options for authenticatedFetch
@@ -90,27 +90,46 @@ export async function authenticatedFetch(
     credentials: 'include',
   });
 
-  // (#V7 M-10) On 401, try refreshing the session and retry once.
+  // (#V7 M-10) On 401, try refreshing the session via API proxy and retry once.
   // Note: `headers` object is mutated with the new token — this is safe because
   // the headers object was cloned at the top of this function.
   if (response.status === 401 && retryOn401 && !skipAuth) {
     try {
-      logger.info('Got 401 — attempting session refresh and retry');
-      const { error: refreshError } = await supabase.auth.refreshSession();
+      logger.info('Got 401 — attempting session refresh via API and retry');
 
-      if (!refreshError) {
-        // Get the new token after refresh
-        const newToken = await authService.getToken();
-        if (newToken) {
-          headers['Authorization'] = `Bearer ${newToken}`;
-        }
+      // Get current refresh_token from local session (allowed client-side read)
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const refreshToken = currentSession?.refresh_token;
 
-        // Retry the request with the new token
-        return fetch(url, {
-          ...fetchOptions,
-          headers,
+      if (refreshToken) {
+        // Route refresh through API proxy — enables rate limiting and cookie updates
+        const refreshResponse = await fetch(AUTH_ENDPOINTS.REFRESH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
           credentials: 'include',
         });
+
+        if (refreshResponse.ok) {
+          const refreshResult = await refreshResponse.json();
+          const newTokens = refreshResult.data;
+
+          if (newTokens?.access_token && newTokens?.refresh_token) {
+            // Sync client-side SDK state with new tokens
+            await supabase.auth.setSession({
+              access_token: newTokens.access_token,
+              refresh_token: newTokens.refresh_token,
+            });
+
+            headers['Authorization'] = `Bearer ${newTokens.access_token}`;
+
+            return fetch(url, {
+              ...fetchOptions,
+              headers,
+              credentials: 'include',
+            });
+          }
+        }
       }
     } catch (retryError) {
       logger.warn('Session refresh on 401 failed — returning original 401 response');

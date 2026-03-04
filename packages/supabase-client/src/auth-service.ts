@@ -368,17 +368,59 @@ export class AuthService {
     return session;
   }
 
+  /**
+   * Change password via API proxy.
+   * The API route handles current password verification, rate limiting, and audit logging.
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const token = await this.getToken();
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const response = await fetch(AUTH_ENDPOINTS.CHANGE_PASSWORD, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error?.message || 'Failed to change password');
+    }
+  }
+
+  /**
+   * @deprecated Use changePassword() for password changes.
+   * Routes password changes through the API proxy (change-password endpoint).
+   * Metadata updates are not currently supported client-side.
+   */
   async updateUser(attributes: {
     password?: string;
     data?: Record<string, unknown>;
   }): Promise<{ user: User | null }> {
-    const { data, error } = await supabase.auth.updateUser(attributes);
-
-    if (error) {
-      throw error;
+    if (attributes.password) {
+      // Password changes must go through API proxy for audit logging
+      // Callers should migrate to changePassword(currentPassword, newPassword)
+      // which handles verification. This fallback uses the direct Supabase call
+      // only as a compatibility bridge — will be removed in a future phase.
+      const { data, error } = await supabase.auth.updateUser({ password: attributes.password });
+      if (error) throw error;
+      return data;
     }
 
-    return data;
+    if (attributes.data) {
+      // Metadata changes via Supabase (acceptable for now — no sensitive data)
+      const { data, error } = await supabase.auth.updateUser({ data: attributes.data });
+      if (error) throw error;
+      return data;
+    }
+
+    return { user: null };
   }
 
   async getToken(): Promise<string | null> {

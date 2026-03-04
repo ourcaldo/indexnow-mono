@@ -168,35 +168,14 @@ export function useAccountSettings(): UseAccountSettingsReturn {
     try {
       setSavingPassword(true);
 
-      if (!user?.email) {
-        addToast({
-          title: 'Error',
-          description: 'User email not found',
-          type: 'error',
-        });
-        return;
-      }
-
+      // Change password via API proxy — handles verification, rate limiting, and audit logging
       try {
-        await authService.signIn(user.email, passwordForm.currentPassword);
-      } catch (_err) {
+        await authService.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      } catch (changeError: unknown) {
         addToast({
-          title: 'Authentication Error',
-          description: 'Current password is incorrect',
-          type: 'error',
-        });
-        return;
-      }
-
-      try {
-        await authService.updateUser({
-          password: passwordForm.newPassword,
-        });
-      } catch (updateError: unknown) {
-        addToast({
-          title: 'Update Error',
+          title: 'Password Change Error',
           description:
-            updateError instanceof Error ? updateError.message : 'Failed to update password',
+            changeError instanceof Error ? changeError.message : 'Failed to change password',
           type: 'error',
         });
         return;

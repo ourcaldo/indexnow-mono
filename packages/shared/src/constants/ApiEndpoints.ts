@@ -30,6 +30,7 @@ export const AUTH_ENDPOINTS = {
   RESEND_VERIFICATION: `${API_BASE.V1}/auth/resend-verification`,
   RESET_PASSWORD: `${API_BASE.V1}/auth/reset-password`,
   MAGIC_LINK: `${API_BASE.V1}/auth/magic-link`,
+  REFRESH: `${API_BASE.V1}/auth/refresh`,
   CHANGE_PASSWORD: `${API_BASE.V1}/auth/user/change-password`,
   AVATAR: `${API_BASE.V1}/auth/user/avatar`,
   PROFILE: `${API_BASE.V1}/auth/user/profile`,
