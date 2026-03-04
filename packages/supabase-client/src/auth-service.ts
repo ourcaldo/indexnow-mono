@@ -394,35 +394,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * @deprecated Use changePassword() for password changes.
-   * Routes password changes through the API proxy (change-password endpoint).
-   * Metadata updates are not currently supported client-side.
-   */
-  async updateUser(attributes: {
-    password?: string;
-    data?: Record<string, unknown>;
-  }): Promise<{ user: User | null }> {
-    if (attributes.password) {
-      // Password changes must go through API proxy for audit logging
-      // Callers should migrate to changePassword(currentPassword, newPassword)
-      // which handles verification. This fallback uses the direct Supabase call
-      // only as a compatibility bridge — will be removed in a future phase.
-      const { data, error } = await supabase.auth.updateUser({ password: attributes.password });
-      if (error) throw error;
-      return data;
-    }
-
-    if (attributes.data) {
-      // Metadata changes via Supabase (acceptable for now — no sensitive data)
-      const { data, error } = await supabase.auth.updateUser({ data: attributes.data });
-      if (error) throw error;
-      return data;
-    }
-
-    return { user: null };
-  }
-
   async getToken(): Promise<string | null> {
     // SECURITY: Validate user first, then extract token
     const {
