@@ -267,9 +267,15 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
-      await authService.signOut()
-      window.location.href = '/login'
+      // Race signOut against a 3-second timeout — Supabase signOut can hang
+      // if the client is in a bad state or the network is slow
+      await Promise.race([
+        authService.signOut(),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ])
     } catch {
+      // Swallow — we're redirecting regardless
+    } finally {
       window.location.href = '/login'
     }
   }
