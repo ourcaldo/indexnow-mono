@@ -28,6 +28,8 @@ export const AUTH_ENDPOINTS = {
   SESSION: `${API_BASE.V1}/auth/session`,
   DETECT_LOCATION: `${API_BASE.V1}/auth/detect-location`,
   RESEND_VERIFICATION: `${API_BASE.V1}/auth/resend-verification`,
+  RESET_PASSWORD: `${API_BASE.V1}/auth/reset-password`,
+  MAGIC_LINK: `${API_BASE.V1}/auth/magic-link`,
   CHANGE_PASSWORD: `${API_BASE.V1}/auth/user/change-password`,
   AVATAR: `${API_BASE.V1}/auth/user/avatar`,
   PROFILE: `${API_BASE.V1}/auth/user/profile`,

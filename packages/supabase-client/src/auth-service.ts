@@ -298,25 +298,32 @@ export class AuthService {
   }
 
   async resetPassword(email: string): Promise<void> {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    // Route through API proxy — enables rate limiting and prevents email enumeration
+    const response = await fetch(AUTH_ENDPOINTS.RESET_PASSWORD, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+      credentials: 'include',
     });
 
-    if (error) {
-      throw error;
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error?.message || 'Failed to send password reset email');
     }
   }
 
   async createMagicLink(email: string, redirectTo: string): Promise<void> {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
+    // Route through API proxy — enables rate limiting and prevents email enumeration
+    const response = await fetch(AUTH_ENDPOINTS.MAGIC_LINK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo }),
+      credentials: 'include',
     });
 
-    if (error) {
-      throw error;
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error?.message || 'Failed to send magic link');
     }
   }
 
