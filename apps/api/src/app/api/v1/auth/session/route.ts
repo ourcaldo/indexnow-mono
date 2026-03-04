@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { SecureServiceRoleWrapper, createServerClient, supabaseAdmin } from '@indexnow/database';
+import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
 import { AppConfig, ErrorType, ErrorSeverity, getClientIP, getRequestInfo } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
@@ -153,26 +153,10 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       return formatError(structuredError);
     }
 
-    // Log session activity, update last login, and send notification if user is available
+    // Log session activity and send notification if user is available
+    // Note: last_login_at/last_login_ip are updated in POST /auth/login, not here.
+    // This session handler is for token restoration only.
     if (data.session?.user?.id) {
-      // Update last_login_at and last_login_ip in indb_auth_user_profiles
-      const clientIP = getClientIP(request) || 'unknown';
-      const { error: loginUpdateError } = await supabaseAdmin
-        .from('indb_auth_user_profiles')
-        .update({
-          last_login_at: new Date().toISOString(),
-          last_login_ip: clientIP !== 'unknown' ? clientIP : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', data.session.user.id);
-
-      if (loginUpdateError) {
-        logger.error(
-          { error: loginUpdateError, userId: data.session.user.id },
-          'Failed to update last login info in session handler'
-        );
-      }
-
       try {
         await ActivityLogger.logActivity({
           userId: data.session.user.id,

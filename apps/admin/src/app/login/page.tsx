@@ -19,9 +19,17 @@ export default function LoginPage() {
     try {
       const { user } = await authService.signIn(email, password);
       if (!user) { setError('Invalid credentials'); return; }
+
+      // Verify admin/super_admin role — the API already validated credentials
+      if (user.role !== 'admin' && user.role !== 'super_admin') {
+        setError('Access denied. Admin privileges required.');
+        return;
+      }
+
       router.push('/');
-    } catch (err: any) { setError(err.message || 'Failed to sign in'); }
-    finally { setLoading(false); }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in');
+    } finally { setLoading(false); }
   };
 
   return (

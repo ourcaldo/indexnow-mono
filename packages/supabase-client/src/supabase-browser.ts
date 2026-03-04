@@ -16,7 +16,10 @@ async function hardLogout(client: ReturnType<typeof createSupabaseBrowserClient<
 
   try {
     try {
-      await client.auth.signOut();
+      // Local-only: no network call to Supabase. The server-side session
+      // is already revoked by DELETE /auth/session (normal logout) or by
+      // Supabase itself (refresh_token_already_used). Only clear client state.
+      await client.auth.signOut({ scope: 'local' });
     } catch (err) {
       // Continue even if signOut fails
     }

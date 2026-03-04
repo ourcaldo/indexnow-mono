@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
-import { createAnonServerClient, supabaseAdmin } from '@indexnow/database';
-import { loginSchema, getClientIP } from '@indexnow/shared';
+import { cookies } from 'next/headers';
+import { createAnonServerClient, createServerClient, supabaseAdmin } from '@indexnow/database';
+import { loginSchema, getClientIP, AppConfig } from '@indexnow/shared';
 import {
   publicApiWrapper,
   formatSuccess,
@@ -182,7 +183,26 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
         });
     }
 
-    // 8. Return success response with session data
+    // 8. Set session cookies for middleware (cross-subdomain)
+    const cookieStore = await cookies();
+    const getBaseDomain = (): string => {
+      try {
+        return new URL(AppConfig.app.baseUrl).hostname;
+      } catch {
+        return '';
+      }
+    };
+    const baseDomain = getBaseDomain();
+    const cookieSupabase = createServerClient(
+      cookieStore,
+      baseDomain ? { domain: `.${baseDomain}` } : undefined
+    );
+    await cookieSupabase.auth.setSession({
+      access_token: authData.session.access_token,
+      refresh_token: authData.session.refresh_token,
+    });
+
+    // 9. Return success response with session data
     // (#V7 M-18) user.role is intentionally included — frontend uses it for
     // route-level guards (admin panel vs user dashboard). This is not a secret;
     // server-side middleware re-validates the role on every protected request.

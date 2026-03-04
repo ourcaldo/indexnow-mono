@@ -166,13 +166,12 @@ export default function Login() {
           return
         }
         
-        // Handle password login
+        // Handle password login — signIn() routes through API proxy
         const authResult = await authService.signIn(email, password)
         
-        // Get user role and redirect to appropriate subdomain
         if (authResult.user) {
-          const userRole = await authService.getUserRole(authResult.user)
-          const redirectUrl = authService.getSubdomainRedirectUrl(userRole)
+          // Role is included in the API response — no extra Supabase call needed
+          const redirectUrl = authService.getSubdomainRedirectUrl(authResult.user.role ?? 'user')
           
           // If it's a subdomain URL, use window.location for cross-subdomain redirect
           if (redirectUrl.startsWith('http')) {

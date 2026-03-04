@@ -1,5 +1,5 @@
 import { supabase } from './supabase-browser';
-import { User, Session, AuthChangeEvent, Subscription } from '@supabase/supabase-js';
+import { User, AuthChangeEvent, Session, Subscription } from '@supabase/supabase-js';
 import { AUTH_ENDPOINTS } from '@indexnow/shared';
 import { logger } from '@indexnow/shared';
 
@@ -198,36 +198,42 @@ export class AuthService {
   async signIn(
     email: string,
     password: string
-  ): Promise<{ user: User | null; session: Session | null }> {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+  ): Promise<{
+    user: { id: string; email: string | undefined; role?: string } | null;
+    session: { access_token: string; refresh_token: string; expires_at?: number } | null;
+    mustChangePassword?: boolean;
+  }> {
+    // Route through API proxy — enables rate limiting, activity logging,
+    // last_login tracking, must_change_password enforcement, and login notifications
+    const response = await fetch(AUTH_ENDPOINTS.LOGIN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      credentials: 'include',
     });
 
-    if (error) {
-      throw error;
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      const message = result.error?.message || result.error || 'Login failed';
+      throw new Error(typeof message === 'string' ? message : 'Login failed');
     }
 
-    // Transfer session to server-side secure HttpOnly cookies only
-    if (data.session) {
-      // Send tokens to server for secure cookie setting
-      await fetch(AUTH_ENDPOINTS.SESSION, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        }),
-        credentials: 'include',
+    const { user, session, mustChangePassword } = result.data;
+
+    // Sync client-side Supabase SDK state so onAuthStateChange fires
+    // and authenticatedFetch can extract tokens from local session
+    if (session?.access_token && session?.refresh_token) {
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
       });
-
-      // Force cache refresh after successful login
-      this.clearUserCache();
     }
 
-    return data;
+    // Force cache refresh after successful login
+    this.clearUserCache();
+
+    return { user, session, mustChangePassword };
   }
 
   async signUp(
@@ -266,28 +272,28 @@ export class AuthService {
   }
 
   async signOut(): Promise<void> {
-    // Clear user cache
+    // Clear user cache first
     this.clearUserCache();
 
-    // Sign out from Supabase
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      throw error;
-    }
-
-    // Clear secure server-side session and cookies
+    // Route through API proxy — server handles Supabase signOut + cookie clearing + activity logging
     try {
       await fetch(AUTH_ENDPOINTS.SESSION, {
         method: 'DELETE',
         credentials: 'include',
       });
     } catch (e) {
-      // L-07: Log rather than silently discard — server cookies may remain active
+      // Log but don't block — we'll clear local state regardless
       console.warn(
         '[auth] Failed to clear server session during signOut:',
         e instanceof Error ? e.message : e
       );
+    }
+
+    // Clear client-side Supabase SDK state locally (no network call to Supabase)
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Ignore — local cleanup only
     }
   }
 
