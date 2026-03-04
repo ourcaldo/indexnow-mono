@@ -4,11 +4,14 @@ import { z } from 'zod';
  * Zod schemas for configuration validation
  */
 
-/** Coerce empty strings to undefined so optional .url() fields don't fail */
-const optionalUrl = z.preprocess(
-  (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
-  z.string().url().optional(),
-);
+/** Coerce empty strings to undefined so optional fields don't fail .min(1) */
+const emptyToUndefined = (val: unknown) =>
+  typeof val === 'string' && val.trim() === '' ? undefined : val;
+
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
+
+/** Optional string that treats "" as undefined */
+const optionalStr = z.preprocess(emptyToUndefined, z.string().min(1).optional());
 
 const AppSchema = z.object({
   name: z.string().default('IndexNow Studio'),
@@ -25,16 +28,16 @@ const AppSchema = z.object({
 const SupabaseSchema = z.object({
   url: z.string().url(),
   anonKey: z.string().min(1),
-  serviceRoleKey: z.string().min(1).optional(),
-  jwtSecret: z.string().min(1).optional(),
+  serviceRoleKey: optionalStr,
+  jwtSecret: optionalStr,
   bucketName: z.string().default('indexnow-public'),
 });
 
 const SecuritySchema = z.object({
-  encryptionKey: z.string().min(1).optional(),
-  encryptionMasterKey: z.string().min(1).optional(),
-  jwtSecret: z.string().min(1).optional(),
-  systemApiKey: z.string().min(1).optional(),
+  encryptionKey: optionalStr,
+  encryptionMasterKey: optionalStr,
+  jwtSecret: optionalStr,
+  systemApiKey: optionalStr,
 });
 
 const RedisSchema = z.object({
@@ -64,9 +67,7 @@ const BullMQSchema = z.object({
 });
 
 const PaddleSchema = z.object({
-  apiKey: z.string().min(1).optional(),
-  webhookSecret: z.string().min(1).optional(),
-  clientToken: z.string().min(1).optional(),
+  clientToken: optionalStr,
   environment: z.enum(['sandbox', 'production']).default('sandbox'),
 });
 
@@ -172,8 +173,6 @@ export const createAppConfig = (): AppConfigType => {
       },
     },
     paddle: {
-      apiKey: process.env.PADDLE_API_KEY,
-      webhookSecret: process.env.PADDLE_WEBHOOK_SECRET,
       clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
       environment: process.env.NEXT_PUBLIC_PADDLE_ENV,
     },
@@ -266,9 +265,8 @@ export const createAppConfig = (): AppConfigType => {
     if (!parsed.data.email.smtp.pass) missing.push('SMTP_PASS');
 
     // ── Warnings: recommended but not fatal ──
-    if (!parsed.data.paddle.apiKey) warnings.push('PADDLE_API_KEY (payments will be unavailable)');
-    if (!parsed.data.paddle.webhookSecret)
-      warnings.push('PADDLE_WEBHOOK_SECRET (webhook verification disabled)');
+    if (!parsed.data.paddle.clientToken)
+      warnings.push('NEXT_PUBLIC_PADDLE_CLIENT_TOKEN (checkout UI disabled)');
     if (!parsed.data.monitoring.sentry.dsn)
       warnings.push('NEXT_PUBLIC_SENTRY_DSN (error tracking disabled)');
 
