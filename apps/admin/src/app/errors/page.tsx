@@ -66,7 +66,7 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
   const [isDragging, setIsDragging] = useState(false);
 
   /* ── Drag-to-scroll state (refs to avoid re-renders) ── */
-  const dragState = useRef({ active: false, startX: 0, scrollStart: 0, moved: false });
+  const dragState = useRef({ active: false, startX: 0, scrollStart: 0, moved: false, pointerId: -1 });
 
   /** Width of one card (derived from container).
    *  Formula: (containerWidth - gaps) / VISIBLE_CARDS  */
@@ -96,25 +96,38 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     const el = scrollRef.current;
     if (!el) return;
-    dragState.current = { active: true, startX: e.clientX, scrollStart: el.scrollLeft, moved: false };
-    setIsDragging(true);
-    el.setPointerCapture(e.pointerId);
+    // Don't capture pointer yet — wait until the user actually drags past threshold.
+    // Capturing immediately steals events from child <button> elements, blocking onClick.
+    dragState.current = { active: true, startX: e.clientX, scrollStart: el.scrollLeft, moved: false, pointerId: e.pointerId };
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     const ds = dragState.current;
     if (!ds.active) return;
     const dx = e.clientX - ds.startX;
-    if (Math.abs(dx) > 3) ds.moved = true;
-    const el = scrollRef.current;
-    if (el) el.scrollLeft = ds.scrollStart - dx;
+    if (Math.abs(dx) > 3 && !ds.moved) {
+      ds.moved = true;
+      setIsDragging(true);
+      // Only capture pointer once dragging is confirmed — this allows clean taps to reach buttons
+      const el = scrollRef.current;
+      if (el) el.setPointerCapture(ds.pointerId);
+    }
+    if (ds.moved) {
+      const el = scrollRef.current;
+      if (el) el.scrollLeft = ds.scrollStart - dx;
+    }
   }, []);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
+    const wasMoved = dragState.current.moved;
     dragState.current.active = false;
+    dragState.current.moved = false;
     setIsDragging(false);
     const el = scrollRef.current;
-    if (el) el.releasePointerCapture(e.pointerId);
+    // Only release capture if we actually captured it during drag
+    if (el && wasMoved) {
+      try { el.releasePointerCapture(e.pointerId); } catch { /* not captured */ }
+    }
   }, []);
 
   useEffect(() => {
