@@ -224,55 +224,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_status ON indb_payment_transactions(
 CREATE INDEX IF NOT EXISTS idx_transactions_package ON indb_payment_transactions(package_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_gateway ON indb_payment_transactions(gateway_id);
 
--- Transaction history/audit
-CREATE TABLE IF NOT EXISTS indb_payment_transactions_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  transaction_id UUID NOT NULL REFERENCES indb_payment_transactions(id) ON DELETE CASCADE,
-  old_status VARCHAR(50),
-  new_status VARCHAR(50) NOT NULL,
-  action_type VARCHAR(100) NOT NULL,
-  action_description TEXT NOT NULL,
-  changed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  changed_by_type VARCHAR(50) NOT NULL,
-  old_values JSONB,
-  new_values JSONB,
-  notes TEXT,
-  metadata JSONB,
-  ip_address VARCHAR(50),
-  user_agent TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_transactions_history_tid ON indb_payment_transactions_history(transaction_id);
-
--- Enable RLS on transactions_history (SECURITY: prevent unauthorized access to audit trail)
-ALTER TABLE indb_payment_transactions_history ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own transaction history" ON indb_payment_transactions_history
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM indb_payment_transactions pt
-      WHERE pt.id = indb_payment_transactions_history.transaction_id
-      AND pt.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Admins can view all transaction history" ON indb_payment_transactions_history
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles
-      WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
-    )
-  );
-
-CREATE POLICY "Admins can manage transaction history" ON indb_payment_transactions_history
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles
-      WHERE user_id = auth.uid() AND role IN ('admin', 'super_admin')
-    )
-  );
-
 -- User subscriptions
 CREATE TABLE IF NOT EXISTS indb_payment_subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
