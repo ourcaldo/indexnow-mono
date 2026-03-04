@@ -251,9 +251,17 @@ export function UserDetailContent({
             {format(new Date(user.created_at), 'MMM d, yyyy')}
           </span>
         </InfoRow>
-        {user.last_sign_in_at && (
-          <InfoRow label="Last sign in">
-            {formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true })}
+        {(user.last_login_at || user.last_sign_in_at) && (
+          <InfoRow label="Last login">
+            {formatDistanceToNow(
+              new Date(user.last_login_at || user.last_sign_in_at!),
+              { addSuffix: true }
+            )}
+          </InfoRow>
+        )}
+        {user.last_login_ip && (
+          <InfoRow label="Login IP">
+            <span className="font-mono text-xs">{user.last_login_ip}</span>
           </InfoRow>
         )}
         {!isCompact && user.phone_number && (
@@ -320,10 +328,17 @@ export function UserDetailContent({
           <InfoRow label="Joined">
             {format(new Date(user.created_at), 'MMM d, yyyy')}
           </InfoRow>
-          <InfoRow label="Last sign in">
-            {user.last_sign_in_at
-              ? formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true })
-              : 'Never'}
+          <InfoRow label="Last login">
+            {user.last_login_at
+              ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true })
+              : user.last_sign_in_at
+                ? formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true })
+                : 'Never'}
+          </InfoRow>
+          <InfoRow label="Login IP">
+            {user.last_login_ip
+              ? <span className="font-mono text-xs">{user.last_login_ip}</span>
+              : 'N/A'}
           </InfoRow>
           <InfoRow label="Updated">
             {formatDistanceToNow(new Date(user.updated_at), { addSuffix: true })}

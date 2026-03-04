@@ -149,6 +149,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
     email: authUser?.user?.email || null,
     email_confirmed_at: authUser?.user?.email_confirmed_at || null,
     last_sign_in_at: authUser?.user?.last_sign_in_at || null,
+    // last_login_at and last_login_ip come from profile spread above (indb_auth_user_profiles)
     usage: {
       keywords_used: keywordCountResult.count ?? 0,
       domains_used: domainCountResult.count ?? 0,

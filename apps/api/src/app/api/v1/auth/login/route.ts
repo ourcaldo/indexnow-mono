@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createAnonServerClient } from '@indexnow/database';
+import { createAnonServerClient, supabaseAdmin } from '@indexnow/database';
 import { loginSchema, getClientIP } from '@indexnow/shared';
 import {
   publicApiWrapper,
@@ -143,9 +143,24 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
       /* Column may not exist yet */
     }
 
-    // 6. Log successful login activity
+    // 6. Log successful login activity + update last login in user profile
     const requestInfo = await getRequestInfo(request);
     await ActivityLogger.logAuth(user.id, ActivityEventTypes.LOGIN, true, request);
+
+    // Update last_login_at and last_login_ip in indb_auth_user_profiles
+    supabaseAdmin
+      .from('indb_auth_user_profiles')
+      .update({
+        last_login_at: new Date().toISOString(),
+        last_login_ip: clientIP || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id)
+      .then(({ error }) => {
+        if (error) {
+          logger.error({ error, userId: user.id }, 'Failed to update last login info');
+        }
+      });
 
     // 7. Send login notification email (async) — skip if no email on the user
     if (user.email) {

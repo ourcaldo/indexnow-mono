@@ -229,21 +229,18 @@ export class UserManagementService {
 
   /**
    * Update user login information
-   * (#V7 M-15) Currently only updates updated_at. The original schema had
-   * last_login_at and last_login_ip columns which were removed during migration.
-   * TODO: Add last_login_at column to indb_auth_user_profiles if login tracking needed.
+   * Writes last_login_at and last_login_ip to indb_auth_user_profiles
+   * on every successful login.
    */
   async updateLastLogin(userId: string, ipAddress?: string): Promise<void> {
     await supabaseAdmin
       .from('indb_auth_user_profiles')
       .update({
+        last_login_at: new Date().toISOString(),
+        last_login_ip: ipAddress || null,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
-
-    // Note: indb_auth_user_profiles doesn't have last_login_at in the schema I saw
-    // but we can add it or log it elsewhere. Functional parity with original:
-    // Original had last_login_at and last_login_ip.
   }
 
   /**

@@ -37,6 +37,8 @@ export interface UserProfile {
   email_confirmed_at?: string;
   email_verified?: boolean;
   last_sign_in_at?: string;
+  last_login_at?: string | null;
+  last_login_ip?: string | null;
 }
 
 interface UsersResponse {
