@@ -148,19 +148,18 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     await ActivityLogger.logAuth(user.id, ActivityEventTypes.LOGIN, true, request);
 
     // Update last_login_at and last_login_ip in indb_auth_user_profiles
-    supabaseAdmin
+    const { error: loginUpdateError } = await supabaseAdmin
       .from('indb_auth_user_profiles')
       .update({
         last_login_at: new Date().toISOString(),
-        last_login_ip: clientIP || null,
+        last_login_ip: clientIP !== 'unknown' ? clientIP : null,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', user.id)
-      .then(({ error }) => {
-        if (error) {
-          logger.error({ error, userId: user.id }, 'Failed to update last login info');
-        }
-      });
+      .eq('user_id', user.id);
+
+    if (loginUpdateError) {
+      logger.error({ error: loginUpdateError, userId: user.id }, 'Failed to update last login info');
+    }
 
     // 7. Send login notification email (async) — skip if no email on the user
     if (user.email) {

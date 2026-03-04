@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -60,12 +61,17 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const siteName = useSiteName();
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
-    await authService.signOut();
-    router.push('/login');
+    setSigningOut(true);
+    try {
+      await authService.signOut();
+      window.location.href = '/login';
+    } catch {
+      window.location.href = '/login';
+    }
   };
 
   return (
@@ -107,10 +113,11 @@ export function Sidebar() {
       <div className="px-3 py-3 border-t border-gray-100">
         <button
           onClick={handleSignOut}
+          disabled={signingOut}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all"
         >
           <LogOut className="w-[18px] h-[18px]" strokeWidth={1.8} />
-          Sign out
+          {signingOut ? 'Signing out...' : 'Sign out'}
         </button>
       </div>
     </aside>
