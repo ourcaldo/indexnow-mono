@@ -22,7 +22,7 @@ services:
     ports:
       - '5000:5000'
     env_file:
-      - .env # (#V7 L-43) Create from .env.example before running docker-compose
+      - apps/api/.env
     environment:
       - NODE_ENV=production
       - PORT=5000
@@ -41,7 +41,7 @@ services:
     ports:
       - '3001:3001'
     env_file:
-      - .env
+      - apps/admin/.env
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -55,7 +55,7 @@ services:
     ports:
       - '3000:3000'
     env_file:
-      - .env
+      - apps/user-dashboard/.env
     environment:
       - NODE_ENV=production
       - PORT=3000
