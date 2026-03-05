@@ -12,7 +12,7 @@ import {
   PackageNotFound,
 } from '@indexnow/ui/checkout';
 import { PaymentSchemas, logger, countries } from '@indexnow/shared';
-import { usePaddle } from '@indexnow/ui/providers';
+import { PaddleProvider, usePaddle } from '@indexnow/ui/providers';
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks';
 import { ArrowLeft, Loader2, Lock, ShieldCheck, CreditCard } from 'lucide-react';
 import { z } from 'zod';
@@ -352,8 +352,10 @@ function CheckoutPageContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<CheckoutLoading />}>
-      <CheckoutPageContent />
-    </Suspense>
+    <PaddleProvider>
+      <Suspense fallback={<CheckoutLoading />}>
+        <CheckoutPageContent />
+      </Suspense>
+    </PaddleProvider>
   );
 }

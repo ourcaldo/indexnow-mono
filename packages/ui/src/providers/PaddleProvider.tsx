@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useEffect, useState, useContext, useCallback } from 'react'
+import React, { createContext, useEffect, useState, useContext } from 'react'
 import { initializePaddle, Paddle } from '@paddle/paddle-js'
 import { ApiEndpoints, logger } from '@indexnow/shared'
 
@@ -16,6 +16,13 @@ const PaddleContext = createContext<PaddleContextType>({
   error: null,
 })
 
+/**
+ * PaddleProvider — initializes the Paddle JS SDK on mount.
+ * 
+ * This provider is NOT in the global provider stack. It wraps ONLY
+ * the checkout page where Paddle checkout is actually triggered.
+ * This avoids fetching /payments/paddle/config on every page load.
+ */
 export function PaddleProvider({ children }: { children: React.ReactNode }) {
   const [paddle, setPaddle] = useState<Paddle | null>(null)
   const [isLoading, setIsLoading] = useState(true)
