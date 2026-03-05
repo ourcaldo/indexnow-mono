@@ -18,7 +18,7 @@ import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingA
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
 import { SeRankingErrorHandler } from '../rank-tracking/seranking/services/ErrorHandlingService';
 import { IntegrationService } from '../rank-tracking/seranking/services/IntegrationService';
-import { ApiKeyManager } from '../rank-tracking/api-key-manager';
+import { ApiKeyManager } from '../integrations/api-key-manager';
 import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 

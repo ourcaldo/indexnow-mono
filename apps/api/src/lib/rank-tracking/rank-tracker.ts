@@ -1,6 +1,6 @@
 import { firecrawlRateLimiter } from './firecrawl-rate-limiter'
 import { logger } from '../monitoring/error-handling'
-import { ApiKeyManager } from './api-key-manager'
+import { ApiKeyManager } from '../integrations/api-key-manager'
 
 export interface RankResult {
   position: number | null
