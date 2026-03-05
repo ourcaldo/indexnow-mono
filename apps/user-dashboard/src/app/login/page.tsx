@@ -38,10 +38,20 @@ export default function Login() {
   
   // Check if user is already authenticated and redirect to dashboard
   useEffect(() => {
+    let isMounted = true
+
+    // Safety timeout: if auth check hangs (lock contention, slow network),
+    // show the login form after 4 seconds so the page isn't stuck forever.
+    const safetyTimer = setTimeout(() => {
+      if (isMounted && isCheckingAuth) {
+        setIsCheckingAuth(false)
+      }
+    }, 4000)
+
     const checkAuth = async () => {
       try {
         const currentUser = await authService.getCurrentUser()
-        if (currentUser) {
+        if (isMounted && currentUser) {
           router.replace('/')
           return
         }
@@ -50,10 +60,16 @@ export default function Login() {
         // Don't block login page if auth check fails
       } finally {
         // Always stop checking auth, even if there's an error
-        setIsCheckingAuth(false)
+        if (isMounted) setIsCheckingAuth(false)
+        clearTimeout(safetyTimer)
       }
     }
     checkAuth()
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [router])
   
   // Check for auth callback errors in URL params

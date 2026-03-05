@@ -120,18 +120,28 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
 
     const user = authData.user;
 
-    // 5. Check if user must change password (set by admin password reset)
+    // 5. Fetch user profile: app role + must_change_password flag.
+    // user.role from Supabase auth is the JWT claim ("authenticated") — NOT the
+    // app-level role. We need indb_auth_user_profiles.role for admin/user guards.
+    let appRole = 'user'; // default fallback
     try {
       const profileResult = await supabase
         .from('indb_auth_user_profiles')
-        .select('must_change_password')
+        .select('must_change_password, role')
         .eq('user_id', user.id)
         .single();
-      const profile = profileResult.data as { must_change_password: boolean } | null;
+      const profile = profileResult.data as {
+        must_change_password: boolean;
+        role: string;
+      } | null;
+
+      if (profile?.role) {
+        appRole = profile.role;
+      }
 
       if (profile?.must_change_password) {
         return formatSuccess({
-          user: { id: user.id, email: user.email },
+          user: { id: user.id, email: user.email, role: appRole },
           mustChangePassword: true,
           session: {
             access_token: authData.session.access_token,
@@ -141,7 +151,7 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
         });
       }
     } catch {
-      /* Column may not exist yet */
+      /* Column may not exist yet — appRole stays 'user' */
     }
 
     // 6. Log successful login activity + update last login in user profile
@@ -203,14 +213,15 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     });
 
     // 9. Return success response with session data
-    // (#V7 M-18) user.role is intentionally included — frontend uses it for
-    // route-level guards (admin panel vs user dashboard). This is not a secret;
-    // server-side middleware re-validates the role on every protected request.
+    // (#V7 M-18) appRole is the profile role from indb_auth_user_profiles, NOT
+    // the Supabase JWT claim (which is always "authenticated"). Frontend uses it
+    // for route-level guards (admin panel vs user dashboard). Server-side
+    // middleware re-validates the role on every protected request.
     return formatSuccess({
       user: {
         id: user.id,
         email: user.email,
-        role: user.role,
+        role: appRole,
         last_sign_in_at: user.last_sign_in_at,
       },
       mustChangePassword: false,

@@ -77,10 +77,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Cache the role verification result in a short-lived, httpOnly cookie
+    // Cache the role verification result in a short-lived, httpOnly cookie.
+    // secure: true only in production (HTTPS) — HTTP dev/staging can't store secure cookies.
     response.cookies.set(ROLE_CACHE_COOKIE, user.id, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: ROLE_CACHE_TTL_SECONDS,
       path: '/',

@@ -34,6 +34,9 @@ export class AuthErrorHandler {
     'invalid_grant'
   ]
 
+  // Guard against SIGNED_OUT → clearAuthState → signOut → SIGNED_OUT loop
+  private static isClearingAuthState = false
+
   static isRefreshTokenError(error: AuthErrorContext['error']): boolean {
     if (!error) return false
     
@@ -68,38 +71,48 @@ export class AuthErrorHandler {
   }
 
   static async clearAuthState(): Promise<void> {
+    // Prevent re-entrancy: signOut({ scope: 'local' }) fires SIGNED_OUT,
+    // which would call clearAuthState() again → infinite async loop.
+    if (this.isClearingAuthState) return
+    this.isClearingAuthState = true
+
     try {
-      await supabase.auth.signOut({ scope: 'local' })
-    } catch (e) {
-      // Ignore errors during signout
-    }
-
-    if (typeof window !== 'undefined') {
       try {
-        const keysToRemove: string[] = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
-            keysToRemove.push(key)
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key))
+        await supabase.auth.signOut({ scope: 'local' })
       } catch (e) {
-        // Ignore localStorage errors
+        // Ignore errors during signout
       }
 
-      try {
-        const keysToRemove: string[] = []
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i)
-          if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
-            keysToRemove.push(key)
+      if (typeof window !== 'undefined') {
+        try {
+          const keysToRemove: string[] = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+              keysToRemove.push(key)
+            }
           }
+          keysToRemove.forEach(key => localStorage.removeItem(key))
+        } catch (e) {
+          // Ignore localStorage errors
         }
-        keysToRemove.forEach(key => sessionStorage.removeItem(key))
-      } catch (e) {
-        // Ignore sessionStorage errors
+
+        try {
+          const keysToRemove: string[] = []
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i)
+            if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+              keysToRemove.push(key)
+            }
+          }
+          keysToRemove.forEach(key => sessionStorage.removeItem(key))
+        } catch (e) {
+          // Ignore sessionStorage errors
+        }
       }
+    } finally {
+      // Reset guard after a short delay to allow any queued events to drain
+      setTimeout(() => { this.isClearingAuthState = false }, 500)
     }
   }
 

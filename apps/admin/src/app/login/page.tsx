@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { authService } from '@indexnow/supabase-client';
 import { Lock } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,7 +24,9 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/');
+      // Full navigation (not router.push) to ensure middleware picks up the
+      // freshly-set session cookies without client-side navigation race.
+      window.location.href = '/';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
     } finally { setLoading(false); }
