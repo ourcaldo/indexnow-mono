@@ -116,10 +116,8 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
     ? { status: 'connected' }
     : { status: 'unconfigured' };
 
-  // SE Ranking — only report if API key is configured
-  results.seranking = process.env.SE_RANKING_API_KEY
-    ? { status: 'connected' }
-    : { status: 'unconfigured' };
+  // SE Ranking — API key is stored in indb_site_integration, not in env
+  results.seranking = { status: 'db-managed' };
 
   // ── Determine overall status ──
   if (results.database.status !== 'connected') {

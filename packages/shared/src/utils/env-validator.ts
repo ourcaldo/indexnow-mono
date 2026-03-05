@@ -29,7 +29,6 @@ export const apiEnvSchema = commonEnvSchema.extend({
   // External Services
   PADDLE_API_KEY: z.string().optional(),
   PADDLE_WEBHOOK_SECRET: z.string().optional(),
-  SERANKING_API_TOKEN: z.string().optional(),
 });
 
 /**

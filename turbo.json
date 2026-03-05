@@ -20,7 +20,6 @@
     "SMTP_PORT",
     "SMTP_USER",
     "SMTP_PASS",
-    "SE_RANKING_API_KEY",
     "SYSTEM_API_KEY",
     "JWT_SECRET"
   ],

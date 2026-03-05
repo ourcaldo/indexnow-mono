@@ -143,7 +143,7 @@ export interface BulkEnrichmentResult {
 // Default configuration
 const DEFAULT_CONFIG: SeRankingServiceConfig = {
   apiUrl: 'https://api4.seranking.com/research/keywords',
-  apiKey: process.env.SE_RANKING_API_KEY || '',
+  apiKey: '', // API key is loaded from indb_site_integration at runtime, not from env
   rateLimits: {
     requestsPerMinute: 60,
     requestsPerHour: 3000,
