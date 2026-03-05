@@ -144,12 +144,12 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
       .eq('user_id', userId),
   ]);
 
+  // email now lives directly in indb_auth_user_profiles (synced via DB trigger).
+  // authUser is still needed for email_confirmed_at and last_sign_in_at.
   const userWithAuthData = {
     ...profile,
-    email: authUser?.user?.email || null,
     email_confirmed_at: authUser?.user?.email_confirmed_at || null,
     last_sign_in_at: authUser?.user?.last_sign_in_at || null,
-    // last_login_at and last_login_ip come from profile spread above (indb_auth_user_profiles)
     usage: {
       keywords_used: keywordCountResult.count ?? 0,
       domains_used: domainCountResult.count ?? 0,
@@ -160,12 +160,12 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
     adminUser.id,
     'user_profile_view',
     userId,
-    `Viewed detailed profile for ${profile.full_name || authUser?.user?.email || 'User'}`,
+    `Viewed detailed profile for ${profile.full_name || profile.email || 'User'}`,
     request,
     {
       profileView: true,
       userRole: profile.role,
-      userEmail: authUser?.user?.email,
+      userEmail: profile.email,
       lastSignIn: authUser?.user?.last_sign_in_at,
     }
   );

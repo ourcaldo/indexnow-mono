@@ -182,11 +182,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         }
       }
 
-      // Get email from auth object directly to avoid extra call
-      const {
-        data: { user },
-      } = await auth.supabase.auth.getUser();
-
+      // email now lives directly in indb_auth_user_profiles (synced via DB trigger)
       const profileData = userProfileResult.data;
       profile = {
         id: profileData.id ?? profileData.user_id,
@@ -197,7 +193,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         subscription_end_date: profileData.subscription_end_date,
         country: profileData.country,
         package: transformedPackage,
-        email: user?.email || null,
+        email: profileData.email || null,
       };
     }
 

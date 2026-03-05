@@ -174,12 +174,15 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     const requestInfo = await getRequestInfo(request);
     await ActivityLogger.logAuth(user.id, ActivityEventTypes.LOGIN, true, request);
 
-    // Update last_login_at and last_login_ip in indb_auth_user_profiles
+    // Update last_login_at, last_login_ip, and email in indb_auth_user_profiles.
+    // email sync ensures the profile column stays current even if it was NULL
+    // (pre-migration users) or if the user changed their email via Supabase auth.
     const { error: loginUpdateError } = await supabaseAdmin
       .from('indb_auth_user_profiles')
       .update({
         last_login_at: new Date().toISOString(),
         last_login_ip: clientIP !== 'unknown' ? clientIP : null,
+        email: user.email ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', user.id);

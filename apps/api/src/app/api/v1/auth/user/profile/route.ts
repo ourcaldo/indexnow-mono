@@ -53,14 +53,15 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       return formatError(notFoundError);
     }
 
+    // email now lives directly in indb_auth_user_profiles (synced via DB trigger).
+    // Only fetch authUser for email_confirmed_at and last_sign_in_at which are
+    // still exclusive to auth.users.
     const {
       data: { user: authUser },
     } = await auth.supabase.auth.getUser();
 
-    // Build user profile response (counts excluded - tables not in type definitions)
     const userProfile = {
       ...profile,
-      email: authUser?.email ?? null,
       email_confirmed_at: authUser?.email_confirmed_at ?? null,
       last_sign_in_at: authUser?.last_sign_in_at ?? null,
     };

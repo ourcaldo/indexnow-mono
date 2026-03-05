@@ -121,6 +121,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           'indb_auth_user_profiles',
           {
             user_id: data.user.id,
+            email: email.toLowerCase(),
             full_name: name?.toString().substring(0, 255) || null,
             phone_number: phoneNumber?.toString().replace(/[^\d+\-\s\(\)]/g, '') || null,
             country: country?.toString().substring(0, 100) || null,

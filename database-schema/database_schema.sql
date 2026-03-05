@@ -86,6 +86,7 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TABLE IF NOT EXISTS indb_auth_user_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
   full_name VARCHAR(255),
   phone_number VARCHAR(50),
   country VARCHAR(100),
@@ -141,6 +142,42 @@ CREATE TRIGGER on_auth_user_email_confirmed
 AFTER UPDATE OF email_confirmed_at ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION sync_email_verified_from_auth();
+
+-- Sync email from auth.users → email on indb_auth_user_profiles (on update)
+CREATE OR REPLACE FUNCTION sync_email_from_auth()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.email IS DISTINCT FROM OLD.email THEN
+    UPDATE public.indb_auth_user_profiles
+    SET email = NEW.email
+    WHERE user_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_email_changed ON auth.users;
+CREATE TRIGGER on_auth_user_email_changed
+AFTER UPDATE OF email ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION sync_email_from_auth();
+
+-- Sync email from auth.users → email on indb_auth_user_profiles (on insert)
+CREATE OR REPLACE FUNCTION sync_email_on_auth_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.indb_auth_user_profiles
+  SET email = NEW.email
+  WHERE user_id = NEW.id AND email IS NULL;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_sync_email ON auth.users;
+CREATE TRIGGER on_auth_user_created_sync_email
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION sync_email_on_auth_insert();
 
 -- User settings/preferences
 CREATE TABLE IF NOT EXISTS indb_auth_user_settings (
