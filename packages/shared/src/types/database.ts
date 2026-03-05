@@ -1591,36 +1591,6 @@ export type Database = {
         };
         Relationships: never[];
       };
-      indb_api_keys: {
-        Row: {
-          id: string;
-          service_name: string;
-          key_value: string;
-          is_active: boolean;
-          last_used_at: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          service_name: string;
-          key_value: string;
-          is_active?: boolean;
-          last_used_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          service_name?: string;
-          key_value?: string;
-          is_active?: boolean;
-          last_used_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: never[];
-      };
       indb_system_activity_logs: {
         Row: {
           id: string;

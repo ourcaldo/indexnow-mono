@@ -887,19 +887,6 @@ CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_user ON indb_enrichment_jobs(user
 CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_status ON indb_enrichment_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_enrichment_jobs_created ON indb_enrichment_jobs(created_at DESC);
 
--- External API keys for third-party service integrations (e.g. SE Ranking)
-CREATE TABLE IF NOT EXISTS indb_api_keys (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  service_name VARCHAR(100) NOT NULL,
-  key_value TEXT NOT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  last_used_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_api_keys_service ON indb_api_keys(service_name, is_active);
-
 -- System-level activity logs (non-security, e.g. cron jobs, manual triggers)
 CREATE TABLE IF NOT EXISTS indb_system_activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -912,17 +899,7 @@ CREATE TABLE IF NOT EXISTS indb_system_activity_logs (
 
 CREATE INDEX IF NOT EXISTS idx_system_activity_event ON indb_system_activity_logs(event_type);
 
--- 18b. indb_api_keys: Admin-only access (sensitive credentials)
-ALTER TABLE indb_api_keys ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Admin only for api keys" ON indb_api_keys
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM indb_auth_user_profiles
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
-
+-- 18b. RLS policies for system activity logs
 -- 18c. indb_system_activity_logs: Admin read, system write
 ALTER TABLE indb_system_activity_logs ENABLE ROW LEVEL SECURITY;
 
