@@ -32,7 +32,35 @@ type KeywordBankRow = Database['public']['Tables']['indb_keyword_bank']['Row'];
 type KeywordBankInsertRow = Database['public']['Tables']['indb_keyword_bank']['Insert'];
 type KeywordBankUpdateRow = Database['public']['Tables']['indb_keyword_bank']['Update'];
 
+// Module-level cache: ISO2 country code → UUID from indb_keyword_countries
+const countryUuidCache = new Map<string, string>();
+
 export class KeywordBankService implements IKeywordBankService {
+  /**
+   * Resolve an ISO2 country code (e.g. "id", "us") to its UUID in indb_keyword_countries.
+   * Results are cached in-memory so repeated calls avoid DB lookups.
+   */
+  private async resolveCountryUuid(isoCode: string): Promise<string | null> {
+    const normalized = isoCode.trim().toLowerCase();
+
+    const cached = countryUuidCache.get(normalized);
+    if (cached) return cached;
+
+    const { data } = await supabaseAdmin
+      .from('indb_keyword_countries')
+      .select('id')
+      .eq('iso2_code', normalized)
+      .single();
+
+    if (data?.id) {
+      countryUuidCache.set(normalized, data.id);
+      return data.id;
+    }
+
+    logger.warn({ isoCode: normalized }, 'Could not resolve country ISO2 code to UUID');
+    return null;
+  }
+
   /**
    * Get keyword data from bank by keyword and location (Interface implementation)
    */
@@ -42,6 +70,13 @@ export class KeywordBankService implements IKeywordBankService {
     languageCode: string = 'en'
   ): Promise<KeywordBankEntity | null> {
     try {
+      // Resolve ISO2 country code to UUID for DB lookup
+      const countryUuid = await this.resolveCountryUuid(countryCode);
+      if (!countryUuid) {
+        logger.warn({ countryCode }, 'Cannot look up keyword data: unknown country code');
+        return null;
+      }
+
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
         {
           userId: 'system',
@@ -62,7 +97,7 @@ export class KeywordBankService implements IKeywordBankService {
               'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
             )
             .eq('keyword', keyword.trim().toLowerCase())
-            .eq('country_id', countryCode.toLowerCase())
+            .eq('country_id', countryUuid)
             .eq('language_code', languageCode.toLowerCase())
             .single();
 
@@ -101,6 +136,13 @@ export class KeywordBankService implements IKeywordBankService {
     try {
       if (keywords.length === 0) return [];
 
+      // Resolve ISO2 country code to UUID for DB lookup
+      const countryUuid = await this.resolveCountryUuid(countryCode);
+      if (!countryUuid) {
+        logger.warn({ countryCode }, 'Cannot look up keyword batch: unknown country code');
+        return [];
+      }
+
       const normalizedKeywords = keywords.map((k) => k.trim().toLowerCase());
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -124,7 +166,7 @@ export class KeywordBankService implements IKeywordBankService {
               'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
             )
             .in('keyword', normalizedKeywords)
-            .eq('country_id', countryCode.toLowerCase())
+            .eq('country_id', countryUuid)
             .eq('language_code', languageCode.toLowerCase())
             .limit(1000);
 
@@ -222,9 +264,20 @@ export class KeywordBankService implements IKeywordBankService {
     languageCode: string = 'en'
   ): Promise<KeywordBankOperationResult> {
     try {
+      // Resolve ISO2 country code to UUID for DB storage
+      const countryUuid = await this.resolveCountryUuid(countryCode);
+      if (!countryUuid) {
+        return {
+          success: false,
+          error: { message: `Unknown country code: ${countryCode}` },
+          keyword,
+          operation: 'store',
+        };
+      }
+
       const insertData: KeywordBankInsertRow = {
         keyword: keyword.trim().toLowerCase(),
-        country_id: countryCode.toLowerCase(),
+        country_id: countryUuid,
         language_code: languageCode.toLowerCase(),
         is_data_found: apiData.is_data_found,
         volume: apiData.volume,
@@ -245,6 +298,7 @@ export class KeywordBankService implements IKeywordBankService {
           metadata: {
             keyword: keyword.trim().toLowerCase(),
             countryCode: countryCode.toLowerCase(),
+            countryUuid,
             languageCode: languageCode.toLowerCase(),
             hasData: apiData.is_data_found,
             volume: apiData.volume,
@@ -252,11 +306,11 @@ export class KeywordBankService implements IKeywordBankService {
         },
         { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
         async () => {
-          // Use upsert to handle duplicate keywords
+          // Use upsert to handle duplicate keywords — matches UNIQUE(keyword, country_id)
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code',
+              onConflict: 'keyword,country_id',
             })
             .select()
             .single();
@@ -327,19 +381,24 @@ export class KeywordBankService implements IKeywordBankService {
         };
       }
 
-      const insertData: KeywordBankInsertRow[] = keywordDataPairs.map((pair) => ({
-        keyword: pair.keyword.trim().toLowerCase(),
-        country_id: pair.countryCode.toLowerCase(),
-        language_code: (pair.languageCode || 'en').toLowerCase(),
-        is_data_found: pair.apiData.is_data_found,
-        volume: pair.apiData.volume,
-        cpc: pair.apiData.cpc,
-        competition: pair.apiData.competition,
-        difficulty: pair.apiData.difficulty,
-        history_trend: pair.apiData.history_trend,
-        keyword_intent: this.extractKeywordIntent(pair.apiData),
-        data_updated_at: new Date().toISOString(),
-      }));
+      const insertData: KeywordBankInsertRow[] = await Promise.all(
+        keywordDataPairs.map(async (pair) => {
+          const countryUuid = await this.resolveCountryUuid(pair.countryCode);
+          return {
+            keyword: pair.keyword.trim().toLowerCase(),
+            country_id: countryUuid,
+            language_code: (pair.languageCode || 'en').toLowerCase(),
+            is_data_found: pair.apiData.is_data_found,
+            volume: pair.apiData.volume,
+            cpc: pair.apiData.cpc,
+            competition: pair.apiData.competition,
+            difficulty: pair.apiData.difficulty,
+            history_trend: pair.apiData.history_trend,
+            keyword_intent: this.extractKeywordIntent(pair.apiData),
+            data_updated_at: new Date().toISOString(),
+          };
+        })
+      );
 
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -357,7 +416,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code',
+              onConflict: 'keyword,country_id',
             })
             .select()
             .limit(1000);
@@ -566,7 +625,9 @@ export class KeywordBankService implements IKeywordBankService {
             dbQuery = dbQuery.ilike('keyword', `%${escapeLikePattern(query.keyword)}%`);
           }
           if (query.country_id) {
-            dbQuery = dbQuery.eq('country_id', query.country_id.toLowerCase());
+            // country_id in query could be ISO2 code or UUID — try resolution
+            const resolvedId = await this.resolveCountryUuid(query.country_id);
+            dbQuery = dbQuery.eq('country_id', resolvedId ?? query.country_id);
           }
           if (query.language_code) {
             dbQuery = dbQuery.eq('language_code', query.language_code.toLowerCase());
@@ -644,6 +705,9 @@ export class KeywordBankService implements IKeywordBankService {
    */
   async getCacheStats(countryCode?: string, languageCode?: string): Promise<CacheStats> {
     try {
+      // Resolve ISO2 country code to UUID if provided
+      const countryUuid = countryCode ? await this.resolveCountryUuid(countryCode) : null;
+
       const stats = await SecureServiceRoleWrapper.executeSecureOperation(
         {
           userId: 'system',
@@ -658,7 +722,7 @@ export class KeywordBankService implements IKeywordBankService {
             .from('indb_keyword_bank')
             .select('*', { count: 'exact', head: true });
 
-          if (countryCode) query = query.eq('country_id', countryCode.toLowerCase());
+          if (countryUuid) query = query.eq('country_id', countryUuid);
           if (languageCode) query = query.eq('language_code', languageCode.toLowerCase());
 
           const { count: totalCount } = await query;
@@ -668,8 +732,8 @@ export class KeywordBankService implements IKeywordBankService {
             .select('*', { count: 'exact', head: true })
             .eq('is_data_found', true);
 
-          if (countryCode)
-            dataFoundQuery = dataFoundQuery.eq('country_id', countryCode.toLowerCase());
+          if (countryUuid)
+            dataFoundQuery = dataFoundQuery.eq('country_id', countryUuid);
           if (languageCode)
             dataFoundQuery = dataFoundQuery.eq('language_code', languageCode.toLowerCase());
 
@@ -681,7 +745,7 @@ export class KeywordBankService implements IKeywordBankService {
             .select('*', { count: 'exact', head: true })
             .gte('data_updated_at', sevenDaysAgo.toISOString());
 
-          if (countryCode) freshQuery = freshQuery.eq('country_id', countryCode.toLowerCase());
+          if (countryUuid) freshQuery = freshQuery.eq('country_id', countryUuid);
           if (languageCode) freshQuery = freshQuery.eq('language_code', languageCode.toLowerCase());
 
           const { count: freshCount } = await freshQuery;
@@ -855,9 +919,20 @@ export class KeywordBankService implements IKeywordBankService {
    */
   async upsertKeywordData(data: KeywordBankInsert): Promise<KeywordBankOperationResult> {
     try {
+      // Resolve ISO2 country code to UUID for DB storage
+      const countryUuid = await this.resolveCountryUuid(data.country_id);
+      if (!countryUuid) {
+        return {
+          success: false,
+          error: { message: `Unknown country code: ${data.country_id}` },
+          keyword: data.keyword,
+          operation: 'upsert',
+        };
+      }
+
       const insertData: KeywordBankInsertRow = {
         keyword: data.keyword.trim().toLowerCase(),
-        country_id: data.country_id.toLowerCase(),
+        country_id: countryUuid,
         language_code: (data.language_code || 'en').toLowerCase(),
         is_data_found: data.is_data_found,
         volume: data.volume,
@@ -878,6 +953,7 @@ export class KeywordBankService implements IKeywordBankService {
           metadata: {
             keyword: data.keyword,
             countryCode: data.country_id,
+            countryUuid,
             hasData: data.is_data_found,
           },
         },
@@ -886,7 +962,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data: upsertResult, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code',
+              onConflict: 'keyword,country_id',
             })
             .select()
             .single();
@@ -942,19 +1018,24 @@ export class KeywordBankService implements IKeywordBankService {
         };
       }
 
-      const insertData: KeywordBankInsertRow[] = data.map((item) => ({
-        keyword: item.keyword.trim().toLowerCase(),
-        country_id: item.country_id.toLowerCase(),
-        language_code: (item.language_code || 'en').toLowerCase(),
-        is_data_found: item.is_data_found,
-        volume: item.volume,
-        cpc: item.cpc,
-        competition: item.competition,
-        difficulty: item.difficulty,
-        history_trend: item.history_trend,
-        keyword_intent: item.keyword_intent,
-        data_updated_at: new Date().toISOString(),
-      }));
+      const insertData: KeywordBankInsertRow[] = await Promise.all(
+        data.map(async (item) => {
+          const countryUuid = await this.resolveCountryUuid(item.country_id);
+          return {
+            keyword: item.keyword.trim().toLowerCase(),
+            country_id: countryUuid,
+            language_code: (item.language_code || 'en').toLowerCase(),
+            is_data_found: item.is_data_found,
+            volume: item.volume,
+            cpc: item.cpc,
+            competition: item.competition,
+            difficulty: item.difficulty,
+            history_trend: item.history_trend,
+            keyword_intent: item.keyword_intent,
+            data_updated_at: new Date().toISOString(),
+          };
+        })
+      );
 
       const { data: result, error } = await SecureServiceRoleWrapper.executeSecureOperation(
         {
@@ -969,7 +1050,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data: upsertResult, error: upsertError } = await supabaseAdmin
             .from('indb_keyword_bank')
             .upsert(insertData, {
-              onConflict: 'keyword,country_id,language_code',
+              onConflict: 'keyword,country_id',
             })
             .select()
             .limit(1000);
@@ -1147,11 +1228,21 @@ export class KeywordBankService implements IKeywordBankService {
         },
         { table: 'indb_keyword_bank', operationType: 'delete' },
         async () => {
+          // Resolve ISO2 country code to UUID for DB delete
+          const countryUuid = await this.resolveCountryUuid(countryCode);
+          if (!countryUuid) {
+            throw ErrorHandlingService.createError({
+              message: `Unknown country code for delete: ${countryCode}`,
+              type: ErrorType.VALIDATION,
+              severity: ErrorSeverity.MEDIUM,
+            });
+          }
+
           const { error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .delete()
             .eq('keyword', keyword.trim().toLowerCase())
-            .eq('country_id', countryCode.toLowerCase());
+            .eq('country_id', countryUuid);
 
           if (error) {
             throw ErrorHandlingService.createError({
