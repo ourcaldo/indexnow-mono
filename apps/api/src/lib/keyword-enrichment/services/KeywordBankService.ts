@@ -41,7 +41,7 @@ export class KeywordBankService implements IKeywordBankService {
    * Results are cached in-memory so repeated calls avoid DB lookups.
    */
   private async resolveCountryUuid(isoCode: string): Promise<string | null> {
-    const normalized = isoCode.trim().toLowerCase();
+    const normalized = isoCode.trim().toUpperCase();
 
     const cached = countryUuidCache.get(normalized);
     if (cached) return cached;
