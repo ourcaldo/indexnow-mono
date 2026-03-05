@@ -69,6 +69,7 @@ export class ApiRequestBuilder {
    * Build request headers with authentication
    */
   private buildHeaders(): Record<string, string> {
+    // Do NOT set Content-Type — fetch auto-sets multipart/form-data with correct boundary when body is FormData
     return {
       'Authorization': `Token ${this.apiKey}`,
       'User-Agent': 'IndexNow-Studio/1.0',
@@ -78,9 +79,10 @@ export class ApiRequestBuilder {
 
   /**
    * Build FormData from request object
+   * SeRanking API requires multipart/form-data — NOT x-www-form-urlencoded
    */
-  private buildFormData(request: SeRankingKeywordExportRequest): string {
-    const formData = new URLSearchParams();
+  private buildFormData(request: SeRankingKeywordExportRequest): FormData {
+    const formData = new FormData();
     
     // Add keywords as separate form fields (required by SeRanking API)
     request.keywords.forEach(keyword => {
@@ -98,7 +100,7 @@ export class ApiRequestBuilder {
       formData.append('cols', request.cols);
     }
     
-    return formData.toString();
+    return formData;
   }
 
   /**
