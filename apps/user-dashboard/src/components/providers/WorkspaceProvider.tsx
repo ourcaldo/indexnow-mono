@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useCallback, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useAuth } from '@indexnow/auth'
 import { useDomains, useProfile, useUpdateActiveDomain, type Domain } from '../../lib/hooks'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,13 +32,22 @@ const WorkspaceContext = createContext<WorkspaceContextValue>({
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
+/** Auth routes where workspace data is not needed */
+const AUTH_ROUTES = ['/login', '/register', '/resend-verification', '/forgot-password', '/reset-password', '/auth']
+
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { isAuthenticated } = useAuth()
 
-  const { data: domains = [], isLoading: domainsLoading } = useDomains()
-  const { data: profile, isLoading: profileLoading } = useProfile()
+  // Only fetch workspace data when authenticated AND not on an auth page.
+  // This prevents 8 failed API calls on /login when no session exists.
+  const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route))
+  const shouldFetch = isAuthenticated && !isAuthRoute
+
+  const { data: domains = [], isLoading: domainsLoading } = useDomains(shouldFetch)
+  const { data: profile, isLoading: profileLoading } = useProfile(shouldFetch)
   const updateActiveDomain = useUpdateActiveDomain()
 
   // Priority: ?domain= URL param → profile.active_domain → null (all)

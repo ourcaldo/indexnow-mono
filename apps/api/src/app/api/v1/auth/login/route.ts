@@ -34,7 +34,23 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
 
   try {
     // 1. Validate request body
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      const error = await ErrorHandlingService.createError(
+        ErrorType.VALIDATION,
+        'Invalid JSON in request body',
+        {
+          severity: ErrorSeverity.LOW,
+          endpoint,
+          method,
+          statusCode: 400,
+          userMessageKey: 'invalid_format',
+        }
+      );
+      return formatError(error);
+    }
     const validationResult = loginSchema.safeParse(body);
 
     if (!validationResult.success) {

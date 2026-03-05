@@ -189,14 +189,11 @@ export default function Login() {
           // Role is included in the API response — no extra Supabase call needed
           const redirectUrl = authService.getSubdomainRedirectUrl(authResult.user.role ?? 'user')
           
-          // If it's a subdomain URL, use window.location for cross-subdomain redirect
-          if (redirectUrl.startsWith('http')) {
-            window.location.href = redirectUrl
-          } else {
-            router.push(redirectUrl)
-          }
+          // Always use full-page navigation after login so middleware
+          // picks up the freshly-set session cookies reliably.
+          window.location.href = redirectUrl || '/'
         } else {
-          router.push("/") // Fallback
+          window.location.href = '/' // Fallback
         }
       }
     } catch (error: unknown) {

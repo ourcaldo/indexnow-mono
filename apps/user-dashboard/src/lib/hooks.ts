@@ -135,11 +135,12 @@ export type { OrderDetailsResponse as OrderDetails } from '@indexnow/shared'
 // ——— Hooks ———
 
 /** Fetch all user domains */
-export function useDomains() {
+export function useDomains(enabled = true) {
   return useQuery({
     queryKey: ['domains'],
     queryFn: () => api<{ data: Domain[]; pagination: unknown }>(RANK_TRACKING_ENDPOINTS.DOMAINS),
     select: (d) => d.data ?? [],
+    enabled,
   })
 }
 
@@ -164,11 +165,12 @@ export function useCountryMap(): Record<string, string> {
 }
 
 /** Fetch user profile with package info */
-export function useProfile() {
+export function useProfile(enabled = true) {
   return useQuery({
     queryKey: ['profile'],
     queryFn: () => api<{ profile: UserProfile }>(AUTH_ENDPOINTS.PROFILE),
     select: (d) => d.profile,
+    enabled,
   })
 }
 
