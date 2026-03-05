@@ -1,10 +1,13 @@
 /**
- * Simple Keyword Enrichment Background Worker
- * Checks user keywords and enriches them using SeRanking API
- * Uses indb_rank_keywords and indb_keyword_bank tables
+ * Keyword Enrichment Background Worker
+ * Checks user keywords and enriches them using SeRanking API.
+ * Uses indb_rank_keywords and indb_keyword_bank tables.
+ *
+ * Scheduling is handled exclusively by BullMQ (pattern '30 * * * *').
+ * The BullMQ worker in queues/workers/keyword-enrichment.worker.ts
+ * calls runManually() on each scheduled invocation.
  */
 
-import * as cron from 'node-cron';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
 import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
@@ -25,8 +28,7 @@ interface KeywordToEnrich {
 
 export class KeywordEnrichmentWorker {
   private static instance: KeywordEnrichmentWorker | null = null;
-  private isRunning: boolean = false;
-  private cronJob: cron.ScheduledTask | null = null;
+  private isInitialized: boolean = false;
 
   private keywordBankService!: KeywordBankService;
   private enrichmentService!: KeywordEnrichmentService;
@@ -122,68 +124,20 @@ export class KeywordEnrichmentWorker {
   }
 
   /**
-   * Start the background worker
-   * Runs immediately on startup, then every hour to check for keywords that need enrichment
+   * Ensure the worker is initialized and ready to process keywords.
+   * Scheduling is handled by BullMQ — this method does NOT start a cron.
    */
-  async start(): Promise<void> {
-    if (this.isRunning) {
-      logger.info({}, 'Keyword enrichment worker is already running');
-      return;
-    }
+  async ensureReady(): Promise<void> {
+    if (this.isInitialized) return;
 
-    logger.info({}, 'Keyword Enrichment: Starting background worker');
-    this.isRunning = true;
-
-    // Wait for enrichmentService to be ready before processing keywords
+    // Wait for enrichmentService to be ready
     while (!this.enrichmentService) {
       logger.debug({}, 'Keyword Enrichment: Waiting for service initialization');
       await sleep(100);
     }
 
-    // Run immediately on startup to check for keywords
-    logger.info({}, 'Keyword Enrichment: Running initial keyword check');
-    await this.processKeywords().catch((error) => {
-      logger.error(
-        { error: error instanceof Error ? error.message : 'Unknown error' },
-        'Keyword Enrichment: Initial run failed'
-      );
-    });
-
-    // Then schedule to run every hour at minute 30
-    this.cronJob = cron.schedule(
-      '30 * * * *',
-      async () => {
-        await this.processKeywords();
-      },
-      {
-        timezone: 'UTC',
-      }
-    );
-
-    logger.info(
-      {},
-      'Keyword Enrichment: Background worker started - running immediately and then every hour'
-    );
-  }
-
-  /**
-   * Stop the background worker
-   */
-  stop(): void {
-    if (!this.isRunning) {
-      logger.info({}, 'Keyword Enrichment: Worker is not running');
-      return;
-    }
-
-    logger.info({}, 'Keyword Enrichment: Stopping background worker');
-    this.isRunning = false;
-
-    if (this.cronJob) {
-      this.cronJob.destroy();
-      this.cronJob = null;
-    }
-
-    logger.info({}, 'Keyword Enrichment: Background worker stopped');
+    this.isInitialized = true;
+    logger.info({}, 'Keyword Enrichment: Worker ready (BullMQ-scheduled)');
   }
 
   /**
@@ -442,24 +396,26 @@ export class KeywordEnrichmentWorker {
    * Get worker status
    */
   getStatus(): {
-    isRunning: boolean;
+    isInitialized: boolean;
     schedule: string;
     description: string;
   } {
     return {
-      isRunning: this.isRunning,
-      schedule: '30 * * * *',
-      description: 'Checks for keywords needing enrichment every hour',
+      isInitialized: this.isInitialized,
+      schedule: '30 * * * * (BullMQ)',
+      description: 'Checks for keywords needing enrichment every hour via BullMQ',
     };
   }
 
   /**
-   * Manual trigger for testing
+   * Entry point called by BullMQ worker on each scheduled invocation.
+   * Also usable for manual testing.
    */
   async runManually(): Promise<void> {
-    logger.info({}, 'Keyword Enrichment: Manual trigger started');
+    await this.ensureReady();
+    logger.info({}, 'Keyword Enrichment: Processing triggered');
     await this.processKeywords();
-    logger.info({}, 'Keyword Enrichment: Manual trigger completed');
+    logger.info({}, 'Keyword Enrichment: Processing completed');
   }
 }
 
