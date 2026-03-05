@@ -4,7 +4,7 @@
  */
 
 import { logger } from '../monitoring/error-handling';
-import { JobError, JobErrorType } from '../rank-tracking/seranking/types/EnrichmentJobTypes';
+import { JobError, JobErrorType } from '../keyword-enrichment/types/EnrichmentJobTypes';
 
 export interface JobErrorContext {
   jobId: string;

@@ -14,7 +14,7 @@ import {
 } from '../types/SeRankingTypes';
 import { RateLimiter } from './RateLimiter';
 import { ApiRequestBuilder } from './ApiRequestBuilder';
-import { ApiKeyManager } from '../../../integrations/api-key-manager';
+import { ApiKeyManager } from '../../integrations/api-key-manager';
 import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 

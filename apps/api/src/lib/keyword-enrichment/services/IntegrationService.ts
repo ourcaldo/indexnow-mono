@@ -335,7 +335,7 @@ export class IntegrationService implements IIntegrationService {
           userId: 'system',
           operation: 'update_api_quota_usage',
           reason: 'Recording API usage and updating quota consumption for SeRanking integration',
-          source: 'rank-tracking/seranking/services/IntegrationService',
+          source: 'keyword-enrichment/services/IntegrationService',
           metadata: {
             service_name: 'seranking_keyword_export',
             request_count: requestCount,
@@ -381,7 +381,7 @@ export class IntegrationService implements IIntegrationService {
             userId: 'system',
             operation: 'log_api_usage_details',
             reason: 'Logging detailed API usage statistics for monitoring and analytics',
-            source: 'rank-tracking/seranking/services/IntegrationService',
+            source: 'keyword-enrichment/services/IntegrationService',
             metadata: {
               integration_id: 'seranking_keyword_export',
               operation_type: operationType,
@@ -487,7 +487,7 @@ export class IntegrationService implements IIntegrationService {
           userId: 'system',
           operation: 'reset_quota_usage',
           reason: 'Resetting API quota usage for SeRanking integration for new billing cycle',
-          source: 'rank-tracking/seranking/services/IntegrationService',
+          source: 'keyword-enrichment/services/IntegrationService',
           metadata: {
             service_name: 'seranking_keyword_export',
             reset_date: this.calculateNextResetDate().toISOString(),
@@ -823,7 +823,7 @@ export class IntegrationService implements IIntegrationService {
             userId: 'system',
             operation: 'get_usage_report_logs',
             reason: 'Retrieving usage logs for generating usage report and analytics',
-            source: 'rank-tracking/seranking/services/IntegrationService',
+            source: 'keyword-enrichment/services/IntegrationService',
             metadata: {
               integration_id: 'seranking_keyword_export',
               start_date: startDate.toISOString(),

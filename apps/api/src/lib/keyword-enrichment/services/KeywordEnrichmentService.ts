@@ -323,7 +323,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           userId: 'system',
           operation: 'find_stale_keywords',
           reason: 'Finding stale keywords (older than 30 days) for refresh enrichment in Flow 2',
-          source: 'rank-tracking/seranking/services/KeywordEnrichmentService',
+          source: 'keyword-enrichment/services/KeywordEnrichmentService',
           metadata: {
             limit: limit,
             cutoff_date: thirtyDaysAgo.toISOString(),
@@ -443,7 +443,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           operation: 'update_existing_keyword_data',
           reason:
             'Updating existing keyword bank entry with fresh API data during stale keyword refresh',
-          source: 'rank-tracking/seranking/services/KeywordEnrichmentService',
+          source: 'keyword-enrichment/services/KeywordEnrichmentService',
           metadata: {
             keyword_bank_id: keywordBankId,
             volume: apiData.volume,

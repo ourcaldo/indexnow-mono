@@ -13,11 +13,11 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { KeywordBankService } from '../rank-tracking/seranking/services/KeywordBankService';
-import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingApiClient';
-import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
-import { SeRankingErrorHandler } from '../rank-tracking/seranking/services/ErrorHandlingService';
-import { IntegrationService } from '../rank-tracking/seranking/services/IntegrationService';
+import { KeywordBankService } from '../keyword-enrichment/services/KeywordBankService';
+import { SeRankingApiClient } from '../keyword-enrichment/client/SeRankingApiClient';
+import { KeywordEnrichmentService } from '../keyword-enrichment/services/KeywordEnrichmentService';
+import { SeRankingErrorHandler } from '../keyword-enrichment/services/ErrorHandlingService';
+import { IntegrationService } from '../keyword-enrichment/services/IntegrationService';
 import { ApiKeyManager } from '../integrations/api-key-manager';
 import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
