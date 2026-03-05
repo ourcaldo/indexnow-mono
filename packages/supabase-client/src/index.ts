@@ -1,7 +1,10 @@
 // Supabase Browser Client
+// SECURITY: Only the singleton instances are exported. Factory functions
+// (createBrowserClient, getBrowserClient) are internal — no consumer needs them.
+// Consumers should use authService/authenticatedFetch for all operations.
+// The raw client is exported ONLY for allowed SDK methods:
+//   onAuthStateChange(), getSession(), setSession(), signOut({ scope: 'local' })
 export {
-  createBrowserClient,
-  getBrowserClient,
   supabaseBrowser,
   supabase,
 } from './supabase-browser'

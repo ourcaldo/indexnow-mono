@@ -40,20 +40,12 @@ export type UpdateRankKeywordRow = Database['public']['Tables']['indb_rank_keywo
 export type InsertSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Insert'];
 export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Update'];
 
-// (#V7 L-05) Client/browser modules intentionally re-exported from the database package entry.
-// This allows consumers (e.g. apps) to import everything from @indexnow/database
-// instead of depending on @indexnow/supabase-client directly. Server-only code should
-// import from '@indexnow/database/server' or use SecureServiceRoleHelpers.
-export {
-  createBrowserClient,
-  getBrowserClient,
-  supabaseBrowser,
-  supabase,
-} from '@indexnow/supabase-client';
+// SECURITY: Raw Supabase client singletons are NOT re-exported from the database package.
+// Consumers needing the raw SDK client for allowed methods (onAuthStateChange, getSession,
+// setSession, signOut({ scope: 'local' })) should import from '@indexnow/supabase-client'.
+// All other operations must go through authService or authenticatedFetch.
 
-// Typed Supabase client accessors — these preserve the Database generic
-// through the re-export chain (unlike direct re-exports which lose it in DTS generation)
-import { supabaseBrowser as _supabaseBrowser } from '@indexnow/supabase-client';
+// Typed Supabase admin client — preserves the Database generic through the re-export chain
 import { supabaseAdmin as _supabaseAdmin } from './server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -68,14 +60,12 @@ export type {
 } from '@supabase/supabase-js';
 
 /**
- * Browser Supabase client with Database generic preserved.
+ * Admin (service role) Supabase client with Database generic preserved.
  * C-01: The `as unknown as` cast is required because @supabase/ssr and @supabase/supabase-js
  * resolve different generic arities for SupabaseClient across pnpm workspace dependency versions.
- * The underlying clients ARE created with the correct Database generic in their respective
- * factory functions — only the DTS nominal type is lost in the re-export chain.
+ * The underlying client IS created with the correct Database generic in its factory function
+ * — only the DTS nominal type is lost in the re-export chain.
  */
-export const typedSupabaseBrowser = _supabaseBrowser as unknown as SupabaseClient<Database>;
-/** Admin (service role) Supabase client with Database generic preserved (see C-01 note above) */
 export const typedSupabaseAdmin = _supabaseAdmin as unknown as SupabaseClient<Database>;
 
 // Server exports

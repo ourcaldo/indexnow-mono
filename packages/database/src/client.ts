@@ -47,24 +47,12 @@ export type UpdateRankKeywordRow = Database['public']['Tables']['indb_rank_keywo
 export type InsertSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Insert'];
 export type UpdateSystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Update'];
 
-// Client (browser) exports
-export {
-  createBrowserClient,
-  getBrowserClient,
-  supabaseBrowser,
-  supabase,
-} from '@indexnow/supabase-client';
+// SECURITY: Raw Supabase client singletons are NOT re-exported from the database package.
+// Consumers needing the raw SDK client for allowed methods (onAuthStateChange, getSession,
+// setSession, signOut({ scope: 'local' })) should import from '@indexnow/supabase-client'.
+// All other operations must go through authService or authenticatedFetch.
 
-// Typed browser client
-// C-01: The `as unknown as` cast is required because @supabase/ssr and @supabase/supabase-js
-// resolve different generic arities for SupabaseClient across pnpm workspace dependency versions.
-// The underlying client IS created with `createBrowserClient<Database>(...)` in supabase-browser.ts,
-// so the runtime schema is correct — only the DTS nominal type is lost in the re-export chain.
-import { supabaseBrowser as _supabaseBrowser } from '@indexnow/supabase-client';
-import type { SupabaseClient } from '@supabase/supabase-js';
-export const typedSupabaseBrowser = _supabaseBrowser as unknown as SupabaseClient<Database>;
-
-// Re-export Supabase types
+// Re-export Supabase types (type-only — no runtime Supabase client in the bundle)
 export type { SupabaseClient } from '@supabase/supabase-js';
 export type {
   User as SupabaseUser,
