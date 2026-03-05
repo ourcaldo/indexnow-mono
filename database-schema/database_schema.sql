@@ -486,6 +486,11 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE INDEX IF NOT EXISTS idx_keyword_rankings_date ON indb_keyword_rankings(check_date DESC);
 CREATE INDEX IF NOT EXISTS idx_keyword_rankings_keyword_date ON indb_keyword_rankings(keyword_id, check_date DESC);
 
+-- UNIQUE constraint required for upsert ON CONFLICT (keyword_id, check_date) in rank-check worker.
+-- One row per keyword per day; re-checks on the same day update the existing row.
+ALTER TABLE indb_keyword_rankings
+  ADD CONSTRAINT uq_keyword_rankings_keyword_date UNIQUE (keyword_id, check_date);
+
 
 -- ============================================================
 -- SITE INTEGRATION & SETTINGS
