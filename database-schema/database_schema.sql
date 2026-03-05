@@ -24,6 +24,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Atomic quota increment for indb_site_integration (avoids TOCTOU race — V7 C-06 fix)
+CREATE OR REPLACE FUNCTION increment_integration_quota(p_service_name TEXT, p_amount INT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE indb_site_integration
+  SET api_quota_used = api_quota_used + p_amount,
+      updated_at = NOW()
+  WHERE service_name = p_service_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ============================================================
 -- PAYMENT SYSTEM (must be created before user_profiles due to FK)
 -- ============================================================

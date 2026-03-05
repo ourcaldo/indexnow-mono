@@ -47,6 +47,11 @@ export type AutoCancelJob = z.infer<typeof AutoCancelJobSchema>;
 
 export const KeywordEnrichmentJobSchema = z.object({
   scheduledAt: z.string().datetime(),
+  /** 'scheduled' = hourly new-keyword sweep, 'immediate' = on-add enrichment, 'stale-refresh' = 30-day re-enrichment */
+  mode: z.enum(['scheduled', 'immediate', 'stale-refresh']).default('scheduled'),
+  /** Only present for mode='immediate' — the keyword IDs to enrich now */
+  keywordIds: z.array(z.string().uuid()).optional(),
+  userId: z.string().uuid().optional(),
 });
 
 export type KeywordEnrichmentJob = z.infer<typeof KeywordEnrichmentJobSchema>;

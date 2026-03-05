@@ -3,9 +3,13 @@
  * Checks user keywords and enriches them using SeRanking API.
  * Uses indb_rank_keywords and indb_keyword_bank tables.
  *
- * Scheduling is handled exclusively by BullMQ (pattern '30 * * * *').
+ * Three modes of operation (all via BullMQ):
+ *   1. 'scheduled'      — hourly at :00, picks up keywords with keyword_bank_id IS NULL
+ *   2. 'immediate'      — triggered on keyword creation, enriches specific keyword IDs
+ *   3. 'stale-refresh'  — daily at 03:00 UTC, refreshes keyword_bank entries older than 30 days
+ *
  * The BullMQ worker in queues/workers/keyword-enrichment.worker.ts
- * calls runManually() on each scheduled invocation.
+ * calls the appropriate method on each invocation.
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
@@ -402,20 +406,120 @@ export class KeywordEnrichmentWorker {
   } {
     return {
       isInitialized: this.isInitialized,
-      schedule: '30 * * * * (BullMQ)',
-      description: 'Checks for keywords needing enrichment every hour via BullMQ',
+      schedule: '0 * * * * (new keywords) | 0 3 * * * (stale refresh)',
+      description: 'Enriches new keywords hourly at :00; refreshes stale data daily at 03:00 UTC',
     };
   }
 
   /**
-   * Entry point called by BullMQ worker on each scheduled invocation.
-   * Also usable for manual testing.
+   * Entry point for SCHEDULED mode — sweep for un-enriched keywords.
+   * Called by BullMQ worker on each hourly invocation.
    */
   async runManually(): Promise<void> {
     await this.ensureReady();
-    logger.info({}, 'Keyword Enrichment: Processing triggered');
+    logger.info({}, 'Keyword Enrichment: Scheduled sweep triggered');
     await this.processKeywords();
-    logger.info({}, 'Keyword Enrichment: Processing completed');
+    logger.info({}, 'Keyword Enrichment: Scheduled sweep completed');
+  }
+
+  /**
+   * Entry point for IMMEDIATE mode — enrich specific keyword IDs right after creation.
+   * Called by BullMQ worker when a keyword is added.
+   */
+  async enrichByIds(keywordIds: string[]): Promise<void> {
+    await this.ensureReady();
+    logger.info({ count: keywordIds.length }, 'Keyword Enrichment: Immediate enrichment triggered');
+
+    const keywords = await this.findKeywordsByIds(keywordIds);
+    if (keywords.length === 0) {
+      logger.debug({ keywordIds }, 'Keyword Enrichment: No matching keywords found for immediate enrichment');
+      return;
+    }
+
+    let successful = 0;
+    for (const keyword of keywords) {
+      try {
+        await this.enrichKeyword(keyword);
+        successful++;
+        await sleep(500);
+      } catch (error) {
+        logger.error(
+          { keyword: keyword.keyword, error: error instanceof Error ? error.message : 'Unknown error' },
+          'Keyword Enrichment: Error in immediate enrichment'
+        );
+      }
+    }
+
+    logger.info({ processed: keywords.length, successful }, 'Keyword Enrichment: Immediate enrichment completed');
+  }
+
+  /**
+   * Entry point for STALE-REFRESH mode — re-enrich keyword_bank entries older than 30 days.
+   * Called by BullMQ worker on the daily 03:00 UTC schedule.
+   */
+  async refreshStale(): Promise<void> {
+    await this.ensureReady();
+    logger.info({}, 'Keyword Enrichment: Stale refresh triggered');
+
+    const result = await this.enrichmentService.refreshStaleKeywords(50);
+    if (result.success && result.data) {
+      logger.info(
+        { processed: result.data.processed, successful: result.data.successful, failed: result.data.failed },
+        'Keyword Enrichment: Stale refresh completed'
+      );
+    } else {
+      logger.error(
+        { error: result.error },
+        'Keyword Enrichment: Stale refresh failed'
+      );
+    }
+  }
+
+  /**
+   * Find specific keywords by their IDs (for immediate enrichment)
+   */
+  private async findKeywordsByIds(keywordIds: string[]): Promise<KeywordToEnrich[]> {
+    try {
+      const data = await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'find_keywords_by_ids_for_enrichment',
+          reason: 'Finding specific keywords by ID for immediate enrichment after creation',
+          source: 'job-management/keyword-enrichment-worker',
+          metadata: {
+            keyword_ids: keywordIds,
+            count: keywordIds.length,
+            operation_type: 'immediate_enrichment_lookup',
+          },
+        },
+        {
+          table: 'indb_rank_keywords',
+          operationType: 'select',
+          columns: ['id', 'user_id', 'keyword', 'country_id', 'keyword_bank_id', 'intelligence_updated_at'],
+          whereConditions: { id_in: keywordIds },
+        },
+        async () => {
+          const { data, error } = await supabaseAdmin
+            .from('indb_rank_keywords')
+            .select('id, user_id, keyword, country_id, keyword_bank_id, intelligence_updated_at')
+            .in('id', keywordIds);
+
+          if (error) {
+            throw new Error(`Failed to find keywords by IDs: ${error.message}`);
+          }
+
+          return (data || []) as KeywordToEnrich[];
+        }
+      );
+
+      return data || [];
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : 'Unknown error', keywordIds },
+        'Keyword Enrichment: Error finding keywords by IDs'
+      );
+      return [];
+    }
   }
 }
 

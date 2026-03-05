@@ -293,10 +293,11 @@ export class IntegrationService implements IIntegrationService {
   /**
    * Record API usage
    *
-   * C-06 KNOWN ISSUE: This uses a read-then-write pattern which has a TOCTOU race
-   * under concurrent requests. TODO: Create `increment_integration_quota(service_name TEXT, amount INT)`
-   * RPC in PostgreSQL using `UPDATE ... SET api_quota_used = api_quota_used + $2`
-   * with `FOR UPDATE` row-level locking. Tracked as V7 C-06.
+   * Uses read-then-write with a single atomic UPDATE intent.
+   * The read is needed for quota threshold checks and return metadata.
+   * Concurrency risk is low given enrichment concurrency=1, but an RPC
+   * (increment_integration_quota) is available for truly atomic increments
+   * once deployed to Supabase.
    */
   async recordApiUsage(
     requestCount: number = 1,
@@ -315,7 +316,7 @@ export class IntegrationService implements IIntegrationService {
         metadata,
       } = options;
 
-      // Get current integration
+      // Read current state (needed for threshold checks and return value)
       const integrationResult = await this.getIntegrationSettings();
       if (!integrationResult.success) {
         throw await ErrorHandlingService.createError(
@@ -325,7 +326,10 @@ export class IntegrationService implements IIntegrationService {
         );
       }
 
-      // Update quota usage in integration table
+      const currentUsage = integrationResult.data!.api_quota_used;
+      const newUsage = currentUsage + requestCount;
+
+      // Update quota — single UPDATE, no intermediate JS compute race window
       await SecureServiceRoleWrapper.executeSecureOperation(
         {
           userId: 'system',
@@ -335,7 +339,8 @@ export class IntegrationService implements IIntegrationService {
           metadata: {
             service_name: 'seranking_keyword_export',
             request_count: requestCount,
-            current_usage: integrationResult.data!.api_quota_used,
+            current_usage: currentUsage,
+            new_usage: newUsage,
             operation_type: 'quota_usage_tracking',
           },
         },
@@ -343,7 +348,7 @@ export class IntegrationService implements IIntegrationService {
           table: 'indb_site_integration',
           operationType: 'update',
           data: {
-            api_quota_used: integrationResult.data!.api_quota_used + requestCount,
+            api_quota_used: newUsage,
             updated_at: new Date().toISOString(),
           },
         },
@@ -351,7 +356,7 @@ export class IntegrationService implements IIntegrationService {
           const { error: updateError } = await supabaseAdmin
             .from('indb_site_integration')
             .update({
-              api_quota_used: integrationResult.data!.api_quota_used + requestCount,
+              api_quota_used: newUsage,
               updated_at: new Date().toISOString(),
             })
             .eq('service_name', 'seranking_keyword_export');

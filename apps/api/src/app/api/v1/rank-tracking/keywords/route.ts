@@ -235,6 +235,25 @@ export const POST = authenticatedApiWrapper(
         }
       }
 
+      // Trigger immediate keyword enrichment for all newly created keywords
+      if (results.length > 0 && process.env.ENABLE_BULLMQ === 'true') {
+        try {
+          await enqueueJob(
+            queueConfig.keywordEnrichment.name,
+            'immediate-keyword-enrichment',
+            {
+              scheduledAt: new Date().toISOString(),
+              mode: 'immediate',
+              keywordIds: results.map(kw => kw.id),
+              userId: auth.userId,
+            },
+            { priority: 1 }
+          );
+        } catch (enqueueErr) {
+          logger.warn({ count: results.length, error: enqueueErr }, 'Failed to enqueue keyword enrichment — keywords saved but enrichment deferred to hourly sweep');
+        }
+      }
+
       try {
         await ActivityLogger.logActivity({
           userId: auth.userId,
@@ -291,6 +310,25 @@ export const POST = authenticatedApiWrapper(
       }
     } catch (enqueueErr) {
       logger.warn({ keywordId: result.id, error: enqueueErr }, 'Failed to enqueue rank check — keyword saved but check skipped');
+    }
+
+    // Trigger immediate keyword enrichment for the newly created keyword
+    try {
+      if (process.env.ENABLE_BULLMQ === 'true') {
+        await enqueueJob(
+          queueConfig.keywordEnrichment.name,
+          'immediate-keyword-enrichment',
+          {
+            scheduledAt: new Date().toISOString(),
+            mode: 'immediate',
+            keywordIds: [result.id],
+            userId: auth.userId,
+          },
+          { priority: 1 }
+        );
+      }
+    } catch (enqueueErr) {
+      logger.warn({ keywordId: result.id, error: enqueueErr }, 'Failed to enqueue keyword enrichment — keyword saved but enrichment deferred to hourly sweep');
     }
 
     try {

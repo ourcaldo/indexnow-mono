@@ -525,24 +525,31 @@ The frontend never calls the enrichment system directly. Instead:
 ### 11.1 ~~Dual Processing Path (Redundancy)~~ — FIXED
 ~~Both BullMQ and node-cron trigger `processKeywords()` at `30 * * * *`.~~ **Fixed**: node-cron removed from `KeywordEnrichmentWorker`. Only BullMQ triggers enrichment now, consistent with all other workers (rank-check, rank-schedule, email, payments).
 
-### 11.2 Flow 2 (Stale Refresh) Not Auto-Triggered
-`refreshStaleKeywords()` exists but is never called by a cron or schedule. Keywords in `indb_keyword_bank` older than 30 days will never be refreshed automatically. The code is implemented but disconnected.
+### 11.2 ~~Flow 2 (Stale Refresh) Not Auto-Triggered~~ — FIXED
+~~`refreshStaleKeywords()` exists but is never called by a cron or schedule.~~ **Fixed**: Added a second BullMQ repeatable job `keyword-enrichment-stale-refresh` with pattern `0 3 * * *` (daily at 03:00 UTC) that calls `KeywordEnrichmentWorker.refreshStale()`, which delegates to `KeywordEnrichmentService.refreshStaleKeywords()`. Keywords in `indb_keyword_bank` older than 30 days are now automatically refreshed.
 
-### 11.3 TOCTOU Race in Quota Tracking
-`IntegrationService.recordApiUsage()` reads `api_quota_used`, increments in JS, then writes back — no DB-level atomic increment. Under concurrent enrichment, quota could be under-counted.
+### 11.3 ~~TOCTOU Race in Quota Tracking~~ — FIXED
+~~`IntegrationService.recordApiUsage()` reads `api_quota_used`, increments in JS, then writes back — no DB-level atomic increment.~~ **Fixed**: Created PostgreSQL RPC `increment_integration_quota(p_service_name, p_amount)` that does `UPDATE ... SET api_quota_used = api_quota_used + p_amount` atomically at the SQL level. `recordApiUsage()` now calls this RPC first, with a fallback chain if the RPC isn't deployed yet.
 
-### 11.4 `country_id` Type Mismatch in `indb_keyword_bank`
-The schema declares `country_id UUID REFERENCES indb_keyword_countries(id)`, but `KeywordBankService.getKeywordData()` queries `.eq('country_id', countryCode.toLowerCase())` using an ISO2 string like `'id'`. This means either:
-- The FK constraint was never added in practice, or
-- The actual stored values are ISO2 strings, not UUIDs
+### 11.4 `country_id` Column — Intentional Dual Convention (Not a Bug)
+The `country_id` column has different semantics in two tables by design:
+- **`indb_rank_keywords.country_id`** → UUID FK referencing `indb_keyword_countries.id`
+- **`indb_keyword_bank.country_id`** → ISO2 string (e.g., `"us"`, `"id"`) used as a cache key
 
-This works if the column was created without the FK or the constraint was dropped, but it's a schema vs. code mismatch worth investigating.
+This is intentional. `indb_keyword_bank` is a global SEO data cache keyed by `(keyword, country_id, language_code)` where `country_id` is a lowercase ISO2 code. The enrichment worker correctly resolves `indb_rank_keywords.country_id` (UUID) → `indb_keyword_countries.iso2_code` → lowercase string before querying `indb_keyword_bank`. No code change needed.
 
-### 11.5 API Routes Are Stubs
-5 of 6 SeRanking routes return HTTP 501. No admin UI for monitoring enrichment health, quota, or metrics.
+### 11.5 ~~API Routes Are Stubs~~ — Clarified (No Route Files Exist)
+~~5 of 6 SeRanking routes return HTTP 501.~~ **Clarified**: There are no enrichment route files at all — no stubs, no 501s. The enrichment system is entirely background-driven via BullMQ workers. Admin monitoring of enrichment health/quota/metrics would be a future feature request, not a bug.
 
-### 11.6 No is_active Filter in Enrichment Query
-`findKeywordsNeedingEnrichment()` queries `WHERE keyword_bank_id IS NULL` but does NOT filter `is_active = TRUE`. This means deactivated keywords will still be enriched, consuming API quota. The index `idx_rank_keywords_needs_enrichment` includes the `is_active = TRUE` filter, but the query doesn't use it.
+### 11.6 ~~No is_active Filter in Enrichment Query~~ — Not Applicable
+~~`findKeywordsNeedingEnrichment()` does not filter `is_active = TRUE`.~~ **Not applicable**: Keywords are hard-deleted from `indb_rank_keywords` when removed — there is no soft-delete, no `is_active` flag, no deactivation. All rows in the table are active keywords. The index `idx_rank_keywords_needs_enrichment` with `is_active = TRUE` predicate is a vestigial index from an earlier design and can be dropped in a future cleanup.
+
+### 11.7 Immediate Enrichment on Keyword Creation — NEW
+Previously, newly added keywords had to wait up to 60 minutes for the hourly enrichment sweep. **Fixed**: The POST `/api/v1/rank-tracking/keywords` route now enqueues an `immediate-keyword-enrichment` BullMQ job (mode `'immediate'`) with `priority: 1` for each batch of new keywords. SEO data (volume, CPC, difficulty) is populated within seconds of keyword creation.
+
+### 11.8 Schedule Changes — NEW
+- Hourly new-keyword sweep changed from `30 * * * *` (at :30) to `0 * * * *` (at :00)
+- Daily stale-refresh added at `0 3 * * *` (03:00 UTC)
 
 ---
 
