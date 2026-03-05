@@ -13,6 +13,9 @@ export interface RankResult {
   error?: string
 }
 
+/** HTTP status codes that indicate an invalid/exhausted API key */
+const KEY_FAILURE_STATUSES = new Set([401, 403])
+
 export class RankTracker {
   /**
    * Perform a rank check using Firecrawl API
@@ -23,13 +26,13 @@ export class RankTracker {
     country: string = 'us',
     device: 'desktop' | 'mobile' = 'desktop'
   ): Promise<RankResult> {
-    const apiKey = await ApiKeyManager.getActiveKey('firecrawl')
-    if (!apiKey) {
+    const keyResult = await ApiKeyManager.getActiveKeyWithId('firecrawl')
+    if (!keyResult) {
       throw new Error('No active Firecrawl API key found')
     }
 
     // Wait for rate limit slot
-    const acquired = await firecrawlRateLimiter.acquireSlot(apiKey)
+    const acquired = await firecrawlRateLimiter.acquireSlot(keyResult.apiKey)
     if (!acquired) {
       throw new Error('Firecrawl API rate limit wait timeout')
     }
@@ -42,7 +45,7 @@ export class RankTracker {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${keyResult.apiKey}`,
         },
         body: JSON.stringify({
           query: keyword,
@@ -53,6 +56,16 @@ export class RankTracker {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+
+        // Auto-disable key on auth failures (401/403)
+        if (KEY_FAILURE_STATUSES.has(response.status)) {
+          await ApiKeyManager.markKeyFailed(
+            'firecrawl',
+            keyResult.id,
+            `API returned ${response.status}: ${JSON.stringify(errorData)}`
+          )
+        }
+
         throw new Error(`Firecrawl API error: ${response.status} ${JSON.stringify(errorData)}`)
       }
 

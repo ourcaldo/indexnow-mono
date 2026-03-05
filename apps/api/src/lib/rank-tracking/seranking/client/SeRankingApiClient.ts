@@ -14,7 +14,7 @@ import {
 } from '../types/SeRankingTypes';
 import { RateLimiter } from './RateLimiter';
 import { ApiRequestBuilder } from './ApiRequestBuilder';
-import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { ApiKeyManager } from '../../api-key-manager';
 import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 
@@ -23,8 +23,6 @@ export class SeRankingApiClient {
   private rateLimiter: RateLimiter;
   private lastHealthCheck?: HealthCheckResult;
   private lastHealthCheckTime?: Date;
-  private integrationApiKey?: string;
-  private integrationApiKeyExpiry?: Date;
 
   constructor(config: SeRankingClientConfig, rateLimiter?: RateLimiter) {
     this.config = {
@@ -436,49 +434,11 @@ export class SeRankingApiClient {
   }
 
   /**
-   * Get actual SeRanking API key from database
+   * Get actual SeRanking API key via centralized ApiKeyManager.
+   * Supports multi-key rotation and automatic failover.
    */
   private async getActualApiKey(): Promise<string | null> {
-    try {
-      if (
-        this.integrationApiKey &&
-        this.integrationApiKeyExpiry &&
-        new Date() < this.integrationApiKeyExpiry
-      ) {
-        return this.integrationApiKey;
-      }
-
-      const data = await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: 'system',
-          operation: 'get_seranking_api_key',
-          reason: 'Retrieving API key configuration',
-          source: 'SeRankingApiClient.getActualApiKey',
-          metadata: { service_name: 'seranking_keyword_export' },
-        },
-        { table: 'indb_site_integration', operationType: 'select' },
-        async () => {
-          const { data, error } = await supabaseAdmin
-            .from('indb_site_integration')
-            .select('api_key, is_active')
-            .eq('service_name', 'seranking_keyword_export')
-            .eq('is_active', true)
-            .single();
-
-          if (error && error.code !== 'PGRST116') return null;
-          return data;
-        }
-      );
-
-      if (!data || !data.api_key) return null;
-
-      this.integrationApiKey = data.api_key;
-      this.integrationApiKeyExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-      return this.integrationApiKey;
-    } catch (error) {
-      return null;
-    }
+    return ApiKeyManager.getActiveKey('seranking_keyword_export');
   }
 
   /**

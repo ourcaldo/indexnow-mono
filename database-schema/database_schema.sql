@@ -524,6 +524,7 @@ CREATE TABLE IF NOT EXISTS indb_site_integration (
   is_active BOOLEAN DEFAULT TRUE,
   health_status VARCHAR(50) DEFAULT 'unknown',
   last_health_check TIMESTAMPTZ,
+  last_used_at TIMESTAMPTZ,
   
   -- Quota tracking (for SeRanking etc.)
   api_quota_limit INTEGER DEFAULT 10000,
@@ -545,7 +546,8 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE INDEX IF NOT EXISTS idx_site_integration_user ON indb_site_integration(user_id) WHERE user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_site_integration_service ON indb_site_integration(service_name) WHERE service_name IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_site_integration_service_unique ON indb_site_integration(service_name) WHERE user_id IS NULL;
+-- No unique constraint on service_name: multiple keys per service are supported for rotation/failover
+CREATE INDEX IF NOT EXISTS idx_site_integration_active_service ON indb_site_integration(service_name, is_active, last_used_at) WHERE is_active = TRUE;
 
 
 -- Site settings (global application settings)

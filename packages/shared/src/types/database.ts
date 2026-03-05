@@ -743,6 +743,7 @@ export type Database = {
           alert_settings: Json | null;
           last_health_check: string | null;
           health_status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+          last_used_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -761,6 +762,7 @@ export type Database = {
           alert_settings?: SiteIntegrationAlertSettings | null;
           last_health_check?: string | null;
           health_status?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+          last_used_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -779,6 +781,7 @@ export type Database = {
           alert_settings?: SiteIntegrationAlertSettings | null;
           last_health_check?: string | null;
           health_status?: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+          last_used_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

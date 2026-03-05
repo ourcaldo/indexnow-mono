@@ -18,6 +18,7 @@ import { SeRankingApiClient } from '../rank-tracking/seranking/client/SeRankingA
 import { KeywordEnrichmentService } from '../rank-tracking/seranking/services/KeywordEnrichmentService';
 import { SeRankingErrorHandler } from '../rank-tracking/seranking/services/ErrorHandlingService';
 import { IntegrationService } from '../rank-tracking/seranking/services/IntegrationService';
+import { ApiKeyManager } from '../rank-tracking/api-key-manager';
 import { sleep } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
 
@@ -53,41 +54,9 @@ export class KeywordEnrichmentWorker {
       undefined
     ); // Fix: removed as any casting
 
-    // Get API key directly from database using correct column name 'api_key'
-    const integrationData = await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: 'system',
-        operation: 'get_seranking_api_key_for_keyword_enrichment',
-        reason: 'Retrieving SeRanking API key for keyword enrichment worker initialization',
-        source: 'job-management/keyword-enrichment-worker',
-        metadata: {
-          service_name: 'seranking_keyword_export',
-          operation_type: 'integration_config_lookup',
-        },
-      },
-      {
-        table: 'indb_site_integration',
-        operationType: 'select',
-        columns: ['api_key'],
-        whereConditions: { service_name: 'seranking_keyword_export', is_active: true },
-      },
-      async () => {
-        const { data: integrationData, error } = await supabaseAdmin
-          .from('indb_site_integration')
-          .select('api_key')
-          .eq('service_name', 'seranking_keyword_export')
-          .eq('is_active', true)
-          .single();
-
-        if (error) {
-          throw new Error(`Failed to get SeRanking API key: ${error.message}`);
-        }
-
-        return integrationData;
-      }
-    );
-
-    const apiKey = integrationData?.api_key || '';
+    // Get API key via centralized ApiKeyManager (supports multi-key rotation)
+    const keyResult = await ApiKeyManager.getActiveKeyWithId('seranking_keyword_export');
+    const apiKey = keyResult?.apiKey ?? '';
 
     if (!apiKey) {
       logger.warn({}, 'Keyword Enrichment Worker: No SeRanking API key found in database');
