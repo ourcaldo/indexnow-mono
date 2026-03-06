@@ -1996,3 +1996,56 @@ SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION get_user_weekly_trends(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION get_user_weekly_trends(UUID, TEXT) TO service_role;
+
+-- Atomic cancel subscription
+-- Prevents inconsistent state between subscription and user profile tables.
+-- Updates indb_payment_subscriptions + indb_auth_user_profiles in one transaction.
+CREATE OR REPLACE FUNCTION cancel_subscription_service(
+  p_paddle_subscription_id TEXT,
+  p_user_id UUID,
+  p_refund_eligible BOOLEAN,
+  p_canceled_at TIMESTAMPTZ,
+  p_subscription_end_date TIMESTAMPTZ
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_sub RECORD;
+  v_result JSONB;
+BEGIN
+  -- Verify subscription exists and belongs to user
+  SELECT id, user_id
+  INTO v_sub
+  FROM indb_payment_subscriptions
+  WHERE paddle_subscription_id = p_paddle_subscription_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Subscription not found: %', p_paddle_subscription_id;
+  END IF;
+
+  IF v_sub.user_id != p_user_id THEN
+    RAISE EXCEPTION 'Subscription does not belong to user';
+  END IF;
+
+  -- Step 1: Update subscription
+  UPDATE indb_payment_subscriptions
+  SET
+    status = CASE WHEN p_refund_eligible THEN 'cancelled' ELSE status END,
+    canceled_at = p_canceled_at,
+    cancel_at_period_end = NOT p_refund_eligible,
+    updated_at = p_canceled_at
+  WHERE paddle_subscription_id = p_paddle_subscription_id
+  RETURNING to_jsonb(indb_payment_subscriptions.*) INTO v_result;
+
+  -- Step 2: Update user profile subscription end date
+  UPDATE indb_auth_user_profiles
+  SET
+    subscription_end_date = p_subscription_end_date,
+    updated_at = p_canceled_at
+  WHERE user_id = p_user_id;
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION cancel_subscription_service(TEXT, UUID, BOOLEAN, TIMESTAMPTZ, TIMESTAMPTZ) TO service_role;

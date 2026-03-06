@@ -46,7 +46,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 |----|----------|-------------|-----------|--------|
 | C-01 | Critical | Sentry webhook raw handler — no wrapper, no audit trail | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | ✅ Fixed |
 | C-02 | Critical | Fire-and-forget DB write — sentry_issue_id may never persist | `apps/api/src/app/api/v1/admin/errors/[id]/route.ts:66-70` | ✅ Fixed |
-| C-03 | Critical | Non-atomic dual writes in subscription cancel — data integrity risk | `apps/api/src/app/api/v1/payments/paddle/subscription/cancel/route.ts` | ⏸️ Deferred |
+| C-03 | Critical | Non-atomic dual writes in subscription cancel — data integrity risk | `apps/api/src/app/api/v1/payments/paddle/subscription/cancel/route.ts` | ✅ Fixed |
 | C-04 | Critical | CSP `unsafe-eval` in script-src across ALL 3 apps — XSS protection defeated | `apps/*/next.config.ts` | ⏸️ Deferred |
 | C-05 | Critical | CSP `unsafe-inline` in script-src on frontend apps — zero XSS protection | `apps/admin/next.config.ts`, `apps/user-dashboard/next.config.ts` | ⏸️ Deferred |
 | H-01 | High | `as any` in dashboard route — unchecked property access | `apps/api/src/app/api/v1/dashboard/route.ts:264,277` | ✅ Fixed |

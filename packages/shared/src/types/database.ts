@@ -1965,6 +1965,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      cancel_subscription_service: {
+        Args: {
+          p_paddle_subscription_id: string;
+          p_user_id: string;
+          p_refund_eligible: boolean;
+          p_canceled_at: string;
+          p_subscription_end_date: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;

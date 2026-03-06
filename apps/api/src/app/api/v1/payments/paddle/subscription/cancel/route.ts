@@ -6,19 +6,14 @@
  * - ≤7 days from purchase: Full refund + immediate cancellation
  * - >7 days: No refund + scheduled cancellation (access until period end)
  *
- * TODO (#65): This route performs 2 writes across separate executeWithUserSession calls:
- *   1. Update indb_payment_subscriptions (cancel subscription)
- *   2. Update indb_auth_user_profiles (set subscription_end_date)
- * These should be wrapped in a single Postgres RPC for atomicity.
- * Blocked by schema discrepancies: route uses canceled_at/cancel_at_period_end/current_period_end
- * columns that don't exist in database_schema.sql (schema has cancelled_at, no cancel_at_period_end).
- * Resolve schema alignment first, then create cancel_subscription_service RPC.
+ * Uses cancel_subscription_service RPC for atomic dual-write
+ * (subscription table + user profile in one transaction).
  */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database, type Json, getClientIP } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -55,7 +50,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
   const { subscriptionId } = validationResult.data;
 
-  // Fetch subscription to verify ownership
+  // Fetch subscription to verify ownership and calculate refund eligibility
   const subscription =
     await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionFetch | null>(
       asTypedClient(auth.supabase),
@@ -105,13 +100,15 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
   const refundEligible = daysActive <= 7;
 
-  // Cancel subscription
   const canceledAt = new Date().toISOString();
-  const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<PaymentSubscriptionRow>(
+  const subscriptionEndDate = refundEligible ? canceledAt : (subscription.current_period_end ?? canceledAt);
+
+  // Atomic cancel: updates both subscription + user profile in one DB transaction
+  const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<Json>(
     asTypedClient(auth.supabase),
     {
       userId: auth.userId,
-      operation: 'cancel_subscription',
+      operation: 'cancel_subscription_atomic',
       source: 'paddle/subscription/cancel',
       reason: refundEligible
         ? 'User canceling subscription with refund (within 7 days)'
@@ -127,46 +124,17 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     },
     { table: 'indb_payment_subscriptions', operationType: 'update' },
     async (db) => {
-      const { data, error } = await db
-        .from('indb_payment_subscriptions')
-        .update({
-          status: refundEligible ? 'cancelled' : 'active',
-          canceled_at: canceledAt,
-          cancel_at_period_end: !refundEligible,
-          updated_at: canceledAt,
-        })
-        .eq('paddle_subscription_id', subscriptionId)
-        .select()
-        .single();
+      const { data, error } = await db.rpc('cancel_subscription_service', {
+        p_paddle_subscription_id: subscriptionId,
+        p_user_id: auth.userId,
+        p_refund_eligible: refundEligible,
+        p_canceled_at: canceledAt,
+        p_subscription_end_date: subscriptionEndDate,
+      });
 
       if (error) throw new Error(`Failed to cancel subscription: ${error.message}`);
-      return data;
-    }
-  );
 
-  // Update user profile subscription end date
-  await SecureServiceRoleWrapper.executeWithUserSession<void>(
-    asTypedClient(auth.supabase),
-    {
-      userId: auth.userId,
-      operation: 'update_profile_subscription_end',
-      source: 'paddle/subscription/cancel',
-      reason: 'Updating user profile after subscription cancellation',
-      metadata: {
-        subscriptionId,
-        newEndDate: refundEligible ? canceledAt : subscription.current_period_end,
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') ?? undefined,
-    },
-    { table: 'indb_auth_user_profiles', operationType: 'update' },
-    async (db) => {
-      await db
-        .from('indb_auth_user_profiles')
-        .update({
-          subscription_end_date: refundEligible ? canceledAt : subscription.current_period_end,
-        })
-        .eq('user_id', auth.userId);
+      return data;
     }
   );
 
