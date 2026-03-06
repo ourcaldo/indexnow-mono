@@ -20,7 +20,7 @@ export async function batchGetUserEmails(userIds: string[]): Promise<Map<string,
     });
 
     if (!error && data) {
-      for (const row of data as unknown as { id: string; email: string }[]) {
+      for (const row of data) {
         if (row.email) {
           emailMap.set(row.id, row.email);
         }

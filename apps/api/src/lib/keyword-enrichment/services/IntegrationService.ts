@@ -326,7 +326,15 @@ export class IntegrationService implements IIntegrationService {
         );
       }
 
-      const currentUsage = integrationResult.data!.api_quota_used;
+      if (!integrationResult.data) {
+        throw await ErrorHandlingService.createError(
+          ErrorType.DATABASE,
+          'Integration settings data is missing',
+          { severity: ErrorSeverity.HIGH }
+        );
+      }
+
+      const currentUsage = integrationResult.data.api_quota_used;
       const newUsage = currentUsage + requestCount;
 
       // Update quota — single UPDATE, no intermediate JS compute race window
@@ -460,8 +468,8 @@ export class IntegrationService implements IIntegrationService {
           source: 'api',
           timestamp: new Date(),
           quota_remaining:
-            integrationResult.data!.api_quota_limit -
-            (integrationResult.data!.api_quota_used + requestCount),
+            integrationResult.data.api_quota_limit -
+            (integrationResult.data.api_quota_used + requestCount),
         },
       };
     } catch (error) {

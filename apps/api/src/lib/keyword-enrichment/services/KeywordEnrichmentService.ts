@@ -803,7 +803,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     const batches = this.createBatches(job.keywords, this.config.batchSize);
 
     for (const batch of batches) {
-      if ((job.status as string) === 'cancelled') {
+      if (this.isJobCancelled(job)) {
         break;
       }
 
@@ -816,7 +816,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     }
 
     // Update final job status
-    if ((job.status as string) !== 'cancelled') {
+    if (!this.isJobCancelled(job)) {
       job.status = job.progress.failed > 0 ? 'failed' : 'completed';
       job.completed_at = new Date();
     }
@@ -829,7 +829,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
     job: BulkProcessingJob
   ): Promise<void> {
     for (const request of batch) {
-      if ((job.status as string) === 'cancelled') {
+      if (this.isJobCancelled(job)) {
         break;
       }
 
@@ -853,6 +853,11 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         this.log('error', `Failed to process ${request.keyword}: ${error}`);
       }
     }
+  }
+
+  /** Check if a bulk processing job has been cancelled (avoids TypeScript control-flow narrowing) */
+  private isJobCancelled(job: BulkProcessingJob): boolean {
+    return job.status === 'cancelled';
   }
 
   private createBatches<T>(items: T[], batchSize: number): T[][] {

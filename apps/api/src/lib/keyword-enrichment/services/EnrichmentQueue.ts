@@ -1037,8 +1037,10 @@ export class EnrichmentQueue extends EventEmitter {
       }
 
       case EnrichmentJobType.BULK_ENRICHMENT: {
-        const bulkData = data as unknown as { keywords: string[] };
-        return `Bulk: ${bulkData.keywords.length} keywords - ${timestamp}`;
+        if ('keywords' in data) {
+          return `Bulk: ${data.keywords.length} keywords - ${timestamp}`;
+        }
+        return `Bulk Enrichment - ${timestamp}`;
       }
 
       case EnrichmentJobType.CACHE_REFRESH:

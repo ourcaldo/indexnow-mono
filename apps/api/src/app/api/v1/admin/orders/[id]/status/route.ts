@@ -161,7 +161,10 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
     throw new Error(`Failed to update order status: ${rpcError.message}`);
   }
 
-  const rpcData = rpcResult as unknown as Record<string, unknown> | null;
+  const rpcData =
+    typeof rpcResult === 'object' && rpcResult !== null && !Array.isArray(rpcResult)
+      ? rpcResult
+      : null;
 
   if (!rpcData || rpcData.error) {
     if (rpcData?.error === 'transaction_not_found') {
