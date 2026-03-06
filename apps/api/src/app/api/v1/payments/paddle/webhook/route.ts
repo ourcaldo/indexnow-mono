@@ -10,6 +10,7 @@
 
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
+import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
@@ -30,6 +31,12 @@ import {
 } from './processors';
 
 const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
+
+const paddleWebhookSchema = z.object({
+  event_id: z.string().min(1),
+  event_type: z.string().min(1),
+  data: z.unknown().optional(),
+});
 
 // Derived types from Database schema
 type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row'];
@@ -127,24 +134,21 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       return formatError(error);
     }
 
-    const eventData = JSON.parse(rawBody) as {
-      event_id?: string;
-      event_type?: string;
-      data?: unknown;
-    };
-    const { event_id, event_type, data } = eventData;
+    const parseResult = paddleWebhookSchema.safeParse(JSON.parse(rawBody));
 
-    if (!event_id || !event_type) {
+    if (!parseResult.success) {
       const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
-        'Missing event_id or event_type in webhook payload',
+        'Invalid webhook payload structure',
         {
           severity: ErrorSeverity.MEDIUM,
           statusCode: 400,
+          metadata: { zodErrors: parseResult.error.flatten().fieldErrors },
         }
       );
       return formatError(error);
     }
+    const { event_id, event_type, data } = parseResult.data;
 
     // (#V7 M-25) Idempotency: upsert event record (UNIQUE on event_id prevents duplicates atomically).
     // The select-then-insert pattern has a TOCTOU window but is mitigated by the
@@ -179,7 +183,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
             {
               event_id,
               event_type,
-              payload: toJson(eventData),
+              payload: toJson(parseResult.data),
               processed: false,
             },
             { onConflict: 'event_id', ignoreDuplicates: true }

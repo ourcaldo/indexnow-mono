@@ -79,10 +79,10 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | M-01 | Medium | 17+ dead endpoint constants with no route implementation | `packages/shared/src/constants/ApiEndpoints.ts` | ✅ Fixed |
 | M-02 | Medium | Paddle webhook uses raw NextResponse.json() — non-standard response shape | `apps/api/src/app/api/v1/payments/paddle/webhook/route.ts` | ✅ Fixed |
 | M-03 | Medium | Sentry webhook uses raw NextResponse.json() (12 instances) | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | ✅ Fixed |
-| M-04 | Medium | No Zod validation on webhook payloads — crash on malformed input | `apps/api/.../webhooks/sentry/route.ts:42`, `paddle/webhook/route.ts` | ⏸️ Deferred |
+| M-04 | Medium | No Zod validation on webhook payloads — crash on malformed input | `apps/api/.../webhooks/sentry/route.ts:42`, `paddle/webhook/route.ts` | ✅ Fixed |
 | M-05 | Medium | 4 stub routes return 501/503 without documentation | `apps/api/.../customer-portal/route.ts`, `seranking/health/metrics/route.ts`, etc. | ⏸️ Deferred |
-| M-06 | Medium | Inconsistent error creation — throw Error vs ErrorHandlingService.createError | `apps/api/...` (7 route files) | ⏸️ Deferred |
-| M-07 | Medium | Silent error swallowing — ActivityLogger failures invisible | `apps/api/...` (7 route files) | ⏸️ Deferred |
+| M-06 | Medium | Inconsistent error creation — throw Error vs ErrorHandlingService.createError | `apps/api/...` (7 route files) | ⏸️ Deferred (throws caught by API wrappers — low risk) |
+| M-07 | Medium | Silent error swallowing — ActivityLogger failures invisible | `apps/api/...` (7 route files) | ✅ Fixed |
 | M-08 | Medium | Type casting `request as unknown as NextRequest` in change-password | `apps/api/.../auth/user/change-password/route.ts:26,101` | ✅ Fixed |
 | M-09 | Medium | 3 dead hooks exported but never imported | `apps/user-dashboard/src/hooks/hooks.ts` (useWeeklyTrends, useCheckRank, useAddTag) | ✅ Fixed |
 | M-10 | Medium | In-memory rate limiter store — no periodic GC, memory leak under load | `packages/shared/src/utils/rate-limiter.ts:31-56` | ✅ Fixed |

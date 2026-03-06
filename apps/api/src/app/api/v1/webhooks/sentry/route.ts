@@ -4,6 +4,16 @@ import { logger } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper, formatError, createStandardError } from '@/lib/core/api-response-middleware';
 import { formatSuccess, ErrorType, ErrorSeverity } from '@indexnow/shared';
 import crypto from 'crypto';
+import { z } from 'zod';
+
+const sentryWebhookSchema = z.object({
+  action: z.string(),
+  data: z.object({
+    issue: z.object({
+      id: z.union([z.string(), z.number()]),
+    }).optional(),
+  }).optional(),
+});
 
 /**
  * POST /api/v1/webhooks/sentry
@@ -53,8 +63,17 @@ export const POST = publicApiWrapper<SentryWebhookResult>(async (request: NextRe
     }
   }
 
-  const payload = JSON.parse(bodyText);
-  const action = payload.action as string;
+  const parseResult = sentryWebhookSchema.safeParse(JSON.parse(bodyText));
+  if (!parseResult.success) {
+    logger.warn({ errors: parseResult.error.flatten().fieldErrors }, '[SentryWebhook] Invalid payload structure');
+    return formatError(await createStandardError(
+      ErrorType.VALIDATION,
+      'Invalid webhook payload structure',
+      { statusCode: 400, severity: ErrorSeverity.MEDIUM }
+    ));
+  }
+  const payload = parseResult.data;
+  const action = payload.action;
   const sentryResource = request.headers.get('sentry-hook-resource');
 
   logger.info(
