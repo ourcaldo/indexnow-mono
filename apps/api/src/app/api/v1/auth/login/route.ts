@@ -203,25 +203,23 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
       }
     );
 
-    // 7. Send login notification email — skip if no email on the user
+    // 7. Send login notification email (non-blocking — don't delay login response)
     if (user.email) {
-      try {
-        await loginNotificationService.sendLoginNotification({
-          userId: user.id,
-          userEmail: user.email,
-          userName: user.user_metadata?.full_name || user.email.split('@')[0],
-          ipAddress: requestInfo.ipAddress || 'Unknown',
-          userAgent: requestInfo.userAgent || 'Unknown',
-          deviceInfo: requestInfo.deviceInfo,
-          locationData: requestInfo.locationData,
-          loginTime: new Date().toISOString(),
-        });
-      } catch (emailError) {
-        logger.error(
-          { error: emailError instanceof Error ? emailError : undefined },
-          'Failed to send login notification email'
+      loginNotificationService.sendLoginNotification({
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.user_metadata?.full_name || user.email.split('@')[0],
+        ipAddress: requestInfo.ipAddress || 'Unknown',
+        userAgent: requestInfo.userAgent || 'Unknown',
+        deviceInfo: requestInfo.deviceInfo,
+        locationData: requestInfo.locationData,
+        loginTime: new Date().toISOString(),
+      }).catch((emailError) => {
+        logger.warn(
+          { err: emailError instanceof Error ? emailError : undefined },
+          'Login notification email failed (non-critical)'
         );
-      }
+      });
     }
 
     // 8. Set session cookies for middleware (cross-subdomain)
