@@ -19,6 +19,8 @@ catalog:
   posthog-js: '^1.335.2'
   cmdk: '^1.1.1'
   react-day-picker: '^8.10.1'
+  recharts: '^3.7.0'
+  '@paddle/paddle-js': '^1.4.2'
   uuid: '^11.1.0'
   # (#V7 L-29) vitest not in catalog: packages pin their own version via devDeps.
   # Adding here would require updating all consumer package.json files.

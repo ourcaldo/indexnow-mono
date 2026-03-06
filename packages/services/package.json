@@ -26,6 +26,10 @@
     "@indexnow/database": "workspace:*",
     "@indexnow/shared": "workspace:*"
   },
+  "peerDependencies": {
+    "@indexnow/shared": "workspace:*",
+    "@indexnow/database": "workspace:*"
+  },
   "devDependencies": {
     "@indexnow/eslint-config": "workspace:*",
     "@types/node": "^20.0.0",

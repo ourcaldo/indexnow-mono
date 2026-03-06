@@ -36,6 +36,11 @@
     "@analytics/google-tag-manager": "^0.6.0",
     "@analytics/customerio": "^0.2.2"
   },
+  "peerDependencies": {
+    "@indexnow/shared": "workspace:*",
+    "next": ">=15.0.0",
+    "react": ">=18.0.0"
+  },
   "devDependencies": {
     "@indexnow/eslint-config": "workspace:*",
     "@types/node": "^20",
