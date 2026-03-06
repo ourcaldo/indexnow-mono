@@ -19,7 +19,7 @@ export const USER_ROLES = {
   SUPER_ADMIN: 'super_admin',
 } as const;
 
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 export const ROLE_PERMISSIONS = {
   [USER_ROLES.USER]: [
@@ -63,7 +63,7 @@ export const JOB_STATUS = {
   SCHEDULED: 'scheduled',
 } as const;
 
-export type JobStatus = typeof JOB_STATUS[keyof typeof JOB_STATUS];
+export type JobStatus = (typeof JOB_STATUS)[keyof typeof JOB_STATUS];
 
 // Schedule types
 export const SCHEDULE_TYPES = {
@@ -75,19 +75,16 @@ export const SCHEDULE_TYPES = {
   CUSTOM: 'custom',
 } as const;
 
-export type ScheduleType = typeof SCHEDULE_TYPES[keyof typeof SCHEDULE_TYPES];
+export type ScheduleType = (typeof SCHEDULE_TYPES)[keyof typeof SCHEDULE_TYPES];
 
 // Job types
 export const JOB_TYPES = {
-
   URL_LIST: 'url-list',
   SINGLE_URL: 'single-url',
   BULK_UPLOAD: 'bulk-upload',
 } as const;
 
-export type JobType = typeof JOB_TYPES[keyof typeof JOB_TYPES];
-
-
+export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
 
 // Rank tracking constants
 export const RANK_TRACKING = {
@@ -128,8 +125,6 @@ export const PAGINATION = {
 export const FILE_UPLOAD = {
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
   ALLOWED_TYPES: {
-
-
     URL_LIST: ['.txt', '.csv'],
     IMAGE: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
   },
@@ -144,7 +139,7 @@ export const NOTIFICATION_TYPES = {
   ERROR: 'error',
 } as const;
 
-export type NotificationType = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
+export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
 
 // Email templates
 export const EMAIL_TEMPLATES = {
@@ -159,7 +154,7 @@ export const EMAIL_TEMPLATES = {
   BILLING_CONFIRMATION: 'billing-confirmation',
 } as const;
 
-export type EmailTemplate = typeof EMAIL_TEMPLATES[keyof typeof EMAIL_TEMPLATES];
+export type EmailTemplate = (typeof EMAIL_TEMPLATES)[keyof typeof EMAIL_TEMPLATES];
 
 // Cache keys
 export const CACHE_KEYS = {
@@ -224,14 +219,16 @@ export const DEFAULT_SETTINGS = {
   },
 } as const;
 
-// Regular expressions
+// Regular expressions — delegates to VALIDATION_PATTERNS to avoid duplication & drift
+import { VALIDATION_PATTERNS } from './ValidationRules';
+
 export const REGEX_PATTERNS = {
-  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  URL: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/,
-  PHONE: /^\+?[1-9]\d{1,14}$/,
-  PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-  CRON: /^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/,
-  DOMAIN: /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/,
+  EMAIL: VALIDATION_PATTERNS.EMAIL,
+  URL: VALIDATION_PATTERNS.URL,
+  PHONE: VALIDATION_PATTERNS.PHONE,
+  PASSWORD: VALIDATION_PATTERNS.PASSWORD,
+  CRON: VALIDATION_PATTERNS.CRON,
+  DOMAIN: VALIDATION_PATTERNS.DOMAIN,
 } as const;
 
 // HTTP status codes

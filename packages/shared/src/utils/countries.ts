@@ -273,5 +273,5 @@ export function getPopularCountries(): RegistrationCountry[] {
   const popularCodes = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'CN', 'IN', 'BR'];
   return popularCodes
     .map((code) => findCountryByCode(code))
-    .filter(Boolean) as RegistrationCountry[];
+    .filter((c): c is RegistrationCountry => c !== undefined);
 }

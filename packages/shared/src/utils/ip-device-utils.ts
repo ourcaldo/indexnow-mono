@@ -6,6 +6,50 @@
 import { NextRequest } from 'next/server';
 import { logger } from './logger';
 
+// ── In-memory geolocation cache (TTL-based with size limit) ──
+interface GeoCacheEntry {
+  data: LocationData;
+  expiresAt: number;
+}
+
+const GEO_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const GEO_CACHE_MAX_ENTRIES = 10_000;
+const geoCache = new Map<string, GeoCacheEntry>();
+
+function geoCacheGet(ip: string): LocationData | null {
+  const entry = geoCache.get(ip);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    geoCache.delete(ip);
+    return null;
+  }
+  return entry.data;
+}
+
+function geoCacheSet(ip: string, data: LocationData): void {
+  // Evict oldest entries when at capacity
+  if (geoCache.size >= GEO_CACHE_MAX_ENTRIES) {
+    const now = Date.now();
+    // First pass: remove expired entries
+    for (const [key, entry] of geoCache) {
+      if (now > entry.expiresAt) {
+        geoCache.delete(key);
+      }
+    }
+    // If still over limit, delete oldest 10% by insertion order
+    if (geoCache.size >= GEO_CACHE_MAX_ENTRIES) {
+      const toDelete = Math.ceil(GEO_CACHE_MAX_ENTRIES * 0.1);
+      let deleted = 0;
+      for (const key of geoCache.keys()) {
+        if (deleted >= toDelete) break;
+        geoCache.delete(key);
+        deleted++;
+      }
+    }
+  }
+  geoCache.set(ip, { data, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+}
+
 // Strict IPv4 pattern: 1-3 digits per octet, dot-separated
 const IPV4_REGEX = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
@@ -249,47 +293,48 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
 
     // Get location data using multiple methods
     if (ipAddress && isValidIP(ipAddress) && !isPrivateOrReservedIP(ipAddress)) {
-      // Use IP geolocation service
-      // NOTE: Using HTTPS endpoint. For ip-api.com, HTTPS requires a paid plan.
-      // If using the free tier, switch to an alternative like ipapi.co or ip-api.com with HTTP.
-      // SECURITY: HTTP sends IP data unencrypted — always prefer HTTPS in production.
-      // (#V7 H-06) TODO: Add short-lived cache (e.g. 5 min TTL keyed by IP) to avoid
-      // external HTTP call on every request. Consider redis cacheService.getOrSet().
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+      // Check in-memory cache first to avoid external HTTP per request
+      const cached = geoCacheGet(ipAddress);
+      if (cached) {
+        locationData = cached;
+      } else {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        // Safe URL construction — encode the IP to prevent path traversal / injection
-        const geoUrl = new URL(`/${encodeURIComponent(ipAddress)}/json/`, 'https://ipapi.co');
+          // Safe URL construction — encode the IP to prevent path traversal / injection
+          const geoUrl = new URL(`/${encodeURIComponent(ipAddress)}/json/`, 'https://ipapi.co');
 
-        const response = await fetch(geoUrl.toString(), {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'IndexNow-Pro/1.0',
-          },
-        });
+          const response = await fetch(geoUrl.toString(), {
+            signal: controller.signal,
+            headers: {
+              'User-Agent': 'IndexNow-Pro/1.0',
+            },
+          });
 
-        clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const ipApiData = await response.json();
-          // ipapi.co returns { error: true } on failure, otherwise flat object with country_name, region, city, etc.
-          if (ipApiData && typeof ipApiData === 'object' && !ipApiData.error) {
-            locationData = {
-              country: ipApiData.country_name || ipApiData.country,
-              countryCode: ipApiData.country,
-              region: ipApiData.region || ipApiData.regionName,
-              city: ipApiData.city,
-              timezone: ipApiData.timezone,
-              latitude: ipApiData.latitude || ipApiData.lat,
-              longitude: ipApiData.longitude || ipApiData.lon,
-              isp: ipApiData.org || ipApiData.isp,
-            };
+          if (response.ok) {
+            const ipApiData = await response.json();
+            // ipapi.co returns { error: true } on failure, otherwise flat object with country_name, region, city, etc.
+            if (ipApiData && typeof ipApiData === 'object' && !ipApiData.error) {
+              locationData = {
+                country: ipApiData.country_name || ipApiData.country,
+                countryCode: ipApiData.country,
+                region: ipApiData.region || ipApiData.regionName,
+                city: ipApiData.city,
+                timezone: ipApiData.timezone,
+                latitude: ipApiData.latitude || ipApiData.lat,
+                longitude: ipApiData.longitude || ipApiData.lon,
+                isp: ipApiData.org || ipApiData.isp,
+              };
+              geoCacheSet(ipAddress, locationData);
+            }
           }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          logger.warn({ ipAddress }, `IP geolocation lookup failed: ${message}`);
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.warn({ ipAddress }, `IP geolocation lookup failed: ${message}`);
       }
     }
 
