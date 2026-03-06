@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { usePathname } from 'next/navigation'
 import { useState, useCallback, useEffect } from 'react'
@@ -38,7 +38,7 @@ export function DashboardLayoutWrapper({ children }: { children: React.ReactNode
   const marginLeft = isCollapsed ? 'lg:ml-[68px]' : 'lg:ml-[252px]'
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] dark:bg-[#090a0f]">
+    <div className="min-h-screen bg-[#f7f8fa]">
       <AppSidebar
         isOpen={sidebarOpen}
         onClose={closeSidebar}

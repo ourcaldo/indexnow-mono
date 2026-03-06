@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -21,10 +21,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="-m-4 lg:-m-6 bg-white dark:bg-[#0f1017] border-t border-gray-200 dark:border-gray-800 min-h-[calc(100vh-60px)]">
+    <div className="-m-4 lg:-m-6 bg-white border-t border-gray-200 min-h-[calc(100vh-60px)]">
       <div className="flex min-h-[calc(100vh-60px)]">
-        {/* ── Settings Sidebar ── */}
-        <nav className="w-52 shrink-0 border-r border-gray-200 dark:border-gray-800 hidden md:block p-5">
+        {/* â”€â”€ Settings Sidebar â”€â”€ */}
+        <nav className="w-52 shrink-0 border-r border-gray-200 hidden md:block p-5">
           <ul className="space-y-0.5 sticky top-6">
             {navItems.map((item) => {
               const isActive = activeId === item.id
@@ -34,8 +34,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     onClick={() => handleNav(item.href)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
-                        ? 'bg-gray-100 dark:bg-gray-800/60 text-gray-900 dark:text-white font-medium'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/30'
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                     }`}
                     data-testid={`nav-${item.id}`}
                   >
@@ -47,8 +47,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </ul>
         </nav>
 
-        {/* ── Mobile nav (horizontal scroll) ── */}
-        <div className="md:hidden flex gap-1 px-4 pt-4 pb-3 border-b border-gray-200/80 dark:border-gray-800/60 overflow-x-auto w-full">
+        {/* â”€â”€ Mobile nav (horizontal scroll) â”€â”€ */}
+        <div className="md:hidden flex gap-1 px-4 pt-4 pb-3 border-b border-gray-200/80 overflow-x-auto w-full">
           {navItems.map((item) => {
             const isActive = activeId === item.id
             return (
@@ -57,8 +57,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 onClick={() => handleNav(item.href)}
                 className={`shrink-0 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   isActive
-                    ? 'bg-gray-100 dark:bg-gray-800/60 text-gray-900 dark:text-white font-medium'
-                    : 'text-gray-500 dark:text-gray-400'
+                    ? 'bg-gray-100 text-gray-900 font-medium'
+                    : 'text-gray-500'
                 }`}
               >
                 {item.label}
@@ -67,7 +67,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           })}
         </div>
 
-        {/* ── Content Area ── */}
+        {/* â”€â”€ Content Area â”€â”€ */}
         <div className="flex-1 min-w-0 p-6 md:p-8">
           {children}
         </div>

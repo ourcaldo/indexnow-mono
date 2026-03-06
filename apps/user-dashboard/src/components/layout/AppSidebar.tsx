@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -43,7 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-// ── WorkspaceSwitcher ────────────────────────────────────────────────────────
+// â”€â”€ WorkspaceSwitcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface WorkspaceSwitcherProps {
   isCollapsed: boolean
@@ -79,21 +79,21 @@ function WorkspaceDropdown({
     <div
       ref={ref}
       style={{ position: 'fixed', top: pos.top, left: pos.left, width: Math.max(pos.width, 220), zIndex: 9999 }}
-      className="bg-white dark:bg-[#141520] border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg overflow-hidden"
+      className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
     >
       <div className="px-2 py-2">
-        <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500 px-2 mb-1.5">Switch workspace</p>
+        <p className="text-[10px] font-medium text-gray-400 px-2 mb-1.5">Switch workspace</p>
 
         {/* All workspaces */}
         <button
           onClick={() => onSelect(null)}
           className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
             activeDomain === null
-              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-700 hover:bg-gray-50'
           }`}
         >
-          <div className="w-5 h-5 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 shrink-0">
+          <div className="w-5 h-5 rounded flex items-center justify-center bg-gray-100 text-gray-500 shrink-0">
             <Globe className="w-3 h-3" />
           </div>
           <span className="flex-1 text-left truncate">All workspaces</span>
@@ -101,7 +101,7 @@ function WorkspaceDropdown({
         </button>
 
         {domains.length > 0 && (
-          <div className="my-1.5 border-t border-gray-100 dark:border-gray-800" />
+          <div className="my-1.5 border-t border-gray-100" />
         )}
 
         {domains.map(d => (
@@ -110,11 +110,11 @@ function WorkspaceDropdown({
             onClick={() => onSelect(d.domain_name)}
             className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
               activeDomain === d.domain_name
-                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">
+            <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-blue-100 text-blue-700 shrink-0">
               {d.domain_name[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0 text-left">
@@ -122,7 +122,7 @@ function WorkspaceDropdown({
                 {d.display_name || d.domain_name}
               </p>
               {d.display_name && (
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate leading-tight">
+                <p className="text-[11px] text-gray-400 truncate leading-tight">
                   {d.domain_name}
                 </p>
               )}
@@ -162,14 +162,14 @@ function WorkspaceSwitcher({ isCollapsed, showTooltip, hideTooltip }: WorkspaceS
   if (isCollapsed) {
     return (
       <div
-        className="flex justify-center py-2.5 border-b border-gray-100 dark:border-gray-800/80 shrink-0"
+        className="flex justify-center py-2.5 border-b border-gray-100 shrink-0"
         onMouseEnter={(e) => showTooltip(displayName, e.currentTarget)}
         onMouseLeave={hideTooltip}
       >
         <button
           ref={triggerRef}
           onClick={openDropdown}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-colors bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100"
           title={displayName}
         >
           {initial ?? <Globe className="w-3.5 h-3.5" />}
@@ -188,23 +188,23 @@ function WorkspaceSwitcher({ isCollapsed, showTooltip, hideTooltip }: WorkspaceS
   }
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-800/80 shrink-0 px-3 py-2.5">
-      <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 px-1.5 mb-1.5 tracking-wide">
+    <div className="border-b border-gray-100 shrink-0 px-3 py-2.5">
+      <p className="text-[10px] font-semibold text-gray-400 px-1.5 mb-1.5 tracking-wide">
         WORKSPACE
       </p>
       <button
         ref={triggerRef}
         onClick={openDropdown}
-        className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors group"
+        className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors group"
       >
         {/* Domain initial badge */}
-        <div className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+        <div className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0 bg-blue-100 text-blue-700">
           {initial ?? <Globe className="w-3.5 h-3.5" />}
         </div>
-        <span className="text-[13px] font-medium text-gray-800 dark:text-gray-200 truncate flex-1 text-left">
+        <span className="text-[13px] font-medium text-gray-800 truncate flex-1 text-left">
           {displayName}
         </span>
-        <ChevronsUpDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 shrink-0" />
+        <ChevronsUpDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 shrink-0" />
       </button>
       {open && dropdownPos && createPortal(
         <WorkspaceDropdown
@@ -269,7 +269,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
     try {
       await authService.signOut()
     } catch {
-      // Swallow — we're redirecting regardless
+      // Swallow â€” we're redirecting regardless
     } finally {
       window.location.href = '/login'
     }
@@ -291,8 +291,8 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
       <aside
         className={`
           fixed top-0 left-0 z-50 h-full ${sidebarWidth}
-          bg-white dark:bg-[#0f1117]
-          border-r border-gray-200/80 dark:border-gray-800/80
+          bg-white
+          border-r border-gray-200/80
           flex flex-col
           transition-all duration-200 ease-in-out
           overflow-x-hidden
@@ -301,13 +301,13 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
         `}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex items-center h-[60px] px-4 border-b border-gray-100 dark:border-gray-800/80 shrink-0">
+        <div className="flex items-center h-[60px] px-4 border-b border-gray-100 shrink-0">
           <button onClick={() => navigate('/')} className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shrink-0">
               <span className="text-white font-bold text-sm">N</span>
             </div>
             {!isCollapsed && (
-              <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight truncate">
+              <span className="text-[15px] font-bold text-gray-900 tracking-tight truncate">
                 IndexNow
               </span>
             )}
@@ -315,7 +315,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
           {!isCollapsed && (
             <button
               onClick={onToggleCollapse}
-              className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-auto"
+              className="hidden lg:flex items-center justify-center w-7 h-7 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors ml-auto"
               title="Collapse sidebar"
             >
               <ChevronsLeft className="w-4 h-4" />
@@ -323,12 +323,12 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
           )}
         </div>
 
-        {/* Expand toggle when collapsed — below logo, centered */}
+        {/* Expand toggle when collapsed â€” below logo, centered */}
         {isCollapsed && (
-          <div className="flex justify-center py-2 border-b border-gray-100 dark:border-gray-800/80 shrink-0">
+          <div className="flex justify-center py-2 border-b border-gray-100 shrink-0">
             <button
               onClick={onToggleCollapse}
-              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               title="Expand sidebar"
             >
               <ChevronsRight className="w-4 h-4" />
@@ -348,7 +348,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
             <div key={group.title} className="mb-5">
               {!isCollapsed && (
                 <div className="px-2.5 mb-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-400">
                     {group.title}
                   </span>
                 </div>
@@ -370,17 +370,17 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                           w-full flex items-center gap-2.5 rounded-lg transition-all duration-150
                           ${isCollapsed ? 'justify-center px-2 py-2.5' : 'px-2.5 py-2'}
                           ${active
-                            ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                           }
                         `}
                       >
-                        <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                        <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-blue-600' : ''}`} />
                         {!isCollapsed && (
                           <span className="text-[13px] font-medium truncate">{item.label}</span>
                         )}
                         {!isCollapsed && item.badge && (
-                          <span className="ml-auto text-[10px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full">
+                          <span className="ml-auto text-[10px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">
                             {item.badge}
                           </span>
                         )}
@@ -394,7 +394,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
         </nav>
 
         {/* Bottom section */}
-        <div className="border-t border-gray-100 dark:border-gray-800/80 shrink-0">
+        <div className="border-t border-gray-100 shrink-0">
           {/* Account: Settings */}
           <div className="px-2.5 pt-2.5">
             {!isCollapsed ? (
@@ -403,12 +403,12 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                 className={`
                   w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150
                   ${isActive('/settings')
-                    ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
               >
-                <Settings className={`w-[18px] h-[18px] shrink-0 ${isActive('/settings') ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                <Settings className={`w-[18px] h-[18px] shrink-0 ${isActive('/settings') ? 'text-blue-600' : ''}`} />
                 <span className="text-[13px] font-medium truncate">Settings</span>
               </button>
             ) : (
@@ -422,8 +422,8 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                   className={`
                     w-9 h-9 flex items-center justify-center rounded-lg transition-colors
                     ${isActive('/settings')
-                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:text-gray-600 dark:hover:text-gray-200'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
                     }
                   `}
                 >
@@ -433,12 +433,12 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
             )}
           </div>
 
-          {/* Upgrade CTA — shows when a higher tier exists */}
+          {/* Upgrade CTA â€” shows when a higher tier exists */}
           {showUpgrade && !isCollapsed && (
             <div className="px-3 pt-3">
-              <div className="rounded-xl p-3.5 border border-blue-200 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/20">
-                <span className="text-xs font-bold text-blue-700 dark:text-blue-400">Upgrade to {tier.next}</span>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1 mb-2.5">
+              <div className="rounded-xl p-3.5 border border-blue-200 bg-blue-50/60">
+                <span className="text-xs font-bold text-blue-700">Upgrade to {tier.next}</span>
+                <p className="text-[11px] text-gray-500 leading-relaxed mt-1 mb-2.5">
                   Unlock more keywords and advanced features.
                 </p>
                 <button
@@ -474,7 +474,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-150"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all duration-150"
               >
                 <LogOut className="w-[18px] h-[18px]" />
                 {loggingOut ? 'Signing out...' : 'Sign Out'}
@@ -488,7 +488,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                 <button
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                 >
                   <LogOut className="w-[18px] h-[18px]" />
                 </button>
@@ -498,14 +498,14 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
         </div>
       </aside>
 
-      {/* Portal tooltip — rendered on document.body to escape overflow clipping */}
+      {/* Portal tooltip â€” rendered on document.body to escape overflow clipping */}
       {tooltip && createPortal(
         <div
-          className="fixed z-[9999] px-2.5 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium rounded-md whitespace-nowrap shadow-lg pointer-events-none"
+          className="fixed z-[9999] px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md whitespace-nowrap shadow-lg pointer-events-none"
           style={{ top: tooltip.top, left: tooltip.left, transform: 'translateY(-50%)' }}
         >
           {tooltip.label}
-          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
         </div>,
         document.body
       )}

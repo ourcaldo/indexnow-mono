@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -101,7 +101,7 @@ export const ErrorListTable = memo(function ErrorListTable({
       return (
         <Badge
           variant="outline"
-          className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+          className="bg-green-50 text-green-700"
           data-testid="badge-status-resolved"
         >
           Resolved
@@ -112,7 +112,7 @@ export const ErrorListTable = memo(function ErrorListTable({
       return (
         <Badge
           variant="outline"
-          className="bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+          className="bg-yellow-50 text-yellow-700"
           data-testid="badge-status-acknowledged"
         >
           Acknowledged
@@ -122,7 +122,7 @@ export const ErrorListTable = memo(function ErrorListTable({
     return (
       <Badge
         variant="outline"
-        className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+        className="bg-red-50 text-red-700"
         data-testid="badge-status-new"
       >
         New

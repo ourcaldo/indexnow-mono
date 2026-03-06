@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@indexnow/database/client';
@@ -230,21 +230,21 @@ export function ErrorDetailModal({ errorId, open, onClose }: ErrorDetailModalPro
             <div className="space-y-2">
               <h3 className="font-semibold text-sm">Resolution Status</h3>
               {error.resolved_at ? (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400" data-testid="status-resolved">
+                <div className="flex items-center gap-2 text-green-600" data-testid="status-resolved">
                   <CheckCircle2 className="h-4 w-4" />
                   <span className="text-sm">
                     Resolved {formatDistanceToNow(new Date(error.resolved_at), { addSuffix: true })}
                   </span>
                 </div>
               ) : error.acknowledged_at ? (
-                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400" data-testid="status-acknowledged">
+                <div className="flex items-center gap-2 text-yellow-600" data-testid="status-acknowledged">
                   <Clock className="h-4 w-4" />
                   <span className="text-sm">
                     Acknowledged {formatDistanceToNow(new Date(error.acknowledged_at), { addSuffix: true })}
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400" data-testid="status-new">
+                <div className="flex items-center gap-2 text-red-600" data-testid="status-new">
                   <AlertCircle className="h-4 w-4" />
                   <span className="text-sm">Not yet acknowledged</span>
                 </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -45,20 +45,20 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
 
   return (
     <>
-      <header className="h-[60px] bg-white dark:bg-[#0f1117] border-b border-gray-200/80 dark:border-gray-800/80 flex items-center justify-between px-4 lg:px-6 shrink-0">
+      <header className="h-[60px] bg-white border-b border-gray-200/80 flex items-center justify-between px-4 lg:px-6 shrink-0">
         {/* Left: menu toggle + breadcrumb */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onMenuClick}
-            className="lg:hidden p-2 -ml-1 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="lg:hidden p-2 -ml-1 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="min-w-0">
-            <h1 className="text-[15px] font-semibold text-gray-900 dark:text-white leading-tight truncate">
+            <h1 className="text-[15px] font-semibold text-gray-900 leading-tight truncate">
               {getPageTitle()}
             </h1>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
+            <p className="text-[11px] text-gray-400 truncate hidden sm:block">
               {getPageDescription()}
             </p>
           </div>
@@ -69,7 +69,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           {/* Add Domain */}
           <button
             onClick={() => setAddDomainOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             <Globe className="w-3.5 h-3.5" />
             Add Domain
@@ -87,18 +87,18 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           {/* Mobile: single + button */}
           <button
             onClick={() => setAddKeywordsOpen(true)}
-            className="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
           >
             <Plus className="w-5 h-5" />
           </button>
 
           {/* Notifications */}
-          <button className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative">
+          <button className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors relative">
             <Bell className="w-[18px] h-[18px]" />
           </button>
 
           {/* Divider */}
-          <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-800 mx-0.5" />
+          <div className="hidden sm:block w-px h-6 bg-gray-200 mx-0.5" />
 
           {/* Avatar */}
           <button className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">

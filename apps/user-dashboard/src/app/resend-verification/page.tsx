@@ -1,4 +1,4 @@
-// (#V7 L-26) Email input uses native HTML type="email" validation.
+﻿// (#V7 L-26) Email input uses native HTML type="email" validation.
 // Adding Zod validation (z.string().email()) would provide stricter
 // client-side checks but the API already validates server-side.
 'use client';
@@ -138,8 +138,8 @@ export default function ResendVerification() {
 
             {/* Success Message */}
             {message && (
-              <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-3 text-center dark:border-green-800 dark:bg-green-900/20">
-                <div className="text-green-800 dark:text-green-400">{message}</div>
+              <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-3 text-center">
+                <div className="text-green-800">{message}</div>
               </div>
             )}
 

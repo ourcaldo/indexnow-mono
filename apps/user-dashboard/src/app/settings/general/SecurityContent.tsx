@@ -1,10 +1,10 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useAccountSettings } from '@indexnow/ui/hooks'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 
-/* ─── Password Input with visibility toggle ─── */
+/* â”€â”€â”€ Password Input with visibility toggle â”€â”€â”€ */
 function PasswordInput({
   id,
   value,
@@ -27,13 +27,13 @@ function PasswordInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="block w-full max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 px-3 py-2.5 pr-10 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+        className="block w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
         data-testid={testId}
       />
       <button
         type="button"
         onClick={() => setVisible(!visible)}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
         tabIndex={-1}
       >
         {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -61,8 +61,8 @@ export default function SecurityContent() {
   if (accountLoading) {
     return (
       <div className="animate-pulse space-y-4">
-        <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-800" />
-        <div className="h-12 rounded bg-gray-100 dark:bg-gray-800/50" />
+        <div className="h-4 w-32 rounded bg-gray-200" />
+        <div className="h-12 rounded bg-gray-100" />
       </div>
     )
   }
@@ -72,13 +72,13 @@ export default function SecurityContent() {
       <div>
         <button
           onClick={() => setShowForm(true)}
-          className="group w-full flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800/60 text-left"
+          className="group w-full flex items-center justify-between py-3 border-b border-gray-100 text-left"
         >
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Password</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Change your account password</p>
+            <p className="text-sm font-medium text-gray-900">Password</p>
+            <p className="text-xs text-gray-400 mt-0.5">Change your account password</p>
           </div>
-          <span className="px-3.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition-colors">
+          <span className="px-3.5 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 group-hover:bg-gray-50 transition-colors">
             Change
           </span>
         </button>
@@ -89,7 +89,7 @@ export default function SecurityContent() {
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1.5">
           Current password
         </label>
         <PasswordInput
@@ -101,7 +101,7 @@ export default function SecurityContent() {
         />
       </div>
       <div>
-        <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1.5">
           New password
         </label>
         <PasswordInput
@@ -113,7 +113,7 @@ export default function SecurityContent() {
         />
       </div>
       <div>
-        <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+        <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1.5">
           Confirm new password
         </label>
         <PasswordInput
@@ -128,15 +128,15 @@ export default function SecurityContent() {
         <button
           onClick={onSubmit}
           disabled={savingPassword}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           data-testid="button-update-password"
         >
           {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {savingPassword ? 'Updating…' : 'Update password'}
+          {savingPassword ? 'Updatingâ€¦' : 'Update password'}
         </button>
         <button
           onClick={() => setShowForm(false)}
-          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
         >
           Cancel
         </button>

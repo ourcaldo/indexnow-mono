@@ -145,40 +145,40 @@ function getColPos(history: Record<string, number>, col: TableColumn): number | 
 // ── Position badge ─────────────────────────────────────────────────────────────
 
 function PosBadge({ pos }: { pos: number | null }) {
-  if (pos === null) return <span className="text-gray-300 dark:text-gray-600 text-xs">–</span>
+  if (pos === null) return <span className="text-gray-300 text-xs">–</span>
   const color =
-    pos <= 3 ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-    : pos <= 10 ? 'text-blue-600 dark:text-blue-400 font-semibold'
-    : pos <= 20 ? 'text-amber-600 dark:text-amber-400 font-medium'
-    : 'text-gray-500 dark:text-gray-400'
+    pos <= 3 ? 'text-emerald-600 font-bold'
+    : pos <= 10 ? 'text-blue-600 font-semibold'
+    : pos <= 20 ? 'text-amber-600 font-medium'
+    : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${color}`}>{pos}</span>
 }
 
 // ── Rank cell (date column) ────────────────────────────────────────────────────
 
 function RankCell({ pos }: { pos: number | undefined }) {
-  if (pos === undefined) return <span className="text-gray-200 dark:text-gray-700 text-[11px]">–</span>
+  if (pos === undefined) return <span className="text-gray-200 text-[11px]">–</span>
   const color =
-    pos <= 3 ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-    : pos <= 10 ? 'text-blue-600 dark:text-blue-400 font-semibold'
-    : pos <= 20 ? 'text-amber-600 dark:text-amber-400'
-    : 'text-gray-500 dark:text-gray-400'
+    pos <= 3 ? 'text-emerald-600 font-semibold'
+    : pos <= 10 ? 'text-blue-600 font-semibold'
+    : pos <= 20 ? 'text-amber-600'
+    : 'text-gray-500'
   return <span className={`text-[12px] font-medium tabular-nums ${color}`}>{pos}</span>
 }
 
 // ── Change cell ────────────────────────────────────────────────────────────────
 
 function ChangeCell({ change }: { change: number | null }) {
-  if (change === null || change === 0) return <span className="text-gray-300 dark:text-gray-600 text-xs">–</span>
+  if (change === null || change === 0) return <span className="text-gray-300 text-xs">–</span>
   if (change > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600">
         <TrendingUp className="w-3 h-3" /> +{change}
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs font-medium text-red-500 dark:text-red-400">
+    <span className="inline-flex items-center gap-0.5 text-xs font-medium text-red-500">
       <TrendingDown className="w-3 h-3" /> {change}
     </span>
   )
@@ -442,7 +442,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
     <tr className="group">
       {/* # */}
       <td
-        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-xs text-gray-400 dark:text-gray-500 tabular-nums text-center"
+        className="sticky bg-white group-hover:bg-gray-50/80 border-b border-gray-100 px-3 py-2.5 text-xs text-gray-400 tabular-nums text-center"
         style={{ left: 0, width: COL_NUM, minWidth: COL_NUM, zIndex: 5 }}
       >
         {idx}
@@ -450,7 +450,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
       {/* Keyword */}
       <td
-        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-gray-100"
+        className="sticky bg-white group-hover:bg-gray-50/80 border-b border-gray-100 px-3 py-2.5 text-sm font-medium text-gray-900"
         style={{ left: COL_NUM, width: COL_KEYWORD, minWidth: COL_KEYWORD, zIndex: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         title={kw.keyword}
       >
@@ -459,7 +459,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
       {/* Position */}
       <td
-        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center"
+        className="sticky bg-white group-hover:bg-gray-50/80 border-b border-gray-100 px-3 py-2.5 text-center"
         style={{ left: COL_NUM + COL_KEYWORD, width: COL_POSITION, minWidth: COL_POSITION, zIndex: 5 }}
       >
         <PosBadge pos={kw.current_position} />
@@ -467,7 +467,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
       {/* Change — frozen edge border */}
       <td
-        className="sticky bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center"
+        className="sticky bg-white group-hover:bg-gray-50/80 border-b border-gray-100 px-3 py-2.5 text-center"
         style={{
           left: COL_NUM + COL_KEYWORD + COL_POSITION,
           width: COL_CHANGE,
@@ -486,8 +486,8 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
         return (
           <td
             key={col.key}
-            className={`border-b border-gray-100 dark:border-gray-800/50 py-2.5 text-center group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40 ${
-              even ? 'bg-gray-50/60 dark:bg-white/[0.02]' : 'bg-white dark:bg-[#141520]'
+            className={`border-b border-gray-100 py-2.5 text-center group-hover:bg-gray-50/80 ${
+              even ? 'bg-gray-50/60' : 'bg-white'
             }`}
             style={{ width: 46, minWidth: 46, maxWidth: 46, padding: '10px 2px' }}
           >
@@ -498,13 +498,13 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
 
       {/* URL — trailing edge border */}
       <td
-        className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40"
+        className="border-b border-gray-100 px-3 py-2.5 text-center bg-white group-hover:bg-gray-50/80"
         style={{ minWidth: 160, maxWidth: 200, borderLeft: '2px solid #e5e7eb' }}
       >
         {kw.latest_url ? (
           <div className="inline-flex items-center gap-1.5 max-w-full">
             <span
-              className="text-xs text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap block"
+              className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap block"
               style={{ maxWidth: 130 }}
               title={kw.latest_url}
             >
@@ -514,28 +514,28 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
               href={kw.latest_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-shrink-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
               title="Open in new tab"
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
         ) : (
-          <span className="text-gray-300 dark:text-gray-600">–</span>
+          <span className="text-gray-300">–</span>
         )}
       </td>
 
       {/* Country */}
-      <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center whitespace-nowrap bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 90 }}>
-        <span className="inline-flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+      <td className="border-b border-gray-100 px-3 py-2.5 text-center whitespace-nowrap bg-white group-hover:bg-gray-50/80" style={{ minWidth: 90 }}>
+        <span className="inline-flex items-center justify-center gap-1.5 text-xs text-gray-500">
           <Globe className="h-3 w-3 text-gray-400 flex-shrink-0" />
           {fmtCountry(kw.country_name || kw.country)}
         </span>
       </td>
 
       {/* Device */}
-      <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 80 }}>
-        <span className="inline-flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+      <td className="border-b border-gray-100 px-3 py-2.5 text-center bg-white group-hover:bg-gray-50/80" style={{ minWidth: 80 }}>
+        <span className="inline-flex items-center justify-center gap-1 text-xs text-gray-500">
           {kw.device === 'mobile'
             ? <Smartphone className="w-3.5 h-3.5 flex-shrink-0" />
             : <Monitor className="w-3.5 h-3.5 flex-shrink-0" />}
@@ -544,8 +544,8 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
       </td>
 
       {/* Last Check */}
-      <td className="border-b border-gray-100 dark:border-gray-800/50 px-3 py-2.5 text-center text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums bg-white dark:bg-[#141520] group-hover:bg-gray-50/80 dark:group-hover:bg-gray-800/40" style={{ minWidth: 100 }}>
-        {kw.latest_check ? fmtDate(kw.latest_check) : <span className="text-gray-300 dark:text-gray-600">–</span>}
+      <td className="border-b border-gray-100 px-3 py-2.5 text-center text-xs text-gray-500 whitespace-nowrap tabular-nums bg-white group-hover:bg-gray-50/80" style={{ minWidth: 100 }}>
+        {kw.latest_check ? fmtDate(kw.latest_check) : <span className="text-gray-300">–</span>}
       </td>
     </tr>
   )
@@ -661,8 +661,8 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
     }
     const total = payload.reduce((s, p) => s + (p.value || 0), 0)
     return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-3 px-4 min-w-[180px]">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{dateLabel}</p>
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg py-3 px-4 min-w-[180px]">
+        <p className="text-xs font-medium text-gray-500 mb-2">{dateLabel}</p>
         <div className="space-y-1.5">
           {payload.map(p => {
             const bucket = BUCKETS.find(b => b.key === p.name)
@@ -670,16 +670,16 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
               <div key={p.name} className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                  <span className="text-xs text-gray-600 dark:text-gray-300">{bucket?.label ?? p.name}</span>
+                  <span className="text-xs text-gray-600">{bucket?.label ?? p.name}</span>
                 </div>
-                <span className="text-xs font-semibold text-gray-900 dark:text-white tabular-nums">{p.value}</span>
+                <span className="text-xs font-semibold text-gray-900 tabular-nums">{p.value}</span>
               </div>
             )
           })}
         </div>
-        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total</span>
-          <span className="text-xs font-bold text-gray-900 dark:text-white tabular-nums">{total}</span>
+        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+          <span className="text-xs font-medium text-gray-500">Total</span>
+          <span className="text-xs font-bold text-gray-900 tabular-nums">{total}</span>
         </div>
       </div>
     )
@@ -690,9 +690,9 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
   const lastActiveBucketKey = activeBucketList[activeBucketList.length - 1]?.key
 
   return (
-    <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 shrink-0">Keyword Rankings Trend</h2>
+        <h2 className="text-sm font-semibold text-gray-900 shrink-0">Keyword Rankings Trend</h2>
         {/* Rank position bucket filter */}
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5">
           {BUCKETS.map(b => {
@@ -701,7 +701,7 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
               <button
                 key={b.key}
                 onClick={() => toggleBucket(b.key)}
-                className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors select-none"
+                className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 transition-colors select-none"
               >
                 <span
                   className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center rounded-sm transition-colors"
@@ -817,22 +817,22 @@ export default function RankHistoryPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-7 w-40 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+        <div className="h-7 w-40 bg-gray-200 rounded-lg" />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-              <div className="h-7 w-10 bg-gray-200 dark:bg-gray-800 rounded mx-auto mb-1" />
-              <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800/60 rounded mx-auto" />
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="h-7 w-10 bg-gray-200 rounded mx-auto mb-1" />
+              <div className="h-3 w-16 bg-gray-100 rounded mx-auto" />
             </div>
           ))}
         </div>
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-          <div className="h-4 w-40 bg-gray-200 dark:bg-gray-800 rounded mb-4" />
-          <div className="h-[200px] bg-gray-100 dark:bg-gray-800/60 rounded" />
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="h-4 w-40 bg-gray-200 rounded mb-4" />
+          <div className="h-[200px] bg-gray-100 rounded" />
         </div>
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
           {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="h-10 bg-gray-100 dark:bg-gray-800/60 rounded mb-2" />
+            <div key={i} className="h-10 bg-gray-100 rounded mb-2" />
           ))}
         </div>
       </div>
@@ -844,10 +844,10 @@ export default function RankHistoryPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
             Rank History
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             View ranking history across all your tracked keywords
           </p>
         </div>
@@ -859,62 +859,62 @@ export default function RankHistoryPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {/* Total Keywords */}
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">{total}</div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-2xl font-bold text-gray-900 tracking-tight">{total}</div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Total Keywords</span>
+            <span className="text-xs text-gray-500">Total Keywords</span>
           </div>
         </div>
 
         {/* Improved / Declined */}
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">{stats.improved}</span>
-            <span className="text-base text-gray-300 dark:text-gray-600">/</span>
-            <span className="text-2xl font-bold text-red-500 dark:text-red-400 tracking-tight">{stats.declined}</span>
+            <span className="text-2xl font-bold text-emerald-600 tracking-tight">{stats.improved}</span>
+            <span className="text-base text-gray-300">/</span>
+            <span className="text-2xl font-bold text-red-500 tracking-tight">{stats.declined}</span>
           </div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Improved / Declined</span>
+            <span className="text-xs text-gray-500">Improved / Declined</span>
           </div>
         </div>
 
         {/* Top 3 */}
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">{stats.top3}</div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-2xl font-bold text-emerald-600 tracking-tight">{stats.top3}</div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Top 3</span>
+            <span className="text-xs text-gray-500">Top 3</span>
           </div>
         </div>
 
         {/* Top 10 */}
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">{stats.top10}</div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-2xl font-bold text-blue-600 tracking-tight">{stats.top10}</div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Top 10</span>
+            <span className="text-xs text-gray-500">Top 10</span>
           </div>
         </div>
 
         {/* Top 20 */}
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 tracking-tight">{stats.top20}</div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-2xl font-bold text-amber-600 tracking-tight">{stats.top20}</div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Top 20</span>
+            <span className="text-xs text-gray-500">Top 20</span>
           </div>
         </div>
 
         {/* Avg. Rank */}
-        <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-50 tracking-tight">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-2xl font-bold text-gray-900 tracking-tight">
             {stats.avgRank !== null ? stats.avgRank : '–'}
           </div>
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-            <span className="text-xs text-gray-500 dark:text-gray-400">Avg. Rank</span>
+            <span className="text-xs text-gray-500">Avg. Rank</span>
           </div>
         </div>
       </div>
@@ -923,38 +923,38 @@ export default function RankHistoryPage() {
       <RankTrendChart keywords={keywords} dateColumns={dateColumns} startDate={startDate} endDate={endDate} />
 
       {/* Table */}
-      <div className="bg-white dark:bg-[#141520] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table
-            className="border-collapse bg-white dark:bg-[#141520]"
+            className="border-collapse bg-white"
             style={{ width: 'max-content', minWidth: '100%', tableLayout: 'fixed' }}
           >
             <thead>
               <tr>
                 {/* Frozen: # */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
                   style={{ left: 0, width: COL_NUM, minWidth: COL_NUM }}
                 >
                   #
                 </th>
                 {/* Frozen: Keyword */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-left border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 text-left border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
                   style={{ left: COL_NUM, width: COL_KEYWORD, minWidth: COL_KEYWORD }}
                 >
                   Keyword
                 </th>
                 {/* Frozen: Position */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
                   style={{ left: COL_NUM + COL_KEYWORD, width: COL_POSITION, minWidth: COL_POSITION }}
                 >
                   Pos.
                 </th>
                 {/* Frozen: Change — right border marks frozen edge */}
                 <th
-                  className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-20 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
                   style={{
                     left: COL_NUM + COL_KEYWORD + COL_POSITION,
                     width: COL_CHANGE,
@@ -971,41 +971,41 @@ export default function RankHistoryPage() {
                   return (
                     <th
                       key={col.key}
-                      className={`sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 ${
-                        even ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-[#141520]'
+                      className={`sticky top-0 z-10 border-b border-gray-200 ${
+                        even ? 'bg-gray-50' : 'bg-white'
                       }`}
                       style={{ width: 46, minWidth: 46, maxWidth: 46, textAlign: 'center', padding: '6px 2px' }}
                     >
-                      <span className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 leading-tight">{col.top}</span>
-                      <span className="block text-[9px] font-medium text-gray-400 dark:text-gray-500 leading-tight">{col.bottom}</span>
+                      <span className="block text-[11px] font-semibold text-gray-500 leading-tight">{col.top}</span>
+                      <span className="block text-[9px] font-medium text-gray-400 leading-tight">{col.bottom}</span>
                     </th>
                   )
                 })}
 
                 {/* Trailing: URL */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 130, borderLeft: '2px solid #e5e7eb' }}
                 >
                   URL
                 </th>
                 {/* Trailing: Country */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 90 }}
                 >
                   Country
                 </th>
                 {/* Trailing: Device */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                  className="sticky top-0 z-10 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide"
                   style={{ minWidth: 80 }}
                 >
                   Device
                 </th>
                 {/* Trailing: Last Check */}
                 <th
-                  className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800/50 text-center border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap"
+                  className="sticky top-0 z-10 bg-gray-50 text-center border-b border-gray-200 px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                   style={{ minWidth: 100 }}
                 >
                   Last Check
@@ -1022,7 +1022,7 @@ export default function RankHistoryPage() {
                 </tr>
               ) : pageSlice.length === 0 ? (
                 <tr>
-                  <td colSpan={colSpanTotal} className="py-16 text-center text-sm text-gray-400 dark:text-gray-500">
+                  <td colSpan={colSpanTotal} className="py-16 text-center text-sm text-gray-400">
                     No keywords tracked for this period.
                   </td>
                 </tr>
@@ -1042,31 +1042,31 @@ export default function RankHistoryPage() {
 
         {/* Footer */}
         {filtered.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+            <span className="text-xs text-gray-500">
               Showing{' '}
-              <strong className="text-gray-700 dark:text-gray-300 font-medium">
+              <strong className="text-gray-700 font-medium">
                 {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)}
               </strong>{' '}
               of{' '}
-              <strong className="text-gray-700 dark:text-gray-300 font-medium">{filtered.length}</strong> keywords
+              <strong className="text-gray-700 font-medium">{filtered.length}</strong> keywords
             </span>
             {totalPages > 1 && (
               <div className="flex items-center gap-2">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-xs font-medium text-gray-700">
                   {page} / {totalPages}
                 </span>
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => p + 1)}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -105,11 +105,11 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mx-auto mb-4">
             <span className="text-xl text-red-500">!</span>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Something went wrong</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{dashError.message}</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Something went wrong</h2>
+          <p className="text-sm text-gray-500 mb-4">{dashError.message}</p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -127,13 +127,13 @@ export default function Dashboard() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{greeting}, {displayName}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Get started by choosing a plan to unlock keyword tracking</p>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting}, {displayName}</h2>
+          <p className="text-sm text-gray-500 mt-1">Get started by choosing a plan to unlock keyword tracking</p>
         </div>
-        <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
           <Crown className="w-8 h-8 text-blue-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unlock Rank Tracking</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Unlock Rank Tracking</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
             Subscribe to a plan to start tracking your keyword rankings and SEO performance.
           </p>
           <button
@@ -152,13 +152,13 @@ export default function Dashboard() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{greeting}, {displayName}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Add your first domain to start tracking rankings</p>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting}, {displayName}</h2>
+          <p className="text-sm text-gray-500 mt-1">Add your first domain to start tracking rankings</p>
         </div>
-        <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
           <Globe className="w-8 h-8 text-emerald-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Add Your First Domain</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Add Your First Domain</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
             Start monitoring your search engine rankings by adding a domain.
           </p>
           <button
@@ -179,11 +179,11 @@ export default function Dashboard() {
       {/* Greeting + domain filter + add buttons */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{greeting}, {displayName}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting}, {displayName}</h2>
           <div className="flex items-center gap-3 mt-1.5">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </p>
             </div>
@@ -195,55 +195,55 @@ export default function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Total Keywords" value={stats.totalKeywords} icon={<Search className="w-4 h-4" />} iconColor="text-blue-600 dark:text-blue-400" />
-        <MetricCard label="Avg. Position" value={stats.avgPosition !== null ? stats.avgPosition.toFixed(1) : '—'} icon={<Target className="w-4 h-4" />} iconColor="text-emerald-600 dark:text-emerald-400" />
-        <MetricCard label="Top 10" value={stats.top10} icon={<TrendingUp className="w-4 h-4" />} iconColor="text-amber-600 dark:text-amber-400" subtitle={stats.top3 > 0 ? `${stats.top3} in top 3` : undefined} />
-        <MetricCard label="Tracked Domains" value={domains?.length ?? 0} icon={<Globe className="w-4 h-4" />} iconColor="text-violet-600 dark:text-violet-400" />
+        <MetricCard label="Total Keywords" value={stats.totalKeywords} icon={<Search className="w-4 h-4" />} iconColor="text-blue-600" />
+        <MetricCard label="Avg. Position" value={stats.avgPosition !== null ? stats.avgPosition.toFixed(1) : 'â€”'} icon={<Target className="w-4 h-4" />} iconColor="text-emerald-600" />
+        <MetricCard label="Top 10" value={stats.top10} icon={<TrendingUp className="w-4 h-4" />} iconColor="text-amber-600" subtitle={stats.top3 > 0 ? `${stats.top3} in top 3` : undefined} />
+        <MetricCard label="Tracked Domains" value={domains?.length ?? 0} icon={<Globe className="w-4 h-4" />} iconColor="text-violet-600" />
       </div>
 
       {/* Two-column content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Keywords table — 2/3 */}
+        {/* Keywords table â€” 2/3 */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Recent Keywords</h3>
-              <button onClick={() => router.push('/overview')} className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors">
-                View all →
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Recent Keywords</h3>
+              <button onClick={() => router.push('/overview')} className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+                View all â†’
               </button>
             </div>
             {keywords.length === 0 ? (
               <div className="py-12 text-center">
-                <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">No keywords tracked yet</p>
-                <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-blue-600 dark:text-blue-400">
-                  Add keywords →
+                <Search className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-500">No keywords tracked yet</p>
+                <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-blue-600">
+                  Add keywords â†’
                 </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50/60 dark:bg-white/[0.02]">
-                      <th className="text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-5 py-3">Keyword</th>
-                      <th className="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3">Position</th>
-                      <th className="text-center text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3 hidden sm:table-cell">Device</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3 py-3 hidden md:table-cell">Country</th>
+                    <tr className="bg-gray-50/60">
+                      <th className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-5 py-3">Keyword</th>
+                      <th className="text-center text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3">Position</th>
+                      <th className="text-center text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3 hidden sm:table-cell">Device</th>
+                      <th className="text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-3 hidden md:table-cell">Country</th>
                     </tr>
                   </thead>
                   <tbody>
                     {keywords.slice(0, 10).map((kw) => {
                       const pos = getPosition(kw)
                       return (
-                        <tr key={kw.id} className="border-t border-gray-50 dark:border-gray-800/50 hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                        <tr key={kw.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
                           <td className="px-5 py-3">
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{kw.keyword}</span>
+                            <span className="text-sm font-medium text-gray-900">{kw.keyword}</span>
                           </td>
                           <td className="px-3 py-3 text-center">
                             <PositionBadge position={pos} />
                           </td>
                           <td className="px-3 py-3 text-center hidden sm:table-cell">
-                            <div className="flex items-center justify-center gap-1 text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center justify-center gap-1 text-gray-500">
                               {kw.device_type === 'mobile' ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
                               <span className="text-xs">{fmtDevice(kw.device_type)}</span>
                             </div>
@@ -251,7 +251,7 @@ export default function Dashboard() {
                           <td className="px-3 py-3 hidden md:table-cell">
                             <div className="flex items-center gap-1">
                               <Globe className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{fmtCountry({ ...kw.country, name: countryMap[(kw.country?.iso2_code ?? '').toUpperCase()] ?? kw.country?.name })}</span>
+                              <span className="text-xs text-gray-500">{fmtCountry({ ...kw.country, name: countryMap[(kw.country?.iso2_code ?? '').toUpperCase()] ?? kw.country?.name })}</span>
                             </div>
                           </td>
                         </tr>
@@ -264,26 +264,26 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Right column — 1/3 */}
+        {/* Right column â€” 1/3 */}
         <div className="space-y-6">
           {/* Plan usage */}
-          <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Plan Usage</h3>
-              <a href="/settings/billing" className="text-xs font-medium text-blue-600 dark:text-blue-400">Manage</a>
+              <h3 className="text-sm font-semibold text-gray-900">Plan Usage</h3>
+              <a href="/settings/billing" className="text-xs font-medium text-blue-600">Manage</a>
             </div>
             <div className="flex items-center gap-2 mb-4">
-              <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">{planName}</span>
+              <Crown className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-900">{planName}</span>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Keywords</span>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {kwUsed} / {kwLimit || '∞'}
+                <span className="text-xs text-gray-500">Keywords</span>
+                <span className="text-xs font-medium text-gray-700">
+                  {kwUsed} / {kwLimit || 'âˆž'}
                 </span>
               </div>
-              <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full bg-blue-500 transition-all"
                   style={{ width: `${kwLimit > 0 ? Math.min((kwUsed / kwLimit) * 100, 100) : 0}%` }}
@@ -293,10 +293,10 @@ export default function Dashboard() {
           </div>
 
           {/* Position distribution */}
-          <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Position Distribution</h3>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Position Distribution</h3>
             {stats.totalKeywords === 0 ? (
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-3">No data yet</p>
+              <p className="text-xs text-gray-500 text-center py-3">No data yet</p>
             ) : (
               <div className="space-y-2.5">
                 <DistRow label="Top 3" count={stats.top3} total={stats.totalKeywords} color="bg-emerald-500" />
@@ -309,8 +309,8 @@ export default function Dashboard() {
           </div>
 
           {/* Quick actions */}
-          <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Quick Actions</h3>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h3>
             <div className="space-y-2">
               <QuickActionBtn label="Add Keywords" icon={<Plus className="w-4 h-4" />} onClick={() => setAddKeywordsOpen(true)} />
               <QuickActionBtn label="Keyword Overview" icon={<Search className="w-4 h-4" />} onClick={() => router.push('/overview')} />
@@ -334,7 +334,7 @@ function QuickActionBtn({ label, icon, onClick }: { label: string; icon: React.R
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors"
+      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
     >
       <span className="text-gray-400">{icon}</span>
       {label}
@@ -346,24 +346,24 @@ function MetricCard({ label, value, icon, iconColor, subtitle }: {
   label: string; value: string | number; icon: React.ReactNode; iconColor: string; subtitle?: string
 }) {
   return (
-    <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+    <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="flex items-center gap-1.5 mb-3">
         <span className={iconColor}>{icon}</span>
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{value}</div>
-      {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>}
+      <div className="text-2xl font-bold text-gray-900 tracking-tight">{value}</div>
+      {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
     </div>
   )
 }
 
 function PositionBadge({ position }: { position: number | null }) {
-  if (!position) return <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
+  if (!position) return <span className="text-gray-300 text-sm">â€”</span>
   const cls =
-    position <= 3 ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-      : position <= 10 ? 'text-blue-600 dark:text-blue-400 font-semibold'
-        : position <= 20 ? 'text-amber-600 dark:text-amber-400 font-medium'
-          : 'text-gray-500 dark:text-gray-400'
+    position <= 3 ? 'text-emerald-600 font-bold'
+      : position <= 10 ? 'text-blue-600 font-semibold'
+        : position <= 20 ? 'text-amber-600 font-medium'
+          : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
 }
 
@@ -372,10 +372,10 @@ function DistRow({ label, count, total, color }: { label: string; count: number;
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-gray-600 dark:text-gray-400">{label}</span>
-        <span className="text-xs font-semibold text-gray-900 dark:text-white">{count} <span className="font-normal text-gray-400">({pct}%)</span></span>
+        <span className="text-xs text-gray-600">{label}</span>
+        <span className="text-xs font-semibold text-gray-900">{count} <span className="font-normal text-gray-400">({pct}%)</span></span>
       </div>
-      <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${Math.max(pct, count > 0 ? 3 : 0)}%` }} />
       </div>
     </div>
@@ -386,32 +386,32 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div>
-        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-        <div className="h-4 w-48 bg-gray-100 dark:bg-gray-800/60 rounded mt-2" />
+        <div className="h-8 w-64 bg-gray-200 rounded-lg" />
+        <div className="h-4 w-48 bg-gray-100 rounded mt-2" />
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+          <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center gap-1.5 mb-3">
-              <div className="h-3 w-3 bg-gray-200 dark:bg-gray-800 rounded" />
-              <div className="h-3 w-16 bg-gray-200 dark:bg-gray-800 rounded" />
+              <div className="h-3 w-3 bg-gray-200 rounded" />
+              <div className="h-3 w-16 bg-gray-200 rounded" />
             </div>
-            <div className="h-7 w-12 bg-gray-200 dark:bg-gray-800 rounded" />
+            <div className="h-7 w-12 bg-gray-200 rounded" />
           </div>
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5">
           {[1, 2, 3, 4, 5].map(i => (
             <div key={i} className="flex items-center justify-between py-3">
-              <div className="h-3 w-32 bg-gray-100 dark:bg-gray-800/60 rounded" />
-              <div className="h-5 w-8 bg-gray-200 dark:bg-gray-800 rounded-md" />
+              <div className="h-3 w-32 bg-gray-100 rounded" />
+              <div className="h-5 w-8 bg-gray-200 rounded-md" />
             </div>
           ))}
         </div>
         <div className="space-y-6">
-          <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5 h-40" />
-          <div className="bg-white dark:bg-[#141520] rounded-2xl border border-gray-200 dark:border-gray-800 p-5 h-48" />
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 h-40" />
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 h-48" />
         </div>
       </div>
     </div>

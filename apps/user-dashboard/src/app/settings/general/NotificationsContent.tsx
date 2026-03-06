@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -71,7 +71,7 @@ export default function NotificationsContent() {
     return (
       <div className="animate-pulse space-y-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-12 rounded bg-gray-100 dark:bg-gray-800/50" />
+          <div key={i} className="h-12 rounded bg-gray-100" />
         ))}
       </div>
     )
@@ -86,12 +86,12 @@ export default function NotificationsContent() {
 
   return (
     <div>
-      <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+      <div className="divide-y divide-gray-100">
         {items.map((item) => (
           <div key={item.key} className="flex items-center justify-between py-3 first:pt-0">
             <div className="pr-3">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{item.label}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.desc}</p>
+              <p className="text-sm font-medium text-gray-800">{item.label}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
             </div>
             <ToggleSwitch
               checked={notifications[item.key]}
@@ -105,11 +105,11 @@ export default function NotificationsContent() {
       <button
         onClick={save}
         disabled={saving}
-        className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+        className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
         data-testid="button-save-notifications"
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {saving ? 'Saving…' : 'Save preferences'}
+        {saving ? 'Savingâ€¦' : 'Save preferences'}
       </button>
     </div>
   )
