@@ -17,7 +17,6 @@ const API_BASE_URL = normalizeApiBaseUrl(
 export const API_BASE = {
   V1: `${API_BASE_URL}/v1`,
   SYSTEM: `${API_BASE_URL}/system`,
-  PUBLIC: `${API_BASE_URL}/v1/public`,
 } as const;
 
 // Authentication endpoints
@@ -32,16 +31,9 @@ export const AUTH_ENDPOINTS = {
   MAGIC_LINK: `${API_BASE.V1}/auth/magic-link`,
   REFRESH: `${API_BASE.V1}/auth/refresh`,
   CHANGE_PASSWORD: `${API_BASE.V1}/auth/user/change-password`,
-  AVATAR: `${API_BASE.V1}/auth/user/avatar`,
   PROFILE: `${API_BASE.V1}/auth/user/profile`,
-  PROFILE_COMPLETE: `${API_BASE.V1}/auth/user/profile/complete`,
   SETTINGS: `${API_BASE.V1}/auth/user/settings`,
   QUOTA: `${API_BASE.V1}/auth/user/quota`,
-  QUOTA_HISTORY: (days: number) => `${API_BASE.V1}/auth/user/quota/history?days=${days}`,
-  QUOTA_ALERTS: `${API_BASE.V1}/auth/user/quota/alerts`,
-  QUOTA_ALERT_ACKNOWLEDGE: (alertId: string) =>
-    `${API_BASE.V1}/auth/user/quota/alerts/${alertId}/acknowledge`,
-  QUOTA_INCREASE_REQUEST: `${API_BASE.V1}/auth/user/quota/increase-request`,
   TRIAL_ELIGIBILITY: `${API_BASE.V1}/auth/user/trial-eligibility`,
   TRIAL_STATUS: `${API_BASE.V1}/auth/user/trial-status`,
 } as const;
@@ -55,7 +47,6 @@ export const ADMIN_ENDPOINTS = {
   USERS: `${API_BASE.V1}/admin/users`,
   USER_BY_ID: (id: string) => `${API_BASE.V1}/admin/users/${id}`,
   USER_ROLE: (id: string) => `${API_BASE.V1}/admin/users/${id}/role`,
-  SUSPEND_USER: (id: string) => `${API_BASE.V1}/admin/users/${id}/suspend`,
   RESET_USER_PASSWORD: (id: string) => `${API_BASE.V1}/admin/users/${id}/reset-password`,
   EXTEND_SUBSCRIPTION: (id: string) => `${API_BASE.V1}/admin/users/${id}/extend-subscription`,
   CHANGE_PACKAGE: (id: string) => `${API_BASE.V1}/admin/users/${id}/change-package`,
@@ -82,11 +73,6 @@ export const ADMIN_ENDPOINTS = {
   ERROR_STATS: `${API_BASE.V1}/admin/errors/stats`,
   CRITICAL_ERRORS: `${API_BASE.V1}/admin/errors/critical`,
 
-  // System quota
-  QUOTA_STATUS: `${API_BASE.V1}/admin/quota/status`,
-  QUOTA_HEALTH: `${API_BASE.V1}/admin/quota/health`,
-  QUOTA_REPORT: `${API_BASE.V1}/admin/quota/report`,
-
   // Rank Tracker Admin
   RANK_TRACKER_TRIGGER_MANUAL_CHECK: `${API_BASE.V1}/admin/rank-tracker/trigger-manual-check`,
 
@@ -96,8 +82,6 @@ export const ADMIN_ENDPOINTS = {
   PAYMENT_GATEWAYS: `${API_BASE.V1}/admin/settings/payments`,
   PAYMENT_GATEWAY_BY_ID: (id: string) => `${API_BASE.V1}/admin/settings/payments/${id}`,
   PAYMENT_GATEWAY_DEFAULT: (id: string) => `${API_BASE.V1}/admin/settings/payments/${id}/default`,
-  SMTP_SETTINGS: `${API_BASE.V1}/admin/settings/smtp`,
-  API_KEYS: `${API_BASE.V1}/admin/settings/api-keys`,
 } as const;
 
 // The application now focuses solely on keyword rank tracking
@@ -105,18 +89,11 @@ export const ADMIN_ENDPOINTS = {
 // Rank tracking endpoints
 export const RANK_TRACKING_ENDPOINTS = {
   KEYWORDS: `${API_BASE.V1}/rank-tracking/keywords`,
-  KEYWORD_BY_ID: (id: string) => `${API_BASE.V1}/rank-tracking/keywords/${id}`,
-  KEYWORD_HISTORY: (id: string) => `${API_BASE.V1}/rank-tracking/keywords/${id}/history`,
   KEYWORD_USAGE: `${API_BASE.V1}/rank-tracking/keyword-usage`,
-  KEYWORDS_BULK: `${API_BASE.V1}/rank-tracking/keywords/bulk`,
   BULK_DELETE_KEYWORDS: `${API_BASE.V1}/rank-tracking/keywords/bulk-delete`,
   ADD_KEYWORD_TAG: `${API_BASE.V1}/rank-tracking/keywords/add-tag`,
   CHECK_RANK: `${API_BASE.V1}/rank-tracking/check-rank`,
-  RANKINGS_CHECK: `${API_BASE.V1}/rank-tracking/rankings/check`,
   RANK_HISTORY: `${API_BASE.V1}/rank-tracking/rank-history`,
-  STATS: `${API_BASE.V1}/rank-tracking/stats`,
-  COMPETITORS: `${API_BASE.V1}/rank-tracking/competitors`,
-  EXPORT: `${API_BASE.V1}/rank-tracking/export`,
   DOMAINS: `${API_BASE.V1}/rank-tracking/domains`,
   COUNTRIES: `${API_BASE.V1}/rank-tracking/countries`,
   WEEKLY_TRENDS: `${API_BASE.V1}/rank-tracking/weekly-trends`,
@@ -133,7 +110,6 @@ export const BILLING_ENDPOINTS = {
   ORDER_BY_ID: (id: string) => `${API_BASE.V1}/billing/orders/${id}`,
 
   // Transactions
-  TRANSACTIONS: `${API_BASE.V1}/billing/transactions`,
   TRANSACTION_BY_ID: (id: string) => `${API_BASE.V1}/billing/transactions/${id}`,
 } as const;
 
@@ -163,24 +139,12 @@ export const DASHBOARD_ENDPOINTS = {
 // Public endpoints for unauthenticated data (packages, site settings)
 // These are used by the dashboard for billing/settings, not marketing pages
 export const PUBLIC_ENDPOINTS = {
-  PACKAGES: `${API_BASE.PUBLIC}/packages`,
-  SITE_SETTINGS: `${API_BASE.PUBLIC}/site-settings`,
   SETTINGS: `${API_BASE.V1}/public/settings`,
 } as const;
 // System endpoints
 export const SYSTEM_ENDPOINTS = {
   HEALTH: `${API_BASE.V1}/system/health`,
   STATUS: `${API_BASE.V1}/system/status`,
-} as const;
-
-// Error logging endpoints
-export const ERROR_ENDPOINTS = {
-  LOG: `${API_BASE.V1}/errors/log`,
-} as const;
-
-// External API endpoints
-export const EXTERNAL_ENDPOINTS = {
-  EXCHANGE_RATE_API: 'https://api.exchangerate-api.com/v4/latest/USD',
 } as const;
 
 // Integration endpoints
@@ -194,63 +158,11 @@ export const INTEGRATION_ENDPOINTS = {
   SERANKING_HEALTH_METRICS: `${API_BASE.V1}/integrations/seranking/health/metrics`,
 } as const;
 
-// Legacy API endpoints (for compatibility)
-export const LEGACY_ENDPOINTS = {
-  // Reserved for legacy endpoint compatibility
-} as const;
-
-// Helper function to build endpoint URLs with query parameters
-export const buildEndpoint = (
-  endpoint: string,
-  params?: Record<string, string | number | boolean>
-): string => {
-  if (!params || Object.keys(params).length === 0) {
-    return endpoint;
-  }
-
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    searchParams.append(key, String(value));
-  });
-
-  return `${endpoint}?${searchParams.toString()}`;
-};
-
-// Helper function to validate endpoint
-export const isValidEndpoint = (endpoint: string): boolean => {
-  const staticEndpoints: string[] = [
-    ...Object.values(AUTH_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-    ...Object.values(RANK_TRACKING_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-    ...Object.values(BILLING_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-    ...Object.values(PAYMENT_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-    ...Object.values(NOTIFICATION_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-    ...Object.values(SYSTEM_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-    ...Object.values(INTEGRATION_ENDPOINTS).filter((ep) => typeof ep === 'string'),
-  ];
-
-  // Check static endpoints
-  if (staticEndpoints.includes(endpoint)) {
-    return true;
-  }
-
-  // Check dynamic admin endpoints
-  const adminPatterns = [
-    /^\/api\/v1\/admin\/users\/[a-f0-9-]+$/,
-    /^\/api\/v1\/admin\/users\/[a-f0-9-]+\/(reset-password|extend-subscription|change-package|security|quota-usage)$/,
-    /^\/api\/v1\/admin\/orders\/[a-f0-9-]+$/,
-    /^\/api\/v1\/admin\/orders\/[a-f0-9-]+\/status$/,
-    /^\/api\/v1\/admin\/activity\/[a-f0-9-]+$/,
-  ];
-
-  return adminPatterns.some((pattern) => pattern.test(endpoint));
-};
-
 // Unified export for backward compatibility
 export const ApiEndpoints = {
   BASE: API_BASE,
   V1: API_BASE.V1,
   SYSTEM: API_BASE.SYSTEM,
-  PUBLIC_BASE: API_BASE.PUBLIC,
   AUTH: AUTH_ENDPOINTS,
   ADMIN: ADMIN_ENDPOINTS,
   RANK_TRACKING: RANK_TRACKING_ENDPOINTS,
@@ -261,8 +173,5 @@ export const ApiEndpoints = {
   DASHBOARD: DASHBOARD_ENDPOINTS,
   PUBLIC: PUBLIC_ENDPOINTS,
   SYSTEM_ENDPOINTS: SYSTEM_ENDPOINTS,
-  ERROR: ERROR_ENDPOINTS,
-  EXTERNAL: EXTERNAL_ENDPOINTS,
   INTEGRATION: INTEGRATION_ENDPOINTS,
-  LEGACY: LEGACY_ENDPOINTS,
 };
