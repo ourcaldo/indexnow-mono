@@ -20,7 +20,8 @@ const STATUS_STYLES: Record<string, string> = {
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const orderId = params.id as string;
+  const paramId = params.id;
+  const orderId = Array.isArray(paramId) ? (paramId[0] ?? '') : (paramId ?? '');
   useAdminPageViewLogger('orders', 'Order Detail', { orderId });
   const [notes, setNotes] = useState('');
 
@@ -57,7 +58,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  const o = order.order || (order as any);
+  const o = order.order;
   const isPending = ['pending', 'pending_payment', 'proof_uploaded'].includes(o.transaction_status);
 
   return (
@@ -111,14 +112,17 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="px-5 py-3">
                   <div className="relative pl-6 space-y-0 border-l-2 border-gray-100">
-                    {order.activity_history.map((event: any, i: number) => (
+                    {order.activity_history.map((event, i) => {
+                      const eventNotes = event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) && typeof event.metadata['notes'] === 'string' ? event.metadata['notes'] : null;
+                      return (
                       <div key={i} className="relative pb-4 last:pb-0">
                         <div className="absolute -left-[25px] top-1 w-3 h-3 rounded-full bg-white border-2 border-gray-300" />
                         <div className="text-sm text-gray-900">{event.action_description || event.action_type}</div>
-                        {event.notes && <div className="text-xs text-gray-500 mt-0.5">{event.notes}</div>}
+                        {eventNotes && <div className="text-xs text-gray-500 mt-0.5">{eventNotes}</div>}
                         <div className="text-[11px] text-gray-400 mt-0.5 tabular-nums">{format(new Date(event.created_at), 'MMM d, HH:mm')}</div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

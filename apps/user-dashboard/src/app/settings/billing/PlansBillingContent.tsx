@@ -14,8 +14,9 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { formatCurrency } from '@indexnow/shared'
+import { formatCurrency, type PublicSettingsPackage, type DashboardPackagePricingTier } from '@indexnow/shared'
 import { fmtDate } from '../../../lib/utils'
+import { api } from '../../../lib/api'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
 import { useToast, useApiError } from '@indexnow/ui'
 import {
@@ -27,25 +28,6 @@ import {
 } from '../../../lib/hooks'
 
 /* ───────────────────── Types ───────────────────── */
-
-interface PricingTier {
-  regular_price: number
-  promo_price?: number
-  discount_percentage?: number
-  paddle_price_id?: string
-}
-
-interface PaymentPackage {
-  id: string
-  name: string
-  slug: string
-  description: string
-  features: string[]
-  quota_limits: { max_keywords?: number; max_domains?: number }
-  is_popular: boolean
-  is_current: boolean
-  pricing_tiers: Record<string, PricingTier>
-}
 
 interface Transaction {
   id: string
@@ -75,18 +57,6 @@ interface BillingData {
     next_billing_date: string | null
     days_remaining: number | null
   }
-}
-
-interface QuotaEntry {
-  used: number
-  limit: number
-  is_unlimited: boolean
-  remaining: number
-}
-
-interface KeywordUsageData {
-  keywords: QuotaEntry
-  domains: QuotaEntry
 }
 
 interface SubscriptionData {
@@ -138,14 +108,14 @@ function usageBarColor(pct: number) {
 
 /* ═══════════════════════ Component ═══════════════════════ */
 
-function getPricing(pkg: PaymentPackage, period: string) {
+function getPricing(pkg: PublicSettingsPackage, period: string) {
   const key = period === 'yearly' ? 'annual' : period
-  const tier = pkg.pricing_tiers?.[key]
+  const tier: DashboardPackagePricingTier | undefined = pkg.pricing_tiers?.[key]
   if (!tier) return { price: 0 }
   const price = tier.promo_price || tier.regular_price
   const orig =
     tier.promo_price && tier.promo_price < tier.regular_price ? tier.regular_price : undefined
-  const disc = orig ? Math.round(((orig - price) / orig) * 100) : tier.discount_percentage
+  const disc = orig ? Math.round(((orig - price) / orig) * 100) : undefined
   return { price, originalPrice: orig, discount: disc && disc > 0 ? disc : undefined }
 }
 
@@ -171,12 +141,9 @@ export default function BillingPage() {
   const { data: publicSettings, isLoading: pkgLoading } = usePublicSettings()
   const { data: subscriptionData } = useSubscription()
 
-  const packages: PaymentPackage[] =
-    (publicSettings as unknown as { packages?: { packages?: PaymentPackage[] } })?.packages?.packages || []
-  const dashProfile = dashboardData?.user?.profile as Record<string, unknown> | undefined
-  const dashBilling = dashboardData?.billing as { current_package_id?: string } | undefined
-  const currentPkgId = (dashProfile?.package_id as string) || dashBilling?.current_package_id || null
-  const keywordUsage = dashboardData?.user?.quota as KeywordUsageData | undefined
+  const packages = publicSettings?.packages?.packages ?? []
+  const currentPkgId = dashboardData?.user?.profile?.package_id ?? dashboardData?.billing?.current_package_id ?? null
+  const keywordUsage = dashboardData?.user?.quota
   const loading = billingLoading || historyLoading || dashLoading || pkgLoading
   const error = billingError
     ? (billingError instanceof Error ? billingError.message : 'Failed to load billing data')
@@ -213,29 +180,20 @@ export default function BillingPage() {
 
     setCancelLoading(true)
     try {
-      const res = await fetch('/api/v1/payments/paddle/subscription/cancel', {
+      const result = await api<{ action: string }>('/api/v1/payments/paddle/subscription/cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscriptionId: paddleSubId }),
       })
 
-      const result = await res.json()
-
-      if (!res.ok) {
-        const msg = result?.error?.message || result?.message || 'Failed to cancel subscription'
-        handleApiError(new Error(msg))
-        return
-      }
-
       setShowCancelDialog(false)
-      const isImmediate = result?.data?.action === 'immediate_cancellation'
+      const isImmediate = result?.action === 'immediate_cancellation'
       addToast({
         title: 'Subscription Canceled',
         description: isImmediate
           ? 'Your subscription has been canceled and a refund is being processed.'
           : 'Your subscription will be canceled at the end of the current billing period.',
       })
-      logBillingActivity('subscription_cancel', `Canceled subscription ${paddleSubId}`, { subscriptionId: paddleSubId, action: result?.data?.action })
+      logBillingActivity('subscription_cancel', `Canceled subscription ${paddleSubId}`, { subscriptionId: paddleSubId, action: result?.action })
       refetchAll()
     } catch (err) {
       handleApiError(err instanceof Error ? err : new Error('Failed to cancel subscription'))
@@ -617,7 +575,7 @@ export default function BillingPage() {
             {/* Plans list */}
             <div className="space-y-2">
               {packages.map((pkg) => {
-                const isCurrent = pkg.is_current || pkg.id === currentPkgId
+                const isCurrent = pkg.id === currentPkgId
                 const pricing = getPricing(pkg, planPickerPeriod)
 
                 return (

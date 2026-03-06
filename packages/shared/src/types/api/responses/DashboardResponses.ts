@@ -134,7 +134,7 @@ export interface PublicSettingsPackage {
     max_keywords: number;
     max_domains: number;
   };
-  pricing_tiers: Record<string, unknown>;
+  pricing_tiers: Record<string, DashboardPackagePricingTier>;
   is_popular: boolean;
   is_active: boolean;
   sort_order: number;

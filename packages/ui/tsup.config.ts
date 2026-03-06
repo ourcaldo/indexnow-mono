@@ -2,7 +2,18 @@ import { defineConfig } from 'tsup'
 import path from 'path'
 
 export default defineConfig((options) => ({
-  entry: ['src/index.ts'],
+  entry: {
+    index: 'src/index.ts',
+    admin: 'src/components/admin/index.ts',
+    auth: 'src/components/auth/index.ts',
+    billing: 'src/components/billing/index.ts',
+    checkout: 'src/components/checkout/index.ts',
+    modals: 'src/components/modals/index.ts',
+    primitives: 'src/components/index.ts',
+    utils: 'src/lib/utils.ts',
+    hooks: 'src/hooks/index.ts',
+    providers: 'src/providers/index.ts',
+  },
   format: ['cjs', 'esm'],
   dts: true,
   splitting: false,

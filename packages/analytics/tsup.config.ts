@@ -15,5 +15,6 @@ export default defineConfig((options) => ({
         'next',
         '@sentry/nextjs',
         '@sentry/browser',
+        '@indexnow/shared',
     ],
 }))

@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { Plus, Trash2, Save, Star, StarOff, X } from 'lucide-react';
 import { useAdminPaymentSettings, useSavePaymentGateway, useDeletePaymentGateway, useSetDefaultPaymentGateway, type UI_PaymentGateway } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
+import type { PaymentGatewayCredentials, PaymentGatewayConfiguration } from '@indexnow/shared';
 
 function emptyGateway(): Partial<UI_PaymentGateway> {
-  return { name: '', slug: 'paddle', is_active: true, is_default: false, configuration: {} as any, api_credentials: {} as any };
+  return { name: '', slug: 'paddle', is_active: true, is_default: false, configuration: {}, api_credentials: {} };
 }
 
 const inputClass = "w-full text-sm bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all";
@@ -20,21 +21,21 @@ export default function PaymentsPage() {
 
   const [editing, setEditing] = useState<Partial<UI_PaymentGateway> | null>(null);
 
-  const startEdit = (gw: UI_PaymentGateway) => setEditing({ ...gw, api_credentials: { webhook_secret: '' } as any });
+  const startEdit = (gw: UI_PaymentGateway) => setEditing({ ...gw, api_credentials: { webhook_secret: '' } });
   const startCreate = () => setEditing(emptyGateway());
   const handleSave = async () => {
     if (!editing) return;
     // Only send api_credentials if user entered new values (not empty)
-    const creds = editing.api_credentials as Record<string, string> | undefined;
+    const creds = editing.api_credentials;
     const payload: Partial<UI_PaymentGateway> = { ...editing };
     if (creds) {
-      const cleanCreds: Record<string, string> = {};
+      const cleanCreds: PaymentGatewayCredentials = {};
       let hasValues = false;
       for (const [k, v] of Object.entries(creds)) {
         if (v && !v.startsWith('••••')) { cleanCreds[k] = v; hasValues = true; }
       }
       if (hasValues) {
-        payload.api_credentials = cleanCreds as any;
+        payload.api_credentials = cleanCreds;
       } else {
         delete payload.api_credentials;
       }
@@ -70,10 +71,10 @@ export default function PaymentsPage() {
           <div className="pt-2 border-t border-gray-100">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Webhook Secret</h4>
             <p className="text-xs text-gray-400 mb-2">Used to verify incoming Paddle webhook signatures. Client token is set via environment variable.</p>
-            <div><input type="password" placeholder={editing.id ? 'Enter new value to update' : 'pdl_ntfset_...'} value={(editing.api_credentials as any)?.webhook_secret ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { webhook_secret: e.target.value } as any })} className={inputClass} /></div>
+            <div><input type="password" placeholder={editing.id ? 'Enter new value to update' : 'pdl_ntfset_...'} value={editing.api_credentials?.webhook_secret ?? ''} onChange={(e) => setEditing({ ...editing, api_credentials: { webhook_secret: e.target.value } })} className={inputClass} /></div>
           </div>
           <div className="flex items-center gap-6 pt-2 border-t border-gray-100">
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" checked={!!(editing.configuration as any)?.sandbox} onChange={(e) => setEditing({ ...editing, configuration: { ...editing.configuration, sandbox: e.target.checked } as any })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Sandbox mode</label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" checked={!!editing.configuration?.sandbox} onChange={(e) => { const newConfig: PaymentGatewayConfiguration = { ...editing.configuration, sandbox: e.target.checked }; setEditing({ ...editing, configuration: newConfig }); }} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Sandbox mode</label>
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" checked={editing.is_active !== false} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> Active</label>
           </div>
           </div>

@@ -647,10 +647,10 @@ function RankTrendChart({ keywords, dateColumns, startDate, endDate }: RankTrend
   if (keywords.length === 0) return null
 
   // ── Custom tooltip ──────────────────────────────────────────────────────────
-  type TooltipPayloadItem = { name: string; value: number; color: string }
+  type TooltipPayloadItem = { name: string; value: number; color: string; payload: { date: string; [key: string]: unknown } }
   function ChartTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) {
     if (!active || !payload?.length) return null
-    const rawDate: string = (payload[0] as unknown as { payload: { date: string } }).payload.date
+    const rawDate: string = payload[0].payload.date
     // Format date header: "2026-02-25" → "February 25, 2026"; "2026-02" → "Feb 2026"
     let dateLabel = rawDate
     if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
