@@ -21,10 +21,11 @@ export enum CircuitState {
 
 export interface CircuitBreakerConfig {
   failureThreshold: number;      // Number of failures before opening
-  successThreshold: number;       // Number of successes to close from half-open
+  successThreshold: number;       // Number of consecutive successes to close from half-open
   timeout: number;                // Time (ms) to wait before trying half-open
   monitoringWindow: number;       // Time window (ms) for counting failures
   name: string;                   // Identifier for this breaker
+  halfOpenMaxProbes: number;      // Max concurrent probe requests in HALF_OPEN (M-12)
 }
 
 export interface CircuitBreakerMetrics {
@@ -36,6 +37,7 @@ export interface CircuitBreakerMetrics {
   totalRequests: number;
   totalFailures: number;
   totalSuccesses: number;
+  activeHalfOpenProbes: number;
 }
 
 export class CircuitBreaker {
@@ -46,6 +48,7 @@ export class CircuitBreaker {
   private lastStateChange: number = Date.now();
   private nextAttempt: number = Date.now();
   private readonly failures: number[] = []; // Timestamps of failures within window
+  private activeHalfOpenProbes: number = 0; // Concurrent probe requests in HALF_OPEN (M-12)
   
   // Metrics
   private totalRequests: number = 0;
@@ -71,6 +74,16 @@ export class CircuitBreaker {
       this.transitionTo(CircuitState.HALF_OPEN);
     }
 
+    // In HALF_OPEN, limit concurrent probe requests (M-12)
+    if (this.state === CircuitState.HALF_OPEN) {
+      if (this.activeHalfOpenProbes >= this.config.halfOpenMaxProbes) {
+        throw new Error(
+          `Circuit breaker "${this.config.name}" is HALF_OPEN with max probes (${this.config.halfOpenMaxProbes}) in progress. Rejecting.`
+        );
+      }
+      this.activeHalfOpenProbes++;
+    }
+
     try {
       const result = await operation();
       this.onSuccess();
@@ -86,14 +99,18 @@ export class CircuitBreaker {
    */
   private onSuccess(): void {
     this.totalSuccesses++;
-    this.failureCount = 0;
-    this.failures.length = 0; // Clear failure history
 
     if (this.state === CircuitState.HALF_OPEN) {
+      this.activeHalfOpenProbes = Math.max(0, this.activeHalfOpenProbes - 1);
       this.successCount++;
+      // Only clear failure history when fully transitioning to CLOSED (M-13)
       if (this.successCount >= this.config.successThreshold) {
         this.transitionTo(CircuitState.CLOSED);
       }
+    } else {
+      // In CLOSED state, success means healthy — clear windowed failures
+      this.failureCount = 0;
+      this.failures.length = 0;
     }
   }
 
@@ -114,6 +131,7 @@ export class CircuitBreaker {
     this.failureCount = this.failures.length;
 
     if (this.state === CircuitState.HALF_OPEN) {
+      this.activeHalfOpenProbes = Math.max(0, this.activeHalfOpenProbes - 1);
       // Any failure in half-open immediately opens circuit
       this.transitionTo(CircuitState.OPEN);
     } else if (this.state === CircuitState.CLOSED) {
@@ -152,6 +170,7 @@ export class CircuitBreaker {
       }, `Circuit breaker "${this.config.name}" closed`);
     } else if (newState === CircuitState.HALF_OPEN) {
       this.successCount = 0;
+      this.activeHalfOpenProbes = 0;
       logger.info({
         circuitBreaker: this.config.name,
         oldState,
@@ -172,7 +191,8 @@ export class CircuitBreaker {
       lastStateChange: this.lastStateChange,
       totalRequests: this.totalRequests,
       totalFailures: this.totalFailures,
-      totalSuccesses: this.totalSuccesses
+      totalSuccesses: this.totalSuccesses,
+      activeHalfOpenProbes: this.activeHalfOpenProbes
     };
   }
 
@@ -185,6 +205,7 @@ export class CircuitBreaker {
     this.successCount = 0;
     this.lastFailureTime = null;
     this.failures.length = 0;
+    this.activeHalfOpenProbes = 0;
     logger.info({
       circuitBreaker: this.config.name
     }, `Circuit breaker "${this.config.name}" reset`);
@@ -205,7 +226,7 @@ export class CircuitBreaker {
       return true;
     }
     if (this.state === CircuitState.HALF_OPEN) {
-      return true;
+      return this.activeHalfOpenProbes < this.config.halfOpenMaxProbes;
     }
     if (this.state === CircuitState.OPEN && Date.now() >= this.nextAttempt) {
       return true;
@@ -243,6 +264,7 @@ export class CircuitBreakerManager {
         timeout: 60000, // 1 minute
         monitoringWindow: 120000, // 2 minutes
         name: serviceName,
+        halfOpenMaxProbes: 1,
         ...config
       };
       this.breakers.set(serviceName, new CircuitBreaker(defaultConfig));

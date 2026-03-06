@@ -218,21 +218,27 @@ export const createAppConfig = (): AppConfigType => {
         '[AppConfig] Build-time config validation failed (non-fatal during build):',
         errorMsg
       );
-      // (#V7 H-02) Return the raw config for build-time usage only. This is NOT validated —
-      // consumers must never rely on config values for security decisions at build time.
-      // The returned value is cast to the validated type but has NOT been validated.
-      // The Proxy traps log a warning when deeply-nested properties are accessed,
-      // making silent undefined-as-string bugs more visible.
-      const buildStub = rawConfig as Record<string, unknown>;
-      return new Proxy(buildStub, {
-        get(target, prop) {
-          const value = target[prop as string];
+      // (#V7 H-02) Return a valid build-time stub by providing fallbacks for required fields.
+      // Zod will apply all defaults and coercions, giving us a properly-typed AppConfigType.
+      // The Proxy traps log a warning when properties are accessed at build time.
+      const buildFallback = {
+        ...rawConfig,
+        supabase: {
+          ...rawConfig.supabase,
+          url: rawConfig.supabase.url ?? 'https://build-placeholder.supabase.co',
+          anonKey: rawConfig.supabase.anonKey ?? 'build-placeholder-anon-key',
+        },
+      };
+      const buildConfig = ConfigSchema.parse(buildFallback);
+      return new Proxy(buildConfig, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
           if (value === undefined && typeof prop === 'string' && prop !== 'then') {
             console.warn(`[AppConfig] Build-time access to missing config key: ${prop}`);
           }
           return value;
         },
-      }) as unknown as ReturnType<typeof ConfigSchema.parse>;
+      });
     }
     if (typeof window === 'undefined') {
       console.error(errorMsg);

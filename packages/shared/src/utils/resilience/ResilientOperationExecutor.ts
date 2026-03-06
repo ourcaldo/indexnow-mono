@@ -27,7 +27,7 @@ export class ResilientOperationExecutor {
   static async execute<T>(
     operation: () => Promise<T>,
     config: ResilientOperationConfig<T>
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     const { serviceName, circuitBreaker, retryConfig, fallbackStrategies, cacheKey, context } = config;
 
     // Create resilience layers
@@ -72,7 +72,7 @@ export class ResilientOperationExecutor {
     operation: () => Promise<T>,
     serviceName: string,
     context?: string
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     return this.execute(operation, {
       serviceName,
       context: context || serviceName,
@@ -91,7 +91,7 @@ export class ResilientOperationExecutor {
   static async executeDatabase<T>(
     operation: () => Promise<T>,
     context?: string
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     return this.execute(operation, {
       serviceName: 'database',
       context: context || 'database-operation',
@@ -115,7 +115,7 @@ export class ResilientOperationExecutor {
     operation: () => Promise<T>,
     apiName: string,
     fallbackValue?: T
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     const strategies: FallbackStrategy<T>[] = [
       { type: 'cached', ttl: 300000 } // 5 minutes
     ];
@@ -145,7 +145,7 @@ export class ResilientOperationExecutor {
   static async executeSerpApi<T>(
     operation: () => Promise<T>,
     cacheKey?: string
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     return this.execute(operation, {
       serviceName: 'serp-api',
       context: 'serp-api-call',
@@ -171,7 +171,7 @@ export class ResilientOperationExecutor {
   static async executePayment<T>(
     operation: () => Promise<T>,
     context?: string
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     return this.execute(operation, {
       serviceName: 'payment-service',
       context: context || 'payment-operation',
@@ -196,7 +196,7 @@ export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceN
     target: Object,
     propertyKey: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Required by TypeScript decorator API: decorated methods have unknown parameter signatures
-    descriptor: TypedPropertyDescriptor<(...args: unknown[]) => Promise<T>>
+    descriptor: TypedPropertyDescriptor<(...args: unknown[]) => Promise<T | Partial<T>>>
   ) {
     const originalMethod = descriptor.value;
 
@@ -205,7 +205,7 @@ export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceN
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Decorator must bind to unknown class context
-    descriptor.value = async function (this: unknown, ...args: unknown[]): Promise<T> {
+    descriptor.value = async function (this: unknown, ...args: unknown[]): Promise<T | Partial<T>> {
       return ResilientOperationExecutor.execute(
         () => originalMethod.apply(this, args),
         {

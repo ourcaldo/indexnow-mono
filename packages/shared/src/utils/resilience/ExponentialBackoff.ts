@@ -57,13 +57,19 @@ export class ExponentialBackoff {
     operation: () => Promise<T>,
     context?: string
   ): Promise<T> {
+    if (this.config.maxAttempts < 1) {
+      throw new Error(
+        `ExponentialBackoff: maxAttempts must be at least 1, got ${this.config.maxAttempts}`
+      );
+    }
+
     const metrics: RetryMetrics = {
       attempts: 0,
       totalDelay: 0,
       success: false
     };
 
-    let lastError: Error;
+    let lastError: Error | undefined;
 
     for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
       metrics.attempts = attempt;
@@ -83,7 +89,7 @@ export class ExponentialBackoff {
         
         return result;
       } catch (error) {
-        lastError = error as Error;
+        lastError = error instanceof Error ? error : new Error(String(error));
         metrics.finalError = lastError;
 
         // Check if error is retryable
@@ -121,7 +127,8 @@ export class ExponentialBackoff {
       }
     }
 
-    throw lastError!;
+    // This should be unreachable when maxAttempts >= 1, but guard against it
+    throw lastError ?? new Error('ExponentialBackoff: operation failed with no error captured');
   }
 
   /**

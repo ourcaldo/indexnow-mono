@@ -134,6 +134,7 @@ export interface DeviceInfo {
 
 export interface LocationData {
   country?: string;
+  countryCode?: string;
   region?: string;
   city?: string;
   timezone?: string;
@@ -276,6 +277,7 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
           if (ipApiData && typeof ipApiData === 'object' && !ipApiData.error) {
             locationData = {
               country: ipApiData.country_name || ipApiData.country,
+              countryCode: ipApiData.country,
               region: ipApiData.region || ipApiData.regionName,
               city: ipApiData.city,
               timezone: ipApiData.timezone,
@@ -301,6 +303,7 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
       if (country || region || city || timezone) {
         locationData = {
           country: country || undefined,
+          countryCode: country || undefined,
           region: region || undefined,
           city: city || undefined,
           timezone: timezone || undefined,
@@ -374,13 +377,12 @@ export function getSecurityRiskLevel(
     riskScore += 1;
   }
 
-  // (#V7 L-09) Location-based risk: compares locationData.country against ISO 3166-1
-  // alpha-2 codes. The highRiskCountries list uses ISO codes which matches the
-  // geolocation service output. Extend this list or move to config as needed.
-  if (locationData?.country) {
-    // Add logic for high-risk countries if needed
-    const highRiskCountries = ['CN', 'RU', 'KP', 'IR']; // Example
-    if (highRiskCountries.includes(locationData.country)) {
+  // (#V7 L-09) Location-based risk: compares against ISO 3166-1 alpha-2 codes
+  // using the dedicated countryCode field. The geolocation service provides
+  // both country_name (display) and country (ISO code); we compare against the ISO code.
+  if (locationData?.countryCode) {
+    const highRiskCountries = ['CN', 'RU', 'KP', 'IR'];
+    if (highRiskCountries.includes(locationData.countryCode)) {
       riskScore += 2;
     }
   }

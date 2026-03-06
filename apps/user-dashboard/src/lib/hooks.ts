@@ -106,16 +106,6 @@ export interface KeywordUsage {
   is_unlimited: boolean
 }
 
-export interface WeeklyTrend {
-  id: string
-  keyword: string
-  domain: string
-  current_position: number | null
-  previous_position: number | null
-  change: number | null
-  url?: string
-}
-
 export interface BillingPackage {
   id: string
   name: string
@@ -208,16 +198,6 @@ export function useKeywords(params?: { domain?: string; page?: number; limit?: n
         RANK_TRACKING_ENDPOINTS.KEYWORDS,
         { params: params as Record<string, string | number | boolean> }
       ),
-  })
-}
-
-/** Fetch weekly trends — optionally scoped to a workspace domain */
-export function useWeeklyTrends(domain?: string | null) {
-  return useQuery({
-    queryKey: ['weekly-trends', domain ?? 'all'],
-    queryFn: () => api<WeeklyTrend[]>(RANK_TRACKING_ENDPOINTS.WEEKLY_TRENDS, {
-      params: domain ? { domain } : undefined,
-    }),
   })
 }
 
@@ -384,39 +364,6 @@ export function useDeleteKeywords() {
       qc.invalidateQueries({ queryKey: ['keywords'] })
       qc.invalidateQueries({ queryKey: ['keyword-usage'] })
       qc.invalidateQueries({ queryKey: ['dashboard-aggregate'] })
-    },
-  })
-}
-
-/** Trigger manual rank check for a keyword */
-export function useCheckRank() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (keywordId: string) =>
-      api<unknown>(RANK_TRACKING_ENDPOINTS.CHECK_RANK, {
-        method: 'POST',
-        body: JSON.stringify({ keyword_id: keywordId }),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['keywords'] })
-      qc.invalidateQueries({ queryKey: ['keyword-usage'] })
-      qc.invalidateQueries({ queryKey: ['weekly-trends'] })
-      qc.invalidateQueries({ queryKey: ['dashboard-aggregate'] })
-    },
-  })
-}
-
-/** Add tag to keywords */
-export function useAddTag() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data: { keywordIds: string[]; tag: string }) =>
-      api<unknown>(RANK_TRACKING_ENDPOINTS.ADD_KEYWORD_TAG, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['keywords'] })
     },
   })
 }

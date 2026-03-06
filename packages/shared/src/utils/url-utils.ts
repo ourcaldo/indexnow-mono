@@ -4,6 +4,29 @@
  * Helper functions for URL manipulation and sanitization
  */
 
+import { isPrivateOrReservedIP, isValidIPv4, isValidIPv6 } from './ip-device-utils';
+
+const BLOCKED_HOSTNAMES = new Set(['localhost', 'localhost.localdomain', '[::1]']);
+
+/**
+ * Check whether a hostname is a private/internal address (SSRF protection).
+ * Returns true for: private IPs, loopback, link-local, localhost, IPv6 ULA/link-local.
+ * For non-IP hostnames (e.g. "example.com"), returns false (DNS resolution cannot be done synchronously).
+ */
+function isPrivateHostname(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (BLOCKED_HOSTNAMES.has(lower)) return true;
+
+  // Strip IPv6 bracket notation: [::1] → ::1
+  const bare = lower.startsWith('[') && lower.endsWith(']') ? lower.slice(1, -1) : lower;
+
+  if (isValidIPv4(bare) || isValidIPv6(bare)) {
+    return isPrivateOrReservedIP(bare);
+  }
+
+  return false;
+}
+
 /**
  * Remove query parameters from URL
  * Example: "https://example.com/page?param=value" -> "https://example.com/page"
@@ -48,17 +71,34 @@ export function removeUrlParameters(url: string | null): string | null {
 }
 
 /**
- * Extract clean domain from URL
+ * Extract clean domain from URL.
+ * Throws if the extracted hostname is a private/internal IP (SSRF protection).
  * Example: "https://www.example.com/page" -> "example.com"
  */
 export function extractDomain(url: string): string {
   try {
     const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
-    return urlObj.hostname.toLowerCase().replace(/^www\./, '')
+    const domain = urlObj.hostname.toLowerCase().replace(/^www\./, '')
+
+    if (isPrivateHostname(domain)) {
+      throw new Error(`Domain resolves to a private/internal address: ${domain}`)
+    }
+
+    return domain
   } catch (error) {
+    // Re-throw SSRF errors from the try block
+    if (error instanceof Error && error.message.startsWith('Domain resolves to')) {
+      throw error
+    }
     // If URL parsing fails, try to extract domain manually
     const cleanUrl = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
-    return cleanUrl.toLowerCase()
+    const domain = cleanUrl.toLowerCase()
+
+    if (isPrivateHostname(domain)) {
+      throw new Error(`Domain resolves to a private/internal address: ${domain}`)
+    }
+
+    return domain
   }
 }
 
@@ -82,11 +122,15 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
- * Check if URL is valid
+ * Check if URL is valid.
+ * Returns false for URLs pointing to private/internal IPs (SSRF protection).
  */
 export function isValidUrl(url: string): boolean {
   try {
-    new URL(url.startsWith('http') ? url : `https://${url}`)
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
+    if (isPrivateHostname(urlObj.hostname)) {
+      return false
+    }
     return true
   } catch (error) {
     return false

@@ -20,6 +20,7 @@ export type FallbackStrategy<T> =
 export interface FallbackConfig<T> {
   strategies: FallbackStrategy<T>[];
   cacheTTL?: number;
+  maxCacheSize?: number;
   logFallbacks?: boolean;
 }
 
@@ -28,8 +29,11 @@ import { type Json } from '../../types/common/Json';
 export class FallbackHandler<T = Json> {
   private cache = new Map<string, { value: T; timestamp: number }>();
   private readonly defaultCacheTTL = 300000; // 5 minutes
+  private readonly maxCacheSize: number;
 
-  constructor(private config: FallbackConfig<T>) {}
+  constructor(private config: FallbackConfig<T>) {
+    this.maxCacheSize = config.maxCacheSize ?? 1000;
+  }
 
   /**
    * Execute operation with fallback strategies
@@ -38,7 +42,7 @@ export class FallbackHandler<T = Json> {
     operation: () => Promise<T>,
     cacheKey?: string,
     context?: string
-  ): Promise<T> {
+  ): Promise<T | Partial<T>> {
     try {
       const result = await operation();
       
@@ -75,7 +79,7 @@ export class FallbackHandler<T = Json> {
             }, 'Fallback strategy succeeded');
           }
           
-          return result as T;
+          return result;
         } catch (fallbackError) {
           if (this.config.logFallbacks) {
             logger.warn({
@@ -129,7 +133,7 @@ export class FallbackHandler<T = Json> {
         return await strategy.operation();
 
       case 'empty':
-        return {} as T;
+        throw new Error('Empty fallback — no meaningful value available');
 
       case 'error':
         throw new Error('Error fallback - no fallback available');
@@ -158,9 +162,20 @@ export class FallbackHandler<T = Json> {
   }
 
   /**
-   * Set cached value
+   * Set cached value (evicts oldest entry when at capacity — M-14)
    */
   private setCached(key: string, value: T): void {
+    if (this.cache.size >= this.maxCacheSize && !this.cache.has(key)) {
+      let oldestKey: string | undefined;
+      let oldestTime = Infinity;
+      for (const [k, v] of this.cache) {
+        if (v.timestamp < oldestTime) {
+          oldestTime = v.timestamp;
+          oldestKey = k;
+        }
+      }
+      if (oldestKey !== undefined) this.cache.delete(oldestKey);
+    }
     this.cache.set(key, {
       value,
       timestamp: Date.now()

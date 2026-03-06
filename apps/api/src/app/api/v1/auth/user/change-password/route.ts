@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -23,7 +22,7 @@ const changePasswordSchema = z.object({
 export const POST = authenticatedApiWrapper(async (request, auth) => {
   // (#V7 H-12) Rate limit password changes — 5 attempts per minute
   const rateLimited = await checkRouteRateLimit(
-    request as unknown as NextRequest,
+    request,
     { maxAttempts: 5, windowMs: 60_000 },
     'change_password'
   );
@@ -98,7 +97,7 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
         eventType: 'password_change',
         actionDescription: 'User changed their password',
         targetType: 'security',
-        request: request as unknown as import('next/server').NextRequest,
+        request,
       });
     } catch (_) { /* non-critical */ }
 

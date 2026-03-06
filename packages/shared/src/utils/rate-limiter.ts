@@ -28,8 +28,34 @@ export interface RateLimitStore {
 }
 
 // Default in-memory store (suitable for single-process deployments)
-const MAX_STORE_SIZE = 10_000; // Cap to prevent unbounded memory growth (#4)
+const MAX_STORE_SIZE = 10_000; // Cap to prevent unbounded memory growth
+const GC_INTERVAL_MS = 60_000; // Periodic GC sweep interval (M-10)
 const inMemoryStore = new Map<string, RateLimitEntry>();
+
+// Periodic GC to remove expired entries and prevent memory leaks (M-10)
+let gcTimerId: ReturnType<typeof setInterval> | undefined;
+
+function startGC(): void {
+  if (gcTimerId !== undefined) return;
+  gcTimerId = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of inMemoryStore) {
+      if (now > entry.resetTime) {
+        inMemoryStore.delete(key);
+      }
+    }
+  }, GC_INTERVAL_MS);
+}
+
+/** Stop the periodic GC timer (call during shutdown or in tests). */
+export function disposeRateLimitGC(): void {
+  if (gcTimerId !== undefined) {
+    clearInterval(gcTimerId);
+    gcTimerId = undefined;
+  }
+}
+
+startGC();
 
 const inMemoryRateLimitStore: RateLimitStore = {
   async get(key: string) {
@@ -42,13 +68,17 @@ const inMemoryRateLimitStore: RateLimitStore = {
     return entry;
   },
   async set(key: string, entry: RateLimitEntry) {
-    // Enforce max size
+    // Enforce max size with O(n) sweep for oldest entry (M-11)
     if (inMemoryStore.size >= MAX_STORE_SIZE && !inMemoryStore.has(key)) {
-      // Evict oldest entry
-      const oldest = Array.from(inMemoryStore.entries()).sort(
-        (a, b) => a[1].resetTime - b[1].resetTime
-      )[0];
-      if (oldest) inMemoryStore.delete(oldest[0]);
+      let oldestKey: string | undefined;
+      let oldestTime = Infinity;
+      for (const [k, v] of inMemoryStore) {
+        if (v.resetTime < oldestTime) {
+          oldestTime = v.resetTime;
+          oldestKey = k;
+        }
+      }
+      if (oldestKey !== undefined) inMemoryStore.delete(oldestKey);
     }
     inMemoryStore.set(key, entry);
   },
