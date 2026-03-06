@@ -5,6 +5,7 @@
 
 import { type Json } from '../types/common/Json';
 import { isProduction } from '../core/config/AppConfig';
+import { sanitizePII } from './pii-sanitizer';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -42,9 +43,21 @@ class Logger {
     return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
   }
 
+  /** Sanitize a log context through PII sanitizer, returning a safe object */
+  private sanitizeContext(ctx: object): object {
+    const result = sanitizePII(ctx);
+    if (typeof result === 'object' && result !== null) {
+      return result;
+    }
+    return {};
+  }
+
   private log(level: LogLevel, context: LogContext | string, message?: string) {
-    const ctx = typeof context === 'string' ? {} : context;
+    const rawCtx = typeof context === 'string' ? {} : context;
     const msg = typeof context === 'string' ? context : message || '';
+
+    // Sanitize context to prevent PII/secrets from appearing in logs
+    const ctx = this.sanitizeContext(rawCtx);
 
     // Delegate to external transport if configured (e.g., pino)
     if (_transport) {
@@ -56,7 +69,7 @@ class Logger {
     // In production, only allow warn/error/fatal through (suppress debug/info noise)
     if (this.isProductionEnv && (level === 'debug' || level === 'info')) return;
 
-    const formattedMsg = this.formatMessage(level, ctx, msg);
+    const formattedMsg = this.formatMessage(level, rawCtx, msg);
 
     switch (level) {
       case 'debug':
@@ -141,14 +154,11 @@ export const ErrorHandlingService = {
       ...config,
     };
     logger.error(logContext, config.message || 'Created error');
-    // (#V7 M-16) Return a structured error that preserves type/severity metadata (#13)
-    const error = new Error(config.message) as Error & {
-      type?: ErrorType;
-      severity?: ErrorSeverity;
-    };
-    error.type = config.type;
-    error.severity = config.severity;
-    return error;
+    // Return a structured error that preserves type/severity metadata
+    return Object.assign(new Error(config.message), {
+      type: config.type,
+      severity: config.severity,
+    });
   },
 };
 

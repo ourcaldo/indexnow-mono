@@ -8,17 +8,23 @@ const SENSITIVE_KEYS = [
   'password',
   'token',
   'secret',
-  'key',
   'authorization',
   'cookie',
   'card_number',
   'cvv',
+  'cvc',
   'bank_account',
   'api_key',
   'client_secret',
   'private_key',
   'access_token',
   'refresh_token',
+  'ssn',
+  'social_security',
+  'credit_card',
+  'pin',
+  'credentials',
+  'access_key',
 ];
 
 const REDACTED = '[REDACTED]';
@@ -72,12 +78,13 @@ export function sanitizePII(data: unknown, _seen?: WeakSet<object>): unknown {
 
   if (typeof data === 'string') {
     // Try to parse string as JSON if it looks like it
+    const trimmed = data.trim();
     if (
-      (data.startsWith('{') && data.endsWith('}')) ||
-      (data.startsWith('[') && data.endsWith(']'))
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))
     ) {
       try {
-        const parsed = JSON.parse(data) as unknown;
+        const parsed: unknown = JSON.parse(trimmed);
         return JSON.stringify(sanitizePII(parsed));
       } catch {
         /* PII sanitization fallback — scan raw string */
@@ -96,12 +103,11 @@ export function sanitizePII(data: unknown, _seen?: WeakSet<object>): unknown {
 
   if (typeof data === 'object') {
     const seen = _seen || new WeakSet();
-    if (seen.has(data as object)) return '[Circular]';
-    seen.add(data as object);
+    if (seen.has(data)) return '[Circular]';
+    seen.add(data);
     const sanitized: Record<string, unknown> = {};
-    const record = data as Record<string, unknown>;
 
-    for (const [key, value] of Object.entries(record)) {
+    for (const [key, value] of Object.entries(data)) {
       const lowerKey = key.toLowerCase();
       if (SENSITIVE_KEYS.some((sensitiveKey) => lowerKey.includes(sensitiveKey))) {
         sanitized[key] = REDACTED;
