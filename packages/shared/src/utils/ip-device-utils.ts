@@ -6,6 +6,125 @@
 import { NextRequest } from 'next/server';
 import { logger } from './logger';
 
+// Strict IPv4 pattern: 1-3 digits per octet, dot-separated
+const IPV4_REGEX = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+// Simplified IPv6: hex groups with colons, allows :: shorthand and IPv4-mapped (::ffff:x.x.x.x)
+const IPV6_REGEX = /^[0-9a-fA-F:]+$/;
+const IPV4_MAPPED_IPV6_REGEX = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i;
+
+/**
+ * Validate that a string is a well-formed IPv4 address with valid octets (0-255).
+ */
+export function isValidIPv4(ip: string): boolean {
+  const match = IPV4_REGEX.exec(ip);
+  if (!match) return false;
+  return match.slice(1, 5).every((octet) => {
+    const num = parseInt(octet, 10);
+    return num >= 0 && num <= 255;
+  });
+}
+
+/**
+ * Validate that a string is a well-formed IPv6 address.
+ * Handles full, compressed (::), and IPv4-mapped (::ffff:x.x.x.x) forms.
+ */
+export function isValidIPv6(ip: string): boolean {
+  // Handle IPv4-mapped IPv6
+  const mappedMatch = IPV4_MAPPED_IPV6_REGEX.exec(ip);
+  if (mappedMatch) return isValidIPv4(mappedMatch[1]);
+
+  if (!IPV6_REGEX.test(ip)) return false;
+
+  // Must not start or end with single colon (but :: is allowed)
+  if ((ip.startsWith(':') && !ip.startsWith('::')) || (ip.endsWith(':') && !ip.endsWith('::')))
+    return false;
+
+  const parts = ip.split('::');
+  if (parts.length > 2) return false; // Only one :: allowed
+
+  const left = parts[0] ? parts[0].split(':') : [];
+  const right = parts.length === 2 && parts[1] ? parts[1].split(':') : [];
+  const totalGroups = left.length + right.length;
+
+  if (parts.length === 2) {
+    // With ::, total groups must be <= 7 (:: represents at least one group)
+    if (totalGroups > 7) return false;
+  } else {
+    // Without ::, must have exactly 8 groups
+    if (totalGroups !== 8) return false;
+  }
+
+  // Each group must be 1-4 hex digits
+  return [...left, ...right].every((g) => g.length >= 1 && g.length <= 4);
+}
+
+/**
+ * Validate that a string is a well-formed IP address (IPv4 or IPv6).
+ */
+export function isValidIP(ip: string): boolean {
+  return isValidIPv4(ip) || isValidIPv6(ip);
+}
+
+/**
+ * Check if an IPv4 address falls within private/reserved ranges.
+ */
+function isPrivateIPv4(ip: string): boolean {
+  const match = IPV4_REGEX.exec(ip);
+  if (!match) return true; // Treat unparseable as private (deny by default)
+  const [a, b] = match.slice(1, 3).map((o) => parseInt(o, 10));
+
+  return (
+    a === 10 || // 10.0.0.0/8
+    (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+    (a === 192 && b === 168) || // 192.168.0.0/16
+    a === 127 || // 127.0.0.0/8 (loopback)
+    (a === 169 && b === 254) || // 169.254.0.0/16 (link-local)
+    a === 0 || // 0.0.0.0/8 (current network)
+    (a === 100 && b >= 64 && b <= 127) || // 100.64.0.0/10 (carrier-grade NAT)
+    (a === 198 && (b === 18 || b === 19)) || // 198.18.0.0/15 (benchmarking)
+    a >= 224 // 224.0.0.0+ (multicast & reserved)
+  );
+}
+
+/**
+ * Check if an IPv6 address is a private/reserved address.
+ */
+function isPrivateIPv6(ip: string): boolean {
+  const lower = ip.toLowerCase();
+  if (lower === '::1') return true; // Loopback
+  if (lower === '::') return true; // Unspecified
+
+  // IPv4-mapped IPv6 — delegate to IPv4 check
+  const mappedMatch = IPV4_MAPPED_IPV6_REGEX.exec(lower);
+  if (mappedMatch) return isPrivateIPv4(mappedMatch[1]);
+
+  // Expand :: for prefix comparison
+  const normalized = lower.replace('::', ':0000:');
+  const firstGroup = normalized.split(':')[0];
+  if (!firstGroup) return true;
+
+  const prefix = parseInt(firstGroup, 16);
+  if (isNaN(prefix)) return true;
+
+  return (
+    (prefix & 0xfe00) === 0xfc00 || // fc00::/7 (unique local)
+    (prefix & 0xffc0) === 0xfe80 || // fe80::/10 (link-local)
+    firstGroup === 'ff00' || // Multicast (simplified check)
+    prefix === 0 // ::/128 or ::/0 range
+  );
+}
+
+/**
+ * Returns true if the IP address is private, reserved, or otherwise
+ * unsuitable for external geolocation lookups (SSRF prevention).
+ */
+export function isPrivateOrReservedIP(ip: string): boolean {
+  if (isValidIPv4(ip)) return isPrivateIPv4(ip);
+  if (isValidIPv6(ip)) return isPrivateIPv6(ip);
+  return true; // Unrecognised format → treat as blocked
+}
+
 export interface DeviceInfo {
   type: 'mobile' | 'tablet' | 'desktop';
   browser: string;
@@ -24,7 +143,8 @@ export interface LocationData {
 }
 
 /**
- * Extract real IP address from various headers considering proxies
+ * Extract real IP address from various headers considering proxies.
+ * Returns null if no valid IP is found.
  */
 export function getClientIP(request?: {
   headers: { get(name: string): string | null };
@@ -35,15 +155,22 @@ export function getClientIP(request?: {
     const realIP = request.headers.get('x-real-ip');
     const clientIP = request.headers.get('x-client-ip');
 
+    let candidate: string | null = null;
+
     if (forwarded) {
       // x-forwarded-for can contain multiple IPs, take the first one
-      return forwarded.split(',')[0].trim();
+      candidate = forwarded.split(',')[0].trim();
+    } else if (realIP) {
+      candidate = realIP.trim();
+    } else if (clientIP) {
+      candidate = clientIP.trim();
     }
 
-    if (realIP) return realIP;
-    if (clientIP) return clientIP;
+    // Only return well-formed IP addresses to prevent injection via headers
+    if (candidate && isValidIP(candidate)) {
+      return candidate;
+    }
 
-    // Fallback - NextRequest doesn't have ip property in this version
     return null;
   }
 
@@ -120,13 +247,7 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
     }
 
     // Get location data using multiple methods
-    if (
-      ipAddress &&
-      ipAddress !== '127.0.0.1' &&
-      ipAddress !== '::1' &&
-      !ipAddress.startsWith('192.168.') &&
-      !ipAddress.startsWith('10.')
-    ) {
+    if (ipAddress && isValidIP(ipAddress) && !isPrivateOrReservedIP(ipAddress)) {
       // Use IP geolocation service
       // NOTE: Using HTTPS endpoint. For ip-api.com, HTTPS requires a paid plan.
       // If using the free tier, switch to an alternative like ipapi.co or ip-api.com with HTTP.
@@ -137,7 +258,10 @@ export async function getRequestInfo(request?: NextRequest): Promise<{
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch(`https://ipapi.co/${ipAddress}/json/`, {
+        // Safe URL construction — encode the IP to prevent path traversal / injection
+        const geoUrl = new URL(`/${encodeURIComponent(ipAddress)}/json/`, 'https://ipapi.co');
+
+        const response = await fetch(geoUrl.toString(), {
           signal: controller.signal,
           headers: {
             'User-Agent': 'IndexNow-Pro/1.0',
