@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useAccountSettings } from '@indexnow/ui/hooks'
@@ -93,7 +93,7 @@ export default function ProfileContent() {
             <input
               type="tel"
               id="phone"
-              placeholder="Optional â€” for account recovery"
+              placeholder="Optional — for account recovery"
               value={profileForm.phone_number}
               onChange={(e) => setProfileForm((p) => ({ ...p, phone_number: e.target.value }))}
               className="block w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-shadow"
@@ -108,7 +108,7 @@ export default function ProfileContent() {
               data-testid="button-save-profile"
             >
               {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {savingProfile ? 'Savingâ€¦' : 'Save changes'}
+              {savingProfile ? 'Saving…' : 'Save changes'}
             </button>
             <button
               onClick={() => setEditing(false)}

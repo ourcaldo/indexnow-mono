@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -109,7 +109,7 @@ export default function NotificationsContent() {
         data-testid="button-save-notifications"
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {saving ? 'Savingâ€¦' : 'Save preferences'}
+        {saving ? 'Saving…' : 'Save preferences'}
       </button>
     </div>
   )

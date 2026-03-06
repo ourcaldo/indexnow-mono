@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -196,20 +196,20 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="Total Keywords" value={stats.totalKeywords} icon={<Search className="w-4 h-4" />} iconColor="text-accent" />
-        <MetricCard label="Avg. Position" value={stats.avgPosition !== null ? stats.avgPosition.toFixed(1) : 'â€”'} icon={<Target className="w-4 h-4" />} iconColor="text-emerald-600" />
+        <MetricCard label="Avg. Position" value={stats.avgPosition !== null ? stats.avgPosition.toFixed(1) : '—'} icon={<Target className="w-4 h-4" />} iconColor="text-emerald-600" />
         <MetricCard label="Top 10" value={stats.top10} icon={<TrendingUp className="w-4 h-4" />} iconColor="text-amber-600" subtitle={stats.top3 > 0 ? `${stats.top3} in top 3` : undefined} />
         <MetricCard label="Tracked Domains" value={domains?.length ?? 0} icon={<Globe className="w-4 h-4" />} iconColor="text-violet-600" />
       </div>
 
       {/* Two-column content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Keywords table â€” 2/3 */}
+        {/* Keywords table — 2/3 */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Recent Keywords</h3>
               <button onClick={() => router.push('/overview')} className="text-xs font-medium text-accent hover:text-orange-700 transition-colors">
-                View all â†’
+                View all →
               </button>
             </div>
             {keywords.length === 0 ? (
@@ -217,7 +217,7 @@ export default function Dashboard() {
                 <Search className="w-8 h-8 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-500">No keywords tracked yet</p>
                 <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-accent">
-                  Add keywords â†’
+                  Add keywords →
                 </button>
               </div>
             ) : (
@@ -264,7 +264,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Right column â€” 1/3 */}
+        {/* Right column — 1/3 */}
         <div className="space-y-6">
           {/* Plan usage */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -280,7 +280,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs text-gray-500">Keywords</span>
                 <span className="text-xs font-medium text-gray-700">
-                  {kwUsed} / {kwLimit || 'âˆž'}
+                  {kwUsed} / {kwLimit || '∞'}
                 </span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -358,7 +358,7 @@ function MetricCard({ label, value, icon, iconColor, subtitle }: {
 }
 
 function PositionBadge({ position }: { position: number | null }) {
-  if (!position) return <span className="text-gray-300 text-sm">â€”</span>
+  if (!position) return <span className="text-gray-300 text-sm">—</span>
   const cls =
     position <= 3 ? 'text-emerald-600 font-bold'
       : position <= 10 ? 'text-accent font-semibold'

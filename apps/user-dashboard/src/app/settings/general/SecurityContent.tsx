@@ -1,10 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useAccountSettings } from '@indexnow/ui/hooks'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
 
-/* â”€â”€â”€ Password Input with visibility toggle â”€â”€â”€ */
+/* ─── Password Input with visibility toggle ─── */
 function PasswordInput({
   id,
   value,
@@ -132,7 +132,7 @@ export default function SecurityContent() {
           data-testid="button-update-password"
         >
           {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {savingPassword ? 'Updatingâ€¦' : 'Update password'}
+          {savingPassword ? 'Updating…' : 'Update password'}
         </button>
         <button
           onClick={() => setShowForm(false)}

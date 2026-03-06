@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -23,7 +23,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <div className="-m-4 lg:-m-6 bg-white border-t border-gray-200 min-h-[calc(100vh-60px)]">
       <div className="flex min-h-[calc(100vh-60px)]">
-        {/* â”€â”€ Settings Sidebar â”€â”€ */}
+        {/* ── Settings Sidebar ── */}
         <nav className="w-52 shrink-0 border-r border-gray-200 hidden md:block p-5">
           <ul className="space-y-0.5 sticky top-6">
             {navItems.map((item) => {
@@ -47,7 +47,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </ul>
         </nav>
 
-        {/* â”€â”€ Mobile nav (horizontal scroll) â”€â”€ */}
+        {/* ── Mobile nav (horizontal scroll) ── */}
         <div className="md:hidden flex gap-1 px-4 pt-4 pb-3 border-b border-gray-200/80 overflow-x-auto w-full">
           {navItems.map((item) => {
             const isActive = activeId === item.id
@@ -67,7 +67,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           })}
         </div>
 
-        {/* â”€â”€ Content Area â”€â”€ */}
+        {/* ── Content Area ── */}
         <div className="flex-1 min-w-0 p-6 md:p-8">
           {children}
         </div>

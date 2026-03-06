@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import {
@@ -180,13 +180,13 @@ export function AddKeywordsModal({
       const skipped = result?.skipped ?? []
 
       if (skipped.length > 0 && result.created === 0) {
-        // All keywords were duplicates â€” stay open and show error
+        // All keywords were duplicates — stay open and show error
         setErrors({ submit: `${skipped.length === 1 ? 'This keyword is' : 'These keywords are'} already being tracked: ${skipped.join(', ')}` })
         return
       }
 
       if (skipped.length > 0) {
-        // Some created, some skipped â€” notify then close
+        // Some created, some skipped — notify then close
         setSkippedKeywords(skipped)
         onSuccess?.()
         return
@@ -494,7 +494,7 @@ export function AddKeywordsModal({
                   </label>
                   {keywordUsage && (
                     <span className="text-xs text-gray-400">
-                      {keywordUsage.used} / {keywordUsage.is_unlimited ? 'âˆž' : keywordUsage.limit} keywords used
+                      {keywordUsage.used} / {keywordUsage.is_unlimited ? '∞' : keywordUsage.limit} keywords used
                     </span>
                   )}
                 </div>
@@ -574,7 +574,7 @@ export function AddKeywordsModal({
               {skippedKeywords.length > 0 && (
                 <div className="px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
                   <p className="text-sm font-medium text-amber-800 mb-1">
-                    {skippedKeywords.length} keyword{skippedKeywords.length > 1 ? 's' : ''} already tracked â€” skipped
+                    {skippedKeywords.length} keyword{skippedKeywords.length > 1 ? 's' : ''} already tracked — skipped
                   </p>
                   <p className="text-xs text-amber-700">
                     {skippedKeywords.join(', ')}

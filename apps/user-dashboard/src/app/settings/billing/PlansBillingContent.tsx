@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -26,7 +26,7 @@ import {
   useSubscription,
 } from '../../../lib/hooks'
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────────────────── Types ───────────────────── */
 
 interface PricingTier {
   regular_price: number
@@ -99,7 +99,7 @@ interface SubscriptionData {
   }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────────────────── Helpers ───────────────────── */
 
 function statusColor(status: string) {
   switch (status) {
@@ -136,7 +136,7 @@ function usageBarColor(pct: number) {
   return 'bg-accent'
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Component â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ═══════════════════════ Component ═══════════════════════ */
 
 function getPricing(pkg: PaymentPackage, period: string) {
   const key = period === 'yearly' ? 'annual' : period
@@ -163,7 +163,7 @@ export default function BillingPage() {
   const { logBillingActivity } = useActivityLogger()
   usePageViewLogger('/settings/billing', 'Billing & Subscriptions', { section: 'billing_management' })
 
-  /* â”€â”€ Data â”€â”€ */
+  /* ── Data ── */
 
   const { data: billingData, isLoading: billingLoading, error: billingError } = useBillingOverview()
   const { data: historyData, isLoading: historyLoading } = useBillingHistory(currentPage, itemsPerPage)
@@ -200,7 +200,7 @@ export default function BillingPage() {
     queryClient.invalidateQueries({ queryKey: ['subscription'] })
   }
 
-  /* â”€â”€ Cancel subscription â”€â”€ */
+  /* ── Cancel subscription ── */
 
   const [cancelLoading, setCancelLoading] = useState(false)
 
@@ -244,7 +244,7 @@ export default function BillingPage() {
     }
   }
 
-  /* â”€â”€ Loading skeleton â”€â”€ */
+  /* ── Loading skeleton ── */
 
   if (loading) {
     return (
@@ -288,12 +288,12 @@ export default function BillingPage() {
   const kwPct = keywordUsage ? usagePct(keywordUsage.keywords.used, keywordUsage.keywords.limit, keywordUsage.keywords.is_unlimited) : 0
   const domPct = keywordUsage ? usagePct(keywordUsage.domains.used, keywordUsage.domains.limit, keywordUsage.domains.is_unlimited) : 0
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• RENDER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  /* ═══════════════════════ RENDER ═══════════════════════ */
 
   return (
     <div className="space-y-8">
 
-      {/* â”€â”€ Page header â”€â”€ */}
+      {/* ── Page header ── */}
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Plans & Billing</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -301,7 +301,7 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {/* â”€â”€ Current Plan + Usage row â”€â”€ */}
+      {/* ── Current Plan + Usage row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
         {/* Current Plan Card */}
@@ -414,7 +414,7 @@ export default function BillingPage() {
                   <span className="text-sm tabular-nums text-gray-900 font-semibold">
                     {keywordUsage.keywords.used.toLocaleString()}
                     <span className="text-gray-400 font-normal">
-                      {' / '}{keywordUsage.keywords.is_unlimited ? 'âˆž' : keywordUsage.keywords.limit.toLocaleString()}
+                      {' / '}{keywordUsage.keywords.is_unlimited ? '∞' : keywordUsage.keywords.limit.toLocaleString()}
                     </span>
                   </span>
                 </div>
@@ -425,7 +425,7 @@ export default function BillingPage() {
                   />
                 </div>
                 {kwPct > 85 && !keywordUsage.keywords.is_unlimited && (
-                  <p className="text-xs text-red-500 mt-1.5">Nearing limit â€” consider upgrading</p>
+                  <p className="text-xs text-red-500 mt-1.5">Nearing limit — consider upgrading</p>
                 )}
               </div>
 
@@ -436,7 +436,7 @@ export default function BillingPage() {
                   <span className="text-sm tabular-nums text-gray-900 font-semibold">
                     {keywordUsage.domains.used.toLocaleString()}
                     <span className="text-gray-400 font-normal">
-                      {' / '}{keywordUsage.domains.is_unlimited ? 'âˆž' : keywordUsage.domains.limit.toLocaleString()}
+                      {' / '}{keywordUsage.domains.is_unlimited ? '∞' : keywordUsage.domains.limit.toLocaleString()}
                     </span>
                   </span>
                 </div>
@@ -447,7 +447,7 @@ export default function BillingPage() {
                   />
                 </div>
                 {domPct > 85 && !keywordUsage.domains.is_unlimited && (
-                  <p className="text-xs text-red-500 mt-1.5">Nearing limit â€” consider upgrading</p>
+                  <p className="text-xs text-red-500 mt-1.5">Nearing limit — consider upgrading</p>
                 )}
               </div>
 
@@ -471,7 +471,7 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Billing History â”€â”€ */}
+      {/* ── Billing History ── */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-gray-900">Billing History</h2>
@@ -563,7 +563,7 @@ export default function BillingPage() {
         )}
       </div>
 
-      {/* â”€â”€ Payment method info â”€â”€ */}
+      {/* ── Payment method info ── */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
@@ -578,7 +578,7 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Plan Picker Modal â”€â”€ */}
+      {/* ── Plan Picker Modal ── */}
       {showPlanPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPlanPicker(false)} />
@@ -681,7 +681,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* â”€â”€ Cancel dialog â”€â”€ */}
+      {/* ── Cancel dialog ── */}
       {showCancelDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCancelDialog(false)} />
@@ -712,7 +712,7 @@ export default function BillingPage() {
                 className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
               >
                 {cancelLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                {cancelLoading ? 'Cancelingâ€¦' : 'Yes, cancel'}
+                {cancelLoading ? 'Canceling…' : 'Yes, cancel'}
               </button>
             </div>
           </div>

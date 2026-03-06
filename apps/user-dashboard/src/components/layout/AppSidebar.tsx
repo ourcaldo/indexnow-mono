@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -43,7 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-// â”€â”€ WorkspaceSwitcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WorkspaceSwitcher ────────────────────────────────────────────────────────
 
 interface WorkspaceSwitcherProps {
   isCollapsed: boolean
@@ -269,7 +269,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
     try {
       await authService.signOut()
     } catch {
-      // Swallow â€” we're redirecting regardless
+      // Swallow — we're redirecting regardless
     } finally {
       window.location.href = '/login'
     }
@@ -323,7 +323,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
           )}
         </div>
 
-        {/* Expand toggle when collapsed â€” below logo, centered */}
+        {/* Expand toggle when collapsed — below logo, centered */}
         {isCollapsed && (
           <div className="flex justify-center py-2 border-b border-gray-100 shrink-0">
             <button
@@ -433,7 +433,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
             )}
           </div>
 
-          {/* Upgrade CTA â€” shows when a higher tier exists */}
+          {/* Upgrade CTA — shows when a higher tier exists */}
           {showUpgrade && !isCollapsed && (
             <div className="px-3 pt-3">
               <div className="rounded-xl p-3.5 border border-orange-200 bg-orange-50/60">
@@ -498,7 +498,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
         </div>
       </aside>
 
-      {/* Portal tooltip â€” rendered on document.body to escape overflow clipping */}
+      {/* Portal tooltip — rendered on document.body to escape overflow clipping */}
       {tooltip && createPortal(
         <div
           className="fixed z-[9999] px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md whitespace-nowrap shadow-lg pointer-events-none"

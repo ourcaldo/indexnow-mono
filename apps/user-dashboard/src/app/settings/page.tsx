@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -27,7 +27,7 @@ function SettingsRedirect() {
   return <div className="animate-pulse h-8 w-32 rounded bg-gray-200" />
 }
 
-/** Redirect /settings â†’ /settings/profile and handle legacy ?tab= params */
+/** Redirect /settings → /settings/profile and handle legacy ?tab= params */
 export default function SettingsPage() {
   return (
     <Suspense fallback={<div className="animate-pulse h-8 w-32 rounded bg-gray-200" />}>
