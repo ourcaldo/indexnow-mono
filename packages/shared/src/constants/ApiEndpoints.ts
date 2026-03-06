@@ -118,6 +118,7 @@ export const PAYMENT_ENDPOINTS = {
   PADDLE_CONFIG: `${API_BASE.V1}/payments/paddle/config`,
   // Reserved for Paddle webhook endpoints
   CUSTOMER_PORTAL: `${API_BASE.V1}/payments/paddle/customer-portal`,
+  SUBSCRIPTION_CANCEL: `${API_BASE.V1}/payments/paddle/subscription/cancel`,
 } as const;
 
 // Activity logging endpoints (non-admin)
@@ -157,6 +158,44 @@ export const INTEGRATION_ENDPOINTS = {
   SERANKING_HEALTH: `${API_BASE.V1}/integrations/seranking/health`,
   SERANKING_HEALTH_METRICS: `${API_BASE.V1}/integrations/seranking/health/metrics`,
 } as const;
+
+/**
+ * Recursively collect all static string endpoint values from an endpoint object tree.
+ * Skips function-valued entries (dynamic endpoints like USER_BY_ID).
+ */
+function collectEndpointStrings(obj: Record<string, unknown>): string[] {
+  const results: string[] = [];
+  for (const value of Object.values(obj)) {
+    if (typeof value === 'string') {
+      results.push(value);
+    } else if (typeof value === 'object' && value !== null) {
+      results.push(...collectEndpointStrings(value as Record<string, unknown>));
+    }
+  }
+  return results;
+}
+
+/**
+ * Validate whether a URL matches any defined API endpoint.
+ * Dynamically checks all static string endpoints from every endpoint group.
+ */
+export const isValidEndpoint = (endpoint: string): boolean => {
+  const allEndpoints = collectEndpointStrings({
+    AUTH: AUTH_ENDPOINTS,
+    ADMIN: ADMIN_ENDPOINTS,
+    RANK_TRACKING: RANK_TRACKING_ENDPOINTS,
+    BILLING: BILLING_ENDPOINTS,
+    PAYMENT: PAYMENT_ENDPOINTS,
+    ACTIVITY: ACTIVITY_ENDPOINTS,
+    NOTIFICATION: NOTIFICATION_ENDPOINTS,
+    DASHBOARD: DASHBOARD_ENDPOINTS,
+    PUBLIC: PUBLIC_ENDPOINTS,
+    SYSTEM: SYSTEM_ENDPOINTS,
+    INTEGRATION: INTEGRATION_ENDPOINTS,
+  });
+
+  return allEndpoints.includes(endpoint);
+};
 
 // Unified export for backward compatibility
 export const ApiEndpoints = {

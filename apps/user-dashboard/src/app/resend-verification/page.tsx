@@ -1,7 +1,8 @@
-﻿// (#V7 L-26) Email input uses native HTML type="email" validation.
+'use client';
+
+// (#V7 L-26) Email input uses native HTML type="email" validation.
 // Adding Zod validation (z.string().email()) would provide stricter
 // client-side checks but the API already validates server-side.
-'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';

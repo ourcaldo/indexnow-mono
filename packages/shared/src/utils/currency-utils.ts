@@ -17,9 +17,24 @@ export function formatCurrency(amount: number, currency: string = 'USD'): string
   }).format(amount);
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  INR: '₹',
+  AUD: 'A$',
+  CAD: 'C$',
+  CHF: 'CHF',
+  CNY: '¥',
+  KRW: '₩',
+};
+
 /**
- * Gets currency symbol (always $)
+ * Gets the display symbol for a currency code (ISO 4217).
+ * Falls back to the uppercase currency code itself for unknown currencies.
  */
-export function getCurrencySymbol(): string {
-  return '$';
+export function getCurrencySymbol(currency: string = 'USD'): string {
+  const code = currency.toUpperCase();
+  return CURRENCY_SYMBOLS[code] ?? code;
 }

@@ -14,7 +14,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { formatCurrency, type PublicSettingsPackage, type DashboardPackagePricingTier } from '@indexnow/shared'
+import { formatCurrency, PAYMENT_ENDPOINTS, type PublicSettingsPackage, type DashboardPackagePricingTier } from '@indexnow/shared'
 import { fmtDate } from '../../../lib/utils'
 import { api } from '../../../lib/api'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
@@ -180,7 +180,7 @@ export default function BillingPage() {
 
     setCancelLoading(true)
     try {
-      const result = await api<{ action: string }>('/api/v1/payments/paddle/subscription/cancel', {
+      const result = await api<{ action: string }>(PAYMENT_ENDPOINTS.SUBSCRIPTION_CANCEL, {
         method: 'POST',
         body: JSON.stringify({ subscriptionId: paddleSubId }),
       })
