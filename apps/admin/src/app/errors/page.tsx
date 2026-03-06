@@ -1,8 +1,28 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { RefreshCw, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight, ExternalLink, X, Copy, Check } from 'lucide-react';
-import { useAdminErrorStats, useAdminErrorList, useAdminErrorDetail, useErrorAction, type TimeRange, type SeverityFilter, type ErrorLogEntry, type ErrorStats } from '@/hooks';
+import {
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  X,
+  Copy,
+  Check,
+} from 'lucide-react';
+import {
+  useAdminErrorStats,
+  useAdminErrorList,
+  useAdminErrorDetail,
+  useErrorAction,
+  type TimeRange,
+  type SeverityFilter,
+  type ErrorLogEntry,
+  type ErrorStats,
+} from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { ErrorResolveActions } from '@/components/ErrorResolveActions';
 import { format } from 'date-fns';
@@ -12,32 +32,49 @@ function displayMessage(msg: unknown): string {
   if (msg === null || msg === undefined) return '—';
   if (typeof msg === 'string') {
     // Detect literal "[object Object]" stored in DB from bad serialization
-    if (msg === '[object Object]' || msg.trim() === '[object Object]') return '(no message — serialization error)';
+    if (msg === '[object Object]' || msg.trim() === '[object Object]')
+      return '(no message — serialization error)';
     return msg;
   }
   if (typeof msg === 'object') {
     const obj = msg as Record<string, unknown>;
     if (typeof obj.message === 'string') return obj.message;
     if (typeof obj.error === 'string') return obj.error;
-    try { return JSON.stringify(msg); } catch { return String(msg); }
+    try {
+      return JSON.stringify(msg);
+    } catch {
+      return String(msg);
+    }
   }
   return String(msg);
 }
 
 /** Each card takes exactly 1/5 of the visible strip (minus gaps).
  *  We use a CSS custom property set by StatCardStrip so width stays in sync. */
-function StatBadge({ label, value, accent, active, onClick }: {
-  label: string; value: number; accent?: string; active?: boolean; onClick?: () => void;
+function StatBadge({
+  label,
+  value,
+  accent,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  accent?: string;
+  active?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`stat-card rounded-xl border px-5 py-4 text-left transition-all flex-shrink-0 ${
+      className={`stat-card flex-shrink-0 rounded-xl border px-5 py-4 text-left transition-all ${
         active ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
-      <div className={`text-2xl font-bold tabular-nums ${accent || 'text-gray-900'}`}>{value.toLocaleString()}</div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
+      <div className={`text-2xl font-bold tabular-nums ${accent || 'text-gray-900'}`}>
+        {value.toLocaleString()}
+      </div>
+      <div className="mt-1 text-xs text-gray-500">{label}</div>
     </button>
   );
 }
@@ -55,7 +92,11 @@ const SEVERITY_COLORS: Record<string, string> = {
 const CARD_GAP = 12; // gap-3 = 12px
 const VISIBLE_CARDS = 5;
 
-function StatCardStrip({ stats, severity, onSeverityClick }: {
+function StatCardStrip({
+  stats,
+  severity,
+  onSeverityClick,
+}: {
   stats: ErrorStats | null | undefined;
   severity: SeverityFilter;
   onSeverityClick: (s: SeverityFilter) => void;
@@ -66,7 +107,13 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
   const [isDragging, setIsDragging] = useState(false);
 
   /* ── Drag-to-scroll state (refs to avoid re-renders) ── */
-  const dragState = useRef({ active: false, startX: 0, scrollStart: 0, moved: false, pointerId: -1 });
+  const dragState = useRef({
+    active: false,
+    startX: 0,
+    scrollStart: 0,
+    moved: false,
+    pointerId: -1,
+  });
 
   /** Width of one card (derived from container).
    *  Formula: (containerWidth - gaps) / VISIBLE_CARDS  */
@@ -98,7 +145,13 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
     if (!el) return;
     // Don't capture pointer yet — wait until the user actually drags past threshold.
     // Capturing immediately steals events from child <button> elements, blocking onClick.
-    dragState.current = { active: true, startX: e.clientX, scrollStart: el.scrollLeft, moved: false, pointerId: e.pointerId };
+    dragState.current = {
+      active: true,
+      startX: e.clientX,
+      scrollStart: el.scrollLeft,
+      moved: false,
+      pointerId: e.pointerId,
+    };
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -126,7 +179,11 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
     const el = scrollRef.current;
     // Only release capture if we actually captured it during drag
     if (el && wasMoved) {
-      try { el.releasePointerCapture(e.pointerId); } catch { /* not captured */ }
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* not captured */
+      }
     }
   }, []);
 
@@ -136,7 +193,10 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
     const el = scrollRef.current;
     if (!el) return;
     el.addEventListener('scroll', checkScroll, { passive: true });
-    const onResize = () => { syncCardWidth(); checkScroll(); };
+    const onResize = () => {
+      syncCardWidth();
+      checkScroll();
+    };
     window.addEventListener('resize', onResize);
     return () => {
       el.removeEventListener('scroll', checkScroll);
@@ -158,43 +218,85 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
       {showLeft && (
         <button
           onClick={() => scroll('left')}
-          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+          className="absolute top-1/2 left-1 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-colors hover:bg-gray-50"
         >
-          <ChevronLeft className="w-4 h-4 text-gray-600" />
+          <ChevronLeft className="h-4 w-4 text-gray-600" />
         </button>
       )}
 
       {/* Cards — drag to scroll */}
       <div
         ref={scrollRef}
-        className={`flex gap-3 px-8 py-5 overflow-x-auto select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`flex gap-3 overflow-x-auto px-8 py-5 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onClickCapture={(e) => { if (dragState.current.moved) { e.stopPropagation(); e.preventDefault(); } }}
+        onClickCapture={(e) => {
+          if (dragState.current.moved) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+        }}
       >
         <style>{`
           .stat-scroll::-webkit-scrollbar { display: none; }
           .stat-card { width: var(--card-w, 180px); }
         `}</style>
-        <StatBadge label="All Errors" value={stats?.summary?.totalErrors ?? 0} active={severity === 'all'} onClick={() => onSeverityClick('all')} />
-        <StatBadge label="Critical" value={stats?.summary?.criticalErrors ?? 0} accent={(stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-600' : undefined} active={severity === 'critical'} onClick={() => onSeverityClick('critical')} />
-        <StatBadge label="Error" value={stats?.summary?.highErrors ?? 0} accent={(stats?.summary?.highErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={severity === 'error'} onClick={() => onSeverityClick('error')} />
-        <StatBadge label="Warning" value={stats?.summary?.warningErrors ?? 0} active={severity === 'warning'} onClick={() => onSeverityClick('warning')} />
-        <StatBadge label="Info / Debug" value={stats?.summary?.infoErrors ?? 0} active={severity === 'info'} onClick={() => onSeverityClick('info')} />
-        <StatBadge label="Unresolved" value={stats?.summary?.unresolvedErrors ?? 0} accent={(stats?.summary?.unresolvedErrors ?? 0) > 0 ? 'text-amber-600' : undefined} active={false} />
-        <StatBadge label="Resolved" value={stats?.summary?.resolvedErrors ?? 0} accent={(stats?.summary?.resolvedErrors ?? 0) > 0 ? 'text-emerald-600' : undefined} active={false} />
+        <StatBadge
+          label="All Errors"
+          value={stats?.summary?.totalErrors ?? 0}
+          active={severity === 'all'}
+          onClick={() => onSeverityClick('all')}
+        />
+        <StatBadge
+          label="Critical"
+          value={stats?.summary?.criticalErrors ?? 0}
+          accent={(stats?.summary?.criticalErrors ?? 0) > 0 ? 'text-red-600' : undefined}
+          active={severity === 'critical'}
+          onClick={() => onSeverityClick('critical')}
+        />
+        <StatBadge
+          label="Error"
+          value={stats?.summary?.highErrors ?? 0}
+          accent={(stats?.summary?.highErrors ?? 0) > 0 ? 'text-amber-600' : undefined}
+          active={severity === 'error'}
+          onClick={() => onSeverityClick('error')}
+        />
+        <StatBadge
+          label="Warning"
+          value={stats?.summary?.warningErrors ?? 0}
+          active={severity === 'warning'}
+          onClick={() => onSeverityClick('warning')}
+        />
+        <StatBadge
+          label="Info / Debug"
+          value={stats?.summary?.infoErrors ?? 0}
+          active={severity === 'info'}
+          onClick={() => onSeverityClick('info')}
+        />
+        <StatBadge
+          label="Unresolved"
+          value={stats?.summary?.unresolvedErrors ?? 0}
+          accent={(stats?.summary?.unresolvedErrors ?? 0) > 0 ? 'text-amber-600' : undefined}
+          active={false}
+        />
+        <StatBadge
+          label="Resolved"
+          value={stats?.summary?.resolvedErrors ?? 0}
+          accent={(stats?.summary?.resolvedErrors ?? 0) > 0 ? 'text-emerald-600' : undefined}
+          active={false}
+        />
       </div>
 
       {/* Right arrow */}
       {showRight && (
         <button
           onClick={() => scroll('right')}
-          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+          className="absolute top-1/2 right-1 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-colors hover:bg-gray-50"
         >
-          <ChevronRight className="w-4 h-4 text-gray-600" />
+          <ChevronRight className="h-4 w-4 text-gray-600" />
         </button>
       )}
     </div>
@@ -205,11 +307,26 @@ function StatCardStrip({ stats, severity, onSeverityClick }: {
 
 function CopyableId({ id, label }: { id: string; label?: string }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => { navigator.clipboard.writeText(id); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
   return (
-    <button onClick={(e) => { e.stopPropagation(); handleCopy(); }} className="inline-flex items-center gap-1.5 font-mono text-sm text-gray-700 hover:text-gray-900 transition-colors" title={`Copy ${label || 'ID'}`}>
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handleCopy();
+      }}
+      className="inline-flex items-center gap-1.5 font-mono text-sm text-gray-700 transition-colors hover:text-gray-900"
+      title={`Copy ${label || 'ID'}`}
+    >
       {id.slice(0, 12)}...
-      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-emerald-500" />
+      ) : (
+        <Copy className="h-3.5 w-3.5 text-gray-400" />
+      )}
     </button>
   );
 }
@@ -218,9 +335,9 @@ function CopyableId({ id, label }: { id: string; label?: string }) {
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between px-3.5 py-2.5 border-b border-gray-50 last:border-0 gap-3">
-      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-sm text-gray-700 text-right">{children}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-gray-50 px-3.5 py-2.5 last:border-0">
+      <span className="flex-shrink-0 text-sm text-gray-500">{label}</span>
+      <span className="text-right text-sm text-gray-700">{children}</span>
     </div>
   );
 }
@@ -233,84 +350,114 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
 
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const err = errorDetail?.error || errorDetail as any;
-  const sentry = (errorDetail as any)?.sentry as { eventId?: string; issueId?: string; url?: string; siblingCount?: number; configured?: boolean } | undefined;
-  const resolverInfo = (errorDetail as any)?.resolverInfo as { email?: string; full_name?: string } | undefined;
+  const err = errorDetail?.error;
+  const sentry = errorDetail?.sentry;
+  const resolverInfo = errorDetail?.resolverInfo;
 
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/20 z-40 transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/20 transition-opacity" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col animate-in slide-in-from-right duration-200">
+      <div className="animate-in slide-in-from-right fixed top-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-gray-200 bg-white shadow-2xl duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-sm font-semibold text-gray-900 truncate">Error Detail</h2>
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h2 className="truncate text-sm font-semibold text-gray-900">Error Detail</h2>
           <div className="flex items-center gap-1">
             {sentry?.url && (
               <button
                 onClick={() => window.open(sentry.url!, '_blank')}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100"
                 title="Open in Sentry"
               >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 72 66" fill="currentColor"><path d="M29 2.26a3.68 3.68 0 0 0-6.37 0L.55 45.16a3.68 3.68 0 0 0 3.18 5.52h7.46a3.68 3.68 0 0 0 3.18-1.84l11.87-20.54a12.07 12.07 0 0 1 10.47 11.96h-5.26a3.68 3.68 0 0 0 0 7.36h12.62V40.3a19.43 19.43 0 0 0-16.86-19.26L41.97 2.26a3.68 3.68 0 0 0 6.37 0l21.11 36.53a3.68 3.68 0 0 1-3.18 5.52h-7.46"/></svg>
+                <svg className="h-3.5 w-3.5" viewBox="0 0 72 66" fill="currentColor">
+                  <path d="M29 2.26a3.68 3.68 0 0 0-6.37 0L.55 45.16a3.68 3.68 0 0 0 3.18 5.52h7.46a3.68 3.68 0 0 0 3.18-1.84l11.87-20.54a12.07 12.07 0 0 1 10.47 11.96h-5.26a3.68 3.68 0 0 0 0 7.36h12.62V40.3a19.43 19.43 0 0 0-16.86-19.26L41.97 2.26a3.68 3.68 0 0 0 6.37 0l21.11 36.53a3.68 3.68 0 0 1-3.18 5.52h-7.46" />
+                </svg>
                 Sentry
               </button>
             )}
             <button
-              onClick={() => { window.open(`/errors/${errorId}`, '_blank'); }}
-              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => {
+                window.open(`/errors/${errorId}`, '_blank');
+              }}
+              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
               title="Open in new tab"
             >
-              <ExternalLink className="w-4 h-4" />
+              <ExternalLink className="h-4 w-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {isLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-10 bg-gray-50 rounded-lg animate-pulse" />)}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-50" />
+              ))}
             </div>
           ) : !err ? (
-            <p className="text-sm text-gray-500 text-center py-12">Error not found</p>
+            <p className="py-12 text-center text-sm text-gray-500">Error not found</p>
           ) : (
             <>
               {/* Title + Severity */}
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${err.severity === 'critical' || err.severity === 'error' ? 'bg-red-500' : err.severity === 'warning' ? 'bg-amber-500' : 'bg-gray-400'}`} />
-                  <span className={`inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}>{err.severity}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div
+                    className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${err.severity === 'critical' || err.severity === 'error' ? 'bg-red-500' : err.severity === 'warning' ? 'bg-amber-500' : 'bg-gray-400'}`}
+                  />
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}
+                  >
+                    {err.severity}
+                  </span>
                   <span className="text-xs text-gray-500">{err.error_type}</span>
                 </div>
-                <p className="text-sm font-semibold text-gray-900 mt-2 break-words">{displayMessage(err.message)}</p>
-                <p className="text-xs text-gray-500 mt-1">{format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}</p>
+                <p className="mt-2 text-sm font-semibold break-words text-gray-900">
+                  {displayMessage(err.message)}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}
+                </p>
               </div>
 
               {/* ID */}
-              <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3.5 py-2.5">
                 <span className="text-sm text-gray-500">Error ID</span>
                 <CopyableId id={err.id} label="Error ID" />
               </div>
 
               {/* Details */}
-              <div className="bg-white rounded-lg border border-gray-100">
+              <div className="rounded-lg border border-gray-100 bg-white">
                 <DetailRow label="Status">
-                  <span className={err.resolved_at ? 'text-emerald-600' : err.acknowledged_at ? 'text-blue-600' : 'text-amber-600'}>
-                    {err.resolved_at ? 'Resolved' : err.acknowledged_at ? 'Acknowledged' : 'Unresolved'}
+                  <span
+                    className={
+                      err.resolved_at
+                        ? 'text-emerald-600'
+                        : err.acknowledged_at
+                          ? 'text-blue-600'
+                          : 'text-amber-600'
+                    }
+                  >
+                    {err.resolved_at
+                      ? 'Resolved'
+                      : err.acknowledged_at
+                        ? 'Acknowledged'
+                        : 'Unresolved'}
                   </span>
                 </DetailRow>
                 <DetailRow label="Recorded">
@@ -326,17 +473,21 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                     <div className="text-right">
                       <div>{format(new Date(err.resolved_at), 'MMM d, yyyy HH:mm:ss')}</div>
                       {resolverInfo && (
-                        <div className="text-xs text-gray-400 mt-0.5">by {resolverInfo.full_name || resolverInfo.email || 'Admin'}</div>
+                        <div className="mt-0.5 text-xs text-gray-400">
+                          by {resolverInfo.full_name || resolverInfo.email || 'Admin'}
+                        </div>
                       )}
                       {!resolverInfo && err.resolved_by === null && (
-                        <div className="text-xs text-gray-400 mt-0.5">by Sentry webhook</div>
+                        <div className="mt-0.5 text-xs text-gray-400">by Sentry webhook</div>
                       )}
                     </div>
                   </DetailRow>
                 )}
                 {err.endpoint && (
                   <DetailRow label="Endpoint">
-                    <span className="font-mono text-xs">{err.http_method} {err.endpoint}</span>
+                    <span className="font-mono text-xs">
+                      {err.http_method} {err.endpoint}
+                    </span>
                   </DetailRow>
                 )}
                 {err.status_code && <DetailRow label="Status code">{err.status_code}</DetailRow>}
@@ -344,7 +495,7 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                   <DetailRow label="User">
                     <button
                       onClick={() => window.open(`/users/${err.user_id}`, '_blank')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium font-mono"
+                      className="font-mono text-sm font-medium text-blue-600 hover:text-blue-700"
                     >
                       {err.user_id.slice(0, 12)}...
                     </button>
@@ -354,7 +505,7 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                   <DetailRow label="Sentry Issue">
                     <button
                       onClick={() => sentry.url && window.open(sentry.url, '_blank')}
-                      className="text-sm text-purple-600 hover:text-purple-700 font-medium font-mono"
+                      className="font-mono text-sm font-medium text-purple-600 hover:text-purple-700"
                     >
                       #{sentry.issueId}
                     </button>
@@ -364,10 +515,14 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
 
               {/* Sentry grouped info */}
               {sentry?.siblingCount != null && sentry.siblingCount > 0 && (
-                <div className="bg-purple-50 border border-purple-100 rounded-lg px-3.5 py-2.5">
+                <div className="rounded-lg border border-purple-100 bg-purple-50 px-3.5 py-2.5">
                   <p className="text-xs text-purple-700">
-                    This error is grouped with <span className="font-semibold">{sentry.siblingCount} other unresolved error{sentry.siblingCount > 1 ? 's' : ''}</span> in Sentry.
-                    Resolving will resolve all of them.
+                    This error is grouped with{' '}
+                    <span className="font-semibold">
+                      {sentry.siblingCount} other unresolved error
+                      {sentry.siblingCount > 1 ? 's' : ''}
+                    </span>{' '}
+                    in Sentry. Resolving will resolve all of them.
                   </p>
                 </div>
               )}
@@ -375,16 +530,28 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
               {/* Stack trace */}
               {err.stack_trace && (
                 <div>
-                  <div className="mb-1.5"><span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Stack Trace</span></div>
-                  <pre className="text-[11px] bg-gray-900 text-gray-300 rounded-lg p-3 overflow-x-auto max-h-60 whitespace-pre-wrap font-mono leading-relaxed">{err.stack_trace}</pre>
+                  <div className="mb-1.5">
+                    <span className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                      Stack Trace
+                    </span>
+                  </div>
+                  <pre className="max-h-60 overflow-x-auto rounded-lg bg-gray-900 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-gray-300">
+                    {err.stack_trace}
+                  </pre>
                 </div>
               )}
 
               {/* Metadata */}
               {err.metadata && Object.keys(err.metadata).length > 0 && (
                 <div>
-                  <div className="mb-1.5"><span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Metadata</span></div>
-                  <pre className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded-lg p-3 overflow-x-auto font-mono leading-relaxed">{JSON.stringify(err.metadata, null, 2)}</pre>
+                  <div className="mb-1.5">
+                    <span className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                      Metadata
+                    </span>
+                  </div>
+                  <pre className="overflow-x-auto rounded-lg border border-gray-100 bg-gray-50 p-3 font-mono text-[11px] leading-relaxed text-gray-600">
+                    {JSON.stringify(err.metadata, null, 2)}
+                  </pre>
                 </div>
               )}
 
@@ -421,8 +588,18 @@ export default function ErrorsPage() {
   const errors = listData?.errors ?? [];
   const pagination = listData?.pagination;
 
-  const TrendIcon = stats?.trend?.direction === 'up' ? TrendingUp : stats?.trend?.direction === 'down' ? TrendingDown : Minus;
-  const trendColor = stats?.trend?.direction === 'up' ? 'text-red-600' : stats?.trend?.direction === 'down' ? 'text-emerald-600' : 'text-gray-400';
+  const TrendIcon =
+    stats?.trend?.direction === 'up'
+      ? TrendingUp
+      : stats?.trend?.direction === 'down'
+        ? TrendingDown
+        : Minus;
+  const trendColor =
+    stats?.trend?.direction === 'up'
+      ? 'text-red-600'
+      : stats?.trend?.direction === 'down'
+        ? 'text-emerald-600'
+        : 'text-gray-400';
 
   const handleSeverityClick = (s: SeverityFilter) => {
     setSeverity(s);
@@ -432,39 +609,56 @@ export default function ErrorsPage() {
   const handleCloseSlideOver = useCallback(() => setSelectedErrorId(null), []);
 
   return (
-    <div className="bg-white min-h-full">
+    <div className="min-h-full bg-white">
       {/* ─── Page header ─────────────────────────────────── */}
-      <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200">
+      <div className="flex items-center justify-between border-b border-gray-200 px-8 py-5">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Errors</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="mt-0.5 text-sm text-gray-500">
             {stats?.summary?.totalErrors?.toLocaleString() ?? 0} total in selected range
             {stats?.trend && (
-              <span className={`inline-flex items-center gap-1 ml-2 ${trendColor}`}>
-                <TrendIcon className="w-3.5 h-3.5" />
-                <span className="text-xs">{stats.trend.currentPeriodCount} vs {stats.trend.previousPeriodCount} prev</span>
+              <span className={`ml-2 inline-flex items-center gap-1 ${trendColor}`}>
+                <TrendIcon className="h-3.5 w-3.5" />
+                <span className="text-xs">
+                  {stats.trend.currentPeriodCount} vs {stats.trend.previousPeriodCount} prev
+                </span>
               </span>
             )}
           </p>
         </div>
-        <button onClick={() => refetch()} disabled={isFetching} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-all disabled:opacity-40">
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:opacity-40"
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
 
       {/* ─── Time range filter ───────────────────────────── */}
-      <div className="px-8 py-3 border-b border-gray-200 flex items-center gap-3">
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+      <div className="flex items-center gap-3 border-b border-gray-200 px-8 py-3">
+        <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
           {(['24h', '7d', '30d'] as TimeRange[]).map((range) => (
-            <button key={range} onClick={() => { setTimeRange(range); setPage(1); }}
-              className={`px-3.5 py-1.5 text-sm font-medium rounded-md transition-all ${timeRange === range ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >{range}</button>
+            <button
+              key={range}
+              onClick={() => {
+                setTimeRange(range);
+                setPage(1);
+              }}
+              className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-all ${timeRange === range ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              {range}
+            </button>
           ))}
         </div>
       </div>
 
       {isLoading ? (
-        <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-7 gap-4">{Array.from({ length: 7 }).map((_, i) => <div key={i} className="rounded-xl border border-gray-200 h-20 animate-pulse" />)}</div>
+        <div className="grid grid-cols-2 gap-4 px-8 py-5 lg:grid-cols-7">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl border border-gray-200" />
+          ))}
+        </div>
       ) : (
         <>
           {/* ─── Stat badges with arrow scroll ─────────────── */}
@@ -472,7 +666,11 @@ export default function ErrorsPage() {
 
           {/* ─── Errors table ────────────────────────────────── */}
           {listLoading ? (
-            <div className="px-8 py-5 space-y-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-12 bg-gray-50 rounded-lg animate-pulse" />)}</div>
+            <div className="space-y-3 px-8 py-5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-gray-50" />
+              ))}
+            </div>
           ) : errors.length === 0 ? (
             <div className="py-20 text-center">
               <p className="text-sm text-gray-400">No errors found for this filter</p>
@@ -483,31 +681,68 @@ export default function ErrorsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-8 pr-3 py-3 w-10">#</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-20">ID</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-20">Severity</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3">Message</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-28">Type</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 py-3 w-40">Endpoint</th>
-                      <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider pl-3 pr-8 py-3 w-28">Time</th>
+                      <th className="w-10 py-3 pr-3 pl-8 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        #
+                      </th>
+                      <th className="w-20 px-3 py-3 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        ID
+                      </th>
+                      <th className="w-20 px-3 py-3 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        Severity
+                      </th>
+                      <th className="px-3 py-3 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        Message
+                      </th>
+                      <th className="w-28 px-3 py-3 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        Type
+                      </th>
+                      <th className="w-40 px-3 py-3 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        Endpoint
+                      </th>
+                      <th className="w-28 py-3 pr-8 pl-3 text-left text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
+                        Time
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {errors.map((err: ErrorLogEntry, idx: number) => {
-                      const rowNum = ((pagination?.page ?? 1) - 1) * (pagination?.limit ?? 50) + idx + 1;
+                      const rowNum =
+                        ((pagination?.page ?? 1) - 1) * (pagination?.limit ?? 50) + idx + 1;
                       return (
-                        <tr key={err.id} onClick={() => setSelectedErrorId(err.id)} className="border-b border-gray-50 last:border-0 hover:bg-blue-50/40 cursor-pointer transition-colors">
-                          <td className="pl-8 pr-3 py-3 text-xs text-gray-400 tabular-nums">{rowNum}</td>
-                          <td className={`px-3 py-3 text-sm font-mono ${err.resolved_at ? 'text-emerald-600' : 'text-red-600'}`}>{err.id.slice(0, 8)}</td>
+                        <tr
+                          key={err.id}
+                          onClick={() => setSelectedErrorId(err.id)}
+                          className="cursor-pointer border-b border-gray-50 transition-colors last:border-0 hover:bg-blue-50/40"
+                        >
+                          <td className="py-3 pr-3 pl-8 text-xs text-gray-400 tabular-nums">
+                            {rowNum}
+                          </td>
+                          <td
+                            className={`px-3 py-3 font-mono text-sm ${err.resolved_at ? 'text-emerald-600' : 'text-red-600'}`}
+                          >
+                            {err.id.slice(0, 8)}
+                          </td>
                           <td className="px-3 py-3">
-                            <span className={`inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}>{err.severity}</span>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}
+                            >
+                              {err.severity}
+                            </span>
                           </td>
-                          <td className="px-3 py-3 text-sm text-gray-900 max-w-[400px] truncate">{displayMessage(err.message)}</td>
-                          <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">{err.error_type}</td>
-                          <td className="px-3 py-3 text-xs text-gray-500 font-mono truncate max-w-[160px]">
-                            {err.endpoint ? `${err.http_method || ''} ${err.endpoint}`.trim() : '\u2014'}
+                          <td className="max-w-[400px] truncate px-3 py-3 text-sm text-gray-900">
+                            {displayMessage(err.message)}
                           </td>
-                          <td className="pl-3 pr-8 py-3 text-xs text-gray-500 tabular-nums whitespace-nowrap">{format(new Date(err.created_at), 'MMM d, HH:mm')}</td>
+                          <td className="px-3 py-3 text-xs whitespace-nowrap text-gray-500">
+                            {err.error_type}
+                          </td>
+                          <td className="max-w-[160px] truncate px-3 py-3 font-mono text-xs text-gray-500">
+                            {err.endpoint
+                              ? `${err.http_method || ''} ${err.endpoint}`.trim()
+                              : '\u2014'}
+                          </td>
+                          <td className="py-3 pr-8 pl-3 text-xs whitespace-nowrap text-gray-500 tabular-nums">
+                            {format(new Date(err.created_at), 'MMM d, HH:mm')}
+                          </td>
                         </tr>
                       );
                     })}
@@ -517,11 +752,25 @@ export default function ErrorsPage() {
 
               {/* ─── Pagination ────────────────────────────────── */}
               {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-8 py-3 border-t border-gray-200">
-                  <span className="text-xs text-gray-500">Page {pagination.page} of {pagination.totalPages} ({pagination.total} errors)</span>
+                <div className="flex items-center justify-between border-t border-gray-200 px-8 py-3">
+                  <span className="text-xs text-gray-500">
+                    Page {pagination.page} of {pagination.totalPages} ({pagination.total} errors)
+                  </span>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!pagination.hasPrevPage} className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={!pagination.hasNextPage} className="p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={!pagination.hasPrevPage}
+                      className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                      disabled={!pagination.hasNextPage}
+                      className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               )}
@@ -531,7 +780,9 @@ export default function ErrorsPage() {
       )}
 
       {/* ─── Error slide-over panel ──────────────────────── */}
-      {selectedErrorId && <ErrorSlideOver errorId={selectedErrorId} onClose={handleCloseSlideOver} />}
+      {selectedErrorId && (
+        <ErrorSlideOver errorId={selectedErrorId} onClose={handleCloseSlideOver} />
+      )}
     </div>
   );
 }

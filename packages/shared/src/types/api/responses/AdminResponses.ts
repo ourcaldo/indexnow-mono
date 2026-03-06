@@ -36,13 +36,31 @@ export interface EnrichedSystemErrorLog extends SystemErrorLog {
   // Add any extra fields if needed, currently UI uses separate userInfo object
 }
 
+export interface ErrorDetailSentry {
+  eventId: string | null;
+  issueId: string | null;
+  url: string | null;
+  siblingCount: number;
+  configured: boolean;
+}
+
+export interface ErrorDetailResolverInfo {
+  email: string;
+  full_name?: string | null;
+}
+
 export interface ErrorDetailResponse {
   error: EnrichedSystemErrorLog;
   userInfo?: {
     email: string;
-    full_name?: string;
-  };
-  relatedErrors: SystemErrorLog[];
+    full_name?: string | null;
+  } | null;
+  resolverInfo?: ErrorDetailResolverInfo | null;
+  relatedErrors: Pick<
+    SystemErrorLog,
+    'id' | 'error_type' | 'message' | 'severity' | 'created_at'
+  >[];
+  sentry: ErrorDetailSentry;
 }
 
 export interface VerifyRoleResponse extends ApiResponse<{
