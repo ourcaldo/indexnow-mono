@@ -223,6 +223,24 @@ PostgreSQL via Supabase. **29 tables**, all prefixed `indb_`:
 
 ---
 
+## ⛔ MANDATORY FIRST STEP — Read Before ANY Action
+
+> **STOP. Before writing ANY code, making ANY edit, or running ANY command, you MUST do these reads FIRST.**
+> This is not optional. Skipping this leads to incorrect approaches and wasted effort.
+
+1. **Read `.claude/tasks/lessons.md`** — Hard-won rules from past mistakes. Every principle is a blocking constraint.
+2. **Scan `.claude/skills/`** — Identify which skill files match your current task and read their SKILL.md files.
+   - Committing code → `git-commit` + `conventional-commit`
+   - Writing a PRD → `prd`
+   - Refactoring → `refactor`
+   - Creating routes → check for relevant API/route skills
+   - Any task → check if a matching skill exists first
+3. **Re-evaluate at each to-do item** — Different steps may need different skills.
+
+**If you find yourself about to edit a file without having read lessons + relevant skills first, STOP and read them.**
+
+---
+
 ## Agent Behaviour Rules
 
 ### 1. No Lazy Fixes
@@ -235,14 +253,6 @@ PostgreSQL via Supabase. **29 tables**, all prefixed `indb_`:
 - Database values must match types from `packages/shared/src/types/database.ts` (Row/Insert/Update types and convenience aliases like `DbUserProfile`, `InsertTransaction`, etc.).
 - If a type mismatch exists, fix the type definition or the data flow — never cast around it.
 - Zod schemas define input shapes; inferred types (`z.infer<typeof schema>`) are the source of truth for request/response bodies.
-
-### 3. Skills and Lessons — Mandatory Pre-Task Reads
-- **Before every task**, read `.claude/tasks/lessons.md` first. These are hard-won rules from past mistakes. Violating any lesson is a blocking issue.
-- **Before every message and every to-do item**, scan `.claude/skills/` and load the skill files that match the current task. This is NOT optional — skills contain domain-specific procedures (adding routes, creating hooks, modifying schemas, writing PRDs, refactoring, git commits, etc.). Skipping skills leads to incorrect approaches.
-  - At the start of each message: identify which skills apply → read their SKILL.md files → follow their procedures.
-  - At the start of each to-do item: re-evaluate if additional skills are needed for the specific step.
-  - Example: if committing code, load `git-commit` + `conventional-commit` skills. If writing a PRD, load the `prd` skill. If refactoring, load the `refactor` skill.
-- Lessons define principles and verification steps that override default assumptions.
 
 ### 3b. Generated Documents — Always in `/docs` at Project Root
 - **ALL generated markdown documents** (reports, deep dives, PRDs, implementation plans, audits, architecture docs) MUST be saved to the `/docs` folder at the project root (`/root/indexnow-dev/docs/`), **NOT** scattered elsewhere.
