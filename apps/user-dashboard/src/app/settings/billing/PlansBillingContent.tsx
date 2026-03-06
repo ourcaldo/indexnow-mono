@@ -124,6 +124,7 @@ export default function BillingPage() {
   const [showPlanPicker, setShowPlanPicker] = useState(false)
   const [planPickerPeriod, setPlanPickerPeriod] = useState<'monthly' | 'yearly'>('monthly')
   const [currentPage, setCurrentPage] = useState(1)
+  const [planChangeLoading, setPlanChangeLoading] = useState(false)
   const itemsPerPage = 10
 
   const router = useRouter()
@@ -199,6 +200,56 @@ export default function BillingPage() {
       handleApiError(err instanceof Error ? err : new Error('Failed to cancel subscription'))
     } finally {
       setCancelLoading(false)
+    }
+  }
+
+  /* ── Change plan (upgrade/downgrade via Paddle API) ── */
+
+  const handleChangePlan = async (pkg: PublicSettingsPackage) => {
+    const paddleSubId = subscriptionData?.subscription?.paddle_subscription_id
+    if (!paddleSubId) {
+      addToast({ title: 'Error', description: 'No active subscription found.' })
+      return
+    }
+
+    const tierKey = planPickerPeriod === 'yearly' ? 'annual' : planPickerPeriod
+    const tier = pkg.pricing_tiers?.[tierKey]
+    const paddlePriceId = tier?.paddle_price_id
+
+    if (!paddlePriceId) {
+      addToast({ title: 'Error', description: 'Price not available for the selected plan and billing period.' })
+      return
+    }
+
+    setPlanChangeLoading(true)
+    try {
+      await api<{ subscription: { id: string; status: string }; message: string }>(
+        PAYMENT_ENDPOINTS.SUBSCRIPTION_UPDATE,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            subscriptionId: paddleSubId,
+            newPriceId: paddlePriceId,
+          }),
+        }
+      )
+
+      setShowPlanPicker(false)
+      addToast({
+        title: 'Plan Updated',
+        description: `Your plan has been changed to ${pkg.name}. Changes will be reflected shortly.`,
+      })
+      logBillingActivity('subscription_plan_change', `Changed plan to ${pkg.name}`, {
+        subscriptionId: paddleSubId,
+        newPackageId: pkg.id,
+        newPriceId: paddlePriceId,
+        billingPeriod: planPickerPeriod,
+      })
+      refetchAll()
+    } catch (err) {
+      handleApiError(err instanceof Error ? err : new Error('Failed to change plan'))
+    } finally {
+      setPlanChangeLoading(false)
     }
   }
 
@@ -325,7 +376,7 @@ export default function BillingPage() {
                   className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
                 >
                   <Zap className="h-4 w-4" />
-                  Upgrade Plan
+                  Change Plan
                 </button>
                 {subscriptionData?.hasSubscription && (
                   <button
@@ -546,7 +597,11 @@ export default function BillingPage() {
             </button>
 
             <h3 className="text-lg font-semibold text-gray-900">Choose a plan</h3>
-            <p className="text-sm text-gray-500 mt-1">Select a plan to continue to checkout.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {subscriptionData?.hasSubscription && subscriptionData.subscription?.status === 'active'
+                ? 'Select a plan to upgrade or downgrade. Billing will be prorated automatically.'
+                : 'Select a plan to continue to checkout.'}
+            </p>
 
             {/* Period toggle */}
             <div className="flex items-center gap-1 mt-4 mb-5 text-sm">
@@ -583,11 +638,15 @@ export default function BillingPage() {
                     key={pkg.id}
                     onClick={() => {
                       if (!isCurrent) {
-                        setShowPlanPicker(false)
-                        router.push(`/settings/billing/checkout?package=${pkg.id}&period=${planPickerPeriod}`)
+                        if (subscriptionData?.hasSubscription && subscriptionData.subscription?.status === 'active') {
+                          handleChangePlan(pkg)
+                        } else {
+                          setShowPlanPicker(false)
+                          router.push(`/settings/billing/checkout?package=${pkg.id}&period=${planPickerPeriod}`)
+                        }
                       }
                     }}
-                    disabled={isCurrent}
+                    disabled={isCurrent || planChangeLoading}
                     className={`w-full text-left rounded-xl border p-4 transition-colors ${
                       isCurrent
                         ? 'border-orange-200 bg-orange-50/50 cursor-default'
@@ -634,6 +693,13 @@ export default function BillingPage() {
 
             {packages.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-6">No plans available.</p>
+            )}
+
+            {planChangeLoading && (
+              <div className="flex items-center justify-center gap-2 pt-4 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Updating your plan…</span>
+              </div>
             )}
           </div>
         </div>
