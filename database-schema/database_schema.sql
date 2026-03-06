@@ -379,10 +379,10 @@ CREATE TABLE IF NOT EXISTS indb_keyword_bank (
   
   -- SEO Data (from SeRanking API)
   is_data_found BOOLEAN DEFAULT FALSE,
-  volume INTEGER,
+  search_volume INTEGER,
   cpc DECIMAL(10, 2),
-  competition DECIMAL(5, 2),
-  difficulty INTEGER,
+  keyword_competition DECIMAL(5, 2),
+  keyword_difficulty INTEGER,
   history_trend JSONB,
   keyword_intent VARCHAR(50),
   
