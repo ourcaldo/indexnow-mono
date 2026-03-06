@@ -1,16 +1,6 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
-// Build CSP connect-src dynamically to include the API server
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-const connectSrc = [
-  "'self'",
-  'https://*.supabase.co',
-  'https://*.sentry.io',
-  'https://*.posthog.com',
-  ...(apiBaseUrl ? [new URL(apiBaseUrl).origin] : []),
-].join(' ');
-
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -18,13 +8,7 @@ const securityHeaders = [
   { key: 'X-XSS-Protection', value: '1; mode=block' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
-  // (#V7 H-18) TODO: Migrate to nonce-based CSP for script-src to remove 'unsafe-inline'.
-  // Requires Next.js middleware nonce injection — see https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy
-  {
-    key: 'Content-Security-Policy',
-    value:
-      `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src ${connectSrc}; frame-ancestors 'none'; object-src 'none'; base-uri 'self';`,
-  },
+  // CSP is set per-request in middleware.ts with a unique nonce (see C-04/C-05 fix).
 ];
 
 const nextConfig: NextConfig = {

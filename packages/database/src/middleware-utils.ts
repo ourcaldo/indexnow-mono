@@ -17,7 +17,9 @@ export interface MiddlewareRequest {
 export interface MiddlewareResponse {
     cookies: {
         set: (name: string, value: string, options?: CookieOptions) => void
+        getAll: () => Array<{ name: string; value: string; path?: string; domain?: string; secure?: boolean; httpOnly?: boolean; sameSite?: 'strict' | 'lax' | 'none' | boolean; maxAge?: number }>
     }
+    headers: Headers
 }
 
 export interface MiddlewareResponseFactory {
