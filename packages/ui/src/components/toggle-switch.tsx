@@ -24,7 +24,7 @@ export function ToggleSwitch({
       />
       <div
         className={`h-[22px] w-10 rounded-full transition-colors duration-200 ${
-          checked ? 'bg-blue-600' : 'bg-gray-300'
+          checked ? 'bg-accent' : 'bg-gray-300'
         }`}
       >
         <div

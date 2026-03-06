@@ -78,7 +78,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           {/* Add Keywords */}
           <button
             onClick={() => setAddKeywordsOpen(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-accent hover:bg-accent/90 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Keywords
@@ -101,7 +101,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           <div className="hidden sm:block w-px h-6 bg-gray-200 mx-0.5" />
 
           {/* Avatar */}
-          <button className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+          <button className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
             {initials}
           </button>
         </div>

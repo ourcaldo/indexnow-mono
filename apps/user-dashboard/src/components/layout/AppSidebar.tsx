@@ -89,7 +89,7 @@ function WorkspaceDropdown({
           onClick={() => onSelect(null)}
           className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
             activeDomain === null
-              ? 'bg-blue-50 text-blue-700'
+              ? 'bg-orange-50 text-orange-700'
               : 'text-gray-700 hover:bg-gray-50'
           }`}
         >
@@ -110,11 +110,11 @@ function WorkspaceDropdown({
             onClick={() => onSelect(d.domain_name)}
             className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] transition-colors ${
               activeDomain === d.domain_name
-                ? 'bg-blue-50 text-blue-700'
+                ? 'bg-orange-50 text-orange-700'
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-blue-100 text-blue-700 shrink-0">
+            <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold bg-orange-100 text-orange-700 shrink-0">
               {d.domain_name[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0 text-left">
@@ -169,7 +169,7 @@ function WorkspaceSwitcher({ isCollapsed, showTooltip, hideTooltip }: WorkspaceS
         <button
           ref={triggerRef}
           onClick={openDropdown}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-colors bg-orange-50 text-orange-700 hover:bg-orange-100"
           title={displayName}
         >
           {initial ?? <Globe className="w-3.5 h-3.5" />}
@@ -198,7 +198,7 @@ function WorkspaceSwitcher({ isCollapsed, showTooltip, hideTooltip }: WorkspaceS
         className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors group"
       >
         {/* Domain initial badge */}
-        <div className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0 bg-blue-100 text-blue-700">
+        <div className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0 bg-orange-100 text-orange-700">
           {initial ?? <Globe className="w-3.5 h-3.5" />}
         </div>
         <span className="text-[13px] font-medium text-gray-800 truncate flex-1 text-left">
@@ -370,17 +370,17 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                           w-full flex items-center gap-2.5 rounded-lg transition-all duration-150
                           ${isCollapsed ? 'justify-center px-2 py-2.5' : 'px-2.5 py-2'}
                           ${active
-                            ? 'bg-blue-50 text-blue-700'
+                            ? 'bg-orange-50 text-orange-700'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                           }
                         `}
                       >
-                        <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-blue-600' : ''}`} />
+                        <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-accent' : ''}`} />
                         {!isCollapsed && (
                           <span className="text-[13px] font-medium truncate">{item.label}</span>
                         )}
                         {!isCollapsed && item.badge && (
-                          <span className="ml-auto text-[10px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">
+                          <span className="ml-auto text-[10px] font-bold bg-orange-100 text-accent px-1.5 py-0.5 rounded-full">
                             {item.badge}
                           </span>
                         )}
@@ -403,12 +403,12 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                 className={`
                   w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150
                   ${isActive('/settings')
-                    ? 'bg-blue-50 text-blue-700'
+                    ? 'bg-orange-50 text-orange-700'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
               >
-                <Settings className={`w-[18px] h-[18px] shrink-0 ${isActive('/settings') ? 'text-blue-600' : ''}`} />
+                <Settings className={`w-[18px] h-[18px] shrink-0 ${isActive('/settings') ? 'text-accent' : ''}`} />
                 <span className="text-[13px] font-medium truncate">Settings</span>
               </button>
             ) : (
@@ -422,7 +422,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
                   className={`
                     w-9 h-9 flex items-center justify-center rounded-lg transition-colors
                     ${isActive('/settings')
-                      ? 'bg-blue-50 text-blue-600'
+                      ? 'bg-orange-50 text-accent'
                       : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
                     }
                   `}
@@ -436,14 +436,14 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
           {/* Upgrade CTA â€” shows when a higher tier exists */}
           {showUpgrade && !isCollapsed && (
             <div className="px-3 pt-3">
-              <div className="rounded-xl p-3.5 border border-blue-200 bg-blue-50/60">
-                <span className="text-xs font-bold text-blue-700">Upgrade to {tier.next}</span>
+              <div className="rounded-xl p-3.5 border border-orange-200 bg-orange-50/60">
+                <span className="text-xs font-bold text-orange-700">Upgrade to {tier.next}</span>
                 <p className="text-[11px] text-gray-500 leading-relaxed mt-1 mb-2.5">
                   Unlock more keywords and advanced features.
                 </p>
                 <button
                   onClick={() => navigate('/settings/billing')}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-xs font-semibold transition-colors"
                 >
                   Upgrade now
                   <ArrowUpRight className="w-3 h-3" />
@@ -461,7 +461,7 @@ export function AppSidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: A
             >
               <button
                 onClick={() => navigate('/settings/billing')}
-                className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
+                className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-white hover:bg-accent/90 transition-colors"
               >
                 <ArrowUpRight className="w-4 h-4" />
               </button>

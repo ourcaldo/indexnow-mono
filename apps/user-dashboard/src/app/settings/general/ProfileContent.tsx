@@ -82,7 +82,7 @@ export default function ProfileContent() {
               id="full-name"
               value={profileForm.full_name}
               onChange={(e) => setProfileForm((p) => ({ ...p, full_name: e.target.value }))}
-              className="block w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+              className="block w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-shadow"
               data-testid="input-full-name"
             />
           </div>
@@ -96,7 +96,7 @@ export default function ProfileContent() {
               placeholder="Optional â€” for account recovery"
               value={profileForm.phone_number}
               onChange={(e) => setProfileForm((p) => ({ ...p, phone_number: e.target.value }))}
-              className="block w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+              className="block w-full max-w-md rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-shadow"
               data-testid="input-phone"
             />
           </div>

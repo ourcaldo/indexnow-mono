@@ -72,8 +72,8 @@ export function AddDomainModal({ open, onClose, onSuccess }: AddDomainModalProps
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Globe className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+              <Globe className="w-5 h-5 text-accent" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Add Domain</h2>
@@ -101,7 +101,7 @@ export function AddDomainModal({ open, onClose, onSuccess }: AddDomainModalProps
                 value={domainName}
                 onChange={e => { setDomainName(e.target.value); setError('') }}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-gray-900 placeholder:text-gray-400 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-accent text-gray-900 placeholder:text-gray-400 transition-all"
               />
             </div>
             <p className="mt-1.5 text-xs text-gray-400">Enter the root domain without http:// or www</p>
@@ -118,15 +118,15 @@ export function AddDomainModal({ open, onClose, onSuccess }: AddDomainModalProps
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-gray-900 placeholder:text-gray-400 transition-all"
+              className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-accent text-gray-900 placeholder:text-gray-400 transition-all"
             />
           </div>
 
           {/* Existing domains count */}
           {domains && domains.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100">
-              <Check className="w-4 h-4 text-blue-500" />
-              <span className="text-xs text-blue-700">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 border border-orange-100">
+              <Check className="w-4 h-4 text-accent" />
+              <span className="text-xs text-orange-700">
                 You currently have {domains.length} domain{domains.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -152,7 +152,7 @@ export function AddDomainModal({ open, onClose, onSuccess }: AddDomainModalProps
           <button
             onClick={handleSubmit}
             disabled={!domainName.trim() || createDomain.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
           >
             {createDomain.isPending ? (
               <>

@@ -148,7 +148,7 @@ function PosBadge({ pos }: { pos: number | null }) {
   if (pos === null) return <span className="text-gray-300 text-xs">–</span>
   const color =
     pos <= 3 ? 'text-emerald-600 font-bold'
-    : pos <= 10 ? 'text-blue-600 font-semibold'
+    : pos <= 10 ? 'text-accent font-semibold'
     : pos <= 20 ? 'text-amber-600 font-medium'
     : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${color}`}>{pos}</span>
@@ -160,7 +160,7 @@ function RankCell({ pos }: { pos: number | undefined }) {
   if (pos === undefined) return <span className="text-gray-200 text-[11px]">–</span>
   const color =
     pos <= 3 ? 'text-emerald-600 font-semibold'
-    : pos <= 10 ? 'text-blue-600 font-semibold'
+    : pos <= 10 ? 'text-accent font-semibold'
     : pos <= 20 ? 'text-amber-600'
     : 'text-gray-500'
   return <span className={`text-[12px] font-medium tabular-nums ${color}`}>{pos}</span>
@@ -225,9 +225,9 @@ function CalendarMonth({ year, month, pendingStart, pendingEnd, today, side, onN
     const isStart = iso === pendingStart
     const isEnd = iso === pendingEnd
     const inRange = !!(pendingStart && pendingEnd && iso > pendingStart && iso < pendingEnd)
-    if (isStart || isEnd) return base + 'bg-indigo-600 text-white'
-    if (inRange) return base + 'bg-indigo-50 text-indigo-600'
-    if (iso === today) return base + 'border border-indigo-400 text-indigo-600 hover:bg-gray-100 bg-transparent'
+    if (isStart || isEnd) return base + 'bg-accent text-white'
+    if (inRange) return base + 'bg-orange-50 text-accent'
+    if (iso === today) return base + 'border border-orange-400 text-accent hover:bg-gray-100 bg-transparent'
     return base + 'text-gray-700 hover:bg-gray-100 bg-transparent'
   }
 
@@ -394,7 +394,7 @@ function DateRangePicker({ startDate, endDate, onChange }: DateRangePickerProps)
               <button
                 onClick={apply}
                 disabled={!dp.pendingStart || !dp.pendingEnd}
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+                className="px-3 py-1.5 rounded bg-accent text-white text-xs font-semibold hover:bg-accent/90 disabled:opacity-40 transition-colors"
               >
                 Apply
               </button>
@@ -410,7 +410,7 @@ function DateRangePicker({ startDate, endDate, onChange }: DateRangePickerProps)
                   key={p.days}
                   onClick={() => selectPreset(p.days)}
                   className={`px-2.5 py-1.5 text-left text-xs font-medium rounded transition-colors ${
-                    active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    active ? 'bg-orange-50 text-accent' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   {p.label}
@@ -514,7 +514,7 @@ function KeywordRow({ kw, idx, tableColumns }: KeywordRowProps) {
               href={kw.latest_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+              className="flex-shrink-0 text-gray-400 hover:text-accent transition-colors"
               title="Open in new tab"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -891,9 +891,9 @@ export default function RankHistoryPage() {
 
         {/* Top 10 */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="text-2xl font-bold text-blue-600 tracking-tight">{stats.top10}</div>
+          <div className="text-2xl font-bold text-accent tracking-tight">{stats.top10}</div>
           <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
             <span className="text-xs text-gray-500">Top 10</span>
           </div>
         </div>
@@ -913,7 +913,7 @@ export default function RankHistoryPage() {
             {stats.avgRank !== null ? stats.avgRank : '–'}
           </div>
           <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
             <span className="text-xs text-gray-500">Avg. Rank</span>
           </div>
         </div>

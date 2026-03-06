@@ -23,7 +23,7 @@ export function NotFoundPage({
         <p className="text-sm text-gray-500">{description}</p>
         <Link
           href={backHref}
-          className="inline-block px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-block px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent/90 transition-colors"
         >
           {backLabel}
         </Link>

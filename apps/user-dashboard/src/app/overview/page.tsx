@@ -186,7 +186,7 @@ export default function OverviewPage() {
           <select
             value={deviceFilter}
             onChange={(e) => { setDeviceFilter(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-700"
+            className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500/40 text-gray-700"
           >
             <option value="all">All Devices</option>
             <option value="desktop">Desktop</option>
@@ -195,7 +195,7 @@ export default function OverviewPage() {
           <select
             value={countryFilter}
             onChange={(e) => { setCountryFilter(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-gray-700"
+            className="px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500/40 text-gray-700"
           >
             <option value="all">All Countries</option>
             {uniqueCountries.map(c => (
@@ -219,7 +219,7 @@ export default function OverviewPage() {
         {[
           { value: stats.total, label: 'Total Keywords', color: 'text-gray-900', dot: 'bg-gray-400' },
           { value: stats.top3, label: 'Top 3', color: 'text-emerald-600', dot: 'bg-emerald-500' },
-          { value: stats.top10, label: 'Top 10', color: 'text-blue-600', dot: 'bg-blue-500' },
+          { value: stats.top10, label: 'Top 10', color: 'text-accent', dot: 'bg-accent' },
           { value: stats.top20, label: 'Top 20', color: 'text-amber-600', dot: 'bg-amber-500' },
           { value: stats.avgPosition, label: 'Avg Position', color: 'text-gray-900', dot: 'bg-gray-400' },
         ].map((stat) => (
@@ -290,7 +290,7 @@ export default function OverviewPage() {
                     return (
                       <tr
                         key={kw.id}
-                        className={`border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors ${selectedIds.has(kw.id) ? 'bg-blue-50/30' : ''}`}
+                        className={`border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors ${selectedIds.has(kw.id) ? 'bg-orange-50/30' : ''}`}
                       >
                         <td className="px-4 py-3">
                           <input
@@ -322,7 +322,7 @@ export default function OverviewPage() {
                               <span className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap block max-w-[130px]" title={ranking.url}>
                                 {ranking.url.replace(/^https?:\/\/(www\.)?/, '')}
                               </span>
-                              <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors" title="Open in new tab">
+                              <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-accent transition-colors" title="Open in new tab">
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                             </div>
@@ -396,7 +396,7 @@ function PositionBadge({ position }: { position: number | null }) {
   if (!position) return <span className="text-gray-300 text-sm">â€”</span>
   const cls =
     position <= 3 ? 'text-emerald-600 font-bold'
-      : position <= 10 ? 'text-blue-600 font-semibold'
+      : position <= 10 ? 'text-accent font-semibold'
         : position <= 20 ? 'text-amber-600 font-medium'
           : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>

@@ -112,7 +112,7 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 mb-4">{dashError.message}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
           >
             Retry
           </button>
@@ -131,14 +131,14 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 mt-1">Get started by choosing a plan to unlock keyword tracking</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
-          <Crown className="w-8 h-8 text-blue-500 mx-auto mb-4" />
+          <Crown className="w-8 h-8 text-accent mx-auto mb-4" />
           <h3 className="text-xl font-bold text-gray-900 mb-2">Unlock Rank Tracking</h3>
           <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
             Subscribe to a plan to start tracking your keyword rankings and SEO performance.
           </p>
           <button
             onClick={() => router.push('/settings/billing')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-sm font-semibold transition-colors"
           >
             View Plans <ArrowRight className="w-4 h-4" />
           </button>
@@ -163,7 +163,7 @@ export default function Dashboard() {
           </p>
           <button
             onClick={() => setAddDomainOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent hover:bg-accent/90 text-white text-sm font-semibold transition-colors"
           >
             <Plus className="w-4 h-4" /> Add Domain
           </button>
@@ -195,7 +195,7 @@ export default function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Total Keywords" value={stats.totalKeywords} icon={<Search className="w-4 h-4" />} iconColor="text-blue-600" />
+        <MetricCard label="Total Keywords" value={stats.totalKeywords} icon={<Search className="w-4 h-4" />} iconColor="text-accent" />
         <MetricCard label="Avg. Position" value={stats.avgPosition !== null ? stats.avgPosition.toFixed(1) : 'â€”'} icon={<Target className="w-4 h-4" />} iconColor="text-emerald-600" />
         <MetricCard label="Top 10" value={stats.top10} icon={<TrendingUp className="w-4 h-4" />} iconColor="text-amber-600" subtitle={stats.top3 > 0 ? `${stats.top3} in top 3` : undefined} />
         <MetricCard label="Tracked Domains" value={domains?.length ?? 0} icon={<Globe className="w-4 h-4" />} iconColor="text-violet-600" />
@@ -208,7 +208,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Recent Keywords</h3>
-              <button onClick={() => router.push('/overview')} className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+              <button onClick={() => router.push('/overview')} className="text-xs font-medium text-accent hover:text-orange-700 transition-colors">
                 View all â†’
               </button>
             </div>
@@ -216,7 +216,7 @@ export default function Dashboard() {
               <div className="py-12 text-center">
                 <Search className="w-8 h-8 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-500">No keywords tracked yet</p>
-                <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-blue-600">
+                <button onClick={() => setAddKeywordsOpen(true)} className="mt-3 text-sm font-medium text-accent">
                   Add keywords â†’
                 </button>
               </div>
@@ -270,10 +270,10 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-900">Plan Usage</h3>
-              <a href="/settings/billing" className="text-xs font-medium text-blue-600">Manage</a>
+              <a href="/settings/billing" className="text-xs font-medium text-accent">Manage</a>
             </div>
             <div className="flex items-center gap-2 mb-4">
-              <Crown className="w-4 h-4 text-blue-600" />
+              <Crown className="w-4 h-4 text-accent" />
               <span className="text-sm font-semibold text-gray-900">{planName}</span>
             </div>
             <div>
@@ -285,7 +285,7 @@ export default function Dashboard() {
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-blue-500 transition-all"
+                  className="h-full rounded-full bg-accent transition-all"
                   style={{ width: `${kwLimit > 0 ? Math.min((kwUsed / kwLimit) * 100, 100) : 0}%` }}
                 />
               </div>
@@ -300,7 +300,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-2.5">
                 <DistRow label="Top 3" count={stats.top3} total={stats.totalKeywords} color="bg-emerald-500" />
-                <DistRow label="4 - 10" count={stats.top10 - stats.top3} total={stats.totalKeywords} color="bg-blue-500" />
+                <DistRow label="4 - 10" count={stats.top10 - stats.top3} total={stats.totalKeywords} color="bg-accent" />
                 <DistRow label="11 - 20" count={stats.top20 - stats.top10} total={stats.totalKeywords} color="bg-amber-500" />
                 <DistRow label="21 - 50" count={stats.top50 - stats.top20} total={stats.totalKeywords} color="bg-orange-400" />
                 <DistRow label="50+" count={stats.totalKeywords - stats.top50} total={stats.totalKeywords} color="bg-gray-400" />
@@ -361,7 +361,7 @@ function PositionBadge({ position }: { position: number | null }) {
   if (!position) return <span className="text-gray-300 text-sm">â€”</span>
   const cls =
     position <= 3 ? 'text-emerald-600 font-bold'
-      : position <= 10 ? 'text-blue-600 font-semibold'
+      : position <= 10 ? 'text-accent font-semibold'
         : position <= 20 ? 'text-amber-600 font-medium'
           : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
