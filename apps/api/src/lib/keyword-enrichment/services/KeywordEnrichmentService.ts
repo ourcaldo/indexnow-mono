@@ -133,7 +133,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
       const validation = ValidationService.validateKeywordBankInsert({
         keyword,
         country_code: countryCode,
-        language_code: this.config.defaultLanguageCode,
+        language_code: countryCode,
         is_data_found: false,
       });
 
@@ -170,7 +170,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
       const enrichedData = await this.storeEnrichedData(
         keyword,
         countryCode,
-        this.config.defaultLanguageCode,
+        countryCode,
         apiKeywordData
       );
 
@@ -553,7 +553,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
         keywords: keywords.map((k) => ({
           keyword: k.keyword,
           country_code: k.countryCode,
-          language_code: this.config.defaultLanguageCode,
+          language_code: k.countryCode,
           priority: 'normal',
         })),
         status: 'queued',
