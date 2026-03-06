@@ -6,7 +6,7 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs' || process.env.NEXT_RUNTIME === 'edge') {
-    const { initializeServerSentry } = await import('@indexnow/analytics')
+    const { initializeServerSentry } = await import('@indexnow/analytics/server');
     initializeServerSentry()
   }
 }

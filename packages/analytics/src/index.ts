@@ -104,6 +104,5 @@ export function trackError(error: Error, context?: Record<string, Json>) {
 export { getAnalyticsConfig, getSubdomainContext };
 export { initializeSentry, captureException, captureMessage, setSentryUser, clearSentryUser };
 export { trackPosthogEvent, identifyPosthogUser, resetPosthogUser };
-export * from './sentry-server';
-export * from './types';
+export type { AnalyticsTraits, TrackEventProperties } from './types';
 export { ErrorTracker, errorTracker } from './error-tracker';

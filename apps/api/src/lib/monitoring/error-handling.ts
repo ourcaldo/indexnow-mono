@@ -1,7 +1,7 @@
 import pino from 'pino';
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseAdmin, SecureServiceRoleHelpers } from '@indexnow/database';
-import { trackServerError } from '@indexnow/analytics';
+import { trackServerError } from '@indexnow/analytics/server';
 import { ErrorType, ErrorSeverity, type StructuredError, type Json } from '@indexnow/shared';
 
 /** Map application ErrorSeverity enum to database severity column values */

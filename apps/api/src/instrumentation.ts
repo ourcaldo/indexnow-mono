@@ -7,7 +7,7 @@ setLoggerTransport(logger as LoggerTransport);
 export async function register() {
   // Initialize Sentry for server-side error tracking (Node.js + Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs' || process.env.NEXT_RUNTIME === 'edge') {
-    const { initializeServerSentry } = await import('@indexnow/analytics');
+    const { initializeServerSentry } = await import('@indexnow/analytics/server');
     initializeServerSentry();
   }
 

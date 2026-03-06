@@ -11,6 +11,7 @@
       "@indexnow/mail": ["../../packages/mail/src"],
       "@indexnow/ui": ["../../packages/ui/src"],
       "@indexnow/analytics": ["../../packages/analytics/src"],
+      "@indexnow/analytics/server": ["../../packages/analytics/src/sentry-server"],
       "@indexnow/supabase-client": ["../../packages/supabase-client/src"]
     }
   },

@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig((options) => ({
-    entry: ['src/index.ts'],
+    entry: {
+        index: 'src/index.ts',
+        server: 'src/sentry-server.ts',
+    },
     format: ['cjs', 'esm'],
     dts: true,
     splitting: false,
@@ -11,5 +14,6 @@ export default defineConfig((options) => ({
         'react',
         'next',
         '@sentry/nextjs',
+        '@sentry/browser',
     ],
 }))
