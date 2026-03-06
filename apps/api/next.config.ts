@@ -12,7 +12,7 @@ const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value:
-      "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://*.supabase.co https://*.sentry.io; frame-ancestors 'none'; object-src 'none'; base-uri 'self';",
+      "default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self'; connect-src 'self' https://*.supabase.co https://*.sentry.io; frame-ancestors 'none'; object-src 'none'; base-uri 'self';",
   },
 ];
 

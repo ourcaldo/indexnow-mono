@@ -26,7 +26,7 @@ const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value:
-      `default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://*.googletagmanager.com https://*.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src ${connectSrc}; frame-src 'self' https://*.paddle.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';`,
+      `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.paddle.com https://*.googletagmanager.com https://*.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src ${connectSrc}; frame-src 'self' https://*.paddle.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self';`,
   },
 ];
 
