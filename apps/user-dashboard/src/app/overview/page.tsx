@@ -337,10 +337,10 @@ export default function OverviewPage() {
                           <span className="text-sm tabular-nums text-gray-600">{fmtVolume(kw.search_volume)}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <IntentBadge intent={kw.keyword_intent} />
+                          <span className="text-xs text-gray-600">{kw.keyword_intent ? kw.keyword_intent.charAt(0).toUpperCase() + kw.keyword_intent.slice(1) : '—'}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <DifficultyBadge value={kw.keyword_difficulty} />
+                          <span className="text-sm tabular-nums text-gray-600">{kw.keyword_difficulty != null ? kw.keyword_difficulty : '—'}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="text-xs tabular-nums text-gray-500">{kw.keyword_competition != null ? kw.keyword_competition.toFixed(2) : '—'}</span>
@@ -442,34 +442,4 @@ function fmtVolume(vol: number | null | undefined): string {
   return vol.toLocaleString()
 }
 
-/** Color-coded difficulty badge (0–100) */
-function DifficultyBadge({ value }: { value: number | null | undefined }) {
-  if (value == null) return <span className="text-gray-300 text-xs">—</span>
-  const { bg, text } =
-    value <= 29 ? { bg: 'bg-emerald-50', text: 'text-emerald-700' }
-      : value <= 49 ? { bg: 'bg-yellow-50', text: 'text-yellow-700' }
-        : value <= 69 ? { bg: 'bg-orange-50', text: 'text-orange-700' }
-          : { bg: 'bg-red-50', text: 'text-red-700' }
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold tabular-nums ${bg} ${text}`}>
-      {value}
-    </span>
-  )
-}
 
-/** Keyword intent badge */
-function IntentBadge({ intent }: { intent: string | null | undefined }) {
-  if (!intent) return <span className="text-gray-300 text-xs">—</span>
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    informational: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Info' },
-    navigational:  { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Nav' },
-    commercial:    { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Comm' },
-    transactional: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Trans' },
-  }
-  const m = map[intent.toLowerCase()] ?? { bg: 'bg-gray-50', text: 'text-gray-600', label: intent }
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.bg} ${m.text}`}>
-      {m.label}
-    </span>
-  )
-}
