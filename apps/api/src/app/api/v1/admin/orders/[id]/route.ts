@@ -19,7 +19,6 @@ import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import {
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
-  type AdminTransactionHistory,
   type AdminOrderActivityLog,
 } from '@indexnow/shared';
 
@@ -403,108 +402,6 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
     );
   }
 
-  // Get transaction history from the dedicated history table using secure wrapper
-  let transactionHistory: AdminTransactionHistory[] = [];
-  try {
-    const transactionContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_order_transaction_history',
-      reason: 'Admin fetching transaction history for order details',
-      source: 'admin/orders/[id]',
-      metadata: {
-        orderId,
-        endpoint: '/api/v1/admin/orders/[id]',
-      },
-    };
-
-    transactionHistory = await SecureServiceRoleWrapper.executeSecureOperation<
-      AdminTransactionHistory[]
-    >(
-      transactionContext,
-      {
-        table: 'indb_payment_transactions_history',
-        operationType: 'select',
-        columns: ['*', 'user'],
-        whereConditions: { transaction_id: orderId },
-      },
-      async () => {
-        const { data, error } = await supabaseAdmin
-          .from('indb_payment_transactions_history')
-          .select(
-            `
-              id,
-              transaction_id,
-              old_status,
-              new_status,
-              action_type,
-              action_description,
-              changed_by,
-              changed_by_type,
-              old_values,
-              new_values,
-              notes,
-              metadata,
-              ip_address,
-              user_agent,
-              created_at,
-              user:indb_auth_user_profiles!changed_by(
-                user_id,
-                full_name,
-                role
-              )
-            `
-          )
-          .eq('transaction_id', orderId)
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (error) {
-          throw new Error(`Failed to fetch transaction history: ${error.message}`);
-        }
-
-        return (data || []).map((item) => {
-          const user = Array.isArray(item.user) ? item.user[0] : item.user;
-          return {
-            id: String(item.id),
-            transaction_id: String(item.transaction_id),
-            old_status: item.old_status,
-            new_status: String(item.new_status),
-            action_type: String(item.action_type),
-            action_description: String(item.action_description),
-            changed_by: item.changed_by,
-            changed_by_type: String(item.changed_by_type),
-            old_values: item.old_values,
-            new_values: item.new_values,
-            notes: item.notes,
-            metadata: item.metadata,
-            ip_address: item.ip_address,
-            user_agent: item.user_agent,
-            created_at: String(item.created_at),
-            user: user
-              ? {
-                  user_id: user.user_id,
-                  full_name: user.full_name || 'Unknown',
-                  email: 'N/A', // Email not available in profile join
-                  role: user.role,
-                }
-              : null,
-          };
-        });
-      }
-    );
-  } catch (error) {
-    logger.error(
-      {
-        userId: adminUser.id,
-        endpoint: '/api/v1/admin/orders/[id]',
-        method: 'GET',
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      'Error fetching transaction history'
-    );
-  }
-
   // Log admin activity
   try {
     await ActivityLogger.logAdminAction(
@@ -539,7 +436,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
   const response: AdminOrderDetailResponse = {
     order: adminOrderTransaction,
     activity_history: activityHistory,
-    transaction_history: transactionHistory,
+    transaction_history: [],
   };
 
   return formatSuccess(response);

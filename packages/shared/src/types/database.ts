@@ -1822,60 +1822,6 @@ export type Database = {
         };
         Relationships: never[];
       };
-      indb_payment_transactions_history: {
-        Row: {
-          id: string;
-          transaction_id: string;
-          old_status: string | null;
-          new_status: string;
-          action_type: string;
-          action_description: string;
-          changed_by: string | null;
-          changed_by_type: string;
-          old_values: Json | null;
-          new_values: Json | null;
-          notes: string | null;
-          metadata: Json | null;
-          ip_address: string | null;
-          user_agent: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          transaction_id: string;
-          old_status?: string | null;
-          new_status: string;
-          action_type: string;
-          action_description: string;
-          changed_by?: string | null;
-          changed_by_type: string;
-          old_values?: Json | null;
-          new_values?: Json | null;
-          notes?: string | null;
-          metadata?: Json | null;
-          ip_address?: string | null;
-          user_agent?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          transaction_id?: string;
-          old_status?: string | null;
-          new_status?: string;
-          action_type?: string;
-          action_description?: string;
-          changed_by?: string | null;
-          changed_by_type?: string;
-          old_values?: Json | null;
-          new_values?: Json | null;
-          notes?: string | null;
-          metadata?: Json | null;
-          ip_address?: string | null;
-          user_agent?: string | null;
-          created_at?: string;
-        };
-        Relationships: never[];
-      };
       'auth.users': {
         Row: {
           id: string;

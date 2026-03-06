@@ -130,30 +130,6 @@ export interface AdminOrderTransaction {
   } | null;
 }
 
-export interface AdminTransactionHistory {
-  id: string;
-  transaction_id: string;
-  old_status: string | null;
-  new_status: string;
-  action_type: string;
-  action_description: string;
-  changed_by: string | null;
-  changed_by_type: string;
-  old_values: Json | null;
-  new_values: Json | null;
-  notes: string | null;
-  metadata: Json | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-  user?: {
-    user_id: string;
-    full_name: string;
-    email: string;
-    role: string;
-  } | null;
-}
-
 export interface AdminOrderActivityLog {
   id: string;
   admin_id: string;
@@ -173,7 +149,7 @@ export interface AdminOrderActivityLog {
 
 export interface AdminOrderDetailResponse {
   order: AdminOrderTransaction;
-  transaction_history: AdminTransactionHistory[];
+  transaction_history: never[];
   activity_history: AdminOrderActivityLog[];
 }
 
