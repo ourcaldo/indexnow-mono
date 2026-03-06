@@ -3,14 +3,19 @@ import * as Sentry from '@sentry/nextjs';
 import { browserTracingIntegration, replayIntegration } from '@sentry/browser';
 import { getAnalyticsConfig, getSubdomainContext } from './config';
 
+let sentryInitialized = false;
+
 export function initializeSentry() {
   if (typeof window === 'undefined') return;
+  if (sentryInitialized) return;
 
   const config = getAnalyticsConfig();
 
   if (!config.sentry.enabled || !config.sentry.dsn) {
     return;
   }
+
+  sentryInitialized = true;
 
   Sentry.init({
     dsn: config.sentry.dsn,
