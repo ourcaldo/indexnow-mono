@@ -171,8 +171,8 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
         // This is a security feature, not a bug. To reduce noise, the
         // loginNotificationService deduplicates by userId+IP within a window.
         const requestInfo = await getRequestInfo(request);
-        loginNotificationService
-          .sendLoginNotification({
+        try {
+          await loginNotificationService.sendLoginNotification({
             userId: data.session.user.id,
             userEmail: data.session.user.email || '',
             userName:
@@ -184,10 +184,10 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
             deviceInfo: requestInfo.deviceInfo,
             locationData: requestInfo.locationData,
             loginTime: new Date().toISOString(),
-          })
-          .catch(() => {
-            // Silent fail for notification errors
           });
+        } catch {
+          // Non-critical — notification failure shouldn't block session restore
+        }
       } catch (err) {
         logger.warn(
           { error: err instanceof Error ? err : undefined },

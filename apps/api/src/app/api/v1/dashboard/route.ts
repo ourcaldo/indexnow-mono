@@ -261,10 +261,20 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     }
 
     // Process Recent Keywords (Manual mapping for FE compatibility)
-    const recentKwRaw = (recentKeywordsResult.data || []) as any[];
+    interface RecentKeywordRow {
+      id: string;
+      keyword: string;
+      device: string | null;
+      created_at: string;
+      domain: string | null;
+      country_id: string | null;
+      position: number | null;
+      last_checked: string | null;
+    }
+    const recentKwRaw: RecentKeywordRow[] = (recentKeywordsResult.data || []);
 
     // Enrich country_id UUIDs → { iso2_code, name }
-    const recentCountryIds = [...new Set(recentKwRaw.map((k) => k.country_id).filter(Boolean))];
+    const recentCountryIds = [...new Set(recentKwRaw.map((k) => k.country_id).filter((id): id is string => id !== null))];
     let dashCountryMap: Record<string, { iso2_code: string; name: string }> = {};
     if (recentCountryIds.length > 0) {
       const { data: cRows } = await supabaseAdmin
@@ -274,13 +284,13 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       dashCountryMap = Object.fromEntries((cRows ?? []).map((c) => [c.id, { iso2_code: c.iso2_code, name: c.name }]));
     }
 
-    const recentKeywords = recentKwRaw.map((kw: any) => ({
+    const recentKeywords = recentKwRaw.map((kw) => ({
       id: kw.id,
       keyword: kw.keyword,
       device_type: kw.device,
       created_at: kw.created_at,
       domain: { domain_name: kw.domain },
-      country: dashCountryMap[kw.country_id] ?? { iso2_code: '', name: '' },
+      country: (kw.country_id && dashCountryMap[kw.country_id]) ?? { iso2_code: '', name: '' },
       recent_ranking: { position: kw.position, check_date: kw.last_checked },
     }));
 

@@ -1,11 +1,21 @@
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import type { Json, Database } from '@indexnow/shared';
+import type { Database } from '@indexnow/shared';
+import type { Json } from '@indexnow/shared';
+
+type PackageUpdate = Database['public']['Tables']['indb_payment_packages']['Update'];
 import { type AdminUser } from '@indexnow/auth';
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware';
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+
+const pricingTierDetailsSchema = z.object({
+  regular_price: z.number(),
+  promo_price: z.number().optional(),
+  period_label: z.string().optional(),
+  paddle_price_id: z.string().optional(),
+});
 
 const updatePackageSchema = z
   .object({
@@ -13,11 +23,11 @@ const updatePackageSchema = z
     slug: z.string().max(100).optional(),
     description: z.string().max(2000).nullable().optional(),
     features: z.array(z.string()).optional(),
-    quota_limits: z.record(z.string(), z.unknown()).optional(),
+    quota_limits: z.record(z.string(), z.number()).optional(),
     is_active: z.boolean().optional(),
     is_popular: z.boolean().optional(),
     sort_order: z.number().int().optional(),
-    pricing_tiers: z.union([z.record(z.string(), z.unknown()), z.array(z.record(z.string(), z.unknown()))]).optional(),
+    pricing_tiers: z.record(z.string(), pricingTierDetailsSchema).optional(),
   })
   .strict();
 
@@ -76,7 +86,7 @@ export const PATCH = adminApiWrapper(
       },
     };
 
-    const updateData = {
+    const updateData: PackageUpdate = {
       ...(validated.name !== undefined && { name: validated.name }),
       ...(validated.slug !== undefined && { slug: validated.slug }),
       ...(validated.description !== undefined && { description: validated.description }),
@@ -98,12 +108,12 @@ export const PATCH = adminApiWrapper(
             operationType: 'update',
             columns: Object.keys(updateData),
             whereConditions: { id },
-            data: updateData as unknown as Json,
+            data: JSON.parse(JSON.stringify(updateData)) as Json,
           },
           async () => {
             const { data, error } = await supabaseAdmin
               .from('indb_payment_packages')
-              .update(updateData as never)
+              .update(updateData)
               .eq('id', id)
               .select()
               .single();

@@ -191,10 +191,10 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
       logger.error({ error: loginUpdateError, userId: user.id }, 'Failed to update last login info');
     }
 
-    // 7. Send login notification email (async) — skip if no email on the user
+    // 7. Send login notification email — skip if no email on the user
     if (user.email) {
-      loginNotificationService
-        .sendLoginNotification({
+      try {
+        await loginNotificationService.sendLoginNotification({
           userId: user.id,
           userEmail: user.email,
           userName: user.user_metadata?.full_name || user.email.split('@')[0],
@@ -203,13 +203,13 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
           deviceInfo: requestInfo.deviceInfo,
           locationData: requestInfo.locationData,
           loginTime: new Date().toISOString(),
-        })
-        .catch((emailError) => {
-          logger.error(
-            { error: emailError instanceof Error ? emailError : undefined },
-            'Failed to send login notification email'
-          );
         });
+      } catch (emailError) {
+        logger.error(
+          { error: emailError instanceof Error ? emailError : undefined },
+          'Failed to send login notification email'
+        );
+      }
     }
 
     // 8. Set session cookies for middleware (cross-subdomain)

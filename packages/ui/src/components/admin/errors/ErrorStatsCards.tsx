@@ -59,7 +59,7 @@ export function ErrorStatsCards({ timeRange }: ErrorStatsProps) {
   };
 
   const mostCommonType = Object.entries(stats.distributions.byType || {})
-    .sort(([, a], [, b]) => (b as number) - (a as number))[0];
+    .sort(([, a], [, b]) => Number(b) - Number(a))[0];
 
   const errorRate = stats.summary.totalErrors / (timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720);
 
@@ -123,7 +123,7 @@ export function ErrorStatsCards({ timeRange }: ErrorStatsProps) {
             {mostCommonType?.[0] || 'N/A'}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {(mostCommonType?.[1] as number) || 0} occurrences
+            {Number(mostCommonType?.[1]) || 0} occurrences
           </p>
         </CardContent>
       </Card>
