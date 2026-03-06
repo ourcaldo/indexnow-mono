@@ -7,5 +7,5 @@ export default defineConfig((options) => ({
   splitting: false,
   sourcemap: true,
   clean: !options.watch,
-  external: ['react', 'next', '@supabase/supabase-js', '@supabase/ssr'],
+  external: ['react', 'next', '@supabase/supabase-js', '@supabase/ssr', '@indexnow/shared'],
 }));

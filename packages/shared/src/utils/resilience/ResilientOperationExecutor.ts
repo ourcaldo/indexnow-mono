@@ -1,9 +1,9 @@
 /**
  * Resilient Operation Executor
- * 
+ *
  * Combines Circuit Breaker, Exponential Backoff, and Fallback Handler
  * for comprehensive resilience in external service calls
- * 
+ *
  * Phase 3 - Milestone C.7: Integration of resilience mechanisms
  */
 
@@ -28,22 +28,23 @@ export class ResilientOperationExecutor {
     operation: () => Promise<T>,
     config: ResilientOperationConfig<T>
   ): Promise<T | Partial<T>> {
-    const { serviceName, circuitBreaker, retryConfig, fallbackStrategies, cacheKey, context } = config;
+    const { serviceName, circuitBreaker, retryConfig, fallbackStrategies, cacheKey, context } =
+      config;
 
     // Create resilience layers
-    const breaker = circuitBreaker !== false 
-      ? CircuitBreakerManager.getBreaker(serviceName)
-      : null;
+    const breaker = circuitBreaker !== false ? CircuitBreakerManager.getBreaker(serviceName) : null;
 
-    const backoff = new ExponentialBackoff(retryConfig || {
-      maxAttempts: 3,
-      initialDelay: 1000,
-      maxDelay: 30000,
-      multiplier: 2,
-      jitter: true
-    });
+    const backoff = new ExponentialBackoff(
+      retryConfig || {
+        maxAttempts: 3,
+        initialDelay: 1000,
+        maxDelay: 30000,
+        multiplier: 2,
+        jitter: true,
+      }
+    );
 
-    const fallbackHandler = fallbackStrategies 
+    const fallbackHandler = fallbackStrategies
       ? new FallbackHandler<T>({ strategies: fallbackStrategies, logFallbacks: true })
       : null;
 
@@ -59,7 +60,11 @@ export class ResilientOperationExecutor {
 
     // Execute with fallback if configured
     if (fallbackHandler) {
-      return fallbackHandler.executeWithFallback(resilientOperation, cacheKey, context || serviceName);
+      return fallbackHandler.executeWithFallback(
+        resilientOperation,
+        cacheKey,
+        context || serviceName
+      );
     } else {
       return resilientOperation();
     }
@@ -80,8 +85,8 @@ export class ResilientOperationExecutor {
       retryConfig: {
         maxAttempts: 3,
         initialDelay: 1000,
-        maxDelay: 30000
-      }
+        maxDelay: 30000,
+      },
     });
   }
 
@@ -99,12 +104,9 @@ export class ResilientOperationExecutor {
       retryConfig: {
         maxAttempts: 2,
         initialDelay: 500,
-        maxDelay: 5000
+        maxDelay: 5000,
       },
-      fallbackStrategies: [
-        { type: 'cached', ttl: 60000 },
-        { type: 'error' }
-      ]
+      fallbackStrategies: [{ type: 'cached', ttl: 60000 }, { type: 'error' }],
     });
   }
 
@@ -117,9 +119,9 @@ export class ResilientOperationExecutor {
     fallbackValue?: T
   ): Promise<T | Partial<T>> {
     const strategies: FallbackStrategy<T>[] = [
-      { type: 'cached', ttl: 300000 } // 5 minutes
+      { type: 'cached', ttl: 300000 }, // 5 minutes
     ];
-    
+
     if (fallbackValue !== undefined) {
       strategies.push({ type: 'default', value: fallbackValue });
     }
@@ -133,9 +135,9 @@ export class ResilientOperationExecutor {
         initialDelay: 2000,
         maxDelay: 60000,
         multiplier: 2,
-        jitter: true
+        jitter: true,
       },
-      fallbackStrategies: strategies
+      fallbackStrategies: strategies,
     });
   }
 
@@ -156,12 +158,12 @@ export class ResilientOperationExecutor {
         maxDelay: 300000, // 5 minutes
         multiplier: 2,
         jitter: true,
-        retryableErrors: [/429/, /503/, /rate.limit/i, /too.many.requests/i]
+        retryableErrors: [/429/, /503/, /rate.limit/i, /too.many.requests/i],
       },
       fallbackStrategies: [
-        { type: 'cached', ttl: 3600000 } // 1 hour cache
+        { type: 'cached', ttl: 3600000 }, // 1 hour cache
       ],
-      cacheKey
+      cacheKey,
     });
   }
 
@@ -179,11 +181,11 @@ export class ResilientOperationExecutor {
       retryConfig: {
         maxAttempts: 2,
         initialDelay: 2000,
-        maxDelay: 10000
+        maxDelay: 10000,
       },
       fallbackStrategies: [
-        { type: 'error' } // Don't fallback for payments - fail explicitly
-      ]
+        { type: 'error' }, // Don't fallback for payments - fail explicitly
+      ],
     });
   }
 }
@@ -193,9 +195,8 @@ export class ResilientOperationExecutor {
  */
 export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceName'>) {
   return function (
-    target: Object,
+    target: Record<string, unknown>,
     propertyKey: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Required by TypeScript decorator API: decorated methods have unknown parameter signatures
     descriptor: TypedPropertyDescriptor<(...args: unknown[]) => Promise<T | Partial<T>>>
   ) {
     const originalMethod = descriptor.value;
@@ -204,16 +205,14 @@ export function Resilient<T>(config: Omit<ResilientOperationConfig<T>, 'serviceN
       return descriptor;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Decorator must bind to unknown class context
+    const constructorName = target.constructor.name;
+
     descriptor.value = async function (this: unknown, ...args: unknown[]): Promise<T | Partial<T>> {
-      return ResilientOperationExecutor.execute(
-        () => originalMethod.apply(this, args),
-        {
-          ...config,
-          serviceName: `${target.constructor.name}.${propertyKey}`,
-          context: config.context || `${target.constructor.name}.${propertyKey}`
-        }
-      );
+      return ResilientOperationExecutor.execute(() => originalMethod.apply(this, args), {
+        ...config,
+        serviceName: `${constructorName}.${propertyKey}`,
+        context: config.context || `${constructorName}.${propertyKey}`,
+      });
     };
 
     return descriptor;

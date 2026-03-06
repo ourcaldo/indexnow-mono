@@ -1,13 +1,13 @@
 /**
  * Circuit Breaker Pattern Implementation
- * 
+ *
  * Prevents cascade failures by stopping requests to failing services
- * 
+ *
  * States:
  * - CLOSED: Normal operation, requests pass through
  * - OPEN: Service is failing, requests fail immediately
  * - HALF_OPEN: Testing if service has recovered
- * 
+ *
  * Phase 3 - Milestone C.4: Circuit Breaker implementation
  */
 
@@ -16,16 +16,16 @@ import { logger } from '../logger';
 export enum CircuitState {
   CLOSED = 'CLOSED',
   OPEN = 'OPEN',
-  HALF_OPEN = 'HALF_OPEN'
+  HALF_OPEN = 'HALF_OPEN',
 }
 
 export interface CircuitBreakerConfig {
-  failureThreshold: number;      // Number of failures before opening
-  successThreshold: number;       // Number of consecutive successes to close from half-open
-  timeout: number;                // Time (ms) to wait before trying half-open
-  monitoringWindow: number;       // Time window (ms) for counting failures
-  name: string;                   // Identifier for this breaker
-  halfOpenMaxProbes: number;      // Max concurrent probe requests in HALF_OPEN (M-12)
+  failureThreshold: number; // Number of failures before opening
+  successThreshold: number; // Number of consecutive successes to close from half-open
+  timeout: number; // Time (ms) to wait before trying half-open
+  monitoringWindow: number; // Time window (ms) for counting failures
+  name: string; // Identifier for this breaker
+  halfOpenMaxProbes: number; // Max concurrent probe requests in HALF_OPEN (M-12)
 }
 
 export interface CircuitBreakerMetrics {
@@ -47,9 +47,13 @@ export class CircuitBreaker {
   private lastFailureTime: number | null = null;
   private lastStateChange: number = Date.now();
   private nextAttempt: number = Date.now();
-  private readonly failures: number[] = []; // Timestamps of failures within window
+  // Circular buffer for failure timestamps within monitoring window
+  private readonly failures: number[] = [];
+  private failuresHead: number = 0; // Index of oldest entry in circular buffer
+  private failuresTail: number = 0; // Index of next write position
+  private failuresSize: number = 0; // Current number of entries
   private activeHalfOpenProbes: number = 0; // Concurrent probe requests in HALF_OPEN (M-12)
-  
+
   // Metrics
   private totalRequests: number = 0;
   private totalFailures: number = 0;
@@ -66,9 +70,7 @@ export class CircuitBreaker {
     // Check if circuit is open
     if (this.state === CircuitState.OPEN) {
       if (Date.now() < this.nextAttempt) {
-        throw new Error(
-          `Circuit breaker "${this.config.name}" is OPEN. Service unavailable.`
-        );
+        throw new Error(`Circuit breaker "${this.config.name}" is OPEN. Service unavailable.`);
       }
       // Transition to half-open to test service
       this.transitionTo(CircuitState.HALF_OPEN);
@@ -110,7 +112,7 @@ export class CircuitBreaker {
     } else {
       // In CLOSED state, success means healthy — clear windowed failures
       this.failureCount = 0;
-      this.failures.length = 0;
+      this.clearFailures();
     }
   }
 
@@ -120,15 +122,16 @@ export class CircuitBreaker {
   private onFailure(): void {
     this.totalFailures++;
     this.lastFailureTime = Date.now();
-    this.failures.push(this.lastFailureTime);
+    this.pushFailure(this.lastFailureTime);
 
-    // Remove failures outside monitoring window
+    // Remove failures outside monitoring window (O(1) per eviction via head advance)
     const windowStart = Date.now() - this.config.monitoringWindow;
-    while (this.failures.length > 0 && this.failures[0] < windowStart) {
-      this.failures.shift();
+    while (this.failuresSize > 0 && this.failures[this.failuresHead] < windowStart) {
+      this.failuresHead = (this.failuresHead + 1) % this.failures.length;
+      this.failuresSize--;
     }
 
-    this.failureCount = this.failures.length;
+    this.failureCount = this.failuresSize;
 
     if (this.state === CircuitState.HALF_OPEN) {
       this.activeHalfOpenProbes = Math.max(0, this.activeHalfOpenProbes - 1);
@@ -152,30 +155,39 @@ export class CircuitBreaker {
     if (newState === CircuitState.OPEN) {
       this.nextAttempt = Date.now() + this.config.timeout;
       this.successCount = 0;
-      logger.warn({
-        circuitBreaker: this.config.name,
-        oldState,
-        newState,
-        failureCount: this.failureCount,
-        nextAttempt: new Date(this.nextAttempt).toISOString()
-      }, `Circuit breaker "${this.config.name}" opened`);
+      logger.warn(
+        {
+          circuitBreaker: this.config.name,
+          oldState,
+          newState,
+          failureCount: this.failureCount,
+          nextAttempt: new Date(this.nextAttempt).toISOString(),
+        },
+        `Circuit breaker "${this.config.name}" opened`
+      );
     } else if (newState === CircuitState.CLOSED) {
       this.failureCount = 0;
       this.successCount = 0;
-      this.failures.length = 0;
-      logger.info({
-        circuitBreaker: this.config.name,
-        oldState,
-        newState
-      }, `Circuit breaker "${this.config.name}" closed`);
+      this.clearFailures();
+      logger.info(
+        {
+          circuitBreaker: this.config.name,
+          oldState,
+          newState,
+        },
+        `Circuit breaker "${this.config.name}" closed`
+      );
     } else if (newState === CircuitState.HALF_OPEN) {
       this.successCount = 0;
       this.activeHalfOpenProbes = 0;
-      logger.info({
-        circuitBreaker: this.config.name,
-        oldState,
-        newState
-      }, `Circuit breaker "${this.config.name}" half-open`);
+      logger.info(
+        {
+          circuitBreaker: this.config.name,
+          oldState,
+          newState,
+        },
+        `Circuit breaker "${this.config.name}" half-open`
+      );
     }
   }
 
@@ -192,7 +204,7 @@ export class CircuitBreaker {
       totalRequests: this.totalRequests,
       totalFailures: this.totalFailures,
       totalSuccesses: this.totalSuccesses,
-      activeHalfOpenProbes: this.activeHalfOpenProbes
+      activeHalfOpenProbes: this.activeHalfOpenProbes,
     };
   }
 
@@ -204,11 +216,14 @@ export class CircuitBreaker {
     this.failureCount = 0;
     this.successCount = 0;
     this.lastFailureTime = null;
-    this.failures.length = 0;
+    this.clearFailures();
     this.activeHalfOpenProbes = 0;
-    logger.info({
-      circuitBreaker: this.config.name
-    }, `Circuit breaker "${this.config.name}" reset`);
+    logger.info(
+      {
+        circuitBreaker: this.config.name,
+      },
+      `Circuit breaker "${this.config.name}" reset`
+    );
   }
 
   /**
@@ -221,6 +236,32 @@ export class CircuitBreaker {
   /**
    * Check if circuit is available
    */
+  /** Push a timestamp into the circular buffer, growing if needed */
+  private pushFailure(timestamp: number): void {
+    if (this.failuresSize === this.failures.length) {
+      // Buffer full — grow by copying into a fresh array
+      const oldLen = this.failures.length || 4;
+      const newBuf: number[] = new Array(oldLen * 2);
+      for (let i = 0; i < this.failuresSize; i++) {
+        newBuf[i] = this.failures[(this.failuresHead + i) % oldLen];
+      }
+      this.failures.length = 0;
+      this.failures.push(...newBuf);
+      this.failuresHead = 0;
+      this.failuresTail = this.failuresSize;
+    }
+    this.failures[this.failuresTail] = timestamp;
+    this.failuresTail = (this.failuresTail + 1) % this.failures.length;
+    this.failuresSize++;
+  }
+
+  /** Reset the circular buffer */
+  private clearFailures(): void {
+    this.failuresHead = 0;
+    this.failuresTail = 0;
+    this.failuresSize = 0;
+  }
+
   isAvailable(): boolean {
     if (this.state === CircuitState.CLOSED) {
       return true;
@@ -247,10 +288,7 @@ export class CircuitBreakerManager {
   /**
    * Get or create a circuit breaker for a service
    */
-  static getBreaker(
-    serviceName: string,
-    config?: Partial<CircuitBreakerConfig>
-  ): CircuitBreaker {
+  static getBreaker(serviceName: string, config?: Partial<CircuitBreakerConfig>): CircuitBreaker {
     if (!this.breakers.has(serviceName)) {
       // Evict oldest breakers if at capacity
       if (this.breakers.size >= this.MAX_BREAKERS) {
@@ -265,7 +303,7 @@ export class CircuitBreakerManager {
         monitoringWindow: 120000, // 2 minutes
         name: serviceName,
         halfOpenMaxProbes: 1,
-        ...config
+        ...config,
       };
       this.breakers.set(serviceName, new CircuitBreaker(defaultConfig));
     }
@@ -287,7 +325,7 @@ export class CircuitBreakerManager {
    * Reset all circuit breakers
    */
   static resetAll(): void {
-    this.breakers.forEach(breaker => breaker.reset());
+    this.breakers.forEach((breaker) => breaker.reset());
   }
 
   /**
@@ -317,31 +355,35 @@ export class CircuitBreakerManager {
 
 // Pre-configured circuit breakers for common services
 export const ServiceCircuitBreakers = {
-  database: () => CircuitBreakerManager.getBreaker('database', {
-    failureThreshold: 3,
-    successThreshold: 2,
-    timeout: 30000,
-    monitoringWindow: 60000
-  }),
-  
-  externalApi: () => CircuitBreakerManager.getBreaker('external-api', {
-    failureThreshold: 5,
-    successThreshold: 3,
-    timeout: 60000,
-    monitoringWindow: 120000
-  }),
-  
-  payment: () => CircuitBreakerManager.getBreaker('payment-service', {
-    failureThreshold: 2,
-    successThreshold: 3,
-    timeout: 120000,
-    monitoringWindow: 180000
-  }),
-  
-  serp: () => CircuitBreakerManager.getBreaker('serp-api', {
-    failureThreshold: 10,
-    successThreshold: 3,
-    timeout: 300000, // 5 minutes
-    monitoringWindow: 600000 // 10 minutes
-  })
+  database: () =>
+    CircuitBreakerManager.getBreaker('database', {
+      failureThreshold: 3,
+      successThreshold: 2,
+      timeout: 30000,
+      monitoringWindow: 60000,
+    }),
+
+  externalApi: () =>
+    CircuitBreakerManager.getBreaker('external-api', {
+      failureThreshold: 5,
+      successThreshold: 3,
+      timeout: 60000,
+      monitoringWindow: 120000,
+    }),
+
+  payment: () =>
+    CircuitBreakerManager.getBreaker('payment-service', {
+      failureThreshold: 2,
+      successThreshold: 3,
+      timeout: 120000,
+      monitoringWindow: 180000,
+    }),
+
+  serp: () =>
+    CircuitBreakerManager.getBreaker('serp-api', {
+      failureThreshold: 10,
+      successThreshold: 3,
+      timeout: 300000, // 5 minutes
+      monitoringWindow: 600000, // 10 minutes
+    }),
 };

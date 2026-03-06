@@ -71,12 +71,14 @@ export function formatRelativeTime(dateString: string | Date): string {
     return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
   }
 
-  const diffInMonths = Math.floor(diffInDays / 30);
+  const diffInMonths =
+    (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth());
   if (diffInMonths < 12) {
-    return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+    const months = Math.max(diffInMonths, 1);
+    return `${months} month${months > 1 ? 's' : ''} ago`;
   }
 
-  const diffInYears = Math.floor(diffInDays / 365);
+  const diffInYears = Math.floor(diffInMonths / 12);
   return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
 }
 

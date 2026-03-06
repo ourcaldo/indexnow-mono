@@ -1,52 +1,52 @@
-'use client'
+'use client';
 
-import React from 'react'
-import { AlertCircle, RefreshCw, Home } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { Button } from './button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
-import { Alert, AlertDescription } from './alert'
+import React from 'react';
+import { AlertCircle, RefreshCw, Home } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Button } from './button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
+import { Alert, AlertDescription } from './alert';
 
 interface ErrorStateProps {
   /**
    * Error title displayed prominently
    */
-  title?: string
-  
+  title?: string;
+
   /**
    * Detailed error message
    */
-  message?: string
-  
+  message?: string;
+
   /**
    * Optional error ID for tracking/support
    */
-  errorId?: string
-  
+  errorId?: string;
+
   /**
    * Callback function when user clicks retry button
    */
-  onRetry?: () => void
-  
+  onRetry?: () => void;
+
   /**
    * Show home button to navigate back
    */
-  showHomeButton?: boolean
-  
+  showHomeButton?: boolean;
+
   /**
    * Custom retry button label
    */
-  retryLabel?: string
-  
+  retryLabel?: string;
+
   /**
    * Display variant - 'card' for full card layout, 'inline' for compact display
    */
-  variant?: 'card' | 'inline'
+  variant?: 'card' | 'inline';
 }
 
 /**
  * ErrorState Component
- * 
+ *
  * Standardized error display component for consistent error UX across the application.
  * Supports both full-page card layout and inline compact display.
  */
@@ -57,21 +57,22 @@ export function ErrorState({
   onRetry,
   showHomeButton = false,
   retryLabel = 'Try Again',
-  variant = 'card'
+  variant = 'card',
 }: ErrorStateProps) {
-  const router = useRouter()
-  
+  const router = useRouter();
+
   const handleCopyErrorId = () => {
     if (errorId && typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(errorId)
+      navigator.clipboard
+        .writeText(errorId)
         .then(() => {
           // Visual feedback could be added here
         })
         .catch(() => {
-          // Silently fail
-        })
+          console.warn('Failed to copy error ID to clipboard');
+        });
     }
-  }
+  };
 
   // Inline variant - compact display
   if (variant === 'inline') {
@@ -89,7 +90,7 @@ export function ErrorState({
                 className="ml-4"
                 data-testid="button-retry"
               >
-                <RefreshCw className="h-3 w-3 mr-2" />
+                <RefreshCw className="mr-2 h-3 w-3" />
                 {retryLabel}
               </Button>
             )}
@@ -97,7 +98,7 @@ export function ErrorState({
           {errorId && (
             <button
               onClick={handleCopyErrorId}
-              className="text-xs text-muted-foreground hover:text-foreground mt-2 underline cursor-pointer"
+              className="text-muted-foreground hover:text-foreground mt-2 cursor-pointer text-xs underline"
               data-testid="button-copy-error-id"
             >
               Error ID: {errorId} (click to copy)
@@ -105,37 +106,42 @@ export function ErrorState({
           )}
         </AlertDescription>
       </Alert>
-    )
+    );
   }
 
   // Card variant - full page display
   return (
-    <div className="flex items-center justify-center min-h-[400px] p-4" data-testid="error-state-card">
+    <div
+      className="flex min-h-[400px] items-center justify-center p-4"
+      data-testid="error-state-card"
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-            <AlertCircle className="h-6 w-6 text-destructive" data-testid="icon-error" />
+          <div className="bg-destructive/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
+            <AlertCircle className="text-destructive h-6 w-6" data-testid="icon-error" />
           </div>
-          <CardTitle className="text-xl" data-testid="error-title">{title}</CardTitle>
+          <CardTitle className="text-xl" data-testid="error-title">
+            {title}
+          </CardTitle>
           <CardDescription className="mt-2" data-testid="error-message">
             {message}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           {/* Error ID display */}
           {errorId && (
-            <div className="rounded-md bg-muted p-3 text-center">
-              <p className="text-sm text-muted-foreground">Error ID</p>
+            <div className="bg-muted rounded-md p-3 text-center">
+              <p className="text-muted-foreground text-sm">Error ID</p>
               <button
                 onClick={handleCopyErrorId}
-                className="text-sm font-mono text-foreground hover:text-primary underline cursor-pointer"
+                className="text-foreground hover:text-primary cursor-pointer font-mono text-sm underline"
                 data-testid="button-copy-error-id"
                 title="Click to copy error ID"
               >
                 {errorId}
               </button>
-              <p className="text-xs text-muted-foreground mt-1">Click to copy</p>
+              <p className="text-muted-foreground mt-1 text-xs">Click to copy</p>
             </div>
           )}
 
@@ -148,11 +154,11 @@ export function ErrorState({
                 className="w-full sm:w-auto"
                 data-testid="button-retry"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="mr-2 h-4 w-4" />
                 {retryLabel}
               </Button>
             )}
-            
+
             {showHomeButton && (
               <Button
                 onClick={() => router.push('/')}
@@ -160,19 +166,19 @@ export function ErrorState({
                 className="w-full sm:w-auto"
                 data-testid="button-home"
               >
-                <Home className="h-4 w-4 mr-2" />
+                <Home className="mr-2 h-4 w-4" />
                 Go to Dashboard
               </Button>
             )}
           </div>
 
           {/* Help text */}
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-muted-foreground text-center text-xs">
             If this problem persists, please contact support
             {errorId && ' with the error ID above'}.
           </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

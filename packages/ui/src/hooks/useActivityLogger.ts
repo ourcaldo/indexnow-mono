@@ -1,9 +1,9 @@
-﻿/**
+'use client';
+
+/**
  * Frontend Activity Logging Hook
  * Provides convenient methods to log user activities from client-side
  */
-
-'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
 import { type Json, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared';

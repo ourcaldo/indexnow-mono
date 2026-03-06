@@ -1,4 +1,6 @@
-﻿/**
+'use client';
+
+/**
  * Admin Activity Logger — client-side page-view & observation tracking.
  *
  * Mutations (suspend, update order, etc.) are already logged server-side via
@@ -11,21 +13,20 @@
  * All calls go through the standard POST /api/v1/activity endpoint, which is
  * authenticated (works for any logged-in user, including admins).
  */
-'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
-import { type Json, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared'
-import { authService, authenticatedFetch } from '@indexnow/supabase-client'
+import { useEffect, useRef, useCallback } from 'react';
+import { type Json, ACTIVITY_ENDPOINTS, logger } from '@indexnow/shared';
+import { authService, authenticatedFetch } from '@indexnow/supabase-client';
 
 // Module-level dedup: prevents duplicate page views across multiple hook instances
-const loggedAdminPageViews = new Set<string>()
+const loggedAdminPageViews = new Set<string>();
 
 interface ActivityLogRequest {
-  eventType: string
-  actionDescription: string
-  targetType: string
-  targetId?: string
-  metadata?: Record<string, Json>
+  eventType: string;
+  actionDescription: string;
+  targetType: string;
+  targetId?: string;
+  metadata?: Record<string, Json>;
 }
 
 /**
@@ -34,8 +35,8 @@ interface ActivityLogRequest {
 export function useAdminActivityLogger() {
   const logActivity = useCallback(async (request: ActivityLogRequest) => {
     try {
-      const user = await authService.getCurrentUser()
-      if (!user) return
+      const user = await authService.getCurrentUser();
+      if (!user) return;
 
       await authenticatedFetch(ACTIVITY_ENDPOINTS.LOG, {
         method: 'POST',
@@ -46,19 +47,19 @@ export function useAdminActivityLogger() {
             ...request.metadata,
           },
         }),
-      })
+      });
     } catch (err) {
       // Activity logging is non-critical — silently swallow failures
       if (process.env.NODE_ENV === 'development') {
         logger.debug(
           { error: err instanceof Error ? err : undefined },
           '[admin-activity-logger] Failed to log (non-critical)'
-        )
+        );
       }
     }
-  }, [])
+  }, []);
 
-  return { logActivity }
+  return { logActivity };
 }
 
 /**
@@ -70,15 +71,15 @@ export function useAdminPageViewLogger(
   pageName: string,
   metadata?: Record<string, Json>
 ) {
-  const { logActivity } = useAdminActivityLogger()
-  const hasLogged = useRef(false)
+  const { logActivity } = useAdminActivityLogger();
+  const hasLogged = useRef(false);
 
   useEffect(() => {
-    const key = `admin:${section}:${pageName}`
-    if (hasLogged.current || loggedAdminPageViews.has(key)) return
+    const key = `admin:${section}:${pageName}`;
+    if (hasLogged.current || loggedAdminPageViews.has(key)) return;
 
-    hasLogged.current = true
-    loggedAdminPageViews.add(key)
+    hasLogged.current = true;
+    loggedAdminPageViews.add(key);
 
     logActivity({
       eventType: 'admin_page_view',
@@ -91,18 +92,18 @@ export function useAdminPageViewLogger(
       },
     }).catch(() => {
       // Reset on failure so next mount retries
-      hasLogged.current = false
-      loggedAdminPageViews.delete(key)
-    })
+      hasLogged.current = false;
+      loggedAdminPageViews.delete(key);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logActivity, section, pageName])
+  }, [logActivity, section, pageName]);
 }
 
 /**
  * Dashboard-specific logger for stats refresh (an observable read action).
  */
 export function useAdminDashboardLogger() {
-  const { logActivity } = useAdminActivityLogger()
+  const { logActivity } = useAdminActivityLogger();
 
   const logStatsRefresh = useCallback(() => {
     logActivity({
@@ -110,8 +111,8 @@ export function useAdminDashboardLogger() {
       actionDescription: 'Admin refreshed dashboard statistics',
       targetType: 'admin_page',
       metadata: { section: 'dashboard' },
-    })
-  }, [logActivity])
+    });
+  }, [logActivity]);
 
-  return { logStatsRefresh }
+  return { logStatsRefresh };
 }
