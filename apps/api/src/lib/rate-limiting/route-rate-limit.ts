@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { redisRateLimiter, type RateLimitConfig } from './redis-rate-limiter';
+import { extractClientIp } from '@indexnow/shared';
 
 /**
  * Check rate limit for the current request.
@@ -20,10 +21,7 @@ export async function checkRouteRateLimit(
   config: RateLimitConfig,
   prefix: string
 ): Promise<NextResponse | null> {
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown';
+  const ip = extractClientIp(request);
 
   const key = `route_${prefix}_${ip}`;
   const result = await redisRateLimiter.checkAndIncrement(key, config);

@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { isValidIP } from './ip-device-utils';
 
 interface RateLimitEntry {
   count: number;
@@ -91,6 +92,50 @@ export function setRateLimitStore(store: RateLimitStore): void {
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes in milliseconds
 
+// ── Rate limiter IP extraction configuration (#V7 H-17) ──
+
+/**
+ * Configuration for the rate limiter's IP extraction behaviour.
+ */
+export interface RateLimiterConfig {
+  /**
+   * Trust reverse-proxy headers (X-Forwarded-For, X-Real-IP) for client IP
+   * extraction.
+   *
+   * - `false` (default): Proxy headers are ignored. All requests are keyed as
+   *   `'anonymous'`, sharing a single rate-limit bucket. Secure against header
+   *   spoofing but coarse — enable `trustProxy` once deployed behind a trusted
+   *   reverse proxy.
+   * - `true`: The leftmost IP in X-Forwarded-For (the original client address
+   *   appended by the first trusted proxy) is used after format validation.
+   *   Only enable when the app runs behind a trusted reverse proxy (nginx,
+   *   Vercel, Cloudflare) that **overwrites or appends** to X-Forwarded-For
+   *   on every inbound request.
+   *
+   * ⚠ When `trustProxy` is true, ensure your reverse proxy strips or
+   *   overwrites any incoming X-Forwarded-For header from the client to
+   *   prevent spoofing.
+   */
+  trustProxy: boolean;
+}
+
+const rateLimiterConfig: RateLimiterConfig = {
+  trustProxy: false,
+};
+
+/**
+ * Configure the rate limiter. Call at app startup before any rate-limit checks.
+ *
+ * ```ts
+ * import { configureRateLimiter } from '@indexnow/shared';
+ * configureRateLimiter({ trustProxy: true }); // behind nginx/Vercel/Cloudflare
+ * ```
+ */
+export function configureRateLimiter(config: Partial<RateLimiterConfig>): void {
+  Object.assign(rateLimiterConfig, config);
+  logger.info({ trustProxy: rateLimiterConfig.trustProxy }, '[RateLimiter] Configuration updated');
+}
+
 // Type Definitions
 export type HeaderValue = string | string[] | undefined | null;
 
@@ -137,20 +182,54 @@ function getHeaderValue(headers: HeadersLike, name: string): string | null {
 }
 
 /**
- * Get client IP from request headers
+ * Extract client IP from request headers with spoofing protection (#V7 H-17).
+ *
+ * When `trustProxy` is **false** (default), proxy headers are ignored and all
+ * requests are keyed as `'anonymous'`. This prevents IP spoofing via forged
+ * `X-Forwarded-For` / `X-Real-IP` headers.
+ *
+ * When `trustProxy` is **true**, the leftmost (client) IP from
+ * `X-Forwarded-For` is used after IP-format validation. Only enable behind a
+ * trusted reverse proxy that sanitises incoming forwarded headers.
+ *
+ * Exported for reuse by other rate-limiting utilities (e.g. route-rate-limit).
  */
-function getClientIp(request: RequestLike): string {
-  const forwardedFor = getHeaderValue(request.headers, 'x-forwarded-for');
-  const realIp = getHeaderValue(request.headers, 'x-real-ip');
+export function extractClientIp(request: RequestLike): string {
+  if (!rateLimiterConfig.trustProxy) {
+    return 'anonymous';
+  }
 
-  return forwardedFor?.split(',')[0]?.trim() || realIp || 'anonymous';
+  // Trusted proxy path — extract and validate forwarded headers
+  const forwardedFor = getHeaderValue(request.headers, 'x-forwarded-for');
+  if (forwardedFor) {
+    // Leftmost IP is the original client IP set by the first trusted proxy
+    const candidate = forwardedFor.split(',')[0]?.trim();
+    if (candidate && isValidIP(candidate)) {
+      return candidate;
+    }
+    logger.warn(
+      { forwardedFor },
+      '[RateLimiter] Invalid IP format in X-Forwarded-For, ignoring header'
+    );
+  }
+
+  const realIp = getHeaderValue(request.headers, 'x-real-ip');
+  if (realIp) {
+    const candidate = realIp.trim();
+    if (isValidIP(candidate)) {
+      return candidate;
+    }
+    logger.warn({ realIp }, '[RateLimiter] Invalid IP format in X-Real-IP, ignoring header');
+  }
+
+  return 'anonymous';
 }
 
 /**
  * Check if IP is currently rate limited
  */
 export async function isRateLimited(request: RequestLike): Promise<boolean> {
-  const ip = getClientIp(request);
+  const ip = extractClientIp(request);
   const entry = await activeStore.get(ip);
   if (!entry) return false;
   return entry.count > MAX_ATTEMPTS;
@@ -160,7 +239,7 @@ export async function isRateLimited(request: RequestLike): Promise<boolean> {
  * Record a failed authentication attempt
  */
 export async function recordFailedAttempt(request: RequestLike): Promise<boolean> {
-  const ip = getClientIp(request);
+  const ip = extractClientIp(request);
   const now = Date.now();
   const entry = await activeStore.get(ip);
 
@@ -197,6 +276,6 @@ export async function recordFailedAttempt(request: RequestLike): Promise<boolean
  * Reset rate limit for an IP
  */
 export async function resetRateLimit(request: RequestLike): Promise<void> {
-  const ip = getClientIp(request);
+  const ip = extractClientIp(request);
   await activeStore.delete(ip);
 }
