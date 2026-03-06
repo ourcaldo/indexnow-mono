@@ -279,7 +279,7 @@ export const AdminSchemas = {
       .string()
       .min(10, 'Reason must be at least 10 characters')
       .max(FIELD_LIMITS.MESSAGE.max, 'Reason is too long'),
-    additionalData: z.record(z.any()).optional(),
+    additionalData: z.record(z.string(), z.unknown()).optional(),
   }),
 
   packageManagement: z.object({
@@ -386,10 +386,89 @@ export const CustomValidators = {
     return !freeEmailDomains.includes(domain);
   },
 
+  /**
+   * Comprehensive XSS sanitizer that encodes dangerous characters and strips
+   * known attack vectors including script injection, event handlers, dangerous
+   * URIs, style-based XSS, SVG/MathML payloads, and template literal injection.
+   */
   sanitizeInput: (input: string): string => {
-    return input
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/[<>]/g, '')
-      .trim();
+    let sanitized = input;
+
+    // 1. Decode HTML entities to catch encoded payloads (&#x3C;, &#60;, etc.)
+    sanitized = sanitized
+      .replace(/&#x([0-9a-fA-F]+);?/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&#(\d+);?/g, (_m, dec) => String.fromCharCode(parseInt(dec, 10)))
+      .replace(/&(lt|gt|amp|quot|apos|Tab|NewLine);/gi, (m) => {
+        const map: Record<string, string> = {
+          '&lt;': '<',
+          '&gt;': '>',
+          '&amp;': '&',
+          '&quot;': '"',
+          '&apos;': "'",
+          '&Tab;': '\t',
+          '&NewLine;': '\n',
+        };
+        return map[m.toLowerCase()] ?? m;
+      });
+
+    // 2. Strip null bytes and zero-width characters used to bypass filters
+    sanitized = sanitized.replace(/[\x00\u200B\u200C\u200D\uFEFF]/g, '');
+
+    // 3. Remove <script>, <iframe>, <object>, <embed>, <applet>, <form>,
+    //    <svg>, <math>, <base>, <link>, <meta>, <style> tags and their contents
+    const dangerousTags = [
+      'script',
+      'iframe',
+      'object',
+      'embed',
+      'applet',
+      'form',
+      'svg',
+      'math',
+      'base',
+      'link',
+      'meta',
+      'style',
+      'template',
+      'xmp',
+      'xml',
+      'xss',
+    ];
+    for (const tag of dangerousTags) {
+      const openClose = new RegExp(`<${tag}\\b[^]*?<\\/${tag}\\s*>`, 'gi');
+      sanitized = sanitized.replace(openClose, '');
+      const selfClosing = new RegExp(`<\\/?${tag}\\b[^>]*\\/?>`, 'gi');
+      sanitized = sanitized.replace(selfClosing, '');
+    }
+
+    // 4. Strip event handler attributes (on*="...", on*='...', on*=...)
+    sanitized = sanitized.replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+
+    // 5. Remove dangerous URI schemes (javascript:, data:, vbscript:, etc.)
+    //    Handles whitespace/newline obfuscation within the scheme
+    sanitized = sanitized.replace(
+      /(?:java\s*s\s*c\s*r\s*i\s*p\s*t|v\s*b\s*s\s*c\s*r\s*i\s*p\s*t|data)\s*:/gi,
+      ''
+    );
+
+    // 6. Remove style-based XSS: expression(), url(), -moz-binding, behavior, etc.
+    sanitized = sanitized.replace(
+      /expression\s*\(|url\s*\(|@import\b|-moz-binding\s*:|behavior\s*:|binding\s*:/gi,
+      ''
+    );
+
+    // 7. Remove template literal injection vectors: ${ ... }
+    sanitized = sanitized.replace(/\$\{[^}]*\}/g, '');
+
+    // 8. HTML-encode the core dangerous characters
+    sanitized = sanitized
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+
+    return sanitized.trim();
   },
 } as const;
