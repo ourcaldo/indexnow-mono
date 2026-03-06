@@ -1,11 +1,13 @@
 /**
  * Paddle Subscription Update API
- * Allows authenticated users to update their subscription (e.g., change plan)
+ * Allows authenticated users to upgrade/downgrade their subscription plan.
  *
- * @stub Only updates local DB. Does NOT call Paddle API to actually change the subscription.
+ * Calls Paddle's Update Subscription API with prorated_immediately proration.
+ * Paddle handles proration, charges/credits. The local DB is updated via the
+ * subscription.updated webhook — this route does NOT write to the DB.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
@@ -15,10 +17,13 @@ import {
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { updatePaddleSubscription } from '@/lib/paddle/paddle-api-client';
 
-// Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
-type SubscriptionOwnerCheck = Pick<PaymentSubscriptionRow, 'user_id' | 'paddle_subscription_id'>;
+type SubscriptionForUpdate = Pick<
+  PaymentSubscriptionRow,
+  'user_id' | 'paddle_subscription_id' | 'status'
+>;
 
 const updateRequestSchema = z.object({
   subscriptionId: z.string().min(1, 'Subscription ID is required'),
@@ -26,15 +31,14 @@ const updateRequestSchema = z.object({
 });
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-  // Safety guard: prevent data drift — local-only DB updates without Paddle API
-  if (process.env.PADDLE_SUBSCRIPTION_UPDATE_ENABLED !== 'true') {
-    return NextResponse.json(
-      {
-        error: 'Service temporarily unavailable',
-        message: 'Subscription updates are being configured. Paddle API integration pending.',
-      },
-      { status: 503, headers: { 'Retry-After': '86400' } }
+  // Guard: PADDLE_API_KEY must be configured
+  if (!process.env.PADDLE_API_KEY) {
+    const error = await ErrorHandlingService.createError(
+      ErrorType.SYSTEM,
+      'Subscription updates are not available — payment gateway not configured',
+      { severity: ErrorSeverity.MEDIUM, statusCode: 503 }
     );
+    return formatError(error);
   }
 
   const body = await request.json();
@@ -51,15 +55,15 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
   const { subscriptionId, newPriceId } = validationResult.data;
 
-  // Verify ownership
+  // Verify ownership and that subscription is in an updatable state
   const subscription =
-    await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionOwnerCheck | null>(
+    await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionForUpdate | null>(
       asTypedClient(auth.supabase),
       {
         userId: auth.userId,
         operation: 'verify_subscription_ownership_for_update',
         source: 'paddle/subscription/update',
-        reason: 'User attempting to update subscription - ownership verification',
+        reason: 'User attempting to update subscription — ownership verification',
         metadata: {
           subscriptionId,
           newPriceId,
@@ -72,7 +76,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       async (db) => {
         const { data, error } = await db
           .from('indb_payment_subscriptions')
-          .select('user_id, paddle_subscription_id')
+          .select('user_id, paddle_subscription_id, status')
           .eq('paddle_subscription_id', subscriptionId)
           .single();
 
@@ -99,44 +103,64 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     return formatError(error);
   }
 
-  // Update the subscription with new price ID
-  // STUB(M-13): Integrate PaddleSubscriptionService.updateSubscription when restored
-  logger.warn('STUB: Subscription update only updates local DB — Paddle API call pending');
-  const updatedAt = new Date().toISOString();
-  const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<PaymentSubscriptionRow>(
-    asTypedClient(auth.supabase),
-    {
-      userId: auth.userId,
-      operation: 'update_subscription_price',
-      source: 'paddle/subscription/update',
-      reason: 'User updating their subscription plan',
-      metadata: {
-        subscriptionId,
-        newPriceId,
-        endpoint: '/api/v1/payments/paddle/subscription/update',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') ?? undefined,
-    },
-    { table: 'indb_payment_subscriptions', operationType: 'update' },
-    async (db) => {
-      const { data, error } = await db
-        .from('indb_payment_subscriptions')
-        .update({
-          paddle_price_id: newPriceId,
-          updated_at: updatedAt,
-        })
-        .eq('paddle_subscription_id', subscriptionId)
-        .select()
-        .single();
+  // Only active subscriptions can be updated
+  if (subscription.status !== 'active') {
+    const error = await ErrorHandlingService.createError(
+      ErrorType.BUSINESS_LOGIC,
+      `Cannot update subscription with status "${subscription.status}". Only active subscriptions can be upgraded or downgraded.`,
+      { severity: ErrorSeverity.LOW, statusCode: 409, userId: auth.userId }
+    );
+    return formatError(error);
+  }
 
-      if (error) throw new Error(`Failed to update subscription: ${error.message}`);
-      return data;
-    }
+  // Call Paddle API to update the subscription
+  logger.info(
+    { userId: auth.userId, subscriptionId, newPriceId },
+    'User requesting subscription plan change'
   );
 
+  const result = await updatePaddleSubscription(
+    subscriptionId,
+    [{ price_id: newPriceId, quantity: 1 }],
+    'prorated_immediately',
+    'prevent_change'
+  );
+
+  if (!result.ok) {
+    // Map Paddle error to appropriate HTTP status
+    const statusCode = result.status === 404 ? 404 : result.status >= 500 ? 502 : 400;
+
+    const error = await ErrorHandlingService.createError(
+      ErrorType.EXTERNAL_API,
+      `Paddle subscription update failed: ${result.error.detail}`,
+      {
+        severity: ErrorSeverity.MEDIUM,
+        statusCode,
+        userId: auth.userId,
+        metadata: {
+          paddleErrorCode: result.error.code,
+          paddleRequestId: result.requestId,
+        },
+      }
+    );
+    return formatError(error);
+  }
+
+  // Return Paddle's confirmed subscription state.
+  // The local DB will be updated when Paddle sends the subscription.updated webhook.
+  const paddleSub = result.data.data;
   return formatSuccess({
-    subscription: updatedSub,
-    message: 'Subscription update request processed',
+    subscription: {
+      id: paddleSub.id,
+      status: paddleSub.status,
+      items: paddleSub.items.map((item) => ({
+        priceId: item.price.id,
+        productId: item.price.product_id,
+        quantity: item.quantity,
+      })),
+      currentBillingPeriod: paddleSub.current_billing_period ?? null,
+      nextBilledAt: paddleSub.next_billed_at ?? null,
+    },
+    message: 'Subscription updated successfully. Changes will be reflected shortly.',
   });
 });

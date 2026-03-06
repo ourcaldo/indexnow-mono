@@ -118,6 +118,7 @@ export const PAYMENT_ENDPOINTS = {
   // Reserved for Paddle webhook endpoints
   CUSTOMER_PORTAL: `${API_BASE.V1}/payments/paddle/customer-portal`,
   SUBSCRIPTION_CANCEL: `${API_BASE.V1}/payments/paddle/subscription/cancel`,
+  SUBSCRIPTION_UPDATE: `${API_BASE.V1}/payments/paddle/subscription/update`,
 } as const;
 
 // Activity logging endpoints (non-admin)

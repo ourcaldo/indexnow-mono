@@ -19,8 +19,8 @@ type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscri
 type SubscriptionPortalInfo = Pick<PaymentSubscriptionRow, 'paddle_subscription_id'>;
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-  // Safety guard: prevent exposing placeholder portal URLs in production
-  if (process.env.PADDLE_PORTAL_ENABLED !== 'true') {
+  // Safety guard: Paddle API key required for customer portal
+  if (!process.env.PADDLE_API_KEY) {
     return NextResponse.json(
       {
         error: 'Service temporarily unavailable',
