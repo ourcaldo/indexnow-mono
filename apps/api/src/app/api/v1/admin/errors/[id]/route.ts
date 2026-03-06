@@ -62,12 +62,11 @@ export const GET = adminApiWrapper(async (
           const sentryEvent = await fetchSentryEvent(sentryEventId);
           if (sentryEvent?.groupID) {
             sentryIssueId = sentryEvent.groupID;
-            // Persist the issue_id for future lookups (fire-and-forget)
-            supabaseAdmin
+            // Persist the issue_id for future lookups
+            await supabaseAdmin
               .from('indb_system_error_logs')
               .update({ sentry_issue_id: sentryIssueId })
-              .eq('id', errorId)
-              .then(() => {});
+              .eq('id', errorId);
           }
         } catch {
           // Non-critical — don't fail the request
