@@ -175,3 +175,21 @@
 5. Tell the user to run the migration SQL in Supabase SQL Editor.
 
 **Origin**: Column renames (volume→search_volume, etc.) were committed in code but the master schema file wasn't updated. User had to point out that schema files and live DB are separate concerns that both need attention.
+
+---
+
+## Principle 14: When a Report Has an Issue Tracker — Update It With Every Fix
+
+**Rule**: When working from an audit report or any document with an issue tracker table, the workflow for EVERY fix is: **fix the code → update the issue status in the report file → commit and push**. All three steps happen together for each fix, not batched at the end.
+
+**Why**: The report file is the user-visible artifact they check to see progress. Internal SQL trackers are invisible to the user. If you fix 20 issues but the report still says "Open" for all of them, the user has no way to see progress. Batching status updates at the end defeats the purpose of a tracker.
+
+**How to execute** (every time, no exceptions):
+1. Fix the issue in code.
+2. Open the report file (e.g., `docs/2026-03-06-full-codebase-audit.md`) and change the status from `Open` to `✅ Fixed` or `⏸️ Deferred` for that specific issue ID.
+3. Commit both the code fix AND the report update together.
+4. Push.
+
+**How to verify**: After each commit, `grep "| Open |" docs/<report>.md | wc -l` should show fewer Open items than before.
+
+**Origin**: Fixed 76 audit issues across C/H/M/L severity but never updated the report file's Status column. User had to point out that the tracker was useless with everything still showing "Open".
