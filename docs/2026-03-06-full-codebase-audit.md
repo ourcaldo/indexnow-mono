@@ -62,7 +62,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | H-11 | High | `as any` in admin error pages — missing type fields | `apps/admin/.../errors/page.tsx:241`, `errors/[id]/page.tsx:50` | ✅ Fixed |
 | H-12 | High | `as unknown as` casts in user-dashboard (3 instances) | `apps/user-dashboard/.../PlansBillingContent.tsx:175`, `rank-history/page.tsx:653` | ✅ Fixed |
 | H-13 | High | CI uses pnpm 9, project requires pnpm 10 — lockfile mismatch | `.github/workflows/ci.yml:15` | ✅ Fixed |
-| H-14 | High | turbo.json globalEnv missing ~30 server-side env vars — stale cache risk | `turbo.json:3-26` | ⏸️ Deferred |
+| H-14 | High | turbo.json globalEnv missing ~30 server-side env vars — stale cache risk | `turbo.json:3-26` | ✅ Fixed |
 | H-15 | High | Docker Redis exposed on 0.0.0.0:6379 without auth | `docker-compose.yml:8` | ✅ Fixed |
 | H-16 | High | No security audit step in CI pipeline | `.github/workflows/ci.yml` | ⏸️ Deferred |
 | H-17 | High | IP spoofing bypasses rate limiter — trusts x-forwarded-for | `packages/shared/src/utils/rate-limiter.ts:143-146` | ✅ Fixed |
