@@ -58,7 +58,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | H-07 | High | WorkerStartup is a non-functional stub — BullMQ jobs silently lost | `apps/api/src/lib/job-management/worker-startup.ts` | ✅ Fixed |
 | H-08 | High | Broken cancel subscription call — no Bearer token, will 401 | `apps/user-dashboard/.../PlansBillingContent.tsx:216-220` | ✅ Fixed |
 | H-09 | High | `as any` in admin order detail page | `apps/admin/src/app/(dashboard)/orders/[id]/page.tsx:60` | ✅ Fixed |
-| H-10 | High | 30 npm vulnerabilities (1 critical, 16 high) incl. exploitable `next` DoS | `pnpm-lock.yaml` (transitive deps) | ⏸️ Deferred |
+| H-10 | High | 30 npm vulnerabilities (1 critical, 16 high) incl. exploitable `next` DoS | `pnpm-lock.yaml` (transitive deps) | ✅ Fixed |
 | H-11 | High | `as any` in admin error pages — missing type fields | `apps/admin/.../errors/page.tsx:241`, `errors/[id]/page.tsx:50` | ✅ Fixed |
 | H-12 | High | `as unknown as` casts in user-dashboard (3 instances) | `apps/user-dashboard/.../PlansBillingContent.tsx:175`, `rank-history/page.tsx:653` | ✅ Fixed |
 | H-13 | High | CI uses pnpm 9, project requires pnpm 10 — lockfile mismatch | `.github/workflows/ci.yml:15` | ✅ Fixed |

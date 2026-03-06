@@ -27,7 +27,7 @@
     "@sentry/nextjs": "catalog:",
     "bullmq": "^5.61.0",
     "date-fns": "catalog:",
-    "dompurify": "^3.3.1",
+    "dompurify": "^3.3.2",
     "file-type": "^21.3.0",
     "geoip-lite": "^1.4.10",
     "google-auth-library": "^10.2.1",
