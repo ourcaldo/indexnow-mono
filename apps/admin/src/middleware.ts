@@ -6,20 +6,59 @@ import { logger } from '@indexnow/shared';
  * Admin Application Middleware
  * Handles authentication and super_admin role verification.
  *
- * OPTIMIZATION: Caches admin role verification in a short-lived cookie (5 min)
- * to avoid a DB query on every single request. The cookie is tied to the user's
- * session and cleared on auth state changes.
+ * OPTIMIZATION: Caches admin role verification in a short-lived HMAC-signed
+ * cookie (1 min) to avoid a DB query on every request. The cookie value is
+ * `userId.hmacHex` — forging it requires knowledge of ENCRYPTION_KEY.
+ * If the key is missing, caching is disabled and the DB is queried every time.
  */
 
 const PUBLIC_ROUTES = ['/login'];
 const ROLE_CACHE_COOKIE = 'admin_role_verified';
-const ROLE_CACHE_TTL_SECONDS = 60; // 1 minute — short TTL balances performance vs. security
+const ROLE_CACHE_TTL_SECONDS = 60;
+
+// ---------------------------------------------------------------------------
+// HMAC helpers — Web Crypto API for Edge Runtime compatibility
+// ---------------------------------------------------------------------------
+
+async function hmacSign(value: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(value));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function hmacVerify(value: string, hexSignature: string, secret: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  const sigMatch = hexSignature.match(/.{2}/g);
+  if (!sigMatch) return false;
+  const sigBytes = new Uint8Array(sigMatch.map((byte) => parseInt(byte, 16)));
+  // crypto.subtle.verify performs timing-safe comparison internally
+  return crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(value));
+}
+
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // (#V7 L-27) 1. Skip middleware for public routes.
-  // Uses exact match — new public sub-routes must be added to PUBLIC_ROUTES.
   if (PUBLIC_ROUTES.some((route) => pathname === route)) {
     return NextResponse.next();
   }
@@ -33,17 +72,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // (#V7 L-28) 3. Check cached role verification first (avoids DB query on every request).
-  // WARNING: This cookie has no HMAC signature. It only stores the user ID (not the role),
-  // so a forged cookie merely skips the DB lookup — the actual role is still from the
-  // authenticated session. The DB query in step 4 runs when cache misses.
-  const cachedRole = request.cookies.get(ROLE_CACHE_COOKIE)?.value;
-  if (cachedRole === user.id) {
-    // Role was recently verified for this user — skip DB query
-    return response;
+  // 3. Check HMAC-signed cached role verification (avoids DB query on every request).
+  // Caching is only active when ENCRYPTION_KEY is set; otherwise every request hits DB.
+  const cookieSecret = process.env.ENCRYPTION_KEY;
+  if (cookieSecret) {
+    const cached = request.cookies.get(ROLE_CACHE_COOKIE)?.value;
+    if (cached) {
+      const dotIdx = cached.lastIndexOf('.');
+      if (dotIdx > 0) {
+        const cachedUserId = cached.substring(0, dotIdx);
+        const cachedSig = cached.substring(dotIdx + 1);
+        try {
+          if (
+            cachedUserId === user.id &&
+            (await hmacVerify(cachedUserId, cachedSig, cookieSecret))
+          ) {
+            return response;
+          }
+        } catch {
+          // Verification failed — fall through to DB query
+        }
+      }
+    }
   }
 
-  // 4. Verify admin role via database query (only when cache misses)
+  // 4. Verify admin role via database query (only when cache misses or is invalid)
   try {
     const { data: profile, error: profileError } = (await supabase
       .from('indb_auth_user_profiles')
@@ -77,15 +130,17 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Cache the role verification result in a short-lived, httpOnly cookie.
-    // secure: true only in production (HTTPS) — HTTP dev/staging can't store secure cookies.
-    response.cookies.set(ROLE_CACHE_COOKIE, user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: ROLE_CACHE_TTL_SECONDS,
-      path: '/',
-    });
+    // Cache the verified role as an HMAC-signed, httpOnly cookie.
+    if (cookieSecret) {
+      const signedValue = `${user.id}.${await hmacSign(user.id, cookieSecret)}`;
+      response.cookies.set(ROLE_CACHE_COOKIE, signedValue, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: ROLE_CACHE_TTL_SECONDS,
+        path: '/',
+      });
+    }
   } catch (error: unknown) {
     logger.error(
       { error: error instanceof Error ? error : undefined },
