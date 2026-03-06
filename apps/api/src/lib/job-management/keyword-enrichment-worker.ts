@@ -270,7 +270,7 @@ export class KeywordEnrichmentWorker {
           success: result.success,
           hasData: !!result.data,
           dataFound: result.data?.is_data_found,
-          volume: result.data?.volume,
+          search_volume: result.data?.search_volume,
           bankId: result.data?.id,
         },
         'Keyword Enrichment: Enrichment result'
@@ -305,7 +305,7 @@ export class KeywordEnrichmentWorker {
               keyword_id: keyword.id,
               keyword_text: keyword.keyword,
               keyword_bank_id: result.data.id,
-              search_volume: result.data.volume,
+              search_volume: result.data.search_volume,
               is_data_found: result.data.is_data_found,
               operation_type: 'keyword_enrichment_update',
             },
@@ -333,7 +333,7 @@ export class KeywordEnrichmentWorker {
         {
           if (result.data.is_data_found) {
             logger.info(
-              { keyword: keyword.keyword, volume: result.data.volume },
+              { keyword: keyword.keyword, search_volume: result.data.search_volume },
               'Keyword Enrichment: Successfully enriched'
             );
           } else {

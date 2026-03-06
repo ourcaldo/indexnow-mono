@@ -1,8 +1,8 @@
-# Lessons Learned (Copilot CLI Environment)
+# Lessons Learned (IDE Environment)
 
-> **This file is for the Copilot CLI environment — developing directly on the VPS server.**
-> The agent runs on the same machine as the codebase and running apps. No SSH/remote sync needed.
-> For the IDE environment (VS Code + GitHub Copilot extension), see `lessons-ide.md`.
+> **⚠️ This file is dedicated to the IDE environment (VS Code + GitHub Copilot extension).**
+> It applies when developing remotely from a local machine via SSH/IDE, where the VPS is a separate deployment target.
+> For the Copilot CLI environment (developing directly on the server), see `lessons.md`.
 
 <!-- 
   MANDATORY: AI agents MUST read this file at the start of every session.
@@ -89,23 +89,22 @@
 
 ---
 
-## Principle 8: Commit + Push + Rebuild Is ONE Atomic Action Chain
+## Principle 8: Commit + Push + VPS Sync Is ONE Atomic Action Chain
 
-**Rule**: After committing and pushing to GitHub, ALWAYS immediately rebuild and restart the apps — in the same action chain. Never stop after `git push` and wait for the user to ask about restarting. The full chain is: `git commit` → `git push` → `pnpm build` → restart apps.
+**Rule**: After committing and pushing to GitHub, ALWAYS immediately pull on the VPS, rebuild, and restart — in the same action chain. Never stop after `git push` and wait for the user to ask about VPS sync. The full chain is: `git commit` → `git push` → `ssh VPS git pull` → `pnpm build` → restart apps.
 
-**Why**: The user expects running code to match the latest push. Stopping after push creates a disconnect where the committed code differs from the running server. The user then has to manually ask "did you restart?" — this should be automatic.
+**Why**: The user expects deployed code to match the latest push. Stopping after push creates a disconnect where GitHub is ahead of the running server. The user then has to manually ask "did you sync?" which wastes time and breaks flow.
 
 **How to execute** (every time, no exceptions):
 1. `git add` + `git commit --no-verify` + `git push origin main`
-2. `cd /root/indexnow-dev && pnpm build 2>&1 | tail -20` — verify all tasks pass
-3. Kill ALL old processes first: `killall -9 node 2>/dev/null; sleep 3` — then verify ports are free with `ss -tlnp | grep '300[0-2]'`
-4. Start fresh: `cd /root/indexnow-dev && nohup pnpm dev --concurrency 15 > /tmp/turbo-dev.log 2>&1 &` — wait ~25s
-5. Verify all 3 ports (3000, 3001, 3002) are listening: `ss -tlnp | grep '300[0-2]'`
-6. Report build result + port status to user
+2. `ssh indexnow-dev "cd /root/indexnow-dev && git pull origin main 2>&1"`
+3. `ssh indexnow-dev "cd /root/indexnow-dev && pnpm build 2>&1 | tail -20"` — verify all tasks pass
+4. Kill ALL old processes first: `ssh indexnow-dev "killall -9 node 2>/dev/null; sleep 3"` — then verify ports are free with `ss -tlnp | grep '300[0-2]'`
+5. Start fresh: `ssh indexnow-dev "cd /root/indexnow-dev && nohup pnpm dev --concurrency 15 > /tmp/turbo-dev.log 2>&1 &"` — wait ~25s
+6. Verify all 3 ports (3000, 3001, 3002) are listening: `ss -tlnp | grep '300[0-2]'`
+7. Report build result + port status to user
 
-**Note**: This is the Copilot CLI version — we are already on the VPS, so no SSH is needed. For the IDE version (remote SSH workflow), see `lessons-ide.md`.
-
-**Origin**: After fixing BUG #4 and BUG #5, code was pushed to GitHub but the server was not restarted. User had to ask "Did you restart?" — this should have been automatic.
+**Origin**: After fixing BUG #4 and BUG #5, code was pushed to GitHub but VPS was not synced. User had to ask "Do you already sync on the VPS?" — this should have been automatic.
 
 ---
 

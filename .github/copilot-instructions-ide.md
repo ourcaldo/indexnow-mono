@@ -1,8 +1,8 @@
-# Project Guidelines (Copilot CLI Environment)
+# Project Guidelines (IDE Environment)
 
-> **This file is for the Copilot CLI environment — developing directly on the VPS server.**
-> The agent runs on the same machine as the codebase and running apps. No SSH/remote sync needed.
-> For the IDE environment (VS Code + GitHub Copilot extension), see `copilot-instructions-ide.md`.
+> **⚠️ This file is dedicated to the IDE environment (VS Code + GitHub Copilot extension).**
+> It applies when developing remotely from a local machine via SSH/IDE, where the VPS is a separate deployment target.
+> For the Copilot CLI environment (developing directly on the server), see `copilot-instructions.md`.
 
 The main project is in `indexnow-dev/`. Everything else (`main-old/`, `frontend-new/`, `ui-reference/`, `database-schema/`) is read-only reference material.
 
@@ -244,11 +244,11 @@ PostgreSQL via Supabase. **29 tables**, all prefixed `indb_`:
   - Example: if committing code, load `git-commit` + `conventional-commit` skills. If writing a PRD, load the `prd` skill. If refactoring, load the `refactor` skill.
 - Lessons define principles and verification steps that override default assumptions.
 
-### 3b. Generated Documents — Always in `/docs` at Project Root
-- **ALL generated markdown documents** (reports, deep dives, PRDs, implementation plans, audits, architecture docs) MUST be saved to the `/docs` folder at the project root (`/root/indexnow-dev/docs/`), **NOT** scattered elsewhere.
+### 3b. Generated Documents — Always in `/docs` at Workspace Root
+- **ALL generated markdown documents** (reports, deep dives, PRDs, implementation plans, audits, architecture docs) MUST be saved to the `/docs` folder at the workspace root (`c:\Users\Administrator\Desktop\indexnow-main\docs\`), **NOT** inside `indexnow-dev/`.
+- `indexnow-dev/` is the project codebase — only code and code-adjacent files (config, tests) go there.
 - Use descriptive filenames with date prefix when relevant: e.g., `docs/2026-03-06-api-structure-audit.md`.
 - Create the `/docs` folder if it doesn't exist.
-- **Note**: This is the Copilot CLI version (on-server). For the IDE version (Windows local path), see `copilot-instructions-ide.md`.
 
 ### 4. Workflow Orchestration
 
