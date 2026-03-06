@@ -8,12 +8,13 @@
  * - Routes events to appropriate processors
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
+import { formatSuccess, formatError } from '@/lib/core/api-response-formatter';
 import { checkRouteRateLimit } from '@/lib/rate-limiting/route-rate-limit';
 import {
   processSubscriptionCreated,
@@ -100,7 +101,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     const signature = request.headers.get('paddle-signature');
 
     if (!signature) {
-      await ErrorHandlingService.createError(
+      const error = await ErrorHandlingService.createError(
         ErrorType.AUTHORIZATION,
         'Missing Paddle webhook signature',
         {
@@ -108,13 +109,13 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           statusCode: 401,
         }
       );
-      return NextResponse.json({ error: 'Missing Paddle signature' }, { status: 401 });
+      return formatError(error);
     }
 
     const verificationResult = await verifyPaddleSignature(rawBody, signature);
 
     if (!verificationResult.valid) {
-      await ErrorHandlingService.createError(
+      const error = await ErrorHandlingService.createError(
         ErrorType.AUTHORIZATION,
         `Paddle webhook signature verification failed: ${verificationResult.error}`,
         {
@@ -123,7 +124,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           metadata: { error: verificationResult.error },
         }
       );
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      return formatError(error);
     }
 
     const eventData = JSON.parse(rawBody) as {
@@ -134,7 +135,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     const { event_id, event_type, data } = eventData;
 
     if (!event_id || !event_type) {
-      await ErrorHandlingService.createError(
+      const error = await ErrorHandlingService.createError(
         ErrorType.VALIDATION,
         'Missing event_id or event_type in webhook payload',
         {
@@ -142,7 +143,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
           statusCode: 400,
         }
       );
-      return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
+      return formatError(error);
     }
 
     // (#V7 M-25) Idempotency: upsert event record (UNIQUE on event_id prevents duplicates atomically).
@@ -192,7 +193,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     );
 
     if (upsertResult.alreadyProcessed) {
-      return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+      return formatSuccess({ received: true, duplicate: true });
     }
 
     await routeWebhookEvent(event_type, data, event_id);
@@ -215,11 +216,11 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       }
     );
 
-    return NextResponse.json({ received: true }, { status: 200 });
-  } catch (error) {
-    await ErrorHandlingService.createError(
+    return formatSuccess({ received: true });
+  } catch (caughtError) {
+    const structuredError = await ErrorHandlingService.createError(
       ErrorType.EXTERNAL_API,
-      error instanceof Error ? error : new Error('Unknown webhook processing error'),
+      caughtError instanceof Error ? caughtError : new Error('Unknown webhook processing error'),
       {
         severity: ErrorSeverity.HIGH,
         statusCode: 500,
@@ -227,7 +228,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       }
     );
 
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+    return formatError(structuredError);
   }
 });
 

@@ -77,7 +77,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | H-26 | High | Analytics package missing @indexnow/shared from externals | `packages/analytics/tsup.config.ts:13-18` | ✅ Fixed |
 | H-27 | High | Unsigned admin role-cache cookie — revoked admin retains access 60s | `apps/admin/src/middleware.ts:37-88` | ✅ Fixed |
 | M-01 | Medium | 17+ dead endpoint constants with no route implementation | `packages/shared/src/constants/ApiEndpoints.ts` | ✅ Fixed |
-| M-02 | Medium | Paddle webhook uses raw NextResponse.json() — non-standard response shape | `apps/api/src/app/api/v1/payments/paddle/webhook/route.ts` | ⏸️ Deferred |
+| M-02 | Medium | Paddle webhook uses raw NextResponse.json() — non-standard response shape | `apps/api/src/app/api/v1/payments/paddle/webhook/route.ts` | ✅ Fixed |
 | M-03 | Medium | Sentry webhook uses raw NextResponse.json() (12 instances) | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | ✅ Fixed |
 | M-04 | Medium | No Zod validation on webhook payloads — crash on malformed input | `apps/api/.../webhooks/sentry/route.ts:42`, `paddle/webhook/route.ts` | ⏸️ Deferred |
 | M-05 | Medium | 4 stub routes return 501/503 without documentation | `apps/api/.../customer-portal/route.ts`, `seranking/health/metrics/route.ts`, etc. | ⏸️ Deferred |
