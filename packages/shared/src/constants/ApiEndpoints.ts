@@ -47,7 +47,6 @@ export const ADMIN_ENDPOINTS = {
   USERS: `${API_BASE.V1}/admin/users`,
   USER_BY_ID: (id: string) => `${API_BASE.V1}/admin/users/${id}`,
   USER_ROLE: (id: string) => `${API_BASE.V1}/admin/users/${id}/role`,
-  RESET_USER_PASSWORD: (id: string) => `${API_BASE.V1}/admin/users/${id}/reset-password`,
   EXTEND_SUBSCRIPTION: (id: string) => `${API_BASE.V1}/admin/users/${id}/extend-subscription`,
   CHANGE_PACKAGE: (id: string) => `${API_BASE.V1}/admin/users/${id}/change-package`,
   USER_SECURITY: (id: string) => `${API_BASE.V1}/admin/users/${id}/security`,

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { createAnonServerClient, createServerClient, supabaseAdmin } from '@indexnow/database';
+import { createAnonServerClient, createServerClient, supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { loginSchema, getClientIP, AppConfig } from '@indexnow/shared';
 import {
   publicApiWrapper,
@@ -177,19 +177,31 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     // Update last_login_at, last_login_ip, and email in indb_auth_user_profiles.
     // email sync ensures the profile column stays current even if it was NULL
     // (pre-migration users) or if the user changed their email via Supabase auth.
-    const { error: loginUpdateError } = await supabaseAdmin
-      .from('indb_auth_user_profiles')
-      .update({
-        last_login_at: new Date().toISOString(),
-        last_login_ip: clientIP !== 'unknown' ? clientIP : null,
-        email: user.email ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
+    await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: user.id,
+        operation: 'login_profile_update',
+        source: 'auth/login',
+        reason: 'Update last login timestamp, IP, and sync email on successful login',
+        metadata: { clientIP, emailSynced: !!user.email },
+      },
+      { table: 'indb_auth_user_profiles', operationType: 'update' },
+      async () => {
+        const { error: loginUpdateError } = await supabaseAdmin
+          .from('indb_auth_user_profiles')
+          .update({
+            last_login_at: new Date().toISOString(),
+            last_login_ip: clientIP !== 'unknown' ? clientIP : null,
+            email: user.email ?? null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
 
-    if (loginUpdateError) {
-      logger.error({ error: loginUpdateError, userId: user.id }, 'Failed to update last login info');
-    }
+        if (loginUpdateError) {
+          logger.error({ error: loginUpdateError, userId: user.id }, 'Failed to update last login info');
+        }
+      }
+    );
 
     // 7. Send login notification email — skip if no email on the user
     if (user.email) {

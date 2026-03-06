@@ -53,8 +53,8 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | H-02 | High | `as never` in admin package update — bypasses type checker | `apps/api/src/app/api/v1/admin/settings/packages/[id]/route.ts:106` | ✅ Fixed |
 | H-03 | High | `as any` abuse in admin payments page (8 instances) | `apps/admin/src/app/(dashboard)/settings/payments/page.tsx` | ✅ Fixed |
 | H-04 | High | Fire-and-forget login notifications (login + session routes) | `apps/api/src/app/api/v1/auth/login/route.ts:196`, `auth/session/route.ts:174` | ✅ Fixed |
-| H-05 | High | Fire-and-forget secureUpdate — swallowed error in reset-password | `apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts:168` | ⏸️ Deferred |
-| H-06 | High | Direct supabaseAdmin writes bypassing SecureServiceRoleWrapper | `apps/api/src/app/api/v1/auth/login/route.ts:180`, `webhooks/sentry/route.ts:65,96` | ⏸️ Deferred |
+| H-05 | High | Fire-and-forget secureUpdate — swallowed error in reset-password | `apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts:168` | ✅ Fixed |
+| H-06 | High | Direct supabaseAdmin writes bypassing SecureServiceRoleWrapper | `apps/api/src/app/api/v1/auth/login/route.ts:180`, `webhooks/sentry/route.ts:65,96` | ✅ Fixed |
 | H-07 | High | WorkerStartup is a non-functional stub — BullMQ jobs silently lost | `apps/api/src/lib/job-management/worker-startup.ts` | ⏸️ Deferred |
 | H-08 | High | Broken cancel subscription call — no Bearer token, will 401 | `apps/user-dashboard/.../PlansBillingContent.tsx:216-220` | ✅ Fixed |
 | H-09 | High | `as any` in admin order detail page | `apps/admin/src/app/(dashboard)/orders/[id]/page.tsx:60` | ✅ Fixed |
