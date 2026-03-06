@@ -25,6 +25,19 @@ export interface RateLimitStore {
   set(key: string, entry: RateLimitEntry): Promise<void>;
   /** Delete a key */
   delete(key: string): Promise<void>;
+  /**
+   * Atomically increment the count for a key and return the new count.
+   * If the key does not exist or has expired, initialise it with count=1
+   * and the given `resetTime`, then return 1.
+   *
+   * Implementations MUST guarantee that concurrent calls for the same key
+   * each observe a unique, monotonically-increasing count (no TOCTOU).
+   *
+   * For Redis: use INCR + PEXPIREAT in a single pipeline/Lua script.
+   * The default in-memory store performs a synchronous Map mutation
+   * (safe because JS is single-threaded within a microtask).
+   */
+  increment(key: string, resetTime: number): Promise<number>;
 }
 
 // Default in-memory store (suitable for single-process deployments)
@@ -85,6 +98,29 @@ const inMemoryRateLimitStore: RateLimitStore = {
   async delete(key: string) {
     inMemoryStore.delete(key);
   },
+  async increment(key: string, resetTime: number) {
+    // Synchronous Map read+write — no await gap, so no TOCTOU risk
+    const existing = inMemoryStore.get(key);
+    if (existing && Date.now() <= existing.resetTime) {
+      existing.count++;
+      return existing.count;
+    }
+    // Expired or missing — enforce max size then create fresh entry
+    if (inMemoryStore.size >= MAX_STORE_SIZE && !inMemoryStore.has(key)) {
+      let oldestKey: string | undefined;
+      let oldestTime = Infinity;
+      for (const [k, v] of inMemoryStore) {
+        if (v.resetTime < oldestTime) {
+          oldestTime = v.resetTime;
+          oldestKey = k;
+        }
+      }
+      if (oldestKey !== undefined) inMemoryStore.delete(oldestKey);
+    }
+    const entry: RateLimitEntry = { count: 1, resetTime };
+    inMemoryStore.set(key, entry);
+    return 1;
+  },
 };
 
 // Active store — can be swapped via setRateLimitStore()
@@ -109,6 +145,12 @@ let activeStore: RateLimitStore = inMemoryRateLimitStore;
  *   },
  *   async delete(key) {
  *     await cacheService.del(`ratelimit:${key}`);
+ *   },
+ *   async increment(key, resetTime) {
+ *     // Use Redis INCR for atomic increment; set TTL on first create
+ *     const ttlSeconds = Math.ceil((resetTime - Date.now()) / 1000);
+ *     const count = await cacheService.incr(`ratelimit:${key}`, Math.max(ttlSeconds, 1));
+ *     return count;
  *   },
  * });
  * ```
@@ -266,29 +308,18 @@ export async function isRateLimited(request: RequestLike): Promise<boolean> {
 }
 
 /**
- * Record a failed authentication attempt
+ * Record a failed authentication attempt (atomic — no TOCTOU race).
  */
 export async function recordFailedAttempt(request: RequestLike): Promise<boolean> {
   const ip = extractClientIp(request);
   const now = Date.now();
-  const entry = await activeStore.get(ip);
+  const newCount = await activeStore.increment(ip, now + WINDOW_MS);
 
-  if (!entry) {
-    await activeStore.set(ip, {
-      count: 1,
-      resetTime: now + WINDOW_MS,
-    });
-    return false;
-  }
-
-  entry.count++;
-  await activeStore.set(ip, entry);
-
-  if (entry.count > MAX_ATTEMPTS) {
+  if (newCount > MAX_ATTEMPTS) {
     logger.warn(
       {
         ipAddress: ip,
-        attemptCount: entry.count,
+        attemptCount: newCount,
         maxAttempts: MAX_ATTEMPTS,
         userAgent: getHeaderValue(request.headers, 'user-agent') || 'unspecified',
         endpoint: request.nextUrl?.pathname || 'unspecified',

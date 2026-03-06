@@ -66,7 +66,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | H-15 | High | Docker Redis exposed on 0.0.0.0:6379 without auth | `docker-compose.yml:8` | ✅ Fixed |
 | H-16 | High | No security audit step in CI pipeline | `.github/workflows/ci.yml` | ⏸️ Deferred |
 | H-17 | High | IP spoofing bypasses rate limiter — trusts x-forwarded-for | `packages/shared/src/utils/rate-limiter.ts:143-146` | ✅ Fixed |
-| H-18 | High | TOCTOU race in rate limiter — concurrent requests bypass MAX_ATTEMPTS | `packages/shared/src/utils/rate-limiter.ts:162-176` | ⏸️ Deferred |
+| H-18 | High | TOCTOU race in rate limiter — concurrent requests bypass MAX_ATTEMPTS | `packages/shared/src/utils/rate-limiter.ts:162-176` | ✅ Fixed |
 | H-19 | High | SSRF via unsanitized IP in ipapi.co URL interpolation | `packages/shared/src/utils/ip-device-utils.ts:140` | ✅ Fixed |
 | H-20 | High | PII sanitizer only checks object keys, never string values | `packages/shared/src/utils/pii-sanitizer.ts:32-46` | ✅ Fixed |
 | H-21 | High | z.any() in admin user-management schema — unvalidated arbitrary data | `packages/shared/src/constants/ValidationRules.ts:282` | ✅ Fixed |
