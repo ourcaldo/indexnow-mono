@@ -193,3 +193,28 @@
 **How to verify**: After each commit, `grep "| Open |" docs/<report>.md | wc -l` should show fewer Open items than before.
 
 **Origin**: Fixed 76 audit issues across C/H/M/L severity but never updated the report file's Status column. User had to point out that the tracker was useless with everything still showing "Open".
+
+---
+
+## Principle 7: Dev Servers Must Be Fully Detached — setsid + nohup + disown
+
+**Rule**: When starting dev servers (Next.js apps, any long-running process), ALWAYS use the fully detached pattern: `setsid nohup <command> > /tmp/<app>.log 2>&1 & disown`. Never use plain `pnpm dev &` or `nohup pnpm ... &` — the process will die when the parent shell closes.
+
+**Why**: `pnpm` wraps the actual process. When the shell session ends, the process group gets killed — even with `nohup`. Only `setsid` creates a new session leader that truly survives shell termination. This has caused repeated "connection refused" issues where the server was started but silently died.
+
+**Correct pattern**:
+```bash
+cd /root/indexnow-dev/apps/<app> && setsid nohup npx next dev -p <port> -H 0.0.0.0 > /tmp/<app>.log 2>&1 &
+disown
+```
+
+**Wrong patterns** (will die when shell closes):
+```bash
+pnpm --filter <app> dev &                    # Dies immediately
+nohup pnpm --filter <app> dev &              # Dies when shell exits
+pnpm dev > /tmp/log 2>&1 &                   # Dies when shell exits
+```
+
+**How to verify**: After starting, wait 10-15 seconds, then `curl -s -o /dev/null -w "%{http_code}" http://localhost:<port>`. Should return a non-000 HTTP code (307, 404, 200 are all fine).
+
+**Origin**: User-dashboard (port 3000) repeatedly showed "connection refused" because `pnpm --filter` background processes died when the parent Copilot CLI shell session ended or compacted. Required 3+ restarts before identifying the correct detach pattern.
