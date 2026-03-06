@@ -94,7 +94,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .select(
-              'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
+              'id, keyword, country_id, language_code, is_data_found, search_volume, cpc, keyword_competition, keyword_difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
             )
             .eq('keyword', keyword.trim().toLowerCase())
             .eq('country_id', countryUuid)
@@ -163,7 +163,7 @@ export class KeywordBankService implements IKeywordBankService {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .select(
-              'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
+              'id, keyword, country_id, language_code, is_data_found, search_volume, cpc, keyword_competition, keyword_difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
             )
             .in('keyword', normalizedKeywords)
             .eq('country_id', countryUuid)
@@ -280,10 +280,10 @@ export class KeywordBankService implements IKeywordBankService {
         country_id: countryUuid,
         language_code: languageCode.toLowerCase(),
         is_data_found: apiData.is_data_found,
-        volume: apiData.volume,
+        search_volume: apiData.volume,
         cpc: apiData.cpc,
-        competition: apiData.competition,
-        difficulty: apiData.difficulty,
+        keyword_competition: apiData.competition,
+        keyword_difficulty: apiData.difficulty,
         history_trend: apiData.history_trend,
         keyword_intent: this.extractKeywordIntent(apiData),
         data_updated_at: new Date().toISOString(),
@@ -301,7 +301,7 @@ export class KeywordBankService implements IKeywordBankService {
             countryUuid,
             languageCode: languageCode.toLowerCase(),
             hasData: apiData.is_data_found,
-            volume: apiData.volume,
+            search_volume: apiData.volume,
           },
         },
         { table: 'indb_keyword_bank', operationType: 'insert', data: insertData },
@@ -389,10 +389,10 @@ export class KeywordBankService implements IKeywordBankService {
             country_id: countryUuid,
             language_code: (pair.languageCode || 'en').toLowerCase(),
             is_data_found: pair.apiData.is_data_found,
-            volume: pair.apiData.volume,
+            search_volume: pair.apiData.volume,
             cpc: pair.apiData.cpc,
-            competition: pair.apiData.competition,
-            difficulty: pair.apiData.difficulty,
+            keyword_competition: pair.apiData.competition,
+            keyword_difficulty: pair.apiData.difficulty,
             history_trend: pair.apiData.history_trend,
             keyword_intent: this.extractKeywordIntent(pair.apiData),
             data_updated_at: new Date().toISOString(),
@@ -510,10 +510,10 @@ export class KeywordBankService implements IKeywordBankService {
       // Convert Date objects to strings for database compatibility
       const updateData: KeywordBankUpdateRow = {
         is_data_found: updates.is_data_found,
-        volume: updates.volume,
+        search_volume: updates.search_volume,
         cpc: updates.cpc,
-        competition: updates.competition,
-        difficulty: updates.difficulty,
+        keyword_competition: updates.keyword_competition,
+        keyword_difficulty: updates.keyword_difficulty,
         history_trend: updates.history_trend,
         keyword_intent: updates.keyword_intent,
         data_updated_at: updates.data_updated_at,
@@ -521,10 +521,10 @@ export class KeywordBankService implements IKeywordBankService {
       };
 
       if (
-        updates.volume !== undefined ||
+        updates.search_volume !== undefined ||
         updates.cpc !== undefined ||
-        updates.competition !== undefined ||
-        updates.difficulty !== undefined
+        updates.keyword_competition !== undefined ||
+        updates.keyword_difficulty !== undefined
       ) {
         updateData.data_updated_at = new Date().toISOString();
       }
@@ -537,9 +537,9 @@ export class KeywordBankService implements IKeywordBankService {
           source: 'KeywordBankService.updateKeywordData',
           metadata: {
             keywordId: id,
-            hasVolumeUpdate: updates.volume !== undefined,
+            hasVolumeUpdate: updates.search_volume !== undefined,
             hasCpcUpdate: updates.cpc !== undefined,
-            hasCompetitionUpdate: updates.competition !== undefined,
+            hasCompetitionUpdate: updates.keyword_competition !== undefined,
           },
         },
         { table: 'indb_keyword_bank', operationType: 'update', data: updateData },
@@ -636,16 +636,16 @@ export class KeywordBankService implements IKeywordBankService {
             dbQuery = dbQuery.eq('is_data_found', query.is_data_found);
           }
           if (query.min_volume !== undefined) {
-            dbQuery = dbQuery.gte('volume', query.min_volume);
+            dbQuery = dbQuery.gte('search_volume', query.min_volume);
           }
           if (query.max_volume !== undefined) {
-            dbQuery = dbQuery.lte('volume', query.max_volume);
+            dbQuery = dbQuery.lte('search_volume', query.max_volume);
           }
           if (query.min_difficulty !== undefined) {
-            dbQuery = dbQuery.gte('difficulty', query.min_difficulty);
+            dbQuery = dbQuery.gte('keyword_difficulty', query.min_difficulty);
           }
           if (query.max_difficulty !== undefined) {
-            dbQuery = dbQuery.lte('difficulty', query.max_difficulty);
+            dbQuery = dbQuery.lte('keyword_difficulty', query.max_difficulty);
           }
           if (query.keyword_intent) {
             dbQuery = dbQuery.eq('keyword_intent', query.keyword_intent);
@@ -902,10 +902,10 @@ export class KeywordBankService implements IKeywordBankService {
       country_id: row.country_id,
       language_code: row.language_code,
       is_data_found: row.is_data_found,
-      volume: row.volume,
+      search_volume: row.search_volume,
       cpc: row.cpc,
-      competition: row.competition,
-      difficulty: row.difficulty,
+      keyword_competition: row.keyword_competition,
+      keyword_difficulty: row.keyword_difficulty,
       history_trend: row.history_trend,
       keyword_intent: row.keyword_intent,
       data_updated_at: row.data_updated_at,
@@ -935,10 +935,10 @@ export class KeywordBankService implements IKeywordBankService {
         country_id: countryUuid,
         language_code: (data.language_code || 'en').toLowerCase(),
         is_data_found: data.is_data_found,
-        volume: data.volume,
+        search_volume: data.search_volume,
         cpc: data.cpc,
-        competition: data.competition,
-        difficulty: data.difficulty,
+        keyword_competition: data.keyword_competition,
+        keyword_difficulty: data.keyword_difficulty,
         history_trend: data.history_trend,
         keyword_intent: data.keyword_intent,
         data_updated_at: new Date().toISOString(),
@@ -1026,10 +1026,10 @@ export class KeywordBankService implements IKeywordBankService {
             country_id: countryUuid,
             language_code: (item.language_code || 'en').toLowerCase(),
             is_data_found: item.is_data_found,
-            volume: item.volume,
+            search_volume: item.search_volume,
             cpc: item.cpc,
-            competition: item.competition,
-            difficulty: item.difficulty,
+            keyword_competition: item.keyword_competition,
+            keyword_difficulty: item.keyword_difficulty,
             history_trend: item.history_trend,
             keyword_intent: item.keyword_intent,
             data_updated_at: new Date().toISOString(),
@@ -1141,7 +1141,7 @@ export class KeywordBankService implements IKeywordBankService {
           let query = supabaseAdmin
             .from('indb_keyword_bank')
             .select(
-              'id, keyword, country_id, language_code, is_data_found, volume, cpc, competition, difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
+              'id, keyword, country_id, language_code, is_data_found, search_volume, cpc, keyword_competition, keyword_difficulty, history_trend, keyword_intent, data_updated_at, created_at, updated_at'
             )
             .lt('data_updated_at', cutoffDate.toISOString())
             .order('data_updated_at', { ascending: true });

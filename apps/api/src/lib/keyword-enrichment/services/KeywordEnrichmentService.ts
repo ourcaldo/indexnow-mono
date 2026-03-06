@@ -446,7 +446,7 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           source: 'keyword-enrichment/services/KeywordEnrichmentService',
           metadata: {
             keyword_bank_id: keywordBankId,
-            volume: apiData.volume,
+            search_volume: apiData.volume,
             cpc: apiData.cpc,
             is_data_found: apiData.is_data_found,
             operation_type: 'keyword_data_update',
@@ -456,10 +456,10 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           table: 'indb_keyword_bank',
           operationType: 'update',
           data: {
-            volume: apiData.volume,
+            search_volume: apiData.volume,
             cpc: apiData.cpc,
-            competition: apiData.competition,
-            difficulty: apiData.difficulty,
+            keyword_competition: apiData.competition,
+            keyword_difficulty: apiData.difficulty,
             history_trend: apiData.history_trend,
             keyword_intent: null,
             is_data_found: apiData.is_data_found,
@@ -472,10 +472,10 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
           const { data, error } = await supabaseAdmin
             .from('indb_keyword_bank')
             .update({
-              volume: apiData.volume,
+              search_volume: apiData.volume,
               cpc: apiData.cpc,
-              competition: apiData.competition,
-              difficulty: apiData.difficulty,
+              keyword_competition: apiData.competition,
+              keyword_difficulty: apiData.difficulty,
               history_trend: apiData.history_trend,
               keyword_intent: null, // Will be set by separate logic later
               is_data_found: apiData.is_data_found,
@@ -769,10 +769,10 @@ export class KeywordEnrichmentService implements IKeywordEnrichmentService {
       country_id: countryCode.toLowerCase(),
       language_code: languageCode.toLowerCase(),
       is_data_found: apiData.is_data_found,
-      volume: apiData.volume,
+      search_volume: apiData.volume,
       cpc: apiData.cpc,
-      competition: apiData.competition,
-      difficulty: apiData.difficulty,
+      keyword_competition: apiData.competition,
+      keyword_difficulty: apiData.difficulty,
       history_trend: apiData.history_trend,
       keyword_intent: null,
     };

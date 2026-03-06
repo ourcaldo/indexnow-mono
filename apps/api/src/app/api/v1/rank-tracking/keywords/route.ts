@@ -114,9 +114,27 @@ export const GET = authenticatedApiWrapper(
       }
     }
 
+    // 4. Keyword bank enrichment: keyword_bank_id → enrichment data (volume, intent, difficulty, competition, cpc)
+    const bankIds = Array.from(new Set(keywords.map(k => k.keyword_bank_id as string).filter(Boolean)));
+    let bankMap: Record<string, { search_volume: number | null; keyword_intent: string | null; keyword_difficulty: number | null; keyword_competition: number | null; cpc: number | null }> = {};
+    if (bankIds.length > 0) {
+      const { data: bankRows } = await supabaseAdmin
+        .from('indb_keyword_bank')
+        .select('id, search_volume, keyword_intent, keyword_difficulty, keyword_competition, cpc')
+        .in('id', bankIds);
+      bankMap = Object.fromEntries((bankRows ?? []).map(b => [b.id, {
+        search_volume: b.search_volume,
+        keyword_intent: b.keyword_intent,
+        keyword_difficulty: b.keyword_difficulty,
+        keyword_competition: b.keyword_competition,
+        cpc: b.cpc,
+      }]));
+    }
+
     const enriched = keywords.map(k => {
       const domainName = k.domain as string;
       const domainRow = domainName ? domainMap[domainName] : null;
+      const bank = (k.keyword_bank_id as string) ? bankMap[k.keyword_bank_id as string] : null;
       return {
         ...k,
         current_position: k.position ?? null,
@@ -129,6 +147,12 @@ export const GET = authenticatedApiWrapper(
             ? { domain_name: domainName, display_name: domainName }
             : null,
         recent_ranking: rankingsMap[k.id as string] ?? [],
+        // Enrichment data from keyword bank
+        search_volume: bank?.search_volume ?? null,
+        keyword_intent: bank?.keyword_intent ?? null,
+        keyword_difficulty: bank?.keyword_difficulty ?? null,
+        keyword_competition: bank?.keyword_competition ?? null,
+        cpc: bank?.cpc ?? null,
       };
     });
 

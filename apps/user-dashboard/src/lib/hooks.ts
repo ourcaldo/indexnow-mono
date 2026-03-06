@@ -53,6 +53,12 @@ export interface Keyword {
   tags?: string[]
   is_active?: boolean
   created_at?: string
+  // Enrichment data from keyword bank
+  search_volume?: number | null
+  keyword_intent?: string | null
+  keyword_difficulty?: number | null
+  keyword_competition?: number | null
+  cpc?: number | null
 }
 
 export interface UserProfile {

@@ -77,10 +77,10 @@ const KeywordBankInsertSchema = z.object({
     .transform((s) => s.toLowerCase())
     .default('en'),
   is_data_found: z.boolean().default(false),
-  volume: z.number().int().min(0).nullable().optional(),
+  search_volume: z.number().int().min(0).nullable().optional(),
   cpc: z.number().min(0).nullable().optional(),
-  competition: z.number().min(0).max(1).nullable().optional(),
-  difficulty: z.number().int().min(0).max(100).nullable().optional(),
+  keyword_competition: z.number().min(0).max(1).nullable().optional(),
+  keyword_difficulty: z.number().int().min(0).max(100).nullable().optional(),
   history_trend: z.record(z.string(), z.number()).nullable().optional(),
   keyword_intent: z
     .enum(['commercial', 'informational', 'navigational', 'transactional'])
@@ -90,10 +90,10 @@ const KeywordBankInsertSchema = z.object({
 
 const KeywordBankUpdateSchema = z.object({
   is_data_found: z.boolean().optional(),
-  volume: z.number().int().min(0).nullable().optional(),
+  search_volume: z.number().int().min(0).nullable().optional(),
   cpc: z.number().min(0).nullable().optional(),
-  competition: z.number().min(0).max(1).nullable().optional(),
-  difficulty: z.number().int().min(0).max(100).nullable().optional(),
+  keyword_competition: z.number().min(0).max(1).nullable().optional(),
+  keyword_difficulty: z.number().int().min(0).max(100).nullable().optional(),
   history_trend: z.record(z.string(), z.number()).nullable().optional(),
   keyword_intent: z
     .enum(['commercial', 'informational', 'navigational', 'transactional'])
@@ -127,7 +127,7 @@ const KeywordBankQuerySchema = z.object({
   limit: z.number().int().min(1).max(1000).default(50),
   offset: z.number().int().min(0).default(0),
   order_by: z
-    .enum(['keyword', 'volume', 'difficulty', 'cpc', 'competition', 'data_updated_at'])
+    .enum(['keyword', 'search_volume', 'keyword_difficulty', 'cpc', 'keyword_competition', 'data_updated_at'])
     .default('data_updated_at'),
   order_direction: z.enum(['asc', 'desc']).default('desc'),
 });
@@ -416,9 +416,9 @@ export class ValidationService {
       }
 
       // Business logic validations
-      if (validatedData.is_data_found && validatedData.volume === null) {
+      if (validatedData.is_data_found && validatedData.search_volume === null) {
         warnings.push({
-          field: 'volume',
+          field: 'search_volume',
           message: 'Data found but volume is null',
           code: 'MISSING_VOLUME_DATA',
           value: validatedData.keyword,
@@ -426,11 +426,11 @@ export class ValidationService {
       }
 
       if (
-        validatedData.competition !== null &&
-        (validatedData.cpc === null || validatedData.volume === null)
+        validatedData.keyword_competition !== null &&
+        (validatedData.cpc === null || validatedData.search_volume === null)
       ) {
         warnings.push({
-          field: 'competition',
+          field: 'keyword_competition',
           message: 'Competition data present but CPC or volume missing',
           code: 'INCOMPLETE_COMPETITION_DATA',
           value: validatedData.keyword,
@@ -487,9 +487,9 @@ export class ValidationService {
       const warnings: ValidationWarning[] = [];
 
       // Business logic validations
-      if (validatedData.is_data_found === true && validatedData.volume === null) {
+      if (validatedData.is_data_found === true && validatedData.search_volume === null) {
         warnings.push({
-          field: 'volume',
+          field: 'search_volume',
           message: 'Data marked as found but volume is null',
           code: 'MISSING_VOLUME_DATA',
           value: 'update',

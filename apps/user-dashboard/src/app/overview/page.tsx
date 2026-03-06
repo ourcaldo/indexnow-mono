@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useMemo } from 'react'
 import {
@@ -21,7 +21,7 @@ import { fmtDate, fmtDevice, fmtCountry } from '../../lib/utils'
 
 const ITEMS_PER_PAGE = 20
 
-type SortField = 'keyword' | 'position' | 'country' | 'device'
+type SortField = 'keyword' | 'position' | 'country' | 'device' | 'search_volume' | 'keyword_difficulty'
 type SortDirection = 'asc' | 'desc'
 
 export default function OverviewPage() {
@@ -88,6 +88,18 @@ export default function OverviewPage() {
         case 'device':
           cmp = (a.device_type ?? '').localeCompare(b.device_type ?? '')
           break
+        case 'search_volume': {
+          const volA = a.search_volume ?? -1
+          const volB = b.search_volume ?? -1
+          cmp = volA - volB
+          break
+        }
+        case 'keyword_difficulty': {
+          const diffA = a.keyword_difficulty ?? -1
+          const diffB = b.keyword_difficulty ?? -1
+          cmp = diffA - diffB
+          break
+        }
       }
       return sortDirection === 'asc' ? cmp : -cmp
     })
@@ -138,7 +150,7 @@ export default function OverviewPage() {
 
     const avgPos = positions.length > 0
       ? (positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1)
-      : 'â€”'
+      : '—'
 
     return {
       total: totalKeywordsCount || sortedKeywords.length,
@@ -261,6 +273,11 @@ export default function OverviewPage() {
                     {([
                       { field: 'keyword' as SortField, label: 'Keyword', align: 'left' },
                       { field: 'position' as SortField, label: 'Position', align: 'center' },
+                      { field: 'search_volume' as SortField, label: 'Volume', align: 'center' },
+                      { field: 'keyword' as SortField, label: 'Intent', align: 'center', noSort: true },
+                      { field: 'keyword_difficulty' as SortField, label: 'KD', align: 'center' },
+                      { field: 'keyword' as SortField, label: 'Comp.', align: 'center', noSort: true },
+                      { field: 'keyword' as SortField, label: 'CPC', align: 'center', noSort: true },
                       { field: 'keyword' as SortField, label: 'URL', align: 'center', noSort: true },
                       { field: 'country' as SortField, label: 'Country', align: 'center' },
                       { field: 'device' as SortField, label: 'Device', align: 'center' },
@@ -317,6 +334,21 @@ export default function OverviewPage() {
                           <PositionBadge position={pos} />
                         </td>
                         <td className="px-4 py-3 text-center">
+                          <span className="text-sm tabular-nums text-gray-600">{fmtVolume(kw.search_volume)}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <IntentBadge intent={kw.keyword_intent} />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <DifficultyBadge value={kw.keyword_difficulty} />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-xs tabular-nums text-gray-500">{kw.keyword_competition != null ? kw.keyword_competition.toFixed(2) : '—'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-xs tabular-nums text-gray-500">{kw.cpc != null ? `$${kw.cpc.toFixed(2)}` : '—'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
                           {ranking?.url ? (
                             <div className="inline-flex items-center gap-1 max-w-[160px]">
                               <span className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap block max-w-[130px]" title={ranking.url}>
@@ -327,7 +359,7 @@ export default function OverviewPage() {
                               </a>
                             </div>
                           ) : (
-                            <span className="text-gray-300 text-xs">â€”</span>
+                            <span className="text-gray-300 text-xs">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -343,7 +375,7 @@ export default function OverviewPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="text-xs text-gray-400">{checkDate || 'â€”'}</span>
+                          <span className="text-xs text-gray-400">{checkDate || '—'}</span>
                         </td>
                       </tr>
                     )
@@ -393,11 +425,51 @@ function getPos(kw: Keyword): number | null {
 }
 
 function PositionBadge({ position }: { position: number | null }) {
-  if (!position) return <span className="text-gray-300 text-sm">â€”</span>
+  if (!position) return <span className="text-gray-300 text-sm">—</span>
   const cls =
     position <= 3 ? 'text-emerald-600 font-bold'
       : position <= 10 ? 'text-accent font-semibold'
         : position <= 20 ? 'text-amber-600 font-medium'
           : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
+}
+
+/** Format large numbers with K/M suffixes */
+function fmtVolume(vol: number | null | undefined): string {
+  if (vol == null) return '—'
+  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`
+  if (vol >= 1_000) return `${(vol / 1_000).toFixed(vol >= 10_000 ? 0 : 1)}K`
+  return vol.toLocaleString()
+}
+
+/** Color-coded difficulty badge (0–100) */
+function DifficultyBadge({ value }: { value: number | null | undefined }) {
+  if (value == null) return <span className="text-gray-300 text-xs">—</span>
+  const { bg, text } =
+    value <= 29 ? { bg: 'bg-emerald-50', text: 'text-emerald-700' }
+      : value <= 49 ? { bg: 'bg-yellow-50', text: 'text-yellow-700' }
+        : value <= 69 ? { bg: 'bg-orange-50', text: 'text-orange-700' }
+          : { bg: 'bg-red-50', text: 'text-red-700' }
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold tabular-nums ${bg} ${text}`}>
+      {value}
+    </span>
+  )
+}
+
+/** Keyword intent badge */
+function IntentBadge({ intent }: { intent: string | null | undefined }) {
+  if (!intent) return <span className="text-gray-300 text-xs">—</span>
+  const map: Record<string, { bg: string; text: string; label: string }> = {
+    informational: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Info' },
+    navigational:  { bg: 'bg-purple-50', text: 'text-purple-700', label: 'Nav' },
+    commercial:    { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Comm' },
+    transactional: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Trans' },
+  }
+  const m = map[intent.toLowerCase()] ?? { bg: 'bg-gray-50', text: 'text-gray-600', label: intent }
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.bg} ${m.text}`}>
+      {m.label}
+    </span>
+  )
 }

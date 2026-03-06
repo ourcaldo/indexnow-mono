@@ -12,10 +12,10 @@ export interface KeywordBankEntity {
   country_id: string | null; // UUID FK to indb_keyword_countries
   language_code: string;
   is_data_found: boolean;
-  volume: number | null;
+  search_volume: number | null;
   cpc: number | null;
-  competition: number | null;
-  difficulty: number | null;
+  keyword_competition: number | null;
+  keyword_difficulty: number | null;
   history_trend: Json | null;
   keyword_intent: KeywordIntentType | null;
   data_updated_at: string | null; // Date -> string for API/DB compatibility
@@ -29,20 +29,20 @@ export interface KeywordBankInsert {
   country_id: string;
   language_code?: string;
   is_data_found: boolean;
-  volume?: number | null;
+  search_volume?: number | null;
   cpc?: number | null;
-  competition?: number | null;
-  difficulty?: number | null;
+  keyword_competition?: number | null;
+  keyword_difficulty?: number | null;
   history_trend?: Json | null;
   keyword_intent?: KeywordIntentType | null;
 }
 
 export interface KeywordBankUpdate {
   is_data_found?: boolean;
-  volume?: number | null;
+  search_volume?: number | null;
   cpc?: number | null;
-  competition?: number | null;
-  difficulty?: number | null;
+  keyword_competition?: number | null;
+  keyword_difficulty?: number | null;
   history_trend?: Json | null;
   keyword_intent?: KeywordIntentType | null;
   data_updated_at?: string;
@@ -66,8 +66,8 @@ export interface EnhancedKeywordEntity {
   keyword_bank_id: string | null;
   search_volume: number | null;
   cpc: number | null;
-  competition: number | null;
-  difficulty: number | null;
+  keyword_competition: number | null;
+  keyword_difficulty: number | null;
   keyword_intent: KeywordIntentType | null;
   history_trend: Json | null;
   intelligence_updated_at: string | null;
@@ -87,7 +87,7 @@ export interface KeywordBankQuery {
   updated_since?: string;
   limit?: number;
   offset?: number;
-  order_by?: 'keyword' | 'volume' | 'difficulty' | 'cpc' | 'competition' | 'data_updated_at';
+  order_by?: 'keyword' | 'search_volume' | 'keyword_difficulty' | 'cpc' | 'keyword_competition' | 'data_updated_at';
   order_direction?: 'asc' | 'desc';
 }
 
