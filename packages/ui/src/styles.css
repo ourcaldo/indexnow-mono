@@ -2,17 +2,19 @@
 @config "../tailwind.config.ts";
 
 :root {
-  /* New Color Palette - Professional Dark Theme */
+  /* Firecrawl-inspired Color Palette — warm orange accent, clean white */
   --pure-white: #FFFFFF;
-  --light-gray: #F7F9FC;
-  --charcoal: #2C2C2E;
-  --soft-blue: #3D8BFF;
-  --cool-gray: #E0E6ED;
-  --graphite: #1A1A1A;
-  --slate-gray: #6C757D;
-  --mint-green: #4BB543;
-  --amber: #F0A202;
-  --rose-red: #E63946;
+  --light-gray: #FAFAFA;
+  --charcoal: #18181B;
+  --fire-orange: #F97316;
+  --fire-orange-dark: #EA580C;
+  --fire-orange-light: #FFF7ED;
+  --cool-gray: #F4F4F5;
+  --graphite: #09090B;
+  --slate-gray: #71717A;
+  --mint-green: #22C55E;
+  --amber: #F59E0B;
+  --rose-red: #EF4444;
   --light-blue-bg: #F0F9FF;
   --light-red-bg: #FEF2F2;
   --light-red-border: #FECACA;
@@ -20,43 +22,43 @@
   --error-text: #DC2626;
   
   /* Brand-specific colors for semantic usage */
-  --brand-primary: var(--graphite);
-  --brand-secondary: var(--charcoal);
-  --brand-accent: var(--soft-blue);
+  --brand-primary: var(--fire-orange);
+  --brand-secondary: var(--fire-orange-dark);
+  --brand-accent: var(--fire-orange);
   --brand-text: var(--slate-gray);
   
   /* Button specific colors */
-  --button-primary: #1C2331;
-  --button-secondary: #0d1b2a;
-  --button-tertiary: #22333b;
-  --button-dark: #1E1E1E;
+  --button-primary: #F97316;
+  --button-secondary: #EA580C;
+  --button-tertiary: #C2410C;
+  --button-dark: #9A3412;
   
   /* CSS Variables using new palette */
   --background: 0 0% 100%;
-  --foreground: 0 0% 10%;
+  --foreground: 0 0% 3.9%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
+  --card-foreground: 0 0% 3.9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
+  --popover-foreground: 0 0% 3.9%;
   
-  /* Primary elements */
-  --primary: 220 27% 15%;
+  /* Primary elements — orange */
+  --primary: 24.6 95% 53.1%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 98%;
-  --secondary-foreground: 240 3% 18%;
-  --muted: 210 40% 98%;
-  --muted-foreground: 210 8% 46%;
-  --accent: 218 100% 62%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 24.6 95% 53.1%;
   --accent-foreground: 0 0% 100%;
   
   /* Semantic colors */
-  --success: 142 70% 49%;
+  --success: 142 71% 45.3%;
   --success-foreground: 0 0% 100%;
-  --warning: 39 92% 47%;
+  --warning: 37.7 92.1% 50.2%;
   --warning-foreground: 0 0% 7%;
-  --error: 354 70% 54%;
+  --error: 0 84.2% 60.2%;
   --error-foreground: 0 0% 100%;
-  --info: 218 58% 63%;
+  --info: 217.2 91.2% 59.8%;
   --info-foreground: 0 0% 100%;
   
   /* Status-specific colors */
@@ -67,56 +69,36 @@
   
   /* Interactive element colors */
   --hover-overlay: 0 0% 0% / 0.05;
-  --focus-ring: var(--soft-blue);
+  --focus-ring: var(--fire-orange);
   --disabled-bg: var(--cool-gray);
   --disabled-text: var(--slate-gray);
   
   /* UI Elements */
-  --border: 215 16% 88%;
-  --input: 215 16% 88%;
-  --ring: 218 100% 62%;
-  --destructive: 354 70% 54%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 24.6 95% 53.1%;
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 100%;
   --radius: 0.5rem;
   
   /* Gray-scale palette */
   --gray-50: 0 0% 98%;
-  --gray-100: 0 0% 96%;
-  --gray-200: 0 0% 90%;
-  --gray-300: 0 0% 83%;
-  --gray-400: 0 0% 64%;
-  --gray-500: 0 0% 62%;
-  --gray-600: 0 0% 45%;
-  --gray-700: 0 0% 34%;
-  --gray-800: 0 0% 20%;
-  --gray-900: 0 0% 11%;
+  --gray-100: 240 4.8% 95.9%;
+  --gray-200: 240 5.9% 90%;
+  --gray-300: 240 4.9% 83.9%;
+  --gray-400: 240 5% 64.9%;
+  --gray-500: 240 3.8% 46.1%;
+  --gray-600: 240 5.2% 33.9%;
+  --gray-700: 240 5.3% 26.1%;
+  --gray-800: 240 3.7% 15.9%;
+  --gray-900: 240 5.9% 10%;
   
   /* Success/Green badge colors */
   --green-100: 142 77% 93%;
   --green-800: 142 70% 25%;
 }
 
-.dark {
-  --background: 0 0% 0%;
-  --foreground: 0 0% 100%;
-  --card: 0 0% 0%;
-  --card-foreground: 0 0% 100%;
-  --popover: 0 0% 0%;
-  --popover-foreground: 0 0% 100%;
-  --primary: 0 0% 100%;
-  --primary-foreground: 0 0% 0%;
-  --secondary: 0 0% 5%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 0 0% 5%;
-  --muted-foreground: 0 0% 100%;
-  --accent: 218 100% 62%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 20%;
-  --input: 0 0% 5%;
-  --ring: 218 100% 62%;
-}
+/* Dark mode removed — light-only design */
 
 @layer base {
   * {
@@ -143,7 +125,7 @@
   .card-interactive:hover { border-left-color: hsl(var(--primary)); }
   
   .btn-hover { @apply transition-colors duration-200; }
-  .btn-hover:hover { background-color: var(--button-dark) !important; color: var(--pure-white) !important; }
+  .btn-hover:hover { background-color: var(--button-secondary) !important; color: var(--pure-white) !important; }
   
   .form-field-default { @apply border-border bg-background text-foreground rounded-md px-3 py-2; border: 1px solid var(--border); }
   .form-field-error { @apply border-error bg-background text-foreground rounded-md px-3 py-2; border: 1px solid hsl(var(--error)); }

@@ -9,7 +9,7 @@ import type { Config } from "tailwindcss";
  *   export default { presets: [sharedConfig], content: [...] } satisfies Config;
  */
 const sharedConfig: Config = {
-  darkMode: "class",
+  // Dark mode disabled — light-only design
   content: [],
   theme: {
     extend: {
