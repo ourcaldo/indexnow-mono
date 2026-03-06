@@ -337,10 +337,10 @@ export default function OverviewPage() {
                           <span className="text-sm tabular-nums text-gray-600">{fmtVolume(kw.search_volume)}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="text-xs text-gray-600">{kw.keyword_intent ? kw.keyword_intent.charAt(0).toUpperCase() + kw.keyword_intent.slice(1) : '—'}</span>
+                          <span className={`text-xs font-medium ${getIntentColor(kw.keyword_intent)}`}>{kw.keyword_intent ? kw.keyword_intent.charAt(0).toUpperCase() + kw.keyword_intent.slice(1) : '—'}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="text-sm tabular-nums text-gray-600">{kw.keyword_difficulty != null ? kw.keyword_difficulty : '—'}</span>
+                          <span className={`text-sm tabular-nums font-semibold ${getDifficultyColor(kw.keyword_difficulty)}`}>{kw.keyword_difficulty != null ? kw.keyword_difficulty : '—'}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="text-xs tabular-nums text-gray-500">{kw.keyword_competition != null ? kw.keyword_competition.toFixed(2) : '—'}</span>
@@ -432,6 +432,25 @@ function PositionBadge({ position }: { position: number | null }) {
         : position <= 20 ? 'text-amber-600 font-medium'
           : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
+}
+
+function getDifficultyColor(value: number | null | undefined): string {
+  if (value == null) return 'text-gray-300'
+  if (value <= 29) return 'text-emerald-600'
+  if (value <= 49) return 'text-yellow-600'
+  if (value <= 69) return 'text-orange-600'
+  return 'text-red-600'
+}
+
+function getIntentColor(intent: string | null | undefined): string {
+  if (!intent) return 'text-gray-300'
+  switch (intent.toLowerCase()) {
+    case 'informational': return 'text-blue-600'
+    case 'navigational': return 'text-purple-600'
+    case 'commercial': return 'text-amber-600'
+    case 'transactional': return 'text-emerald-600'
+    default: return 'text-gray-600'
+  }
 }
 
 /** Format large numbers with K/M suffixes */
