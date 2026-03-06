@@ -258,7 +258,7 @@ export default function OverviewPage() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/50">
                     <th className="px-4 py-3 w-10">
@@ -318,9 +318,9 @@ export default function OverviewPage() {
                           />
                         </td>
                         <td className="px-3 py-3 text-center text-xs text-gray-400 tabular-nums w-8">{idx + 1}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 max-w-[200px]">
                           <div>
-                            <span className="text-sm font-medium text-gray-900">{kw.keyword}</span>
+                            <span className="text-sm font-medium text-gray-900 break-words">{kw.keyword}</span>
                             {kw.tags && kw.tags.length > 0 && (
                               <div className="flex gap-1 mt-1">
                                 {kw.tags.slice(0, 3).map(tag => (
@@ -348,16 +348,12 @@ export default function OverviewPage() {
                         <td className="px-4 py-3 text-center">
                           <span className="text-xs tabular-nums text-gray-500">{kw.cpc != null ? `$${kw.cpc.toFixed(2)}` : '—'}</span>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
                           {ranking?.url ? (
-                            <div className="inline-flex items-center gap-1 max-w-[160px]">
-                              <span className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap block max-w-[130px]" title={ranking.url}>
-                                {ranking.url.replace(/^https?:\/\/(www\.)?/, '')}
-                              </span>
-                              <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 text-gray-400 hover:text-accent transition-colors" title="Open in new tab">
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </div>
+                            <a href={ranking.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gray-500 hover:text-accent transition-colors" title={ranking.url}>
+                              <span className="text-xs">{getRootDomain(ranking.url)}</span>
+                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                            </a>
                           ) : (
                             <span className="text-gray-300 text-xs">—</span>
                           )}
@@ -432,6 +428,16 @@ function PositionBadge({ position }: { position: number | null }) {
         : position <= 20 ? 'text-amber-600 font-medium'
           : 'text-gray-500'
   return <span className={`text-sm tabular-nums ${cls}`}>{position}</span>
+}
+
+/** Extract root domain from URL, e.g. "https://www.example.com/page" → "example.com/" */
+function getRootDomain(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    return `${host}/`
+  } catch {
+    return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] + '/'
+  }
 }
 
 function getDifficultyColor(value: number | null | undefined): string {
