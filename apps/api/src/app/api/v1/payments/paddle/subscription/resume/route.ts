@@ -12,7 +12,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 // Derived types from Database schema
@@ -123,7 +123,9 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       request,
       metadata: { subscriptionId },
     });
-  } catch (_) { /* non-critical */ }
+  } catch (logErr) {
+    logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+  }
 
   return formatSuccess({
     subscription: updatedSub,

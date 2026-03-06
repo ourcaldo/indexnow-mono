@@ -17,7 +17,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 
 const createDomainSchema = z.object({
   domain_name: z.string().min(1, 'Domain name is required'),
@@ -160,7 +160,10 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
           .eq('user_id', auth.userId)
           .single();
 
-        if (error) throw new Error(`Failed to check subscription: ${error.message} (code: ${error.code}, details: ${error.details})`);
+        if (error)
+          throw new Error(
+            `Failed to check subscription: ${error.message} (code: ${error.code}, details: ${error.details})`
+          );
         return data;
       }
     )) as { is_active: boolean; package_id: string | null } | null;
@@ -169,7 +172,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       const subscriptionError = await ErrorHandlingService.createError(
         ErrorType.AUTHORIZATION,
         'Active subscription required to add domains',
-        { severity: ErrorSeverity.MEDIUM, userId: auth.userId, statusCode: 403, userMessageKey: 'no_active_plan' }
+        {
+          severity: ErrorSeverity.MEDIUM,
+          userId: auth.userId,
+          statusCode: 403,
+          userMessageKey: 'no_active_plan',
+        }
       );
       return formatError(subscriptionError);
     }
@@ -242,7 +250,9 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
         request,
         metadata: { domainName: cleanDomain },
       });
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({ data: newDomain }, undefined, 201);
   } catch (error) {

@@ -8,6 +8,7 @@ type PackageUpdate = Database['public']['Tables']['indb_payment_packages']['Upda
 import { type AdminUser } from '@indexnow/auth';
 import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-middleware';
 import { formatSuccess } from '@/lib/core/api-response-formatter';
+import { logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 const pricingTierDetailsSchema = z.object({
@@ -146,7 +147,9 @@ export const PATCH = adminApiWrapper(
           updatedFields: Object.keys(validated),
         }
       );
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({ package: result.data }, undefined, 200);
   }
@@ -212,7 +215,9 @@ export const DELETE = adminApiWrapper(
           targetId: id,
         }
       );
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({ success: true }, undefined, 200);
   }

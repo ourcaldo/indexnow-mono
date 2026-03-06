@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { type AdminUser } from '@indexnow/auth';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
@@ -79,7 +79,8 @@ export const PATCH = adminApiWrapper(
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
     if (body.is_default !== undefined) updateData.is_default = body.is_default;
     if (body.configuration !== undefined) updateData.configuration = body.configuration as Json;
-    if (body.api_credentials !== undefined) updateData.api_credentials = body.api_credentials as Json;
+    if (body.api_credentials !== undefined)
+      updateData.api_credentials = body.api_credentials as Json;
 
     try {
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
@@ -120,7 +121,9 @@ export const PATCH = adminApiWrapper(
             updatedFields: Object.keys(updateData),
           }
         );
-      } catch (_) { /* non-critical */ }
+      } catch (logErr) {
+        logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+      }
 
       return formatSuccess({ gateway: result });
     } catch (error) {
@@ -186,7 +189,9 @@ export const DELETE = adminApiWrapper(
             targetId: id,
           }
         );
-      } catch (_) { /* non-critical */ }
+      } catch (logErr) {
+        logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+      }
 
       return formatSuccess({ success: true });
     } catch (error) {

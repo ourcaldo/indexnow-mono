@@ -74,21 +74,25 @@ export const GET = authenticatedApiWrapper(
 
     // Enrich flat country/domain strings into nested objects the frontend expects
     const keywords = (result.keywords ?? []) as Record<string, unknown>[];
-    const keywordIds = keywords.map(k => k.id as string).filter(Boolean);
+    const keywordIds = keywords.map((k) => k.id as string).filter(Boolean);
 
     // 1. Country map: country_id (UUID) → { id, iso2_code, name }
-    const countryIds = Array.from(new Set(keywords.map(k => k.country_id as string).filter(Boolean)));
+    const countryIds = Array.from(
+      new Set(keywords.map((k) => k.country_id as string).filter(Boolean))
+    );
     let countryMap: Record<string, { id: string; iso2_code: string; name: string }> = {};
     if (countryIds.length > 0) {
       const { data: countryRows } = await supabaseAdmin
         .from('indb_keyword_countries')
         .select('id, iso2_code, name')
         .in('id', countryIds);
-      countryMap = Object.fromEntries((countryRows ?? []).map(c => [c.id, c]));
+      countryMap = Object.fromEntries((countryRows ?? []).map((c) => [c.id, c]));
     }
 
     // 2. Domain map: domain_name → { id, domain_name }
-    const domainNames = Array.from(new Set(keywords.map(k => k.domain as string).filter(Boolean)));
+    const domainNames = Array.from(
+      new Set(keywords.map((k) => k.domain as string).filter(Boolean))
+    );
     let domainMap: Record<string, { id: string; domain_name: string }> = {};
     if (domainNames.length > 0) {
       const { data: domainRows } = await supabaseAdmin
@@ -96,11 +100,14 @@ export const GET = authenticatedApiWrapper(
         .select('id, domain_name')
         .in('domain_name', domainNames)
         .eq('user_id', auth.userId);
-      domainMap = Object.fromEntries((domainRows ?? []).map(d => [d.domain_name, d]));
+      domainMap = Object.fromEntries((domainRows ?? []).map((d) => [d.domain_name, d]));
     }
 
     // 3. Recent rankings map: keyword_id → RankingEntry[]
-    let rankingsMap: Record<string, { position: number | null; url: string | null; check_date: string }[]> = {};
+    let rankingsMap: Record<
+      string,
+      { position: number | null; url: string | null; check_date: string }[]
+    > = {};
     if (keywordIds.length > 0) {
       const { data: rankingRows } = await supabaseAdmin
         .from('indb_keyword_rankings')
@@ -110,28 +117,48 @@ export const GET = authenticatedApiWrapper(
         .limit(keywordIds.length * 30); // up to 30 entries per keyword
       for (const row of rankingRows ?? []) {
         if (!rankingsMap[row.keyword_id]) rankingsMap[row.keyword_id] = [];
-        rankingsMap[row.keyword_id].push({ position: row.position, url: row.url, check_date: row.check_date });
+        rankingsMap[row.keyword_id].push({
+          position: row.position,
+          url: row.url,
+          check_date: row.check_date,
+        });
       }
     }
 
     // 4. Keyword bank enrichment: keyword_bank_id → enrichment data (volume, intent, difficulty, competition, cpc)
-    const bankIds = Array.from(new Set(keywords.map(k => k.keyword_bank_id as string).filter(Boolean)));
-    let bankMap: Record<string, { search_volume: number | null; keyword_intent: string | null; keyword_difficulty: number | null; keyword_competition: number | null; cpc: number | null }> = {};
+    const bankIds = Array.from(
+      new Set(keywords.map((k) => k.keyword_bank_id as string).filter(Boolean))
+    );
+    let bankMap: Record<
+      string,
+      {
+        search_volume: number | null;
+        keyword_intent: string | null;
+        keyword_difficulty: number | null;
+        keyword_competition: number | null;
+        cpc: number | null;
+      }
+    > = {};
     if (bankIds.length > 0) {
       const { data: bankRows } = await supabaseAdmin
         .from('indb_keyword_bank')
         .select('id, search_volume, keyword_intent, keyword_difficulty, keyword_competition, cpc')
         .in('id', bankIds);
-      bankMap = Object.fromEntries((bankRows ?? []).map(b => [b.id, {
-        search_volume: b.search_volume,
-        keyword_intent: b.keyword_intent,
-        keyword_difficulty: b.keyword_difficulty,
-        keyword_competition: b.keyword_competition,
-        cpc: b.cpc,
-      }]));
+      bankMap = Object.fromEntries(
+        (bankRows ?? []).map((b) => [
+          b.id,
+          {
+            search_volume: b.search_volume,
+            keyword_intent: b.keyword_intent,
+            keyword_difficulty: b.keyword_difficulty,
+            keyword_competition: b.keyword_competition,
+            cpc: b.cpc,
+          },
+        ])
+      );
     }
 
-    const enriched = keywords.map(k => {
+    const enriched = keywords.map((k) => {
       const domainName = k.domain as string;
       const domainRow = domainName ? domainMap[domainName] : null;
       const bank = (k.keyword_bank_id as string) ? bankMap[k.keyword_bank_id as string] : null;
@@ -142,7 +169,11 @@ export const GET = authenticatedApiWrapper(
           ? (countryMap[k.country_id as string] ?? { id: k.country_id, iso2_code: '', name: '' })
           : null,
         domain: domainRow
-          ? { id: domainRow.id, domain_name: domainRow.domain_name, display_name: domainRow.domain_name }
+          ? {
+              id: domainRow.id,
+              domain_name: domainRow.domain_name,
+              display_name: domainRow.domain_name,
+            }
           : domainName
             ? { domain_name: domainName, display_name: domainName }
             : null,
@@ -211,10 +242,12 @@ export const POST = authenticatedApiWrapper(
         .eq('device', device_type)
         .in('keyword', keywords);
 
-      const existingSet = new Set((existingRows ?? []).map((r: { keyword: string }) => r.keyword.toLowerCase()));
+      const existingSet = new Set(
+        (existingRows ?? []).map((r: { keyword: string }) => r.keyword.toLowerCase())
+      );
 
       // Calculate net new keywords and pre-check quota for entire batch
-      const newKeywords = keywords.filter(kw => !existingSet.has(kw.toLowerCase()));
+      const newKeywords = keywords.filter((kw) => !existingSet.has(kw.toLowerCase()));
       if (newKeywords.length > 0) {
         const canAdd = await QuotaService.canAddKeyword(auth.userId, newKeywords.length);
         if (!canAdd) {
@@ -255,7 +288,10 @@ export const POST = authenticatedApiWrapper(
             );
           }
         } catch (enqueueErr) {
-          logger.warn({ keywordId: kw.id, error: enqueueErr }, 'Failed to enqueue rank check — keyword saved but check skipped');
+          logger.warn(
+            { keywordId: kw.id, error: enqueueErr },
+            'Failed to enqueue rank check — keyword saved but check skipped'
+          );
         }
       }
 
@@ -268,13 +304,16 @@ export const POST = authenticatedApiWrapper(
             {
               scheduledAt: new Date().toISOString(),
               mode: 'immediate',
-              keywordIds: results.map(kw => kw.id),
+              keywordIds: results.map((kw) => kw.id),
               userId: auth.userId,
             },
             { priority: 1 }
           );
         } catch (enqueueErr) {
-          logger.warn({ count: results.length, error: enqueueErr }, 'Failed to enqueue keyword enrichment — keywords saved but enrichment deferred to hourly sweep');
+          logger.warn(
+            { count: results.length, error: enqueueErr },
+            'Failed to enqueue keyword enrichment — keywords saved but enrichment deferred to hourly sweep'
+          );
         }
       }
 
@@ -287,7 +326,9 @@ export const POST = authenticatedApiWrapper(
           request,
           metadata: { count: results.length, skipped, domainId: domain_id },
         });
-      } catch (_) { /* non-critical */ }
+      } catch (logErr) {
+        logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+      }
 
       return formatSuccess({ created: results.length, keywords: results, skipped }, undefined, 201);
     }
@@ -333,7 +374,10 @@ export const POST = authenticatedApiWrapper(
         );
       }
     } catch (enqueueErr) {
-      logger.warn({ keywordId: result.id, error: enqueueErr }, 'Failed to enqueue rank check — keyword saved but check skipped');
+      logger.warn(
+        { keywordId: result.id, error: enqueueErr },
+        'Failed to enqueue rank check — keyword saved but check skipped'
+      );
     }
 
     // Trigger immediate keyword enrichment for the newly created keyword
@@ -352,7 +396,10 @@ export const POST = authenticatedApiWrapper(
         );
       }
     } catch (enqueueErr) {
-      logger.warn({ keywordId: result.id, error: enqueueErr }, 'Failed to enqueue keyword enrichment — keyword saved but enrichment deferred to hourly sweep');
+      logger.warn(
+        { keywordId: result.id, error: enqueueErr },
+        'Failed to enqueue keyword enrichment — keyword saved but enrichment deferred to hourly sweep'
+      );
     }
 
     try {
@@ -365,7 +412,9 @@ export const POST = authenticatedApiWrapper(
         request,
         metadata: { keyword, domain },
       });
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({ created: 1, keywords: [result] }, undefined, 201);
   }
@@ -407,7 +456,9 @@ export const DELETE = authenticatedApiWrapper(
         request,
         metadata: { count, keywordIds },
       });
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({ count });
   }

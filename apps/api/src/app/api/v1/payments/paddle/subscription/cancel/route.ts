@@ -19,7 +19,7 @@ import {
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 // Derived types from Database schema
@@ -101,7 +101,9 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   const refundEligible = daysActive <= 7;
 
   const canceledAt = new Date().toISOString();
-  const subscriptionEndDate = refundEligible ? canceledAt : (subscription.current_period_end ?? canceledAt);
+  const subscriptionEndDate = refundEligible
+    ? canceledAt
+    : (subscription.current_period_end ?? canceledAt);
 
   // Atomic cancel: updates both subscription + user profile in one DB transaction
   const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<Json>(
@@ -142,12 +144,16 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     await ActivityLogger.logActivity({
       userId: auth.userId,
       eventType: 'subscription_cancel',
-      actionDescription: refundEligible ? 'Canceled subscription with refund' : 'Scheduled subscription cancellation',
+      actionDescription: refundEligible
+        ? 'Canceled subscription with refund'
+        : 'Scheduled subscription cancellation',
       targetType: 'subscription',
       request,
       metadata: { subscriptionId, refundEligible, daysActive },
     });
-  } catch (_) { /* non-critical */ }
+  } catch (logErr) {
+    logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+  }
 
   return formatSuccess({
     action: refundEligible ? 'immediate_cancellation' : 'scheduled_cancellation',

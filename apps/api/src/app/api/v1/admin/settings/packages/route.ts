@@ -12,7 +12,7 @@ import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 
 // Use Pick from Database types for correct schema
@@ -165,7 +165,9 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
           packageSlug: newPackage.slug,
         }
       );
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({ package: newPackage }, undefined, 201);
   } catch (error) {

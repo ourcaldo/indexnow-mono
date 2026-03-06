@@ -6,7 +6,7 @@ import {
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 
@@ -191,7 +191,9 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
         targetType: 'billing',
         request,
       });
-    } catch (_) { /* non-critical */ }
+    } catch (logErr) {
+      logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
+    }
 
     return formatSuccess({
       message: 'Payment proof uploaded successfully',
