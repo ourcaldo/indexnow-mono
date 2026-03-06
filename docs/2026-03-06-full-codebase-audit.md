@@ -44,105 +44,105 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 
 | ID | Severity | Description | File Path | Status |
 |----|----------|-------------|-----------|--------|
-| C-01 | Critical | Sentry webhook raw handler — no wrapper, no audit trail | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | Open |
-| C-02 | Critical | Fire-and-forget DB write — sentry_issue_id may never persist | `apps/api/src/app/api/v1/admin/errors/[id]/route.ts:66-70` | Open |
-| C-03 | Critical | Non-atomic dual writes in subscription cancel — data integrity risk | `apps/api/src/app/api/v1/payments/paddle/subscription/cancel/route.ts` | Open |
-| C-04 | Critical | CSP `unsafe-eval` in script-src across ALL 3 apps — XSS protection defeated | `apps/*/next.config.ts` | Open |
-| C-05 | Critical | CSP `unsafe-inline` in script-src on frontend apps — zero XSS protection | `apps/admin/next.config.ts`, `apps/user-dashboard/next.config.ts` | Open |
-| H-01 | High | `as any` in dashboard route — unchecked property access | `apps/api/src/app/api/v1/dashboard/route.ts:264,277` | Open |
-| H-02 | High | `as never` in admin package update — bypasses type checker | `apps/api/src/app/api/v1/admin/settings/packages/[id]/route.ts:106` | Open |
-| H-03 | High | `as any` abuse in admin payments page (8 instances) | `apps/admin/src/app/(dashboard)/settings/payments/page.tsx` | Open |
-| H-04 | High | Fire-and-forget login notifications (login + session routes) | `apps/api/src/app/api/v1/auth/login/route.ts:196`, `auth/session/route.ts:174` | Open |
-| H-05 | High | Fire-and-forget secureUpdate — swallowed error in reset-password | `apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts:168` | Open |
-| H-06 | High | Direct supabaseAdmin writes bypassing SecureServiceRoleWrapper | `apps/api/src/app/api/v1/auth/login/route.ts:180`, `webhooks/sentry/route.ts:65,96` | Open |
-| H-07 | High | WorkerStartup is a non-functional stub — BullMQ jobs silently lost | `apps/api/src/lib/job-management/worker-startup.ts` | Open |
-| H-08 | High | Broken cancel subscription call — no Bearer token, will 401 | `apps/user-dashboard/.../PlansBillingContent.tsx:216-220` | Open |
-| H-09 | High | `as any` in admin order detail page | `apps/admin/src/app/(dashboard)/orders/[id]/page.tsx:60` | Open |
-| H-10 | High | 30 npm vulnerabilities (1 critical, 16 high) incl. exploitable `next` DoS | `pnpm-lock.yaml` (transitive deps) | Open |
-| H-11 | High | `as any` in admin error pages — missing type fields | `apps/admin/.../errors/page.tsx:241`, `errors/[id]/page.tsx:50` | Open |
-| H-12 | High | `as unknown as` casts in user-dashboard (3 instances) | `apps/user-dashboard/.../PlansBillingContent.tsx:175`, `rank-history/page.tsx:653` | Open |
-| H-13 | High | CI uses pnpm 9, project requires pnpm 10 — lockfile mismatch | `.github/workflows/ci.yml:15` | Open |
-| H-14 | High | turbo.json globalEnv missing ~30 server-side env vars — stale cache risk | `turbo.json:3-26` | Open |
-| H-15 | High | Docker Redis exposed on 0.0.0.0:6379 without auth | `docker-compose.yml:8` | Open |
-| H-16 | High | No security audit step in CI pipeline | `.github/workflows/ci.yml` | Open |
-| H-17 | High | IP spoofing bypasses rate limiter — trusts x-forwarded-for | `packages/shared/src/utils/rate-limiter.ts:143-146` | Open |
-| H-18 | High | TOCTOU race in rate limiter — concurrent requests bypass MAX_ATTEMPTS | `packages/shared/src/utils/rate-limiter.ts:162-176` | Open |
-| H-19 | High | SSRF via unsanitized IP in ipapi.co URL interpolation | `packages/shared/src/utils/ip-device-utils.ts:140` | Open |
-| H-20 | High | PII sanitizer only checks object keys, never string values | `packages/shared/src/utils/pii-sanitizer.ts:32-46` | Open |
-| H-21 | High | z.any() in admin user-management schema — unvalidated arbitrary data | `packages/shared/src/constants/ValidationRules.ts:282` | Open |
-| H-22 | High | XSS sanitizer only strips `<script>` tags — event handlers, URIs bypass | `packages/shared/src/constants/ValidationRules.ts:389-394` | Open |
-| H-23 | High | Missing 'use client' in checkout components — runtime error | `packages/ui/src/components/checkout/LoadingStates.tsx`, `CheckoutHeader.tsx` | Open |
-| H-24 | High | `as number` type assertions in ErrorStatsCards | `packages/ui/src/components/admin/errors/ErrorStatsCards.tsx:62,126` | Open |
-| H-25 | High | UI package exports point to ./src/ not ./dist/ | `packages/ui/package.json:18-26` | Open |
-| H-26 | High | Analytics package missing @indexnow/shared from externals | `packages/analytics/tsup.config.ts:13-18` | Open |
-| H-27 | High | Unsigned admin role-cache cookie — revoked admin retains access 60s | `apps/admin/src/middleware.ts:37-88` | Open |
-| M-01 | Medium | 17+ dead endpoint constants with no route implementation | `packages/shared/src/constants/ApiEndpoints.ts` | Open |
-| M-02 | Medium | Paddle webhook uses raw NextResponse.json() — non-standard response shape | `apps/api/src/app/api/v1/payments/paddle/webhook/route.ts` | Open |
-| M-03 | Medium | Sentry webhook uses raw NextResponse.json() (12 instances) | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | Open |
-| M-04 | Medium | No Zod validation on webhook payloads — crash on malformed input | `apps/api/.../webhooks/sentry/route.ts:42`, `paddle/webhook/route.ts` | Open |
-| M-05 | Medium | 4 stub routes return 501/503 without documentation | `apps/api/.../customer-portal/route.ts`, `seranking/health/metrics/route.ts`, etc. | Open |
-| M-06 | Medium | Inconsistent error creation — throw Error vs ErrorHandlingService.createError | `apps/api/...` (7 route files) | Open |
-| M-07 | Medium | Silent error swallowing — ActivityLogger failures invisible | `apps/api/...` (7 route files) | Open |
-| M-08 | Medium | Type casting `request as unknown as NextRequest` in change-password | `apps/api/.../auth/user/change-password/route.ts:26,101` | Open |
-| M-09 | Medium | 3 dead hooks exported but never imported | `apps/user-dashboard/src/hooks/hooks.ts` (useWeeklyTrends, useCheckRank, useAddTag) | Open |
-| M-10 | Medium | In-memory rate limiter store — no periodic GC, memory leak under load | `packages/shared/src/utils/rate-limiter.ts:31-56` | Open |
-| M-11 | Medium | Rate limiter eviction O(n log n) sort on every set at capacity | `packages/shared/src/utils/rate-limiter.ts:46-50` | Open |
-| M-12 | Medium | Circuit breaker HALF_OPEN allows unlimited concurrent requests | `packages/shared/src/utils/resilience/CircuitBreaker.ts:60-72` | Open |
-| M-13 | Medium | Circuit breaker — single success resets ALL failure history | `packages/shared/src/utils/resilience/CircuitBreaker.ts:87-98` | Open |
-| M-14 | Medium | FallbackHandler cache has no size limit — unbounded memory growth | `packages/shared/src/utils/resilience/FallbackHandler.ts:29` | Open |
-| M-15 | Medium | FallbackHandler `return {} as T` — unsafe empty fallback cast | `packages/shared/src/utils/resilience/FallbackHandler.ts:132` | Open |
-| M-16 | Medium | FallbackHandler `return result as T` — Partial<T> cast lies to consumers | `packages/shared/src/utils/resilience/FallbackHandler.ts:78` | Open |
-| M-17 | Medium | Logger never sanitizes context objects — credentials may appear in logs | `packages/shared/src/utils/logger.ts:45-76` | Open |
-| M-18 | Medium | ErrorHandlingService logs entire config object — PII/secrets leak | `packages/shared/src/utils/logger.ts:132-152` | Open |
-| M-19 | Medium | Logger uses `as Error & {...}` type assertion | `packages/shared/src/utils/logger.ts:145-146` | Open |
-| M-20 | Medium | PII sanitizer SENSITIVE_KEYS includes bare 'key' — false positive redaction | `packages/shared/src/utils/pii-sanitizer.ts:9` | Open |
-| M-21 | Medium | PII sanitizer missing patterns: ssn, credit_card, credentials, pin, etc. | `packages/shared/src/utils/pii-sanitizer.ts:6-21` | Open |
-| M-22 | Medium | PII sanitizer has 3 `as` type assertions | `packages/shared/src/utils/pii-sanitizer.ts:58-61` | Open |
-| M-23 | Medium | JSON-in-string detection bypass — leading whitespace evades parsing | `packages/shared/src/utils/pii-sanitizer.ts:34-35` | Open |
-| M-24 | Medium | isValidUrl auto-prepends https:// — no SSRF protection for private IPs | `packages/shared/src/utils/url-utils.ts:87-94` | Open |
-| M-25 | Medium | extractDomain no blocklist for internal/private IPs | `packages/shared/src/utils/url-utils.ts:54-63` | Open |
-| M-26 | Medium | AppConfig build-time stub uses `as unknown as` double cast | `packages/shared/src/core/config/AppConfig.ts:226-235` | Open |
-| M-27 | Medium | getClientIP trusts x-forwarded-for, x-real-ip without validation | `packages/shared/src/utils/ip-device-utils.ts:29-48` | Open |
-| M-28 | Medium | Country-based risk scoring compares names vs codes — never triggers | `packages/shared/src/utils/ip-device-utils.ts:256-260` | Open |
-| M-29 | Medium | ExponentialBackoff throws undefined when maxAttempts=0 | `packages/shared/src/utils/resilience/ExponentialBackoff.ts:124` | Open |
-| M-30 | Medium | Missing 'use client' in 6 base UI components (forwardRef) | `packages/ui/src/components/{button,input,textarea,card,table,alert}.tsx` | Open |
-| M-31 | Medium | Wildcard domains in CSP (*.supabase.co, *.posthog.com, etc.) | `apps/*/next.config.ts` | Open |
-| M-32 | Medium | Dependency versions not in pnpm catalog (recharts, @paddle/paddle-js) | `apps/user-dashboard/package.json`, `packages/ui/package.json` | Open |
-| M-33 | Medium | PostCSS config in API app (server-only — dead config) | `apps/api/postcss.config.mjs` | Open |
-| M-34 | Medium | SQL schema duplicate CREATE TABLE for indb_keyword_rankings | `database-schema/database_schema.sql` | Open |
-| M-35 | Medium | Changeset package names don't match workspace names | `.changeset/config.json:7` | Open |
-| M-36 | Medium | api-middleware tsup uses skipLibCheck — hides type errors | `packages/api-middleware/tsup.config.ts:6-9` | Open |
-| M-37 | Medium | Missing peerDependencies in analytics + services packages | `packages/analytics/package.json`, `packages/services/package.json` | Open |
-| M-38 | Medium | Missing splitting:false in supabase-client + api-middleware tsup | `packages/supabase-client/tsup.config.ts`, `packages/api-middleware/tsup.config.ts` | Open |
-| M-39 | Medium | API .env.example missing 5 env vars (Paddle, SeRanking, Sentry) | `apps/api/.env.example` | Open |
-| M-40 | Medium | Docker services missing health checks | `docker-compose.yml:17-62` | Open |
-| L-01 | Low | Non-null assertions on nullable DB fields (3 routes) | `apps/api/...` (webhook utils, trial-status, order status) | Open |
-| L-02 | Low | 18 `as unknown as T` patterns in API route handlers | `apps/api/...` (various route files) | Open |
-| L-03 | Low | Non-null assertions in IntegrationService (3 instances) | `apps/api/src/lib/keyword-enrichment/services/IntegrationService.ts:215-217` | Open |
-| L-04 | Low | `as string` on enum comparisons in keyword enrichment (3 instances) | `apps/api/src/lib/keyword-enrichment/services/KeywordEnrichmentService.ts` | Open |
-| L-05 | Low | user-dashboard uses @tanstack/react-query — convention says raw fetch | `apps/user-dashboard/src/hooks/hooks.ts` | Open |
-| L-06 | Low | 2 hardcoded API URLs (no endpoint constants) | `apps/user-dashboard/.../PlansBillingContent.tsx` | Open |
-| L-07 | Low | 'use client' on line 4 instead of line 1 | `apps/user-dashboard/.../resend-verification/page.tsx` | Open |
-| L-08 | Low | .env file permissions should be 600 on VPS | `apps/*/.env` | Open |
-| L-09 | Low | Docker services don't use network isolation | `docker-compose.yml` | Open |
-| L-10 | Low | tailwind.config.ts in apps — Tailwind CSS 4 uses CSS-based config | `apps/admin/tailwind.config.ts`, `apps/user-dashboard/tailwind.config.ts` | Open |
-| L-11 | Low | Node.js engine ">=18" could be ">=20" to match actual usage | `package.json` | Open |
-| L-12 | Low | TODO: IP geolocation cache missing — external HTTP per request | `packages/shared/src/utils/ip-device-utils.ts:135-136` | Open |
-| L-13 | Low | getCurrencySymbol() always returns '$' for all currencies | `packages/shared/src/utils/currency-utils.ts:23-25` | Open |
-| L-14 | Low | countries.ts uses `as RegistrationCountry[]` cast | `packages/shared/src/utils/countries.ts:276` | Open |
-| L-15 | Low | REGEX_PATTERNS duplicates VALIDATION_PATTERNS — drift risk | `packages/shared/src/constants/AppConstants.ts:229-235` | Open |
-| L-16 | Low | isValidEndpoint only validates subset of endpoints | `packages/shared/src/constants/ApiEndpoints.ts:221-245` | Open |
-| L-17 | Low | Resilient decorator uses `Object` type + eslint-disable for any | `packages/shared/src/utils/resilience/ResilientOperationExecutor.ts:194-221` | Open |
-| L-18 | Low | CircuitBreaker failures array uses shift() — O(n) per failure | `packages/shared/src/utils/resilience/CircuitBreaker.ts:48` | Open |
-| L-19 | Low | formatters.ts month calculation imprecise (30-day approximation) | `packages/shared/src/utils/formatters.ts:74` | Open |
-| L-20 | Low | Dynamic Tailwind class `grid-cols-${...}` — not purge-safe | `packages/ui/src/components/skeleton.tsx:43` | Open |
-| L-21 | Low | Silent empty .catch() on clipboard write — no user feedback | `packages/ui/src/components/error-state.tsx:70` | Open |
-| L-22 | Low | 'use client' on wrong line in 2 UI hooks (after JSDoc) | `packages/ui/src/hooks/useActivityLogger.ts:6`, `useAdminActivityLogger.ts:14` | Open |
-| L-23 | Low | Missing @indexnow/shared from externals in supabase-client tsup | `packages/supabase-client/tsup.config.ts` | Open |
-| L-24 | Low | database package depends on supabase-client (browser coupling) | `packages/database/src/utils/queryClient.ts:3` | Open |
-| L-25 | Low | sentry.client.config.ts in API app (server-only) — dead config | `apps/api/sentry.client.config.ts` | Open |
-| L-26 | Low | Admin middleware queries DB directly (acceptable for edge but undocumented) | `apps/admin/src/middleware.ts` | Open |
-| L-27 | Low | Inconsistent tsup config styles across packages | `packages/*/tsup.config.ts` | Open |
+| C-01 | Critical | Sentry webhook raw handler — no wrapper, no audit trail | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | ✅ Fixed |
+| C-02 | Critical | Fire-and-forget DB write — sentry_issue_id may never persist | `apps/api/src/app/api/v1/admin/errors/[id]/route.ts:66-70` | ✅ Fixed |
+| C-03 | Critical | Non-atomic dual writes in subscription cancel — data integrity risk | `apps/api/src/app/api/v1/payments/paddle/subscription/cancel/route.ts` | ⏸️ Deferred |
+| C-04 | Critical | CSP `unsafe-eval` in script-src across ALL 3 apps — XSS protection defeated | `apps/*/next.config.ts` | ⏸️ Deferred |
+| C-05 | Critical | CSP `unsafe-inline` in script-src on frontend apps — zero XSS protection | `apps/admin/next.config.ts`, `apps/user-dashboard/next.config.ts` | ⏸️ Deferred |
+| H-01 | High | `as any` in dashboard route — unchecked property access | `apps/api/src/app/api/v1/dashboard/route.ts:264,277` | ✅ Fixed |
+| H-02 | High | `as never` in admin package update — bypasses type checker | `apps/api/src/app/api/v1/admin/settings/packages/[id]/route.ts:106` | ✅ Fixed |
+| H-03 | High | `as any` abuse in admin payments page (8 instances) | `apps/admin/src/app/(dashboard)/settings/payments/page.tsx` | ✅ Fixed |
+| H-04 | High | Fire-and-forget login notifications (login + session routes) | `apps/api/src/app/api/v1/auth/login/route.ts:196`, `auth/session/route.ts:174` | ✅ Fixed |
+| H-05 | High | Fire-and-forget secureUpdate — swallowed error in reset-password | `apps/api/src/app/api/v1/admin/users/[id]/reset-password/route.ts:168` | ⏸️ Deferred |
+| H-06 | High | Direct supabaseAdmin writes bypassing SecureServiceRoleWrapper | `apps/api/src/app/api/v1/auth/login/route.ts:180`, `webhooks/sentry/route.ts:65,96` | ⏸️ Deferred |
+| H-07 | High | WorkerStartup is a non-functional stub — BullMQ jobs silently lost | `apps/api/src/lib/job-management/worker-startup.ts` | ⏸️ Deferred |
+| H-08 | High | Broken cancel subscription call — no Bearer token, will 401 | `apps/user-dashboard/.../PlansBillingContent.tsx:216-220` | ✅ Fixed |
+| H-09 | High | `as any` in admin order detail page | `apps/admin/src/app/(dashboard)/orders/[id]/page.tsx:60` | ✅ Fixed |
+| H-10 | High | 30 npm vulnerabilities (1 critical, 16 high) incl. exploitable `next` DoS | `pnpm-lock.yaml` (transitive deps) | ⏸️ Deferred |
+| H-11 | High | `as any` in admin error pages — missing type fields | `apps/admin/.../errors/page.tsx:241`, `errors/[id]/page.tsx:50` | ✅ Fixed |
+| H-12 | High | `as unknown as` casts in user-dashboard (3 instances) | `apps/user-dashboard/.../PlansBillingContent.tsx:175`, `rank-history/page.tsx:653` | ✅ Fixed |
+| H-13 | High | CI uses pnpm 9, project requires pnpm 10 — lockfile mismatch | `.github/workflows/ci.yml:15` | ✅ Fixed |
+| H-14 | High | turbo.json globalEnv missing ~30 server-side env vars — stale cache risk | `turbo.json:3-26` | ⏸️ Deferred |
+| H-15 | High | Docker Redis exposed on 0.0.0.0:6379 without auth | `docker-compose.yml:8` | ✅ Fixed |
+| H-16 | High | No security audit step in CI pipeline | `.github/workflows/ci.yml` | ⏸️ Deferred |
+| H-17 | High | IP spoofing bypasses rate limiter — trusts x-forwarded-for | `packages/shared/src/utils/rate-limiter.ts:143-146` | ✅ Fixed |
+| H-18 | High | TOCTOU race in rate limiter — concurrent requests bypass MAX_ATTEMPTS | `packages/shared/src/utils/rate-limiter.ts:162-176` | ⏸️ Deferred |
+| H-19 | High | SSRF via unsanitized IP in ipapi.co URL interpolation | `packages/shared/src/utils/ip-device-utils.ts:140` | ✅ Fixed |
+| H-20 | High | PII sanitizer only checks object keys, never string values | `packages/shared/src/utils/pii-sanitizer.ts:32-46` | ✅ Fixed |
+| H-21 | High | z.any() in admin user-management schema — unvalidated arbitrary data | `packages/shared/src/constants/ValidationRules.ts:282` | ✅ Fixed |
+| H-22 | High | XSS sanitizer only strips `<script>` tags — event handlers, URIs bypass | `packages/shared/src/constants/ValidationRules.ts:389-394` | ✅ Fixed |
+| H-23 | High | Missing 'use client' in checkout components — runtime error | `packages/ui/src/components/checkout/LoadingStates.tsx`, `CheckoutHeader.tsx` | ✅ Fixed |
+| H-24 | High | `as number` type assertions in ErrorStatsCards | `packages/ui/src/components/admin/errors/ErrorStatsCards.tsx:62,126` | ✅ Fixed |
+| H-25 | High | UI package exports point to ./src/ not ./dist/ | `packages/ui/package.json:18-26` | ✅ Fixed |
+| H-26 | High | Analytics package missing @indexnow/shared from externals | `packages/analytics/tsup.config.ts:13-18` | ✅ Fixed |
+| H-27 | High | Unsigned admin role-cache cookie — revoked admin retains access 60s | `apps/admin/src/middleware.ts:37-88` | ✅ Fixed |
+| M-01 | Medium | 17+ dead endpoint constants with no route implementation | `packages/shared/src/constants/ApiEndpoints.ts` | ✅ Fixed |
+| M-02 | Medium | Paddle webhook uses raw NextResponse.json() — non-standard response shape | `apps/api/src/app/api/v1/payments/paddle/webhook/route.ts` | ⏸️ Deferred |
+| M-03 | Medium | Sentry webhook uses raw NextResponse.json() (12 instances) | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | ✅ Fixed |
+| M-04 | Medium | No Zod validation on webhook payloads — crash on malformed input | `apps/api/.../webhooks/sentry/route.ts:42`, `paddle/webhook/route.ts` | ⏸️ Deferred |
+| M-05 | Medium | 4 stub routes return 501/503 without documentation | `apps/api/.../customer-portal/route.ts`, `seranking/health/metrics/route.ts`, etc. | ⏸️ Deferred |
+| M-06 | Medium | Inconsistent error creation — throw Error vs ErrorHandlingService.createError | `apps/api/...` (7 route files) | ⏸️ Deferred |
+| M-07 | Medium | Silent error swallowing — ActivityLogger failures invisible | `apps/api/...` (7 route files) | ⏸️ Deferred |
+| M-08 | Medium | Type casting `request as unknown as NextRequest` in change-password | `apps/api/.../auth/user/change-password/route.ts:26,101` | ✅ Fixed |
+| M-09 | Medium | 3 dead hooks exported but never imported | `apps/user-dashboard/src/hooks/hooks.ts` (useWeeklyTrends, useCheckRank, useAddTag) | ✅ Fixed |
+| M-10 | Medium | In-memory rate limiter store — no periodic GC, memory leak under load | `packages/shared/src/utils/rate-limiter.ts:31-56` | ✅ Fixed |
+| M-11 | Medium | Rate limiter eviction O(n log n) sort on every set at capacity | `packages/shared/src/utils/rate-limiter.ts:46-50` | ✅ Fixed |
+| M-12 | Medium | Circuit breaker HALF_OPEN allows unlimited concurrent requests | `packages/shared/src/utils/resilience/CircuitBreaker.ts:60-72` | ✅ Fixed |
+| M-13 | Medium | Circuit breaker — single success resets ALL failure history | `packages/shared/src/utils/resilience/CircuitBreaker.ts:87-98` | ✅ Fixed |
+| M-14 | Medium | FallbackHandler cache has no size limit — unbounded memory growth | `packages/shared/src/utils/resilience/FallbackHandler.ts:29` | ✅ Fixed |
+| M-15 | Medium | FallbackHandler `return {} as T` — unsafe empty fallback cast | `packages/shared/src/utils/resilience/FallbackHandler.ts:132` | ✅ Fixed |
+| M-16 | Medium | FallbackHandler `return result as T` — Partial<T> cast lies to consumers | `packages/shared/src/utils/resilience/FallbackHandler.ts:78` | ✅ Fixed |
+| M-17 | Medium | Logger never sanitizes context objects — credentials may appear in logs | `packages/shared/src/utils/logger.ts:45-76` | ✅ Fixed |
+| M-18 | Medium | ErrorHandlingService logs entire config object — PII/secrets leak | `packages/shared/src/utils/logger.ts:132-152` | ✅ Fixed |
+| M-19 | Medium | Logger uses `as Error & {...}` type assertion | `packages/shared/src/utils/logger.ts:145-146` | ✅ Fixed |
+| M-20 | Medium | PII sanitizer SENSITIVE_KEYS includes bare 'key' — false positive redaction | `packages/shared/src/utils/pii-sanitizer.ts:9` | ✅ Fixed |
+| M-21 | Medium | PII sanitizer missing patterns: ssn, credit_card, credentials, pin, etc. | `packages/shared/src/utils/pii-sanitizer.ts:6-21` | ✅ Fixed |
+| M-22 | Medium | PII sanitizer has 3 `as` type assertions | `packages/shared/src/utils/pii-sanitizer.ts:58-61` | ✅ Fixed |
+| M-23 | Medium | JSON-in-string detection bypass — leading whitespace evades parsing | `packages/shared/src/utils/pii-sanitizer.ts:34-35` | ✅ Fixed |
+| M-24 | Medium | isValidUrl auto-prepends https:// — no SSRF protection for private IPs | `packages/shared/src/utils/url-utils.ts:87-94` | ✅ Fixed |
+| M-25 | Medium | extractDomain no blocklist for internal/private IPs | `packages/shared/src/utils/url-utils.ts:54-63` | ✅ Fixed |
+| M-26 | Medium | AppConfig build-time stub uses `as unknown as` double cast | `packages/shared/src/core/config/AppConfig.ts:226-235` | ✅ Fixed |
+| M-27 | Medium | getClientIP trusts x-forwarded-for, x-real-ip without validation | `packages/shared/src/utils/ip-device-utils.ts:29-48` | ✅ Fixed |
+| M-28 | Medium | Country-based risk scoring compares names vs codes — never triggers | `packages/shared/src/utils/ip-device-utils.ts:256-260` | ✅ Fixed |
+| M-29 | Medium | ExponentialBackoff throws undefined when maxAttempts=0 | `packages/shared/src/utils/resilience/ExponentialBackoff.ts:124` | ✅ Fixed |
+| M-30 | Medium | Missing 'use client' in 6 base UI components (forwardRef) | `packages/ui/src/components/{button,input,textarea,card,table,alert}.tsx` | ✅ Fixed |
+| M-31 | Medium | Wildcard domains in CSP (*.supabase.co, *.posthog.com, etc.) | `apps/*/next.config.ts` | ⏸️ Deferred |
+| M-32 | Medium | Dependency versions not in pnpm catalog (recharts, @paddle/paddle-js) | `apps/user-dashboard/package.json`, `packages/ui/package.json` | ✅ Fixed |
+| M-33 | Medium | PostCSS config in API app (server-only — dead config) | `apps/api/postcss.config.mjs` | ✅ Fixed |
+| M-34 | Medium | SQL schema duplicate CREATE TABLE for indb_keyword_rankings | `database-schema/database_schema.sql` | ⏸️ Deferred |
+| M-35 | Medium | Changeset package names don't match workspace names | `.changeset/config.json:7` | ✅ Fixed |
+| M-36 | Medium | api-middleware tsup uses skipLibCheck — hides type errors | `packages/api-middleware/tsup.config.ts:6-9` | ✅ Fixed |
+| M-37 | Medium | Missing peerDependencies in analytics + services packages | `packages/analytics/package.json`, `packages/services/package.json` | ✅ Fixed |
+| M-38 | Medium | Missing splitting:false in supabase-client + api-middleware tsup | `packages/supabase-client/tsup.config.ts`, `packages/api-middleware/tsup.config.ts` | ✅ Fixed |
+| M-39 | Medium | API .env.example missing 5 env vars (Paddle, SeRanking, Sentry) | `apps/api/.env.example` | ✅ Fixed |
+| M-40 | Medium | Docker services missing health checks | `docker-compose.yml:17-62` | ✅ Fixed |
+| L-01 | Low | Non-null assertions on nullable DB fields (3 routes) | `apps/api/...` (webhook utils, trial-status, order status) | ✅ Fixed |
+| L-02 | Low | 18 `as unknown as T` patterns in API route handlers | `apps/api/...` (various route files) | ✅ Fixed |
+| L-03 | Low | Non-null assertions in IntegrationService (3 instances) | `apps/api/src/lib/keyword-enrichment/services/IntegrationService.ts:215-217` | ✅ Fixed |
+| L-04 | Low | `as string` on enum comparisons in keyword enrichment (3 instances) | `apps/api/src/lib/keyword-enrichment/services/KeywordEnrichmentService.ts` | ✅ Fixed |
+| L-05 | Low | user-dashboard uses @tanstack/react-query — convention says raw fetch | `apps/user-dashboard/src/hooks/hooks.ts` | ⏸️ Deferred |
+| L-06 | Low | 2 hardcoded API URLs (no endpoint constants) | `apps/user-dashboard/.../PlansBillingContent.tsx` | ✅ Fixed |
+| L-07 | Low | 'use client' on line 4 instead of line 1 | `apps/user-dashboard/.../resend-verification/page.tsx` | ✅ Fixed |
+| L-08 | Low | .env file permissions should be 600 on VPS | `apps/*/.env` | ⏸️ Deferred |
+| L-09 | Low | Docker services don't use network isolation | `docker-compose.yml` | ✅ Fixed |
+| L-10 | Low | tailwind.config.ts in apps — Tailwind CSS 4 uses CSS-based config | `apps/admin/tailwind.config.ts`, `apps/user-dashboard/tailwind.config.ts` | ⏸️ Deferred |
+| L-11 | Low | Node.js engine ">=18" could be ">=20" to match actual usage | `package.json` | ✅ Fixed |
+| L-12 | Low | TODO: IP geolocation cache missing — external HTTP per request | `packages/shared/src/utils/ip-device-utils.ts:135-136` | ✅ Fixed |
+| L-13 | Low | getCurrencySymbol() always returns '$' for all currencies | `packages/shared/src/utils/currency-utils.ts:23-25` | ✅ Fixed |
+| L-14 | Low | countries.ts uses `as RegistrationCountry[]` cast | `packages/shared/src/utils/countries.ts:276` | ✅ Fixed |
+| L-15 | Low | REGEX_PATTERNS duplicates VALIDATION_PATTERNS — drift risk | `packages/shared/src/constants/AppConstants.ts:229-235` | ✅ Fixed |
+| L-16 | Low | isValidEndpoint only validates subset of endpoints | `packages/shared/src/constants/ApiEndpoints.ts:221-245` | ✅ Fixed |
+| L-17 | Low | Resilient decorator uses `Object` type + eslint-disable for any | `packages/shared/src/utils/resilience/ResilientOperationExecutor.ts:194-221` | ✅ Fixed |
+| L-18 | Low | CircuitBreaker failures array uses shift() — O(n) per failure | `packages/shared/src/utils/resilience/CircuitBreaker.ts:48` | ✅ Fixed |
+| L-19 | Low | formatters.ts month calculation imprecise (30-day approximation) | `packages/shared/src/utils/formatters.ts:74` | ✅ Fixed |
+| L-20 | Low | Dynamic Tailwind class `grid-cols-${...}` — not purge-safe | `packages/ui/src/components/skeleton.tsx:43` | ✅ Fixed |
+| L-21 | Low | Silent empty .catch() on clipboard write — no user feedback | `packages/ui/src/components/error-state.tsx:70` | ✅ Fixed |
+| L-22 | Low | 'use client' on wrong line in 2 UI hooks (after JSDoc) | `packages/ui/src/hooks/useActivityLogger.ts:6`, `useAdminActivityLogger.ts:14` | ✅ Fixed |
+| L-23 | Low | Missing @indexnow/shared from externals in supabase-client tsup | `packages/supabase-client/tsup.config.ts` | ✅ Fixed |
+| L-24 | Low | database package depends on supabase-client (browser coupling) | `packages/database/src/utils/queryClient.ts:3` | ⏸️ Deferred |
+| L-25 | Low | sentry.client.config.ts in API app (server-only) — dead config | `apps/api/sentry.client.config.ts` | ✅ Fixed |
+| L-26 | Low | Admin middleware queries DB directly (acceptable for edge but undocumented) | `apps/admin/src/middleware.ts` | ⏸️ Deferred |
+| L-27 | Low | Inconsistent tsup config styles across packages | `packages/*/tsup.config.ts` | ⏸️ Deferred |
 | E-01 | Enhancement | Extract UserProfileService — 6 routes duplicate profile fetch | `apps/api/src/app/api/v1/...` (6 route files) | Open |
 | E-02 | Enhancement | Extract QuotaCalculator — identical quota math in 2 routes | `apps/api/.../quota/route.ts`, `dashboard/route.ts` | Open |
 | E-03 | Enhancement | Extract pricing tier extraction — duplicate logic in 2 routes | `apps/api/.../billing/overview/route.ts`, `dashboard/route.ts` | Open |
