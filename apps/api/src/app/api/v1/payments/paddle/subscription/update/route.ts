@@ -3,14 +3,21 @@
  * Allows authenticated users to upgrade/downgrade their subscription plan.
  *
  * Calls Paddle's Update Subscription API with prorated_immediately proration.
- * Paddle handles proration, charges/credits. The local DB is updated via the
- * subscription.updated webhook — this route does NOT write to the DB.
+ * Paddle handles proration, charges/credits. After a successful Paddle response,
+ * updates the local DB immediately (subscription + user profile package_id).
+ * The webhook acts as a backup confirmation, not the primary update path.
  */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { supabaseAdmin, SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
+import {
+  ErrorType,
+  ErrorSeverity,
+  type Database,
+  type PricingTierDetails,
+  getClientIP,
+} from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -147,8 +154,85 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   }
 
   // Return Paddle's confirmed subscription state.
-  // The local DB will be updated when Paddle sends the subscription.updated webhook.
+  // Also update local DB immediately — don't wait for the async webhook.
   const paddleSub = result.data.data;
+  const confirmedPriceId = paddleSub.items[0]?.price?.id ?? newPriceId;
+
+  // Resolve which package the new price belongs to
+  let newPackageId: string | null = null;
+  try {
+    const { data: packages } = await supabaseAdmin
+      .from('indb_payment_packages')
+      .select('id, pricing_tiers')
+      .eq('is_active', true)
+      .is('deleted_at', null);
+
+    if (packages) {
+      for (const pkg of packages) {
+        const tiers = pkg.pricing_tiers;
+        if (!tiers || typeof tiers !== 'object') continue;
+        const tierValues = Object.values(tiers) as PricingTierDetails[];
+        for (const tier of tierValues) {
+          if (tier && tier.paddle_price_id === confirmedPriceId) {
+            newPackageId = pkg.id;
+            break;
+          }
+        }
+        if (newPackageId) break;
+      }
+    }
+  } catch (lookupErr) {
+    logger.warn({ error: lookupErr, confirmedPriceId }, 'Failed to resolve package from price ID');
+  }
+
+  // Update subscription + user profile in DB immediately
+  if (newPackageId) {
+    try {
+      await SecureServiceRoleWrapper.executeSecureOperation(
+        {
+          userId: 'system',
+          operation: 'update_subscription_after_plan_change',
+          reason: 'Immediate DB update after successful Paddle subscription update',
+          source: 'paddle/subscription/update',
+          metadata: { subscriptionId, confirmedPriceId, newPackageId },
+        },
+        {
+          table: 'indb_payment_subscriptions',
+          operationType: 'update',
+          data: { paddle_price_id: confirmedPriceId, package_id: newPackageId },
+          whereConditions: { paddle_subscription_id: subscriptionId },
+        },
+        async () => {
+          await supabaseAdmin
+            .from('indb_payment_subscriptions')
+            .update({
+              paddle_price_id: confirmedPriceId,
+              package_id: newPackageId,
+              current_period_end: paddleSub.current_billing_period?.ends_at ?? null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('paddle_subscription_id', subscriptionId);
+
+          await supabaseAdmin
+            .from('indb_auth_user_profiles')
+            .update({
+              package_id: newPackageId,
+              subscription_end_date: paddleSub.current_billing_period?.ends_at ?? null,
+            })
+            .eq('user_id', auth.userId);
+
+          logger.info(
+            { userId: auth.userId, newPackageId, confirmedPriceId },
+            'Updated local DB immediately after plan change'
+          );
+        }
+      );
+    } catch (dbErr) {
+      // Non-fatal — webhook will retry the update
+      logger.warn({ error: dbErr }, 'Failed to update local DB after plan change — webhook will handle it');
+    }
+  }
+
   return formatSuccess({
     subscription: {
       id: paddleSub.id,
@@ -161,6 +245,6 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       currentBillingPeriod: paddleSub.current_billing_period ?? null,
       nextBilledAt: paddleSub.next_billed_at ?? null,
     },
-    message: 'Subscription updated successfully. Changes will be reflected shortly.',
+    message: 'Subscription updated successfully.',
   });
 });
