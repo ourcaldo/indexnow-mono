@@ -13,5 +13,6 @@ export { processSubscriptionPastDue } from './subscription-past-due';
 export { processSubscriptionTrialing } from './subscription-trialing';
 export { processTransactionCompleted } from './transaction-completed';
 export { processTransactionPaymentFailed } from './transaction-payment-failed';
-export { processTransactionRefunded } from './transaction-refunded';
+export { processAdjustmentCreated } from './adjustment-created';
+export { processAdjustmentUpdated } from './adjustment-updated';
 export { validateCustomData, safeGet, logProcessorError, backfillPaddleCustomerId } from './utils';

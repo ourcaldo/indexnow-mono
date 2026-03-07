@@ -28,7 +28,8 @@ import {
   processSubscriptionTrialing,
   processTransactionCompleted,
   processTransactionPaymentFailed,
-  processTransactionRefunded,
+  processAdjustmentCreated,
+  processAdjustmentUpdated,
 } from './processors';
 
 const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
@@ -346,8 +347,11 @@ async function routeWebhookEvent(eventType: string, data: unknown, eventId: stri
       case 'transaction.payment_failed':
         await processTransactionPaymentFailed(data);
         break;
-      case 'transaction.refunded':
-        await processTransactionRefunded(data);
+      case 'adjustment.created':
+        await processAdjustmentCreated(data);
+        break;
+      case 'adjustment.updated':
+        await processAdjustmentUpdated(data);
         break;
       default:
         // (#V7 L-19) Log unknown event types so new Paddle events are visible in observability
