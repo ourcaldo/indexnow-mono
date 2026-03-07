@@ -152,7 +152,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | E-07 | Enhancement | Extract extractErrorMeta() helper for admin error pages | `apps/admin/src/lib/error-helpers.ts`, `apps/admin/src/components/CodeBlock.tsx` | ✅ Fixed |
 | E-08 | Enhancement | Extract useAdminUserDetail(userId) hook from inline useQuery | `apps/admin/src/hooks/useAdminUserDetail.ts` | ✅ Fixed |
 | E-09 | Enhancement | API client runs getUser()+getSession() per call — add token caching | `apps/user-dashboard/src/lib/api.ts` | ✅ Fixed |
-| E-10 | Enhancement | Consider Zod runtime validation for API responses | All frontend apps | ⏳ Deferred |
+| E-10 | Enhancement | Consider Zod runtime validation for API responses | All frontend apps | ✅ Fixed |
 | E-11 | Enhancement | Add pnpm audit to CI pipeline | `.github/workflows/ci.yml` | Open |
 | E-12 | Enhancement | Implement nonce-based CSP (tracked as #V7 H-18) | `apps/*/src/middleware.ts` | ✅ Fixed (already implemented in H-18) |
 | E-13 | Enhancement | Add GitHub Actions Turborepo remote caching | `.github/workflows/ci.yml` | Open |
@@ -789,8 +789,8 @@ Inline `useQuery` in admin users page should be a proper hook.
 #### E-09: Token caching in API client
 `api.ts` runs `getUser()` + `getSession()` per call. Cache the token with TTL to reduce overhead.
 
-#### E-10: Zod runtime validation for API responses
-Type-safe API response parsing instead of `as T` casts in frontend apps.
+#### E-10: Zod runtime validation for API responses ✅
+**Fixed in `4c785419e`** — Created `@indexnow/shared/response-schemas` with 40+ Zod schemas and `validateApiResponse()` utility. Wired into 35 call sites across both apps (17 user-dashboard hooks, 3 billing mutations, 15 admin hooks). Schemas use `.passthrough()` for forward compatibility; validation logs warnings but never throws.
 
 #### E-11: Add pnpm audit to CI
 Automatically catch vulnerable dependencies before merge.
