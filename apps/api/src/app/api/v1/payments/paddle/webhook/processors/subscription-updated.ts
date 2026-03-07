@@ -7,7 +7,7 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper, fromJson, type Json } from '@indexnow/database';
-import type { PricingTierDetails } from '@indexnow/shared';
+import { findPackageIdByPriceId } from '@/lib/services/pricing-utils';
 import { safeGet, backfillPaddleCustomerId } from './utils';
 import { logger } from '@/lib/monitoring/error-handling';
 
@@ -61,21 +61,11 @@ async function resolvePackageIdFromPriceId(priceId: string): Promise<string | nu
     return null;
   }
 
-  for (const pkg of packages) {
-    const tiers = pkg.pricing_tiers;
-    if (!tiers || typeof tiers !== 'object') continue;
-
-    // pricing_tiers is Record<string, PricingTierDetails> (e.g. { monthly: {...}, annual: {...} })
-    const tierEntries = Object.values(tiers) as PricingTierDetails[];
-    for (const tier of tierEntries) {
-      if (tier && tier.paddle_price_id === priceId) {
-        return pkg.id;
-      }
-    }
+  const packageId = findPackageIdByPriceId(packages, priceId);
+  if (!packageId) {
+    logger.warn({ priceId }, 'No package found matching paddle_price_id — plan mapping may be missing');
   }
-
-  logger.warn({ priceId }, 'No package found matching paddle_price_id — plan mapping may be missing');
-  return null;
+  return packageId;
 }
 
 export async function processSubscriptionUpdated(data: unknown) {

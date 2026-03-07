@@ -14,6 +14,7 @@ import {
   getClientIP,
 } from '@indexnow/shared';
 import { UserProfileService, type FullProfileWithPackage } from '@/lib/services/user-profile-service';
+import { findTierByPriceId, getFirstTier, getDisplayPrice } from '@/lib/services/pricing-utils';
 
 // Derived types from Database schema
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
@@ -167,34 +168,18 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     if (currentSubscription) {
       // Active subscription from subscriptions table
       // Derive amount from pricing_tiers (price/currency/billing_period columns no longer exist on packages)
-      const subPricingTiers = currentSubscription.package?.pricing_tiers as Record<string, { regular_price?: number; promo_price?: number; paddle_price_id?: string }> | null;
-      // Find billing period by matching paddle_price_id, or default to first available
-      let subBillingPeriod = 'monthly';
-      let subTierAmount = 0;
-      if (subPricingTiers) {
-        for (const [period, tier] of Object.entries(subPricingTiers)) {
-          if (tier && currentSubscription.paddle_price_id && tier.paddle_price_id === currentSubscription.paddle_price_id) {
-            subBillingPeriod = period;
-            subTierAmount = tier.promo_price ?? tier.regular_price ?? 0;
-            break;
-          }
-        }
-        if (!subTierAmount) {
-          const first = Object.entries(subPricingTiers)[0];
-          if (first) {
-            subBillingPeriod = first[0];
-            subTierAmount = first[1]?.promo_price ?? first[1]?.regular_price ?? 0;
-          }
-        }
-      }
+      const subPricingTiers = currentSubscription.package?.pricing_tiers as PackagePricingTiers | null;
+      const matchedTier = findTierByPriceId(subPricingTiers, currentSubscription.paddle_price_id ?? '');
+      const resolvedTier = matchedTier ?? getFirstTier(subPricingTiers);
+
       subscriptionData = {
         package_name: currentSubscription.package?.name ?? 'Unknown',
         package_slug: currentSubscription.package?.slug ?? '',
         subscription_status: currentSubscription.status,
         subscription_end_date: currentSubscription.end_date,
         subscription_start_date: currentSubscription.start_date,
-        amount_paid: subTierAmount,
-        billing_period: subBillingPeriod,
+        amount_paid: getDisplayPrice(resolvedTier?.tier),
+        billing_period: resolvedTier?.period ?? 'monthly',
       };
     } else if (userProfile.package_id && userProfile.package) {
       // Fall back to profile package
@@ -206,9 +191,8 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       const isExpired = endDate ? endDate < now : true;
 
       // Derive from pricing_tiers
-      const pkgPricingTiers = pkg.pricing_tiers as Record<string, { regular_price?: number; promo_price?: number }> | null;
-      const firstPeriod = pkgPricingTiers ? Object.keys(pkgPricingTiers)[0] : 'monthly';
-      const fallbackTier = firstPeriod ? pkgPricingTiers?.[firstPeriod] : null;
+      const pkgPricingTiers = pkg.pricing_tiers as PackagePricingTiers | null;
+      const fallback = getFirstTier(pkgPricingTiers);
 
       subscriptionData = {
         package_name: pkg.name,
@@ -216,8 +200,8 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         subscription_status: isExpired ? 'expired' : 'active',
         subscription_end_date: userProfile.subscription_end_date,
         subscription_start_date: userProfile.subscription_start_date,
-        amount_paid: fallbackTier?.promo_price ?? fallbackTier?.regular_price ?? 0,
-        billing_period: firstPeriod ?? 'monthly',
+        amount_paid: getDisplayPrice(fallback?.tier),
+        billing_period: fallback?.period ?? 'monthly',
       };
     }
 

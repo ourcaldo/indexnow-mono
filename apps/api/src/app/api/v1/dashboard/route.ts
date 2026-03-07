@@ -15,15 +15,9 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { validateQuotaLimits, calculateQuota } from '@/lib/services/quota-calculator';
+import { parsePricingTiers, getFirstTier, getDisplayPrice } from '@/lib/services/pricing-utils';
 
-interface PricingTiers {
-  [key: string]:
-    | {
-        regular_price: number;
-        promo_price?: number;
-      }
-    | undefined;
-}
+import type { PackagePricingTiers } from '@indexnow/shared';
 
 interface PackageData {
   id: string;
@@ -33,7 +27,7 @@ interface PackageData {
   features: string[] | null;
   quota_limits: Record<string, number> | null;
   is_active: boolean;
-  pricing_tiers: PricingTiers | string | null;
+  pricing_tiers: PackagePricingTiers | string | null;
   price?: number;
 }
 
@@ -158,29 +152,15 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       let transformedPackage = rawPackage;
 
       if (rawPackage) {
-        let pricingTiers = rawPackage.pricing_tiers;
-        if (typeof pricingTiers === 'string') {
-          try {
-            pricingTiers = JSON.parse(pricingTiers);
-          } catch {
-            /* Invalid JSON — use default */
-            pricingTiers = null;
-          }
-        }
+        const tiers = parsePricingTiers(rawPackage.pricing_tiers);
+        const first = getFirstTier(tiers);
 
-        if (pricingTiers && typeof pricingTiers === 'object') {
-          // Find the first available tier to get the price
-          const tiers = pricingTiers as PricingTiers;
-          const firstPeriod = Object.keys(tiers)[0] || 'monthly';
-          const tierData = tiers[firstPeriod];
-
-          if (tierData) {
-            transformedPackage = {
-              ...rawPackage,
-              price: tierData.promo_price || tierData.regular_price,
-              pricing_tiers: pricingTiers,
-            };
-          }
+        if (first) {
+          transformedPackage = {
+            ...rawPackage,
+            price: getDisplayPrice(first.tier),
+            pricing_tiers: tiers,
+          };
         }
       }
 

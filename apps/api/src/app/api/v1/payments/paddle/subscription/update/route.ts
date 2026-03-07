@@ -15,7 +15,6 @@ import {
   ErrorType,
   ErrorSeverity,
   type Database,
-  type PricingTierDetails,
   getClientIP,
 } from '@indexnow/shared';
 import {
@@ -25,6 +24,7 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { updatePaddleSubscription } from '@/lib/paddle/paddle-api-client';
+import { findPackageIdByPriceId } from '@/lib/services/pricing-utils';
 
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
 type SubscriptionForUpdate = Pick<
@@ -168,18 +168,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       .is('deleted_at', null);
 
     if (packages) {
-      for (const pkg of packages) {
-        const tiers = pkg.pricing_tiers;
-        if (!tiers || typeof tiers !== 'object') continue;
-        const tierValues = Object.values(tiers) as PricingTierDetails[];
-        for (const tier of tierValues) {
-          if (tier && tier.paddle_price_id === confirmedPriceId) {
-            newPackageId = pkg.id;
-            break;
-          }
-        }
-        if (newPackageId) break;
-      }
+      newPackageId = findPackageIdByPriceId(packages, confirmedPriceId);
     }
   } catch (lookupErr) {
     logger.warn({ error: lookupErr, confirmedPriceId }, 'Failed to resolve package from price ID');
