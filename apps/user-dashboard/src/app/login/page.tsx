@@ -242,7 +242,6 @@ export default function Login() {
                           disabled={isLoading}
                           variant="native"
                           label="Password"
-                          className="[&_label]:!text-[13px] [&_label]:!font-medium [&_label]:!text-foreground [&_label]:!mb-1.5 [&_input]:!border-gray-200 [&_input]:!rounded-lg [&_input]:hover:!border-gray-300 [&_input]:focus:!border-brand-primary [&_input]:focus:!ring-2 [&_input]:focus:!ring-brand-primary/20"
                         />
                         {fieldErrors.password && <p className="text-[13px] text-destructive mt-1">{fieldErrors.password}</p>}
                       </div>

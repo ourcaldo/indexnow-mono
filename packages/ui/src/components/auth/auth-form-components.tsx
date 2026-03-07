@@ -58,7 +58,7 @@ export function PasswordInput({
             type={showPassword ? 'text' : 'password'}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="form-field-default form-field-focus w-full text-base"
+            className="w-full text-base bg-white border border-gray-300 rounded-lg outline-none transition-all hover:border-gray-400 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
             style={{ paddingLeft: '1rem', paddingRight: '3rem', paddingTop: '0.75rem', paddingBottom: '0.75rem' }}
             placeholder={placeholder}
             required
