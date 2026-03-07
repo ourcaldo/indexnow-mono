@@ -143,7 +143,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | L-25 | Low | sentry.client.config.ts in API app (server-only) — dead config | `apps/api/sentry.client.config.ts` | ✅ Fixed |
 | L-26 | Low | Admin middleware queries DB directly (acceptable for edge but undocumented) | `apps/admin/src/middleware.ts` | ✅ Fixed |
 | L-27 | Low | Inconsistent tsup config styles across packages | `packages/*/tsup.config.ts` | ✅ Fixed |
-| E-01 | Enhancement | Extract UserProfileService — 6 routes duplicate profile fetch | `apps/api/src/app/api/v1/...` (6 route files) | Open |
+| E-01 | Enhancement | Extract UserProfileService — 6 routes duplicate profile fetch | `apps/api/src/lib/services/user-profile-service.ts` | ✅ Fixed |
 | E-02 | Enhancement | Extract QuotaCalculator — identical quota math in 2 routes | `apps/api/.../quota/route.ts`, `dashboard/route.ts` | Open |
 | E-03 | Enhancement | Extract pricing tier extraction — duplicate logic in 2 routes | `apps/api/.../billing/overview/route.ts`, `dashboard/route.ts` | Open |
 | E-04 | Enhancement | Create buildOperationContext() helper — ~5 lines boilerplate/route | `apps/api/...` (all routes with SecureServiceRoleWrapper) | Open |
