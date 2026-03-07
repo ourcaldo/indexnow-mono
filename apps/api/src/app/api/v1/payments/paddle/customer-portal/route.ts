@@ -1,91 +1,72 @@
 /**
  * Paddle Customer Portal API
- * Provides customer portal URL for authenticated users to manage their subscription
- *
- * @stub Returns a placeholder portal URL. Full Paddle customer portal integration requires PaddleCustomerService restoration.
+ * Returns a portal login URL so the user can manage payment methods and invoices.
+ * Uses the direct login URL pattern: no API call needed.
+ *   - Sandbox:    https://sandbox-customer-portal.paddle.com/login/{customer_id}
+ *   - Production: https://customer-portal.paddle.com/login/{customer_id}
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
+  formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
-import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
-// Derived types from Database schema
-type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
-type SubscriptionPortalInfo = Pick<PaymentSubscriptionRow, 'paddle_subscription_id'>;
+type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
+type ProfilePortalInfo = Pick<UserProfileRow, 'paddle_customer_id'>;
+
+const PORTAL_BASE_URLS: Record<string, string> = {
+  production: 'https://customer-portal.paddle.com',
+  sandbox: 'https://sandbox-customer-portal.paddle.com',
+};
+
+function getPortalBaseUrl(): string {
+  const env = process.env.NEXT_PUBLIC_PADDLE_ENV ?? 'sandbox';
+  return PORTAL_BASE_URLS[env] ?? PORTAL_BASE_URLS.sandbox;
+}
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-  // Safety guard: Paddle API key required for customer portal
-  if (!process.env.PADDLE_API_KEY) {
-    return NextResponse.json(
-      {
-        error: 'Service temporarily unavailable',
-        message: 'Customer portal is being configured. PaddleCustomerService integration pending.',
-      },
-      { status: 503, headers: { 'Retry-After': '86400' } }
-    );
-  }
-
-  // Get user's active subscription using SecureServiceRoleWrapper
-  const subscription =
-    await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionPortalInfo | null>(
+  const profile =
+    await SecureServiceRoleWrapper.executeWithUserSession<ProfilePortalInfo | null>(
       asTypedClient(auth.supabase),
       {
         userId: auth.userId,
-        operation: 'get_subscription_for_customer_portal',
+        operation: 'get_customer_portal_url',
         source: 'paddle/customer-portal',
         reason: 'User requesting Paddle customer portal URL',
         metadata: { endpoint: '/api/v1/payments/paddle/customer-portal' },
         ipAddress: getClientIP(request),
         userAgent: request.headers.get('user-agent') ?? undefined,
       },
-      { table: 'indb_payment_subscriptions', operationType: 'select' },
+      { table: 'indb_auth_user_profiles', operationType: 'select' },
       async (db) => {
         const { data, error } = await db
-          .from('indb_payment_subscriptions')
-          .select('paddle_subscription_id')
+          .from('indb_auth_user_profiles')
+          .select('paddle_customer_id')
           .eq('user_id', auth.userId)
-          .eq('status', 'active')
           .maybeSingle();
 
         if (error) {
-          throw new Error(`Failed to fetch subscription: ${error.message}`);
+          throw new Error(`Failed to fetch profile: ${error.message}`);
         }
         return data;
       }
     );
 
-  if (!subscription || !subscription.paddle_subscription_id) {
-    const structuredError = await ErrorHandlingService.createError(
+  if (!profile?.paddle_customer_id) {
+    const error = await ErrorHandlingService.createError(
       ErrorType.BUSINESS_LOGIC,
-      'No active Paddle subscription found',
-      {
-        severity: ErrorSeverity.LOW,
-        userId: auth.userId,
-        endpoint: '/api/v1/payments/paddle/customer-portal',
-        statusCode: 404,
-      }
+      'No Paddle customer ID found. Please subscribe to a plan first.',
+      { severity: ErrorSeverity.LOW, userId: auth.userId, statusCode: 404 }
     );
-    return formatError(structuredError);
+    return formatError(error);
   }
 
-  // TODO: Implement Paddle Billing customer portal session via Paddle API
-  // Paddle Billing uses: POST https://api.paddle.com/customers/{customer_id}/portal-sessions
-  // This returns a short-lived portal URL that lets the customer manage payment methods and subscriptions.
-  // Requires: PADDLE_API_KEY env var and the customer's paddle_customer_id (not subscription_id).
-  // Reference: https://developer.paddle.com/api-reference/customer-portal-sessions/create-customer-portal-session
-  logger.warn('STUB: Customer portal endpoint hit — Paddle Billing portal session not yet implemented');
+  const portalUrl = `${getPortalBaseUrl()}/login/${profile.paddle_customer_id}`;
 
-  return NextResponse.json(
-    {
-      error: 'Customer portal not yet available',
-      message: 'Paddle Billing customer portal integration is pending. Use the Paddle dashboard to manage your subscription in the meantime.',
-      subscription_id: subscription.paddle_subscription_id,
-    },
-    { status: 501 }
-  );
+  return formatSuccess({ portalUrl });
 });

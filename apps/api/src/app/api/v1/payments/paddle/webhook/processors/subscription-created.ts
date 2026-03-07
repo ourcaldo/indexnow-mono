@@ -120,6 +120,7 @@ export async function processSubscriptionCreated(data: unknown) {
         .from('indb_auth_user_profiles')
         .update({
           package_id: packageData.id,
+          paddle_customer_id: customer_id,
           subscription_start_date: current_billing_period.starts_at,
           subscription_end_date: current_billing_period.ends_at,
         })

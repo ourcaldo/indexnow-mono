@@ -332,6 +332,7 @@ export type Database = {
           last_login_ip: string | null;
           must_change_password: boolean;
           active_domain: string | null;
+          paddle_customer_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -358,6 +359,7 @@ export type Database = {
           last_login_ip?: string | null;
           must_change_password?: boolean;
           active_domain?: string | null;
+          paddle_customer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -384,6 +386,7 @@ export type Database = {
           last_login_ip?: string | null;
           must_change_password?: boolean;
           active_domain?: string | null;
+          paddle_customer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -8,6 +8,7 @@ import {
   Calendar,
   Check,
   CreditCard,
+  ExternalLink,
   Loader2,
   Receipt,
   Sparkles,
@@ -253,6 +254,24 @@ export default function BillingPage() {
     }
   }
 
+  /* ── Manage Billing (Paddle customer portal) ── */
+
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  const handleManageBilling = async () => {
+    setPortalLoading(true)
+    try {
+      const result = await api<{ portalUrl: string }>(PAYMENT_ENDPOINTS.CUSTOMER_PORTAL)
+      if (result?.portalUrl) {
+        window.open(result.portalUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      handleApiError(err instanceof Error ? err : new Error('Failed to open billing portal'))
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
   /* ── Loading skeleton ── */
 
   if (loading) {
@@ -377,6 +396,14 @@ export default function BillingPage() {
                 >
                   <Zap className="h-4 w-4" />
                   Change Plan
+                </button>
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors disabled:opacity-50"
+                >
+                  {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                  Manage Billing
                 </button>
                 {subscriptionData?.hasSubscription && (
                   <button
