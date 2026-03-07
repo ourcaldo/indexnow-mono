@@ -178,11 +178,26 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
           })
           .eq('paddle_subscription_id', subscriptionId);
 
+        const profileUpdate: Record<string, string | null> = {
+          subscription_end_date: periodEnd,
+        };
+
+        // Backfill paddle_customer_id if missing on profile
+        if (paddleSub.customer_id) {
+          const { data: profile } = await supabaseAdmin
+            .from('indb_auth_user_profiles')
+            .select('paddle_customer_id')
+            .eq('user_id', auth.userId)
+            .single();
+
+          if (!profile?.paddle_customer_id) {
+            profileUpdate.paddle_customer_id = paddleSub.customer_id;
+          }
+        }
+
         await supabaseAdmin
           .from('indb_auth_user_profiles')
-          .update({
-            subscription_end_date: periodEnd,
-          })
+          .update(profileUpdate)
           .eq('user_id', auth.userId);
 
         logger.info(
