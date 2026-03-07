@@ -6,6 +6,7 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { validateQuotaLimits, calculateQuota } from '@/lib/services/quota-calculator';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
 
 /**
@@ -76,30 +77,12 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     // Users without an active plan get 0 quota (free-tier: cannot add resources).
     // Only throw if the user HAS a package but it's misconfigured.
     const quotaLimits = packageData?.quota_limits as Record<string, number> | null;
-
-    if (packageData && (!quotaLimits || quotaLimits.max_keywords == null || quotaLimits.max_domains == null)) {
-      throw new Error('User package is missing quota_limits configuration');
-    }
-
-    const maxKeywords = quotaLimits?.max_keywords ?? 0;
-    const maxDomains = quotaLimits?.max_domains ?? 0;
-    const isKeywordsUnlimited = maxKeywords === -1;
-    const isDomainsUnlimited = maxDomains === -1;
+    validateQuotaLimits(quotaLimits, !!packageData);
+    const quota = calculateQuota(quotaLimits, quotaData.keywordCount, quotaData.domainCount);
 
     return formatSuccess({
       quota: {
-        keywords: {
-          used: quotaData.keywordCount,
-          limit: maxKeywords,
-          remaining: isKeywordsUnlimited ? -1 : Math.max(0, maxKeywords - quotaData.keywordCount),
-          is_unlimited: isKeywordsUnlimited,
-        },
-        domains: {
-          used: quotaData.domainCount,
-          limit: maxDomains,
-          remaining: isDomainsUnlimited ? -1 : Math.max(0, maxDomains - quotaData.domainCount),
-          is_unlimited: isDomainsUnlimited,
-        },
+        ...quota,
         package_name: packageData?.name ?? 'Free',
       },
     });

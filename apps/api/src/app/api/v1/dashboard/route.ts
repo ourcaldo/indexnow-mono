@@ -14,6 +14,7 @@ import {
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { validateQuotaLimits, calculateQuota } from '@/lib/services/quota-calculator';
 
 interface PricingTiers {
   [key: string]:
@@ -201,36 +202,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
     // Process Quota — account-level limits from package
     // Users without an active plan get 0 quota (free-tier: can view dashboard, cannot add resources).
-    // Only throw if the user HAS a package but it's misconfigured (missing quota_limits).
     const keywordsUsed = keywordCountResult.count || 0;
-    const quotaLimits = profile?.package?.quota_limits ?? null;
-
-    if (profile?.package && (!quotaLimits || quotaLimits.max_keywords == null || quotaLimits.max_domains == null)) {
-      throw new Error('User package is missing quota_limits configuration');
-    }
-
-    const keywordsLimit = quotaLimits?.max_keywords ?? 0;
-    const isKeywordsUnlimited = keywordsLimit === -1;
-
-    // Domain quota from package — use proper DB count, not .data?.length
     const domainsUsed = domainsResult.count || 0;
-    const domainsLimit = quotaLimits?.max_domains ?? 0;
-    const isDomainsUnlimited = domainsLimit === -1;
-
-    const quota = {
-      keywords: {
-        used: keywordsUsed,
-        limit: keywordsLimit,
-        is_unlimited: isKeywordsUnlimited,
-        remaining: isKeywordsUnlimited ? -1 : Math.max(0, keywordsLimit - keywordsUsed),
-      },
-      domains: {
-        used: domainsUsed,
-        limit: domainsLimit,
-        is_unlimited: isDomainsUnlimited,
-        remaining: isDomainsUnlimited ? -1 : Math.max(0, domainsLimit - domainsUsed),
-      },
-    };
+    const quotaLimits = profile?.package?.quota_limits ?? null;
+    validateQuotaLimits(quotaLimits, !!profile?.package);
+    const quota = calculateQuota(quotaLimits, keywordsUsed, domainsUsed);
 
     // Process Trial Eligibility
     let trialEligibility: {
