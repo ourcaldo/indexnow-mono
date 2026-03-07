@@ -225,7 +225,7 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={`w-full px-4 py-3 text-[15px] bg-white border rounded-lg outline-none transition-all
-                        ${fieldErrors.email ? 'border-destructive' : 'border-gray-200 hover:border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20'}`}
+                        ${fieldErrors.email ? 'border-destructive' : 'border-gray-300 hover:border-gray-400 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20'}`}
                       placeholder="your@email.com"
                       required
                     />
@@ -236,12 +236,13 @@ export default function Login() {
                   {!isMagicLinkMode && (
                     <>
                       <div className="mb-5">
-                        <label className="block text-[13px] font-medium text-foreground mb-1.5">Password</label>
                         <PasswordInput
                           value={password}
                           onChange={setPassword}
                           disabled={isLoading}
                           variant="native"
+                          label="Password"
+                          className="[&_label]:!text-[13px] [&_label]:!font-medium [&_label]:!text-foreground [&_label]:!mb-1.5 [&_input]:!border-gray-200 [&_input]:!rounded-lg [&_input]:hover:!border-gray-300 [&_input]:focus:!border-brand-primary [&_input]:focus:!ring-2 [&_input]:focus:!ring-brand-primary/20"
                         />
                         {fieldErrors.password && <p className="text-[13px] text-destructive mt-1">{fieldErrors.password}</p>}
                       </div>
