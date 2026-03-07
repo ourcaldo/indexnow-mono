@@ -59,7 +59,7 @@ pnpm format                                        # Prettier format all files
 
 - TypeScript strict mode, `"moduleResolution": "bundler"`, path alias `@/*` → `./src/*`
 - All DB tables prefixed `indb_` (e.g., `indb_auth_user_profiles`)
-- shadcn/ui "new-york" style with CSS variables; shared Tailwind config from `@indexnow/ui/tailwind.config`
+- shadcn/ui "new-york" style with CSS variables; shared Tailwind theme in `@indexnow/ui/styles.css`
 - Tailwind CSS 4, `tailwindcss-animate`, `@tailwindcss/typography`
 - ESLint 9 with shared config from `@indexnow/eslint-config`
 - `'use client'` directive on all interactive frontend components

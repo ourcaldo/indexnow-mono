@@ -123,9 +123,9 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | L-05 | Low | user-dashboard uses @tanstack/react-query — convention says raw fetch | `apps/user-dashboard/src/hooks/hooks.ts` | ✅ Fixed |
 | L-06 | Low | 2 hardcoded API URLs (no endpoint constants) | `apps/user-dashboard/.../PlansBillingContent.tsx` | ✅ Fixed |
 | L-07 | Low | 'use client' on line 4 instead of line 1 | `apps/user-dashboard/.../resend-verification/page.tsx` | ✅ Fixed |
-| L-08 | Low | .env file permissions should be 600 on VPS | `apps/*/.env` | ⏸️ Deferred |
+| L-08 | Low | .env file permissions should be 600 on VPS | `apps/*/.env` | ✅ Fixed |
 | L-09 | Low | Docker services don't use network isolation | `docker-compose.yml` | ✅ Fixed |
-| L-10 | Low | tailwind.config.ts in apps — Tailwind CSS 4 uses CSS-based config | `apps/admin/tailwind.config.ts`, `apps/user-dashboard/tailwind.config.ts` | ⏸️ Deferred |
+| L-10 | Low | tailwind.config.ts in apps — Tailwind CSS 4 uses CSS-based config | `apps/admin/tailwind.config.ts`, `apps/user-dashboard/tailwind.config.ts` | ✅ Fixed |
 | L-11 | Low | Node.js engine ">=18" could be ">=20" to match actual usage | `package.json` | ✅ Fixed |
 | L-12 | Low | TODO: IP geolocation cache missing — external HTTP per request | `packages/shared/src/utils/ip-device-utils.ts:135-136` | ✅ Fixed |
 | L-13 | Low | getCurrencySymbol() always returns '$' for all currencies | `packages/shared/src/utils/currency-utils.ts:23-25` | ✅ Fixed |

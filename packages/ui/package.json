@@ -60,11 +60,7 @@
       "import": "./dist/providers.mjs",
       "require": "./dist/providers.js"
     },
-    "./styles.css": "./src/styles.css",
-    "./tailwind.config": {
-      "import": "./tailwind.config.ts",
-      "types": "./tailwind.config.ts"
-    }
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "build": "tsup",
