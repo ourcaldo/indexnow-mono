@@ -163,6 +163,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // 4. Verify admin role via database query (only when cache misses or is invalid)
+  // NOTE: This direct DB query is intentional and acceptable for Edge middleware.
+  // Middleware runs before route handlers, so it cannot proxy through the API.
+  // The query uses the user's RLS-scoped Supabase client (not service-role),
+  // ensuring only the authenticated user's own profile is accessible.
   try {
     const { data: profile, error: profileError } = (await supabase
       .from('indb_auth_user_profiles')
