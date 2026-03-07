@@ -5,8 +5,14 @@ import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { useAdminErrorDetail, useErrorAction } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { ErrorResolveActions } from '@/components/ErrorResolveActions';
-import { format } from 'date-fns';
+import { CodeBlock } from '@/components/CodeBlock';
 import { InfoCard, InfoRow } from '@/components/shared-primitives';
+import {
+  getSeverityDotColor,
+  getErrorStatus,
+  formatErrorDate,
+  hasMetadata,
+} from '@/lib/error-helpers';
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical: 'bg-red-50 text-red-700 ring-red-600/20',
@@ -86,7 +92,7 @@ export default function ErrorDetailPage() {
 
         <div className="flex items-start gap-3">
           <div
-            className={`mt-1.5 h-3 w-3 flex-shrink-0 rounded-full ${err.severity === 'critical' || err.severity === 'error' ? 'bg-red-500' : err.severity === 'warning' ? 'bg-amber-500' : 'bg-gray-400'}`}
+            className={`mt-1.5 h-3 w-3 flex-shrink-0 rounded-full ${getSeverityDotColor(err.severity)}`}
           />
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold break-words text-gray-900">{err.message}</h1>
@@ -98,7 +104,7 @@ export default function ErrorDetailPage() {
               </span>
               <span className="text-sm text-gray-500">{err.error_type}</span>
               <span className="text-sm text-gray-500 tabular-nums">
-                {format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}
+                {formatErrorDate(err.created_at)}
               </span>
             </div>
           </div>
@@ -111,34 +117,22 @@ export default function ErrorDetailPage() {
           <div className="min-w-0 space-y-4">
             <InfoCard title="Details">
               <InfoRow label="Status">
-                <span
-                  className={
-                    err.resolved_at
-                      ? 'font-medium text-emerald-600'
-                      : err.acknowledged_at
-                        ? 'font-medium text-blue-600'
-                        : 'font-medium text-amber-600'
-                  }
-                >
-                  {err.resolved_at
-                    ? 'Resolved'
-                    : err.acknowledged_at
-                      ? 'Acknowledged'
-                      : 'Unresolved'}
+                <span className={`font-medium ${getErrorStatus(err).colorClass}`}>
+                  {getErrorStatus(err).label}
                 </span>
               </InfoRow>
               <InfoRow label="Recorded">
-                {format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}
+                {formatErrorDate(err.created_at)}
               </InfoRow>
               {err.acknowledged_at && (
                 <InfoRow label="Acknowledged">
-                  {format(new Date(err.acknowledged_at), 'MMM d, yyyy HH:mm:ss')}
+                  {formatErrorDate(err.acknowledged_at)}
                 </InfoRow>
               )}
               {err.resolved_at && (
                 <InfoRow label="Resolved">
                   <div className="text-right">
-                    <div>{format(new Date(err.resolved_at), 'MMM d, yyyy HH:mm:ss')}</div>
+                    <div>{formatErrorDate(err.resolved_at)}</div>
                     {resolverInfo && (
                       <div className="mt-0.5 text-xs text-gray-400">
                         by {resolverInfo.full_name || resolverInfo.email || 'Admin'}
@@ -181,29 +175,15 @@ export default function ErrorDetailPage() {
             </InfoCard>
 
             {err.stack_trace && (
-              <div className="rounded-xl border border-gray-200">
-                <div className="border-b border-gray-100 px-5 py-3.5">
-                  <h3 className="text-sm font-semibold text-gray-900">Stack Trace</h3>
-                </div>
-                <div className="overflow-hidden p-5">
-                  <pre className="max-h-80 overflow-x-auto rounded-lg bg-gray-900 p-4 font-mono text-[11px] break-all whitespace-pre-wrap text-gray-300">
-                    {err.stack_trace}
-                  </pre>
-                </div>
-              </div>
+              <CodeBlock title="Stack Trace" content={err.stack_trace} variant="dark" />
             )}
 
-            {err.metadata && Object.keys(err.metadata).length > 0 && (
-              <div className="rounded-xl border border-gray-200">
-                <div className="border-b border-gray-100 px-5 py-3.5">
-                  <h3 className="text-sm font-semibold text-gray-900">Metadata</h3>
-                </div>
-                <div className="overflow-hidden p-5">
-                  <pre className="overflow-x-auto rounded-lg border border-gray-100 bg-gray-50 p-4 font-mono text-xs break-all text-gray-600">
-                    {JSON.stringify(err.metadata, null, 2)}
-                  </pre>
-                </div>
-              </div>
+            {hasMetadata(err.metadata) && (
+              <CodeBlock
+                title="Metadata"
+                content={JSON.stringify(err.metadata, null, 2)}
+                variant="light"
+              />
             )}
           </div>
 

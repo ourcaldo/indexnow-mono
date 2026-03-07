@@ -25,6 +25,13 @@ import {
 } from '@/hooks';
 import { useAdminPageViewLogger } from '@indexnow/ui';
 import { ErrorResolveActions } from '@/components/ErrorResolveActions';
+import { CodeBlock } from '@/components/CodeBlock';
+import {
+  getSeverityDotColor,
+  getErrorStatus,
+  formatErrorDate,
+  hasMetadata,
+} from '@/lib/error-helpers';
 import { format } from 'date-fns';
 
 /** Safely display a message that might be an object or the literal string "[object Object]" */
@@ -418,7 +425,7 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div
-                    className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${err.severity === 'critical' || err.severity === 'error' ? 'bg-red-500' : err.severity === 'warning' ? 'bg-amber-500' : 'bg-gray-400'}`}
+                    className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${getSeverityDotColor(err.severity)}`}
                   />
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${SEVERITY_COLORS[err.severity] || SEVERITY_COLORS.debug}`}
@@ -431,7 +438,7 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
                   {displayMessage(err.message)}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}
+                  {formatErrorDate(err.created_at)}
                 </p>
               </div>
 
@@ -444,34 +451,22 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
               {/* Details */}
               <div className="rounded-lg border border-gray-100 bg-white">
                 <DetailRow label="Status">
-                  <span
-                    className={
-                      err.resolved_at
-                        ? 'text-emerald-600'
-                        : err.acknowledged_at
-                          ? 'text-blue-600'
-                          : 'text-amber-600'
-                    }
-                  >
-                    {err.resolved_at
-                      ? 'Resolved'
-                      : err.acknowledged_at
-                        ? 'Acknowledged'
-                        : 'Unresolved'}
+                  <span className={getErrorStatus(err).colorClass}>
+                    {getErrorStatus(err).label}
                   </span>
                 </DetailRow>
                 <DetailRow label="Recorded">
-                  {format(new Date(err.created_at), 'MMM d, yyyy HH:mm:ss')}
+                  {formatErrorDate(err.created_at)}
                 </DetailRow>
                 {err.acknowledged_at && (
                   <DetailRow label="Acknowledged">
-                    {format(new Date(err.acknowledged_at), 'MMM d, yyyy HH:mm:ss')}
+                    {formatErrorDate(err.acknowledged_at)}
                   </DetailRow>
                 )}
                 {err.resolved_at && (
                   <DetailRow label="Resolved">
                     <div className="text-right">
-                      <div>{format(new Date(err.resolved_at), 'MMM d, yyyy HH:mm:ss')}</div>
+                      <div>{formatErrorDate(err.resolved_at)}</div>
                       {resolverInfo && (
                         <div className="mt-0.5 text-xs text-gray-400">
                           by {resolverInfo.full_name || resolverInfo.email || 'Admin'}
@@ -529,30 +524,23 @@ function ErrorSlideOver({ errorId, onClose }: { errorId: string; onClose: () => 
 
               {/* Stack trace */}
               {err.stack_trace && (
-                <div>
-                  <div className="mb-1.5">
-                    <span className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                      Stack Trace
-                    </span>
-                  </div>
-                  <pre className="max-h-60 overflow-x-auto rounded-lg bg-gray-900 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-gray-300">
-                    {err.stack_trace}
-                  </pre>
-                </div>
+                <CodeBlock
+                  title="Stack Trace"
+                  content={err.stack_trace}
+                  variant="dark"
+                  maxHeight="max-h-60"
+                  cardStyle={false}
+                />
               )}
 
               {/* Metadata */}
-              {err.metadata && Object.keys(err.metadata).length > 0 && (
-                <div>
-                  <div className="mb-1.5">
-                    <span className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                      Metadata
-                    </span>
-                  </div>
-                  <pre className="overflow-x-auto rounded-lg border border-gray-100 bg-gray-50 p-3 font-mono text-[11px] leading-relaxed text-gray-600">
-                    {JSON.stringify(err.metadata, null, 2)}
-                  </pre>
-                </div>
+              {hasMetadata(err.metadata) && (
+                <CodeBlock
+                  title="Metadata"
+                  content={JSON.stringify(err.metadata, null, 2)}
+                  variant="light"
+                  cardStyle={false}
+                />
               )}
 
               {/* Actions */}
