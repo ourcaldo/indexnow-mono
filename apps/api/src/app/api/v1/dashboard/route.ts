@@ -144,7 +144,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       // Supabase join typing: .select() returns the join as an array or object,
       // but cannot infer the joined table's shape. We use a deliberate cast here.
       const rawPackage = fromJson<PackageData | null>(
-        userProfileResult.data.package as unknown as Json
+        userProfileResult.data.package
       );
       let transformedPackage = rawPackage;
 

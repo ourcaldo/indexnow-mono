@@ -6,7 +6,7 @@
  * indb_auth_user_profiles.package_id so the UI reflects the new plan.
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper, fromJson, type Json } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, fromJson } from '@indexnow/database';
 import { findPackageIdByPriceId } from '@/lib/services/pricing-utils';
 import { safeGet, backfillPaddleCustomerId } from './utils';
 import { logger } from '@/lib/monitoring/error-handling';
@@ -87,7 +87,7 @@ export async function processSubscriptionUpdated(data: unknown) {
 
   const priceId =
     Array.isArray(items) && items.length > 0
-      ? safeGet(fromJson<Record<string, unknown>>(items[0] as unknown as Json), 'price.id', null)
+      ? safeGet(fromJson<Record<string, unknown>>(items[0]), 'price.id', null)
       : null;
 
   // Resolve which package this price belongs to (for plan changes)

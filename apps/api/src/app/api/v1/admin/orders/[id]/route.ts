@@ -96,7 +96,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
         throw new Error(error?.message || 'Order not found');
       }
 
-      return fromJson<OrderWithRelations>(data as Json);
+      return fromJson<OrderWithRelations>(data);
     }
   );
 

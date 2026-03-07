@@ -31,7 +31,7 @@ export function toJson<T>(value: T): Json {
  * The caller is responsible for ensuring the JSON structure matches `T`.
  * For untrusted / user-supplied JSON, prefer `fromJsonSafe()` with a Zod schema.
  */
-export function fromJson<T>(value: Json | null | undefined): T {
+export function fromJson<T>(value: unknown): T {
   return value as unknown as T;
 }
 

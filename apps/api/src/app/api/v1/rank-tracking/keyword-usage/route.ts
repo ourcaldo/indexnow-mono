@@ -6,7 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { SecureServiceRoleWrapper, fromJson, asTypedClient, type Json } from '@indexnow/database';
+import { SecureServiceRoleWrapper, fromJson, asTypedClient } from '@indexnow/database';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
@@ -56,7 +56,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         return {
           count: countResult.count || 0,
           quota: profileResult.data?.package
-            ? (fromJson<PackageQuota>(profileResult.data.package as unknown as Json)
+            ? (fromJson<PackageQuota>(profileResult.data.package)
                 ?.quota_limits ?? null)
             : null,
         };

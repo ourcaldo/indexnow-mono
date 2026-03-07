@@ -75,7 +75,7 @@ export async function processTransactionCompleted(data: unknown) {
   const paymentMethod =
     Array.isArray(payments) && payments.length > 0
       ? safeGet(
-          fromJson<Record<string, unknown>>(payments[0] as unknown as Json),
+          fromJson<Record<string, unknown>>(payments[0]),
           'method_details.type',
           'unknown'
         )

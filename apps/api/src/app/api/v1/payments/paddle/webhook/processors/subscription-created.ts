@@ -3,7 +3,7 @@
  * Handles new subscription creation events
  */
 
-import { supabaseAdmin, SecureServiceRoleWrapper, fromJson, type Json } from '@indexnow/database';
+import { supabaseAdmin, SecureServiceRoleWrapper, fromJson } from '@indexnow/database';
 import { validateCustomData, safeGet } from './utils';
 
 // Type for subscription data from Paddle
@@ -59,7 +59,7 @@ export async function processSubscriptionCreated(data: unknown) {
   }
 
   const priceId = safeGet(
-    fromJson<Record<string, unknown>>(items[0] as unknown as Json),
+    fromJson<Record<string, unknown>>(items[0]),
     'price.id',
     null
   );
