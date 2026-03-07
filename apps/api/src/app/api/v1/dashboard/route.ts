@@ -46,6 +46,7 @@ interface UserProfileWithPackage {
   subscription_start_date: string | null;
   subscription_end_date: string | null;
   country: string | null;
+  paddle_customer_id: string | null;
 }
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
@@ -192,6 +193,7 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
         subscription_start_date: profileData.subscription_start_date,
         subscription_end_date: profileData.subscription_end_date,
         country: profileData.country,
+        paddle_customer_id: profileData.paddle_customer_id ?? null,
         package: transformedPackage,
         email: profileData.email || null,
       };

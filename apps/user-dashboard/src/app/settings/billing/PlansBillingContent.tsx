@@ -605,7 +605,7 @@ export default function BillingPage() {
               </p>
             </div>
           </div>
-          {subscriptionData?.hasSubscription && (
+          {dashboardData?.user?.profile?.paddle_customer_id && (
             <button
               onClick={handleManageBilling}
               disabled={portalLoading}

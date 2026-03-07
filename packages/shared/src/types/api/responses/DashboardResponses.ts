@@ -43,6 +43,7 @@ export interface DashboardProfileInfo {
   subscription_start_date: string | null;
   subscription_end_date: string | null;
   country: string | null;
+  paddle_customer_id: string | null;
 }
 
 /** Quota usage counters returned in the dashboard aggregate */
