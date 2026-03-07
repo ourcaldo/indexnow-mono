@@ -147,7 +147,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | E-02 | Enhancement | Extract QuotaCalculator — identical quota math in 2 routes | `apps/api/.../quota/route.ts`, `dashboard/route.ts` | ✅ Fixed |
 | E-03 | Enhancement | Extract pricing tier extraction — duplicate logic in 2 routes | `apps/api/.../billing/overview/route.ts`, `dashboard/route.ts` | ✅ Fixed |
 | E-04 | Enhancement | Create buildOperationContext() helper — ~5 lines boilerplate/route | `apps/api/...` (all routes with SecureServiceRoleWrapper) | ✅ Fixed |
-| E-05 | Enhancement | Create fromJsonTyped<T>() utility for 18 Json ↔ T casts | `apps/api/...` (various route files) | Open |
+| E-05 | Enhancement | Create fromJsonTyped<T>() utility for 18 Json ↔ T casts | `apps/api/...` (various route files) | ✅ Fixed |
 | E-06 | Enhancement | Clean up 17 dead ApiEndpoints constants (M-01) | `packages/shared/src/constants/ApiEndpoints.ts` | Open |
 | E-07 | Enhancement | Extract extractErrorMeta() helper for admin error pages | `apps/admin/.../errors/page.tsx`, `errors/[id]/page.tsx` | Open |
 | E-08 | Enhancement | Extract useAdminUserDetail(userId) hook from inline useQuery | `apps/admin/.../users/[id]/page.tsx` | Open |
