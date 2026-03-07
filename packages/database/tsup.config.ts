@@ -20,6 +20,5 @@ export default defineConfig((options) => ({
         '@indexnow/shared',
         '@supabase/supabase-js',
         '@supabase/ssr',
-        '@tanstack/react-query',
     ],
 }))

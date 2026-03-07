@@ -1,11 +1,18 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsup'
 
 export default defineConfig((options) => ({
-  entry: ['src/index.ts'],
-  format: ['cjs', 'esm'],
-  dts: true,
-  splitting: false,
-  sourcemap: true,
-  clean: !options.watch,
-  external: ['react', 'next', '@supabase/supabase-js', '@supabase/ssr', '@indexnow/shared'],
-}));
+    entry: ['src/index.ts'],
+    format: ['cjs', 'esm'],
+    dts: true,
+    splitting: false,
+    sourcemap: true,
+    clean: !options.watch,
+    external: [
+        'react',
+        'next',
+        '@supabase/supabase-js',
+        '@supabase/ssr',
+        '@tanstack/react-query',
+        '@indexnow/shared',
+    ],
+}))
