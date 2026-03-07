@@ -1,10 +1,10 @@
 'use client'
 
-import { supabaseBrowser } from '@indexnow/supabase-client'
+import { authService } from '@indexnow/supabase-client'
 
 /**
  * Local API request helper — no dependency on @indexnow/database/client.
- * Authenticates via Supabase, sends JSON, parses standardized { success, data } responses.
+ * Authenticates via cached authService token, sends JSON, parses standardized { success, data } responses.
  */
 export async function api<T = unknown>(
   url: string,
@@ -20,18 +20,15 @@ export async function api<T = unknown>(
     fullUrl += (fullUrl.includes('?') ? '&' : '?') + sp.toString()
   }
 
-  // Auth
-  const { data: { user } } = await supabaseBrowser.auth.getUser()
-  const accessToken = user
-    ? (await supabaseBrowser.auth.getSession()).data.session?.access_token
-    : undefined
+  // Auth — uses cached token (avoids redundant getUser() network calls per request)
+  const token = await authService.getToken()
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(opts?.headers as Record<string, string>),
   }
-  if (user && accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
   }
 
   const res = await fetch(fullUrl, {

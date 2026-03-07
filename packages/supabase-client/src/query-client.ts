@@ -2,7 +2,7 @@
 
 import { QueryClient } from '@tanstack/react-query';
 import { type Json } from '@indexnow/shared';
-import { supabaseBrowser as supabase } from './supabase-browser';
+import { authService } from './auth-service';
 import { ApiRequestError } from './api-request-error';
 
 export { ApiRequestError } from './api-request-error';
@@ -26,25 +26,18 @@ export const apiRequest = async <T = Json>(url: string, options?: RequestInit): 
   const fullUrl =
     url.startsWith('http') || url.includes('/api/v1') ? url : url.startsWith('/') ? url : `/${url}`;
 
-  // SECURITY: Use getUser() to validate the token against the auth server.
-  // getSession() only reads the local JWT without server validation, which can be spoofed.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  // After validating the user, get the session to extract the access token for API calls.
-  // This is safe because we've already verified the user is authentic via getUser().
-  const accessToken = user
-    ? (await supabase.auth.getSession()).data.session?.access_token
-    : undefined;
+  // Auth — uses cached token (avoids redundant getUser() network calls per request).
+  // authService.getToken() validates against the auth server on first call, then
+  // serves from a 5-minute cache for subsequent calls.
+  const token = await authService.getToken();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
   };
 
-  // Only attach the access token if user is validated by the auth server
-  if (user && accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(fullUrl, {

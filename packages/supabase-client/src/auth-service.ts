@@ -395,10 +395,10 @@ export class AuthService {
   }
 
   async getToken(): Promise<string | null> {
-    // SECURITY: Validate user first, then extract token
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Use cached getCurrentUser() to avoid redundant getUser() network calls.
+    // The first call validates against Supabase auth server; subsequent calls
+    // within the cache window (5 min) return instantly from memory.
+    const user = await this.getCurrentUser();
     if (!user) return null;
     const session = await this.getSession();
     return session?.access_token || null;
