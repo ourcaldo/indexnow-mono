@@ -4,6 +4,7 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { backfillPaddleCustomerId } from './utils';
 
 interface ScheduledChange {
   action?: string;
@@ -11,6 +12,7 @@ interface ScheduledChange {
 
 interface PaddleCanceledData {
   id: string;
+  customer_id?: string;
   canceled_at?: string;
   current_billing_period?: {
     ends_at: string;
@@ -85,6 +87,11 @@ export async function processSubscriptionCanceled(data: unknown) {
         if (profileError) {
           throw new Error(`Failed to update user profile on cancellation: ${profileError.message}`);
         }
+      }
+
+      // Backfill paddle_customer_id if missing
+      if (subscription?.user_id) {
+        await backfillPaddleCustomerId(subscription.user_id, subData.customer_id);
       }
     }
   );

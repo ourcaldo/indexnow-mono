@@ -13,9 +13,11 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { backfillPaddleCustomerId } from './utils';
 
 interface PaddleActivatedData {
   id: string;
+  customer_id?: string;
   current_billing_period?: {
     starts_at: string;
     ends_at: string;
@@ -89,6 +91,11 @@ export async function processSubscriptionActivated(data: unknown) {
         if (profileError) {
           throw new Error(`Failed to enable user access: ${profileError.message}`);
         }
+      }
+
+      // Backfill paddle_customer_id if missing
+      if (subscription?.user_id) {
+        await backfillPaddleCustomerId(subscription.user_id, subData.customer_id);
       }
     }
   );

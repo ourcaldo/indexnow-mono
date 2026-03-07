@@ -8,7 +8,7 @@
 
 import { supabaseAdmin, SecureServiceRoleWrapper, fromJson, type Json } from '@indexnow/database';
 import type { PricingTierDetails } from '@indexnow/shared';
-import { safeGet } from './utils';
+import { safeGet, backfillPaddleCustomerId } from './utils';
 import { logger } from '@/lib/monitoring/error-handling';
 
 interface SubscriptionItem {
@@ -20,6 +20,7 @@ interface SubscriptionItem {
 interface PaddleUpdatedData {
   id: string;
   status?: string;
+  customer_id?: string;
   items?: SubscriptionItem[];
   current_billing_period?: {
     starts_at: string;
@@ -176,6 +177,11 @@ export async function processSubscriptionUpdated(data: unknown) {
         if (profileError) {
           throw new Error(`Failed to update user profile: ${profileError.message}`);
         }
+      }
+
+      // Backfill paddle_customer_id if missing
+      if (subscription?.user_id) {
+        await backfillPaddleCustomerId(subscription.user_id, subData.customer_id);
       }
     }
   );

@@ -4,9 +4,11 @@
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
+import { backfillPaddleCustomerId } from './utils';
 
 interface PaddlePausedData {
   id: string;
+  customer_id?: string;
   paused_at?: string;
 }
 
@@ -72,6 +74,11 @@ export async function processSubscriptionPaused(data: unknown) {
         if (profileError) {
           throw new Error(`Failed to update user profile on pause: ${profileError.message}`);
         }
+      }
+
+      // Backfill paddle_customer_id if missing
+      if (subscription?.user_id) {
+        await backfillPaddleCustomerId(subscription.user_id, subData.customer_id);
       }
     }
   );

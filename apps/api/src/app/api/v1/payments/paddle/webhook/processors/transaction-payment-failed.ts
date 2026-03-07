@@ -10,7 +10,7 @@
 import { supabaseAdmin, SecureServiceRoleWrapper, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, TransactionMetadata } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
-import { validateCustomData, getPackageIdFromSubscription, CustomData } from './utils';
+import { validateCustomData, getPackageIdFromSubscription, backfillPaddleCustomerId, CustomData } from './utils';
 
 interface TransactionTotals {
   total: string;
@@ -135,6 +135,9 @@ export async function processTransactionPaymentFailed(data: unknown) {
         amount: parseFloat(amount) / 100,
         currency,
       });
+
+      // Backfill paddle_customer_id if missing
+      await backfillPaddleCustomerId(userId, txData.customer_id);
     }
   );
 }

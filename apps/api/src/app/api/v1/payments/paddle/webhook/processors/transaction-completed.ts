@@ -9,7 +9,7 @@
 
 import { supabaseAdmin, SecureServiceRoleWrapper, toJson, fromJson } from '@indexnow/database';
 import { Json, TransactionMetadata } from '@indexnow/shared';
-import { validateCustomData, safeGet, getPackageIdFromSubscription } from './utils';
+import { validateCustomData, safeGet, getPackageIdFromSubscription, backfillPaddleCustomerId } from './utils';
 
 interface PaymentDetails {
   method_details?: {
@@ -141,6 +141,9 @@ export async function processTransactionCompleted(data: unknown) {
       if (paddleError) {
         throw new Error(`Failed to insert Paddle transaction: ${paddleError.message}`);
       }
+
+      // Backfill paddle_customer_id if missing
+      await backfillPaddleCustomerId(userId, txData.customer_id);
     }
   );
 }

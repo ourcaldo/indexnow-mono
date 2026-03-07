@@ -11,9 +11,11 @@
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
+import { backfillPaddleCustomerId } from './utils';
 
 interface PaddlePastDueData {
   id: string;
+  customer_id?: string;
   current_billing_period?: {
     starts_at: string;
     ends_at: string;
@@ -90,6 +92,11 @@ export async function processSubscriptionPastDue(data: unknown) {
           package_id: subscription.package_id,
           next_billing_period: current_billing_period,
         });
+      }
+
+      // Backfill paddle_customer_id if missing
+      if (subscription?.user_id) {
+        await backfillPaddleCustomerId(subscription.user_id, subData.customer_id);
       }
     }
   );

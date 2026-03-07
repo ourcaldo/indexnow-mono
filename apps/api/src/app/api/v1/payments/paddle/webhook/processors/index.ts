@@ -13,4 +13,4 @@ export { processSubscriptionPastDue } from './subscription-past-due';
 export { processTransactionCompleted } from './transaction-completed';
 export { processTransactionPaymentFailed } from './transaction-payment-failed';
 export { processTransactionRefunded } from './transaction-refunded';
-export { validateCustomData, safeGet, logProcessorError } from './utils';
+export { validateCustomData, safeGet, logProcessorError, backfillPaddleCustomerId } from './utils';

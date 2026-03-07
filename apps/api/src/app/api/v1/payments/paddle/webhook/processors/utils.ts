@@ -168,6 +168,40 @@ export function getBillingPeriod(items: PriceItem[]): 'month' | 'year' | null {
   return null;
 }
 
+/**
+ * Backfill paddle_customer_id on user profile if missing.
+ * Called from webhook processors — only writes when the column is null.
+ * Safe to call from any event that has both userId and customer_id.
+ */
+export async function backfillPaddleCustomerId(
+  userId: string,
+  customerId: string | undefined | null
+): Promise<void> {
+  if (!userId || !customerId) return;
+
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from('indb_auth_user_profiles')
+      .select('paddle_customer_id')
+      .eq('user_id', userId)
+      .single();
+
+    if (!profile?.paddle_customer_id) {
+      await supabaseAdmin
+        .from('indb_auth_user_profiles')
+        .update({ paddle_customer_id: customerId })
+        .eq('user_id', userId);
+
+      logger.info(
+        { userId, customerId },
+        'Backfilled paddle_customer_id from webhook'
+      );
+    }
+  } catch (err) {
+    logger.warn({ err, userId, customerId }, 'Failed to backfill paddle_customer_id (non-critical)');
+  }
+}
+
 export async function getPaddleGatewayId(): Promise<string> {
   const gateway = await SecureServiceRoleWrapper.executeSecureOperation(
     {

@@ -15,6 +15,7 @@
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { logger } from '@/lib/monitoring/error-handling';
+import { backfillPaddleCustomerId } from './utils';
 
 interface RefundAdjustment {
   total?: string;
@@ -23,6 +24,7 @@ interface RefundAdjustment {
 
 interface PaddleRefundData {
   id: string;
+  customer_id?: string;
   subscription_id?: string;
   adjustment?: RefundAdjustment;
 }
@@ -166,6 +168,11 @@ export async function processTransactionRefunded(data: unknown) {
             is_full_refund: isFullRefund,
             user_id: mainTransaction.user_id,
           });
+        }
+
+        // Backfill paddle_customer_id if missing
+        if (mainTransaction?.user_id) {
+          await backfillPaddleCustomerId(mainTransaction.user_id, txData.customer_id);
         }
       }
     }
