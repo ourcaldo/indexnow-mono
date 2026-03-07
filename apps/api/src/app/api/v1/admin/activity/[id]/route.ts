@@ -7,6 +7,7 @@ import {
   SecureServiceRoleHelpers,
   supabaseAdmin
 } from '@indexnow/database';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 export const GET = adminApiWrapper(async (
   request: NextRequest,
@@ -59,7 +60,7 @@ export const GET = adminApiWrapper(async (
       }
 
       const authResult = await SecureServiceRoleWrapper.executeSecureOperation(
-        { ...operationContext, operation: 'admin_get_activity_user_email' },
+        buildOperationContext(request, adminUser.id, { operation: 'admin_get_activity_user_email', source: 'admin/activity/[id]', reason: 'Admin retrieving specific activity log', metadata: { requestedLogId: id } }),
         {
           table: 'auth.users',
           operationType: 'select',
@@ -84,7 +85,7 @@ export const GET = adminApiWrapper(async (
   if (log.user_id) {
     try {
       relatedLogs = (await SecureServiceRoleWrapper.executeSecureOperation(
-        { ...operationContext, operation: 'admin_get_related_activity_logs' },
+        buildOperationContext(request, adminUser.id, { operation: 'admin_get_related_activity_logs', source: 'admin/activity/[id]', reason: 'Admin retrieving specific activity log', metadata: { requestedLogId: id } }),
         {
           table: 'indb_security_activity_logs',
           operationType: 'select',

@@ -6,7 +6,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // Derived types from Database schema
 type PaymentGatewayRow = Database['public']['Tables']['indb_payment_gateways']['Row'];
@@ -26,15 +27,11 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     const gateways = await SecureServiceRoleWrapper.executeWithUserSession<PublicGatewayInfo[]>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_active_payment_gateways',
         source: 'billing/payment-gateways',
         reason: 'User fetching available payment gateways',
-        metadata: { endpoint: '/api/v1/billing/payment-gateways' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_payment_gateways', operationType: 'select' },
       async (db) => {
         // Only select public fields, never expose credentials

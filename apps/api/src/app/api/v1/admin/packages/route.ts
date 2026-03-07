@@ -4,6 +4,7 @@ import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // (#V7 L-16) Index signature intentional: payment packages have dynamic
 // metadata fields (features, limits, pricing tiers) that vary by package type.
@@ -22,19 +23,8 @@ interface Package {
  */
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   try {
-    const packagesContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_active_packages',
-      reason: 'Admin fetching all active packages for management',
-      source: 'admin/packages',
-      metadata: {
-        endpoint: '/api/v1/admin/packages',
-        filterActive: true,
-      },
-    };
-
     const packages = await SecureServiceRoleWrapper.executeSecureOperation<Package[]>(
-      packagesContext,
+      buildOperationContext(request, adminUser.id, { operation: 'admin_get_active_packages', source: 'admin/packages', reason: 'Admin fetching all active packages for management', metadata: { filterActive: true } }),
       {
         table: 'indb_payment_packages',
         operationType: 'select',

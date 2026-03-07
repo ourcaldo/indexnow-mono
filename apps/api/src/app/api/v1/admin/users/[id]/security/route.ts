@@ -3,7 +3,8 @@ import { NextRequest } from 'next/server';
 import { adminApiWrapper } from '@/lib/core/api-response-middleware';
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser, context) => {
   const { id: userId } = (await context.params) as Record<string, string>;
@@ -16,18 +17,14 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
   const limit = Number.isNaN(parsedLimit) ? 100 : Math.min(200, Math.max(1, parsedLimit));
   const offset = (page - 1) * limit;
 
-  const securityContext = {
-    userId: adminUser.id,
+  const securityContext = buildOperationContext(request, adminUser.id, {
     operation: 'admin_get_user_security_logs',
     reason: 'Admin fetching user security activity logs for security analysis',
     source: 'admin/users/[id]/security',
     metadata: {
       targetUserId: userId,
-      endpoint: '/api/v1/admin/users/[id]/security',
     },
-    ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || 'unknown',
-  };
+  });
 
   const { logs: securityLogs, total: totalLogs } =
     await SecureServiceRoleWrapper.executeSecureOperation(

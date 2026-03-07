@@ -15,12 +15,13 @@ import {
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { logger } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
   type AdminOrderDetailResponse,
   type AdminOrderTransaction,
   type AdminOrderActivityLog,
 } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 /** Supabase join result for payment transaction with package and gateway relations */
 interface OrderWithRelations {
@@ -61,21 +62,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
   const { id: orderId } = (await context.params) as Record<string, string>;
 
   // Fetch order with all related data using secure wrapper
-  const orderContext = {
-    userId: adminUser.id,
-    operation: 'admin_get_order_details',
-    reason: 'Admin fetching individual order details for management',
-    source: 'admin/orders/[id]',
-    metadata: {
-      orderId,
-      endpoint: '/api/v1/admin/orders/[id]',
-    },
-    ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || 'unknown',
-  };
-
   const order = await SecureServiceRoleWrapper.executeSecureOperation<OrderWithRelations>(
-    orderContext,
+    buildOperationContext(request, adminUser.id, { operation: 'admin_get_order_details', source: 'admin/orders/[id]', reason: 'Admin fetching individual order details for management', metadata: { orderId } }),
     {
       table: 'indb_payment_transactions',
       operationType: 'select',
@@ -171,23 +159,11 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
 
   // Get user's email from Supabase Auth using secure wrapper
   try {
-    const authContext = {
-      userId: 'system',
-      operation: 'admin_get_order_user_auth_detailed',
-      reason: 'Admin fetching user auth data for specific order',
-      source: 'admin/orders/[id]',
-      metadata: {
-        orderId: orderId,
-        targetUserId: order.user_id,
-        endpoint: '/api/v1/admin/orders/[id]',
-      },
-    };
-
     authUser = await SecureServiceRoleWrapper.executeSecureOperation<
       { user: { id: string; email?: string } },
       string
     >(
-      authContext,
+      buildOperationContext(request, 'system', { operation: 'admin_get_order_user_auth_detailed', source: 'admin/orders/[id]', reason: 'Admin fetching user auth data for specific order', metadata: { orderId, targetUserId: order.user_id } }),
       {
         table: 'auth.users',
         operationType: 'select',
@@ -320,21 +296,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
   // Get activity history for this order using secure wrapper
   let activityHistory: AdminOrderActivityLog[] = [];
   try {
-    const activityContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_order_activity_history',
-      reason: 'Admin fetching security activity history for order details',
-      source: 'admin/orders/[id]',
-      metadata: {
-        orderId,
-        endpoint: '/api/v1/admin/orders/[id]',
-      },
-    };
-
     activityHistory = await SecureServiceRoleWrapper.executeSecureOperation<
       AdminOrderActivityLog[]
     >(
-      activityContext,
+      buildOperationContext(request, adminUser.id, { operation: 'admin_get_order_activity_history', source: 'admin/orders/[id]', reason: 'Admin fetching security activity history for order details', metadata: { orderId } }),
       {
         table: 'indb_security_activity_logs',
         operationType: 'select',

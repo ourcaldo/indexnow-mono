@@ -10,10 +10,11 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 const siteSettingsUpdateSchema = z
   .object({
@@ -33,18 +34,11 @@ const siteSettingsUpdateSchema = z
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   try {
     const settingsData = await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: adminUser.id,
+      buildOperationContext(request, adminUser.id, {
         operation: 'get_site_settings',
         source: 'admin/settings/site',
         reason: 'Admin fetching site settings configuration',
-        metadata: {
-          endpoint: '/api/v1/admin/settings/site',
-          method: 'GET',
-        },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_site_settings', operationType: 'select' },
       async () => {
         const { data, error } = await supabaseAdmin.from('indb_site_settings').select('*').single();
@@ -119,8 +113,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
       updatePayload.registration_enabled = registration_enabled;
 
     const updatedSettings = await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: adminUser.id,
+      buildOperationContext(request, adminUser.id, {
         operation: 'update_site_settings',
         source: 'admin/settings/site',
         reason: 'Admin updating site settings configuration',
@@ -128,12 +121,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser: Adm
           updatedFields: Object.keys(updatePayload)
             .filter((key) => key !== 'updated_at')
             .join(', '),
-          endpoint: '/api/v1/admin/settings/site',
-          method: 'PATCH',
         },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_site_settings', operationType: 'update' },
       async () => {
         const { data: settingsData, error } = await supabaseAdmin

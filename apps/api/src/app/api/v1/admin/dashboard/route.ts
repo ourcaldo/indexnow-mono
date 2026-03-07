@@ -8,9 +8,10 @@
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 interface DashboardStats {
   users: {
@@ -36,21 +37,8 @@ interface DashboardStats {
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   try {
-    const statsContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_dashboard_stats',
-      reason: 'Admin fetching dashboard statistics for overview',
-      source: 'admin/dashboard',
-      metadata: {
-        endpoint: '/api/v1/admin/dashboard',
-        adminEmail: adminUser.email || 'unknown',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    };
-
     const stats = await SecureServiceRoleWrapper.executeSecureOperation<DashboardStats>(
-      statsContext,
+      buildOperationContext(request, adminUser.id, { operation: 'admin_get_dashboard_stats', source: 'admin/dashboard', reason: 'Admin fetching dashboard statistics for overview', metadata: { adminEmail: adminUser.email || 'unknown' } }),
       {
         table: 'indb_auth_user_profiles',
         operationType: 'select',

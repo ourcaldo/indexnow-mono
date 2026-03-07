@@ -8,7 +8,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -40,15 +41,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
     const result = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'add_tag_to_keywords',
         source: 'rank-tracking/keywords/add-tag',
         reason: 'User adding tags to their keywords',
         metadata: { keywordIds, tag: cleanTag, keywordCount: keywordIds.length },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_rank_keywords', operationType: 'update' },
       async () => {
         // Use atomic RPC — single transaction for all keyword tag updates

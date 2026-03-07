@@ -13,8 +13,8 @@ import {
   type PackageFeatures,
   type PackageQuotaLimits,
   type PackagePricingTiers,
-  getClientIP,
 } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { UserProfileService, type BillingInfoProfile } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
@@ -43,15 +43,12 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     // Fetch active packages
     const packages = await SecureServiceRoleWrapper.executeWithUserSession<PaymentPackageRow[]>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_active_billing_packages',
         source: 'billing/packages',
         reason: 'User fetching available billing packages for subscription selection',
-        metadata: { endpoint: '/api/v1/billing/packages', packageFilter: 'active_only' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+        metadata: { packageFilter: 'active_only' },
+      }),
       { table: 'indb_payment_packages', operationType: 'select' },
       async (db) => {
         const { data, error } = await db

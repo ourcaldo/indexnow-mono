@@ -19,6 +19,7 @@ import {
 } from '@indexnow/database';
 import { logger } from '@/lib/monitoring/error-handling';
 import { batchGetUserEmails } from '@/lib/core/batch-user-emails';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Validate query params
@@ -48,18 +49,9 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const dateFilter = new Date();
   dateFilter.setDate(dateFilter.getDate() - days);
 
-  // Define context for logging
-  const operationContext = {
-    userId: adminUser.id,
-    operation: 'admin_get_activity_logs',
-    reason: 'Admin fetching activity logs',
-    source: 'admin/activity',
-    metadata: { days, limit, page, userId: userId ?? null, searchTerm: searchTerm ?? null, eventType }
-  };
-
   // Fetch logs with count
   const logsResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    operationContext,
+    buildOperationContext(request, adminUser.id, { operation: 'admin_get_activity_logs', source: 'admin/activity', reason: 'Admin fetching activity logs', metadata: { days, limit, page, userId: userId ?? null, searchTerm: searchTerm ?? null, eventType } }),
     {
       table: 'indb_security_activity_logs',
       operationType: 'select',
@@ -104,7 +96,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   if (userIds.length > 0) {
     try {
       const profiles = await SecureServiceRoleWrapper.executeSecureOperation(
-        { ...operationContext, operation: 'admin_enrich_activity_profiles' },
+        buildOperationContext(request, adminUser.id, { operation: 'admin_enrich_activity_profiles', source: 'admin/activity', reason: 'Admin fetching activity logs', metadata: { days, limit, page, userId: userId ?? null, searchTerm: searchTerm ?? null, eventType } }),
         {
           table: 'indb_auth_user_profiles',
           operationType: 'select',

@@ -13,25 +13,22 @@ import {
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { logger } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { z } from 'zod';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser, context) => {
   const { id: userId } = (await context.params) as Record<string, string>;
 
-  const operationContext = {
-    userId: adminUser.id,
+  const operationContext = buildOperationContext(request, adminUser.id, {
     operation: 'admin_get_user_profile',
     reason: `Admin fetching detailed user profile for user ID: ${userId}`,
     source: 'admin/users/[id]',
     metadata: {
       requestedUserId: userId,
       includePackageInfo: true,
-      endpoint: '/api/v1/admin/users/[id]',
     },
-    ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || 'unknown',
-  };
+  });
 
   const profileWithPackage = await SecureServiceRoleWrapper.executeSecureOperation(
     operationContext,
@@ -92,16 +89,14 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser, conte
   let authUser = null;
 
   try {
-    const authContext = {
-      userId: adminUser.id,
+    const authContext = buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_user_auth_details',
       reason: 'Admin fetching user auth details for profile display',
       source: 'admin/users/[id]',
       metadata: {
         targetUserId: userId,
-        endpoint: '/api/v1/admin/users/[id]',
       },
-    };
+    });
 
     authUser = await SecureServiceRoleWrapper.executeSecureOperation(
       authContext,
@@ -227,8 +222,7 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
     const banDuration = isSuspending ? '10000h' : 'none';
     const action = isSuspending ? 'ban' : 'unban';
 
-    const statusUpdateContext = {
-      userId: adminUser.id,
+    const statusUpdateContext = buildOperationContext(request, adminUser.id, {
       operation: isSuspending ? 'admin_suspend_user' : 'admin_unsuspend_user',
       reason: `Admin ${isSuspending ? 'suspending' : 'unsuspending'} user account via profile update`,
       source: 'admin/users/[id]',
@@ -236,11 +230,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
         targetUserId: userId,
         suspensionAction: action,
         banDuration,
-        endpoint: '/api/v1/admin/users/[id]',
       },
-      ipAddress: getClientIP(request) ?? 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown',
-    };
+    });
 
     await SecureServiceRoleWrapper.executeSecureOperation(
       statusUpdateContext,
@@ -273,20 +264,18 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   }
 
   const currentProfile = await SecureServiceRoleHelpers.secureSelect(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'get_current_user_profile',
       reason: `Getting current profile before update for user: ${userId}`,
       source: 'admin/users/[id]',
       metadata: { requestedUserId: userId },
-    },
+    }),
     'indb_auth_user_profiles',
     ['role', 'full_name'],
     { user_id: userId }
   );
 
-  const updateOperationContext = {
-    userId: adminUser.id,
+  const updateOperationContext = buildOperationContext(request, adminUser.id, {
     operation: 'admin_update_user_profile',
     reason: `Admin updating user profile for user ID: ${userId}`,
     source: 'admin/users/[id]',
@@ -294,11 +283,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
       requestedUserId: userId,
       updatedFields: { full_name, role, email_notifications, phone_number },
       roleChanged: currentProfile.length > 0 ? currentProfile[0].role !== role : false,
-      endpoint: '/api/v1/admin/users/[id]',
     } as Record<string, Json>,
-    ipAddress: getClientIP(request) ?? 'unknown',
-    userAgent: request.headers.get('user-agent') || 'unknown',
-  };
+  });
 
   const updateData = {
     full_name,

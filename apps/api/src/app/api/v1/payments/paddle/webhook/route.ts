@@ -13,6 +13,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, toJson } from '@indexnow/database';
 import { ErrorType, ErrorSeverity, Json, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter';
@@ -53,19 +54,17 @@ interface SignatureVerificationResult {
   error?: string;
 }
 
-async function getWebhookSecretFromDatabase(): Promise<string> {
+async function getWebhookSecretFromDatabase(request: NextRequest): Promise<string> {
   // Use SecureServiceRoleWrapper for audit trail
   const gateway = await SecureServiceRoleWrapper.executeSecureOperation<Pick<
     PaymentGatewayRow,
     'api_credentials'
   > | null>(
-    {
-      userId: 'system',
+    buildOperationContext(request, 'system', {
       operation: 'get_paddle_webhook_secret',
       source: 'paddle/webhook',
       reason: 'System fetching Paddle webhook secret for signature verification',
-      metadata: { endpoint: '/api/v1/payments/paddle/webhook' },
-    },
+    }),
     { table: 'indb_payment_gateways', operationType: 'select' },
     async () => {
       const { data, error } = await supabaseAdmin
@@ -121,7 +120,7 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       return formatError(error);
     }
 
-    const verificationResult = await verifyPaddleSignature(rawBody, signature);
+    const verificationResult = await verifyPaddleSignature(rawBody, signature, request);
 
     if (!verificationResult.valid) {
       const error = await ErrorHandlingService.createError(
@@ -159,13 +158,12 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
     const upsertResult = await SecureServiceRoleWrapper.executeSecureOperation<{
       alreadyProcessed: boolean;
     }>(
-      {
-        userId: 'system',
+      buildOperationContext(request, 'system', {
         operation: 'upsert_webhook_event',
         source: 'paddle/webhook',
         reason: 'Atomically inserting or checking Paddle webhook event for idempotency',
         metadata: { event_id, event_type },
-      },
+      }),
       { table: 'indb_paddle_webhook_events', operationType: 'insert' },
       async () => {
         // First check if already processed
@@ -202,17 +200,16 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
       return formatSuccess({ received: true, duplicate: true });
     }
 
-    await routeWebhookEvent(event_type, data, event_id);
+    await routeWebhookEvent(event_type, data, event_id, request);
 
     // Mark event as processed using SecureServiceRoleWrapper
     await SecureServiceRoleWrapper.executeSecureOperation<void>(
-      {
-        userId: 'system',
+      buildOperationContext(request, 'system', {
         operation: 'mark_webhook_event_processed',
         source: 'paddle/webhook',
         reason: 'Marking Paddle webhook event as successfully processed',
         metadata: { event_id, event_type },
-      },
+      }),
       { table: 'indb_paddle_webhook_events', operationType: 'update' },
       async () => {
         await supabaseAdmin
@@ -240,10 +237,11 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
 async function verifyPaddleSignature(
   rawBody: string,
-  signature: string
+  signature: string,
+  request: NextRequest
 ): Promise<SignatureVerificationResult> {
   // CRITICAL: Load webhook secret from DATABASE (not environment variables)
-  const webhookSecret = await getWebhookSecretFromDatabase();
+  const webhookSecret = await getWebhookSecretFromDatabase(request);
 
   try {
     const parts = signature.split(';');
@@ -314,7 +312,7 @@ async function verifyPaddleSignature(
   }
 }
 
-async function routeWebhookEvent(eventType: string, data: unknown, eventId: string) {
+async function routeWebhookEvent(eventType: string, data: unknown, eventId: string, request: NextRequest) {
   try {
     switch (eventType) {
       case 'subscription.created':
@@ -360,8 +358,7 @@ async function routeWebhookEvent(eventType: string, data: unknown, eventId: stri
   } catch (error) {
     // Log error to webhook event using SecureServiceRoleWrapper
     await SecureServiceRoleWrapper.executeSecureOperation<void>(
-      {
-        userId: 'system',
+      buildOperationContext(request, 'system', {
         operation: 'log_webhook_processing_error',
         source: 'paddle/webhook',
         reason: 'Recording error that occurred during webhook event processing',
@@ -370,7 +367,7 @@ async function routeWebhookEvent(eventType: string, data: unknown, eventId: stri
           eventType,
           error: error instanceof Error ? error.message : 'Unknown error',
         },
-      },
+      }),
       { table: 'indb_paddle_webhook_events', operationType: 'update' },
       async () => {
         await supabaseAdmin

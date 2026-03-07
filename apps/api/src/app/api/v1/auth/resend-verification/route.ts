@@ -9,6 +9,7 @@ import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-res
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { z } from 'zod';
 import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 const RESEND_RATE_LIMIT = { maxAttempts: 3, windowMs: 15 * 60 * 1000 };
 const RESEND_COOLDOWN = { maxAttempts: 1, windowMs: 60 * 1000 };
@@ -85,15 +86,12 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     const resendResult = await SecureServiceRoleWrapper.executeWithUserSession<ResendResult>(
       asTypedClient(supabase),
-      {
-        userId: 'anonymous',
+      buildOperationContext(request, 'anonymous', {
         operation: 'resend_verification_email',
         reason: 'User requesting email verification resend',
         source: 'auth/resend-verification',
         metadata: { email: normalizedEmail },
-        ipAddress: clientIP,
-        userAgent: request.headers.get('user-agent') || 'unknown',
-      },
+      }),
       { table: 'auth.users', operationType: 'update' },
       async (userSupabase) => {
         const { error: resendError } = await userSupabase.auth.resend({

@@ -15,8 +15,8 @@ import {
   ErrorType,
   ErrorSeverity,
   type Database,
-  getClientIP,
 } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -66,19 +66,15 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   const subscription =
     await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionForUpdate | null>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'verify_subscription_ownership_for_update',
         source: 'paddle/subscription/update',
         reason: 'User attempting to update subscription — ownership verification',
         metadata: {
           subscriptionId,
           newPriceId,
-          endpoint: '/api/v1/payments/paddle/subscription/update',
         },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_payment_subscriptions', operationType: 'select' },
       async (db) => {
         const { data, error } = await db
@@ -178,13 +174,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   if (newPackageId) {
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: 'system',
+        buildOperationContext(request, 'system', {
           operation: 'update_subscription_after_plan_change',
-          reason: 'Immediate DB update after successful Paddle subscription update',
           source: 'paddle/subscription/update',
+          reason: 'Immediate DB update after successful Paddle subscription update',
           metadata: { subscriptionId, confirmedPriceId, newPackageId },
-        },
+        }),
         {
           table: 'indb_payment_subscriptions',
           operationType: 'update',

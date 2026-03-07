@@ -6,7 +6,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { UserProfileService } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
@@ -62,15 +63,12 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         const packageInfo =
           await SecureServiceRoleWrapper.executeWithUserSession<PaymentPackageRow | null>(
             asTypedClient(auth.supabase),
-            {
-              userId: auth.userId,
+            buildOperationContext(request, auth.userId, {
               operation: 'get_trial_package_info',
               source: 'auth/user/trial-status',
               reason: 'User fetching trial package information for their account',
               metadata: { packageId: userProfile.package_id },
-              ipAddress: getClientIP(request),
-              userAgent: request.headers.get('user-agent') ?? undefined,
-            },
+            }),
             { table: 'indb_payment_packages', operationType: 'select' },
             async (db) => {
               const { data, error } = await db
@@ -97,15 +95,11 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       const subscription =
         await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionInfo | null>(
           asTypedClient(auth.supabase),
-          {
-            userId: auth.userId,
+          buildOperationContext(request, auth.userId, {
             operation: 'get_active_subscription_info',
             source: 'auth/user/trial-status',
             reason: 'User fetching active subscription information for trial status details',
-            metadata: {},
-            ipAddress: getClientIP(request),
-            userAgent: request.headers.get('user-agent') ?? undefined,
-          },
+          }),
           { table: 'indb_payment_subscriptions', operationType: 'select' },
           async (db) => {
             const { data, error } = await db

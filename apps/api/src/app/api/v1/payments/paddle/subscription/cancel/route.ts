@@ -13,7 +13,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin, SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -63,18 +64,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   const subscription =
     await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionForCancel | null>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'verify_subscription_ownership_for_cancel',
         source: 'paddle/subscription/cancel',
         reason: 'User attempting to cancel subscription — ownership verification',
-        metadata: {
-          subscriptionId,
-          endpoint: '/api/v1/payments/paddle/subscription/cancel',
-        },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+        metadata: { subscriptionId },
+      }),
       { table: 'indb_payment_subscriptions', operationType: 'select' },
       async (db) => {
         const { data, error } = await db
@@ -150,8 +145,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
   try {
     await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: 'system',
+      buildOperationContext(request, 'system', {
         operation: 'update_subscription_after_cancel',
         reason: 'Immediate DB update after successful Paddle cancel request',
         source: 'paddle/subscription/cancel',
@@ -160,7 +154,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
           paddleStatus: paddleSub.status,
           scheduledChange: scheduledChange ?? null,
         },
-      },
+      }),
       {
         table: 'indb_payment_subscriptions',
         operationType: 'update',

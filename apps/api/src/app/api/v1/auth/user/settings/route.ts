@@ -7,7 +7,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // Valid schedule types matching the database enum
 const scheduleEnumSchema = z.enum(['one-time', 'hourly', 'daily', 'weekly', 'monthly']);
@@ -29,15 +30,11 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     const settings = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_user_settings',
         source: 'auth/user/settings',
         reason: 'User retrieving their own settings for display',
-        metadata: { endpoint: '/api/v1/auth/user/settings', method: 'GET' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_auth_user_settings', operationType: 'select' },
       async (db) => {
         const { data: settings, error: settingsError } = await db
@@ -113,19 +110,12 @@ export const PUT = authenticatedApiWrapper(async (request, auth) => {
 
     const settings = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'update_user_settings',
         source: 'auth/user/settings',
         reason: 'User updating their own settings',
-        metadata: {
-          endpoint: '/api/v1/auth/user/settings',
-          method: 'PUT',
-          updatedFields: Object.keys(validation.data),
-        },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+        metadata: { updatedFields: Object.keys(validation.data) },
+      }),
       { table: 'indb_auth_user_settings', operationType: 'update' },
       async (db) => {
         const { data: settings, error: updateError } = await db

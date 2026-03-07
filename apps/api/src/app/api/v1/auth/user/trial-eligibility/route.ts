@@ -6,7 +6,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { UserProfileService } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
@@ -64,15 +65,12 @@ export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (requ
     try {
       packages = await SecureServiceRoleWrapper.executeWithUserSession<TrialPackageInfo[]>(
         asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
+        buildOperationContext(request, auth.userId, {
           operation: 'get_available_trial_packages',
           source: 'auth/user/trial-eligibility',
           reason: 'User fetching available trial packages for eligibility check',
           metadata: { eligible: true },
-          ipAddress: getClientIP(request),
-          userAgent: request.headers.get('user-agent') ?? undefined,
-        },
+        }),
         { table: 'indb_payment_packages', operationType: 'select' },
         async (db) => {
           const { data, error } = await db

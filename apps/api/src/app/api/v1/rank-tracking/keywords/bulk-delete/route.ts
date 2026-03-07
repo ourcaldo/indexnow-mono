@@ -8,7 +8,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -38,15 +39,12 @@ export const DELETE = authenticatedApiWrapper(async (request: NextRequest, auth)
 
     const deletedCount = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'bulk_delete_keywords',
         source: 'rank-tracking/keywords/bulk-delete',
         reason: 'User bulk deleting keywords and related data',
         metadata: { keywordIds, keywordCount: keywordIds.length },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_rank_keywords', operationType: 'delete' },
       async () => {
         // Atomic RPC: verifies ownership, deletes rankings, then keywords in one transaction

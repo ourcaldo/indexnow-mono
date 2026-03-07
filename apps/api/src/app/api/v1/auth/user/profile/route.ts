@@ -6,8 +6,9 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { UserProfileService } from '@/lib/services/user-profile-service';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 /**
  * GET /api/v1/auth/user/profile
@@ -67,15 +68,12 @@ export const PUT = authenticatedApiWrapper(async (request, auth) => {
 
     await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'update_user_profile',
         source: 'auth/user/profile',
         reason: 'User updating their own profile preferences',
-        metadata: { endpoint: '/api/v1/auth/user/profile', fields: Object.keys(body) },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+        metadata: { fields: Object.keys(body) },
+      }),
       { table: 'indb_auth_user_profiles', operationType: 'update' },
       async (db) => {
         const { error } = await db

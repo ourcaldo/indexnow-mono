@@ -8,7 +8,8 @@ import {
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // UUID validation for transaction_id from FormData
 const transactionIdSchema = z.string().uuid('Invalid transaction ID format');
@@ -90,15 +91,12 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
     const transaction =
       await SecureServiceRoleWrapper.executeWithUserSession<PaymentTransactionRow | null>(
         asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
+        buildOperationContext(request, auth.userId, {
           operation: 'verify_transaction_ownership',
           source: 'billing/upload-proof',
           reason: 'User verifying transaction ownership before uploading payment proof',
-          metadata: { transactionId, endpoint: '/api/v1/billing/upload-proof' },
-          ipAddress: getClientIP(request),
-          userAgent: request.headers.get('user-agent') ?? undefined,
-        },
+          metadata: { transactionId },
+        }),
         { table: 'indb_payment_transactions', operationType: 'select' },
         async (db) => {
           const { data, error } = await db
@@ -140,15 +138,12 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
     // Upload file to storage and update transaction
     const publicUrl = await SecureServiceRoleWrapper.executeWithUserSession<string>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'upload_payment_proof',
         source: 'billing/upload-proof',
         reason: 'User uploading payment proof and updating transaction status',
         metadata: { transactionId, fileName, fileSize: proofFile.size, fileType: proofFile.type },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_payment_transactions', operationType: 'update' },
       async (db) => {
         // Upload file to Supabase Storage

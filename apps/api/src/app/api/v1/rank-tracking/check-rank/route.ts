@@ -9,7 +9,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin, SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type DbRankKeywordRow, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type DbRankKeywordRow } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -45,15 +46,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     // Fetch keyword details (from indb_rank_keywords)
     const keywordData = await SecureServiceRoleWrapper.executeWithUserSession<RankKeywordSelect>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_keyword_for_rank_check',
         source: 'rank-tracking/check-rank',
         reason: 'Fetching keyword details to perform manual rank check',
         metadata: { keywordId: keyword_id },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_rank_keywords', operationType: 'select' },
       async (db) => {
         const { data, error } = await db
@@ -110,15 +108,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
     // Save result to database
     await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'save_rank_check_result',
         source: 'rank-tracking/check-rank',
         reason: 'Saving rank check result after manual check',
         metadata: { keywordId: keyword_id, position: rankResult.position },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_rank_keywords', operationType: 'update' },
       async () => {
         const now = new Date().toISOString();
@@ -184,15 +179,12 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
       is_active: boolean;
     } | null>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'check_rank_tracker_config',
         source: 'rank-tracking/check-rank',
         reason: 'User checking if rank tracker API is configured and quota availability',
         metadata: { serviceName: 'custom_tracker' },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_site_integration', operationType: 'select' },
       async (db) => {
         const { data, error } = await db

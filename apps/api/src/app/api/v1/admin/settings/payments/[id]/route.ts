@@ -6,6 +6,7 @@ import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-resp
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 const updateGatewaySchema = z.object({
   name: z.string().max(255).optional(),
@@ -52,24 +53,6 @@ export const PATCH = adminApiWrapper(
       }
     }
 
-    // Update the payment gateway using secure wrapper
-    const updateGatewayContext = {
-      userId: adminUser.id,
-      operation: 'admin_update_payment_gateway',
-      reason: 'Admin updating payment gateway configuration',
-      source: 'admin/settings/payments/[id]',
-      metadata: {
-        gatewayId: id,
-        updateData: {
-          name: body.name,
-          slug: body.slug,
-          isActive: body.is_active,
-          isDefault: body.is_default,
-        },
-        endpoint: '/api/v1/admin/settings/payments/[id]',
-      } as Record<string, Json>,
-    };
-
     // Only include fields that were explicitly provided to avoid overwriting with undefined
     const updateData: Record<string, Json | string | boolean | null> = {
       updated_at: new Date().toISOString(),
@@ -84,7 +67,20 @@ export const PATCH = adminApiWrapper(
 
     try {
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
-        updateGatewayContext,
+        buildOperationContext(request, adminUser.id, {
+          operation: 'admin_update_payment_gateway',
+          source: 'admin/settings/payments/[id]',
+          reason: 'Admin updating payment gateway configuration',
+          metadata: {
+            gatewayId: id,
+            updateData: {
+              name: body.name,
+              slug: body.slug,
+              isActive: body.is_active,
+              isDefault: body.is_default,
+            },
+          },
+        }),
         {
           table: 'indb_payment_gateways',
           operationType: 'update',
@@ -143,20 +139,9 @@ export const DELETE = adminApiWrapper(
     const { id } = (await context.params) as Record<string, string>;
 
     // Delete payment gateway using secure wrapper
-    const deleteContext = {
-      userId: adminUser.id,
-      operation: 'admin_delete_payment_gateway',
-      reason: 'Admin deleting payment gateway configuration',
-      source: 'admin/settings/payments/[id]',
-      metadata: {
-        gatewayId: id,
-        endpoint: '/api/v1/admin/settings/payments/[id]',
-      },
-    };
-
     try {
       await SecureServiceRoleWrapper.executeSecureOperation(
-        deleteContext,
+        buildOperationContext(request, adminUser.id, { operation: 'admin_delete_payment_gateway', source: 'admin/settings/payments/[id]', reason: 'Admin deleting payment gateway configuration', metadata: { gatewayId: id } }),
         {
           table: 'indb_payment_gateways',
           operationType: 'delete',

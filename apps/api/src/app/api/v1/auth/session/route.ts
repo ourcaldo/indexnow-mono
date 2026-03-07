@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { SecureServiceRoleWrapper, createServerClient } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity, getClientIP, getRequestInfo } from '@indexnow/shared';
+import { AppConfig, ErrorType, ErrorSeverity, getRequestInfo } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 import { z } from 'zod';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // Types for session operations
 interface SessionData {
@@ -29,18 +30,11 @@ interface SetSessionResult {
  */
 export const GET = publicApiWrapper(async (request: NextRequest) => {
   const sessionData = await SecureServiceRoleWrapper.executeSecureOperation<SessionData>(
-    {
-      userId: 'system',
+    buildOperationContext(request, 'system', {
       operation: 'get_user_session',
       source: 'auth/session',
       reason: 'System checking user session status',
-      metadata: {
-        endpoint: '/api/v1/auth/session',
-        method: 'GET',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    }),
     { table: 'auth.sessions', operationType: 'select' },
     async () => {
       const cookieStore = await cookies();
@@ -113,18 +107,14 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     // Set session using secure wrapper (system operation - no existing session required)
     const sessionResult = await SecureServiceRoleWrapper.executeSecureOperation<SetSessionResult>(
-      {
-        userId: 'system',
+      buildOperationContext(request, 'system', {
         operation: 'set_user_session',
         reason: 'System restoring user session from stored tokens',
         source: 'auth/session',
         metadata: {
-          endpoint: '/api/v1/auth/session',
           hasTokens: !!(access_token && refresh_token),
         },
-        ipAddress: getClientIP(request) ?? 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
-      },
+      }),
       { table: 'auth.sessions', operationType: 'insert' },
       async () => {
         const { data, error } = await supabase.auth.setSession({
@@ -252,17 +242,11 @@ export const DELETE = publicApiWrapper(async (request: NextRequest) => {
 
   // Sign out from Supabase using secure wrapper (system operation)
   await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: 'system',
+    buildOperationContext(request, 'system', {
       operation: 'delete_user_session',
       reason: 'System deleting user session via logout',
       source: 'auth/session',
-      metadata: {
-        endpoint: '/api/v1/auth/session',
-      },
-      ipAddress: getClientIP(request) ?? 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown',
-    },
+    }),
     { table: 'auth.sessions', operationType: 'delete' },
     async () => {
       const { error } = await supabase.auth.signOut();

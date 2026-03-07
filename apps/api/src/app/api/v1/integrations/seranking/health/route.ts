@@ -11,6 +11,7 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 interface HealthCheckResult {
     status: 'healthy' | 'degraded' | 'unhealthy' | 'unconfigured';
@@ -32,18 +33,17 @@ interface ComponentHealth {
     };
 }
 
-async function checkDatabaseHealth(checkTime: string): Promise<HealthCheckResult> {
+async function checkDatabaseHealth(request: NextRequest, checkTime: string): Promise<HealthCheckResult> {
     try {
         const startTime = Date.now();
 
         // Simple database health check - just verify we can query something
         await SecureServiceRoleWrapper.executeSecureOperation(
-            {
-                userId: 'system',
+            buildOperationContext(request, 'system', {
                 operation: 'seranking_database_health_check',
                 reason: 'SeRanking integration health check verifying database connectivity',
                 source: 'integrations/seranking/health',
-            },
+            }),
             {
                 table: 'indb_payment_packages',
                 operationType: 'select',
@@ -136,7 +136,7 @@ export const GET = adminApiWrapper(async (request: NextRequest) => {
     };
 
     // Check database health  
-    const databaseHealth = await checkDatabaseHealth(checkTime);
+    const databaseHealth = await checkDatabaseHealth(request, checkTime);
 
     // Compile component statuses
     const components: ComponentHealth = {

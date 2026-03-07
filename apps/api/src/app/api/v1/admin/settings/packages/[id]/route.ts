@@ -10,6 +10,7 @@ import { adminApiWrapper, withDatabaseOperation } from '@/lib/core/api-response-
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 const pricingTierDetailsSchema = z.object({
   regular_price: z.number(),
@@ -68,24 +69,6 @@ export const PATCH = adminApiWrapper(
 
     // Update package using secure wrapper
     const validated = validation.data;
-    const updateContext = {
-      userId: adminUser.id,
-      operation: 'admin_update_package',
-      reason: 'Admin updating package configuration and settings',
-      source: 'admin/settings/packages/[id]',
-      metadata: {
-        packageId: id,
-        updateData: JSON.parse(
-          JSON.stringify({
-            name: validated.name,
-            slug: validated.slug,
-            isActive: validated.is_active,
-            isPopular: validated.is_popular,
-          })
-        ),
-        endpoint: '/api/v1/admin/settings/packages/[id]',
-      },
-    };
 
     const updateData: PackageUpdate = {
       ...(validated.name !== undefined && { name: validated.name }),
@@ -103,7 +86,22 @@ export const PATCH = adminApiWrapper(
     const result = await withDatabaseOperation(
       async () => {
         return await SecureServiceRoleWrapper.executeSecureOperation(
-          updateContext,
+          buildOperationContext(request, adminUser.id, {
+            operation: 'admin_update_package',
+            source: 'admin/settings/packages/[id]',
+            reason: 'Admin updating package configuration and settings',
+            metadata: {
+              packageId: id,
+              updateData: JSON.parse(
+                JSON.stringify({
+                  name: validated.name,
+                  slug: validated.slug,
+                  isActive: validated.is_active,
+                  isPopular: validated.is_popular,
+                })
+              ),
+            },
+          }),
           {
             table: 'indb_payment_packages',
             operationType: 'update',
@@ -161,21 +159,10 @@ export const DELETE = adminApiWrapper(
     const { id } = (await context.params) as Record<string, string>;
 
     // Delete package using secure wrapper
-    const deleteContext = {
-      userId: adminUser.id,
-      operation: 'admin_delete_package',
-      reason: 'Admin deleting package configuration',
-      source: 'admin/settings/packages/[id]',
-      metadata: {
-        packageId: id,
-        endpoint: '/api/v1/admin/settings/packages/[id]',
-      },
-    };
-
     const result = await withDatabaseOperation(
       async () => {
         return await SecureServiceRoleWrapper.executeSecureOperation(
-          deleteContext,
+          buildOperationContext(request, adminUser.id, { operation: 'admin_delete_package', source: 'admin/settings/packages/[id]', reason: 'Admin deleting package configuration', metadata: { packageId: id } }),
           {
             table: 'indb_payment_packages',
             operationType: 'delete',

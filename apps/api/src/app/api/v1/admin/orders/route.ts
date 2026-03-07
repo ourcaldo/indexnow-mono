@@ -12,6 +12,7 @@ import {
 } from '@indexnow/shared';
 import { SecureServiceRoleWrapper, supabaseAdmin, type Json } from '@indexnow/database';
 import { batchGetUserEmails } from '@/lib/core/batch-user-emails';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   // Parse query parameters
@@ -48,27 +49,24 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const offset = (page - 1) * limit;
 
   // Get orders using secure wrapper
-  const ordersContext = {
-    userId: adminUser.id,
-    operation: 'admin_get_orders_list',
-    reason: 'Admin fetching orders list with filters and pagination',
-    source: 'admin/orders',
-    metadata: {
-      filters: {
-        status: status ?? null,
-        customer: customer ?? null,
-        packageId: packageId ?? null,
-        dateFrom: dateFrom ?? null,
-        dateTo: dateTo ?? null,
-        amountMin: amountMin ?? null,
-        amountMax: amountMax ?? null,
-      },
-      pagination: { page, limit },
-    } as Record<string, Json>,
-  };
-
   const ordersResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    ordersContext,
+    buildOperationContext(request, adminUser.id, {
+      operation: 'admin_get_orders_list',
+      source: 'admin/orders',
+      reason: 'Admin fetching orders list with filters and pagination',
+      metadata: {
+        filters: {
+          status: status ?? null,
+          customer: customer ?? null,
+          packageId: packageId ?? null,
+          dateFrom: dateFrom ?? null,
+          dateTo: dateTo ?? null,
+          amountMin: amountMin ?? null,
+          amountMax: amountMax ?? null,
+        },
+        pagination: { page, limit },
+      },
+    }),
     {
       table: 'indb_payment_transactions',
       operationType: 'select',
@@ -222,7 +220,23 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   if (allProfileIds.length > 0) {
     try {
       const profiles = await SecureServiceRoleWrapper.executeSecureOperation(
-        { ...ordersContext, operation: 'admin_enrich_orders_profiles' },
+        buildOperationContext(request, adminUser.id, {
+          operation: 'admin_enrich_orders_profiles',
+          source: 'admin/orders',
+          reason: 'Admin fetching orders list with filters and pagination',
+          metadata: {
+            filters: {
+              status: status ?? null,
+              customer: customer ?? null,
+              packageId: packageId ?? null,
+              dateFrom: dateFrom ?? null,
+              dateTo: dateTo ?? null,
+              amountMin: amountMin ?? null,
+              amountMax: amountMax ?? null,
+            },
+            pagination: { page, limit },
+          },
+        }),
         {
           table: 'indb_auth_user_profiles',
           operationType: 'select',
@@ -283,9 +297,24 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   }
 
   // Calculate summary using database-level aggregation (not full-table scan)
-  const summaryContext = { ...ordersContext, operation: 'admin_get_orders_summary' };
   const summaryResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    summaryContext,
+    buildOperationContext(request, adminUser.id, {
+      operation: 'admin_get_orders_summary',
+      source: 'admin/orders',
+      reason: 'Admin fetching orders list with filters and pagination',
+      metadata: {
+        filters: {
+          status: status ?? null,
+          customer: customer ?? null,
+          packageId: packageId ?? null,
+          dateFrom: dateFrom ?? null,
+          dateTo: dateTo ?? null,
+          amountMin: amountMin ?? null,
+          amountMax: amountMax ?? null,
+        },
+        pagination: { page, limit },
+      },
+    }),
     { table: 'indb_payment_transactions', operationType: 'select', columns: ['status', 'amount'] },
     async () => {
       // Fetch counts per status using separate filtered count queries

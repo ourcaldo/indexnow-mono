@@ -5,9 +5,10 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import { checkRouteRateLimit } from '@/lib/rate-limiting/route-rate-limit';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { z } from 'zod';
 
 const changePasswordSchema = z.object({
@@ -58,19 +59,14 @@ export const POST = authenticatedApiWrapper(async (request, auth) => {
 
     const updateResult = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'change_user_password',
         source: 'auth/user/change-password',
         reason: 'User changing their own password for security',
         metadata: {
-          endpoint: '/api/v1/auth/user/change-password',
-          method: 'POST',
           securityEvent: true,
         },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'auth.users', operationType: 'update' },
       async () => {
         // Use admin client to update password

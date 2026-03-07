@@ -5,7 +5,8 @@ import {
   asTypedClient,
 } from '@indexnow/database';
 import { NextRequest } from 'next/server';
-import { ErrorType, type StructuredError, getClientIP } from '@indexnow/shared';
+import { ErrorType, type StructuredError } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware';
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
@@ -18,19 +19,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth, c
     // Dismiss the notification using SecureWrapper
     await SecureServiceRoleWrapper.executeWithUserSession<boolean>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'dismiss_user_notification',
         source: 'notifications/dismiss/[id]',
         reason: 'User dismissing their notification',
-        metadata: {
-          notificationId,
-          endpoint: '/api/v1/notifications/dismiss/[id]',
-          method: 'POST',
-        },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+        metadata: { notificationId },
+      }),
       { table: 'indb_notifications_dashboard', operationType: 'update' },
       async (db) => {
         const { error } = await db

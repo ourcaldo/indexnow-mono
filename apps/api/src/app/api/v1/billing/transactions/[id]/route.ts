@@ -3,7 +3,8 @@ import { authenticatedApiWrapper } from '@/lib/core/api-response-middleware';
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter';
 import { ErrorHandlingService, ErrorType, ErrorSeverity } from '@/lib/monitoring/error-handling';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { DbTransactionRow as TransactionRow, getClientIP } from '@indexnow/shared';
+import { DbTransactionRow as TransactionRow } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 type TransactionDetail = TransactionRow & {
   package: Record<string, unknown> | null;
@@ -33,15 +34,12 @@ export const GET = authenticatedApiWrapper(async (request, auth, context) => {
     const transaction =
       await SecureServiceRoleWrapper.executeWithUserSession<TransactionDetail | null>(
         asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
+        buildOperationContext(request, auth.userId, {
           operation: 'get_transaction_details',
           source: 'billing/transactions/[id]',
           reason: 'User fetching transaction details',
-          metadata: { transactionId, endpoint: '/api/v1/billing/transactions/[id]' },
-          ipAddress: getClientIP(request) ?? undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-        },
+          metadata: { transactionId },
+        }),
         { table: 'indb_payment_transactions', operationType: 'select' },
         async (db) => {
           const { data, error } = await db

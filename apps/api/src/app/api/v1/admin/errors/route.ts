@@ -3,6 +3,7 @@ import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { escapeLikePattern } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 interface ErrorLog {
   id: string;
@@ -91,11 +92,10 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   }
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation<QueryResult>(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'fetch_error_list',
-      reason: 'Admin viewing paginated error list with filters',
       source: endpoint,
+      reason: 'Admin viewing paginated error list with filters',
       metadata: {
         page,
         limit,
@@ -107,7 +107,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
           hasSearch: !!search,
         },
       },
-    },
+    }),
     {
       table: 'indb_system_error_logs',
       operationType: 'select',

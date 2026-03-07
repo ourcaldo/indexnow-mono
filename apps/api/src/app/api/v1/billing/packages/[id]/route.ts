@@ -1,6 +1,7 @@
 import { SecureServiceRoleWrapper, supabaseAdmin, createServerClient } from '@indexnow/database';
 import { NextRequest } from 'next/server'
-import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess, formatError } from '@/lib/core/api-response-formatter'
 import { cookies } from 'next/headers'
@@ -33,20 +34,15 @@ export const GET = publicApiWrapper(async (request, context) => {
   // Get package details using SecureWrapper
   // Use 'system' userId for public operations (package viewing is public)
   const packageData = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: 'system',
+    buildOperationContext(request, 'system', {
       operation: 'public_get_package_details',
       source: 'billing/packages',
       reason: 'Public API fetching package details for display and checkout',
       metadata: {
         packageId,
-        endpoint: '/api/v1/billing/packages/[id]',
-        method: 'GET',
-        requestingUserId: user?.id || 'anonymous'
+        requestingUserId: user?.id || 'anonymous',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
-    },
+    }),
     { table: 'indb_payment_packages', operationType: 'select' },
     async () => {
       const { data, error } = await supabaseAdmin

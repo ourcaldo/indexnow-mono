@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper } from '@/lib/core/api-response-middleware'
 import { formatSuccess } from '@/lib/core/api-response-formatter'
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database'
-import { getClientIP } from '@indexnow/shared'
+import { buildOperationContext } from '@/lib/services/build-operation-context'
 
 interface UsageLog {
   operation: string;
@@ -26,20 +26,16 @@ export const GET = adminApiWrapper(async (
   const offset = (page - 1) * limit
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_user_api_stats',
       reason: 'Admin fetching user API usage statistics',
       source: 'admin/users/[id]/api-stats',
       metadata: {
         targetUserId: userId,
-        endpoint: '/api/v1/admin/users/[id]/api-stats',
         page,
         limit
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined
-    },
+    }),
     {
       table: 'indb_seranking_usage_logs',
       operationType: 'select',

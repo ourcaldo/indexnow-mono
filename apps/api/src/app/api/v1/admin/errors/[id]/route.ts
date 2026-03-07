@@ -10,6 +10,7 @@ import {
   getSentrySearchUrl,
   isSentryApiConfigured,
 } from '@/lib/integrations/sentry-api';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 type SystemErrorLog = Database['public']['Tables']['indb_system_error_logs']['Row'];
 type SystemErrorLogUpdate = Database['public']['Tables']['indb_system_error_logs']['Update'];
@@ -27,13 +28,7 @@ export const GET = adminApiWrapper(async (
   const endpoint = new URL(request.url).pathname;
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
-      operation: 'fetch_error_details',
-      reason: 'Admin viewing detailed error information',
-      source: endpoint,
-      metadata: { errorId }
-    },
+    buildOperationContext(request, adminUser.id, { operation: 'fetch_error_details', source: endpoint, reason: 'Admin viewing detailed error information', metadata: { errorId } }),
     {
       table: 'indb_system_error_logs',
       operationType: 'select',
@@ -205,13 +200,7 @@ export const PATCH = adminApiWrapper(async (
   const { action } = parseResult.data;
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
-      operation: 'update_error_status',
-      reason: `Admin ${action}d error`,
-      source: endpoint,
-      metadata: { errorId, action }
-    },
+    buildOperationContext(request, adminUser.id, { operation: 'update_error_status', source: endpoint, reason: `Admin ${action}d error`, metadata: { errorId, action } }),
     {
       table: 'indb_system_error_logs',
       operationType: 'update',

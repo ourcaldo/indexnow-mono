@@ -6,7 +6,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -43,15 +44,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   const subscription =
     await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionOwnerCheck | null>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'verify_subscription_ownership_for_pause',
         source: 'paddle/subscription/pause',
         reason: 'User attempting to pause subscription - ownership verification',
-        metadata: { subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/pause' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+        metadata: { subscriptionId },
+      }),
       { table: 'indb_payment_subscriptions', operationType: 'select' },
       async (db) => {
         const { data, error } = await db
@@ -87,15 +85,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
   const pausedAt = new Date().toISOString();
   const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<PaymentSubscriptionRow>(
     asTypedClient(auth.supabase),
-    {
-      userId: auth.userId,
+    buildOperationContext(request, auth.userId, {
       operation: 'pause_subscription',
       source: 'paddle/subscription/pause',
       reason: 'User pausing their subscription',
-      metadata: { subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/pause' },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') ?? undefined,
-    },
+      metadata: { subscriptionId },
+    }),
     { table: 'indb_payment_subscriptions', operationType: 'update' },
     async (db) => {
       const { data, error } = await db

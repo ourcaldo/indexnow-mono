@@ -10,10 +10,11 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // Use Pick from Database types for correct schema
 type PaymentPackageRow = {
@@ -47,20 +48,8 @@ const createPackageSchema = z
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
   try {
-    const packagesContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_packages_settings',
-      reason: 'Admin fetching packages for settings management',
-      source: 'admin/settings/packages',
-      metadata: {
-        endpoint: '/api/v1/admin/settings/packages',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    };
-
     const packages = await SecureServiceRoleWrapper.executeSecureOperation<PaymentPackageRow[]>(
-      packagesContext,
+      buildOperationContext(request, adminUser.id, { operation: 'admin_get_packages_settings', source: 'admin/settings/packages', reason: 'Admin fetching packages for settings management' }),
       {
         table: 'indb_payment_packages',
         operationType: 'select',
@@ -110,22 +99,8 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
 
     const body = validation.data;
 
-    const createContext = {
-      userId: adminUser.id,
-      operation: 'admin_create_package',
-      reason: `Admin creating new payment package: ${body.name}`,
-      source: 'admin/settings/packages',
-      metadata: {
-        packageName: body.name,
-        slug: body.slug,
-        endpoint: '/api/v1/admin/settings/packages',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    };
-
     const newPackage = await SecureServiceRoleWrapper.executeSecureOperation<PaymentPackageRow>(
-      createContext,
+      buildOperationContext(request, adminUser.id, { operation: 'admin_create_package', source: 'admin/settings/packages', reason: `Admin creating new payment package: ${body.name}`, metadata: { packageName: body.name, slug: body.slug } }),
       {
         table: 'indb_payment_packages',
         operationType: 'insert',

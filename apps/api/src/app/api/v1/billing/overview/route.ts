@@ -11,8 +11,8 @@ import {
   ErrorSeverity,
   type Database,
   type PackagePricingTiers,
-  getClientIP,
 } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { UserProfileService, type FullProfileWithPackage } from '@/lib/services/user-profile-service';
 import { findTierByPriceId, getFirstTier, getDisplayPrice } from '@/lib/services/pricing-utils';
 
@@ -73,15 +73,11 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
       currentSubscription =
         await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionWithPackage | null>(
           asTypedClient(auth.supabase),
-          {
-            userId: auth.userId,
+          buildOperationContext(request, auth.userId, {
             operation: 'get_active_subscription',
             source: 'billing/overview',
             reason: 'User fetching their active billing subscription for overview',
-            metadata: { endpoint: '/api/v1/billing/overview' },
-            ipAddress: getClientIP(request),
-            userAgent: request.headers.get('user-agent') ?? undefined,
-          },
+          }),
           { table: 'indb_payment_subscriptions', operationType: 'select' },
           async (db) => {
             const { data, error } = await db
@@ -117,15 +113,11 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
         TransactionWithJoins[]
       >(
         asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
+        buildOperationContext(request, auth.userId, {
           operation: 'get_recent_transactions',
           source: 'billing/overview',
           reason: 'User fetching their recent billing transactions for overview',
-          metadata: { endpoint: '/api/v1/billing/overview' },
-          ipAddress: getClientIP(request),
-          userAgent: request.headers.get('user-agent') ?? undefined,
-        },
+        }),
         { table: 'indb_payment_transactions', operationType: 'select' },
         async (db) => {
           const { data, error } = await db

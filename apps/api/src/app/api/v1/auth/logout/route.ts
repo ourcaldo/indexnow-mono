@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { SecureServiceRoleWrapper, createServerClient, asTypedClient } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 /**
  * Helper to get base domain for cross-subdomain cookie clearing
@@ -54,15 +55,11 @@ export const POST = publicApiWrapper(async (request: NextRequest) => {
 
     const logoutResult = await SecureServiceRoleWrapper.executeWithUserSession<LogoutResult>(
       asTypedClient(supabase),
-      {
-        userId: 'user-logout',
+      buildOperationContext(request, 'user-logout', {
         operation: 'user_logout',
         reason: 'User logging out of application',
         source: 'auth/logout',
-        metadata: { endpoint: '/api/v1/auth/logout' },
-        ipAddress: getClientIP(request) ?? 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
-      },
+      }),
       { table: 'auth.sessions', operationType: 'delete' },
       async (userSupabase) => {
         const { data: sessionData } = await userSupabase.auth.getSession();

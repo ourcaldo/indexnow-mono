@@ -18,6 +18,7 @@ import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-lo
 import { loginNotificationService } from '@/lib/monitoring/login-notification-service';
 import { getRequestInfo } from '@indexnow/shared';
 import { redisRateLimiter } from '@/lib/rate-limiting/redis-rate-limiter';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 const LOGIN_RATE_LIMIT = {
   email: { maxAttempts: 5, windowMs: 15 * 60 * 1000 } as const,
@@ -178,13 +179,12 @@ export const POST = publicApiWrapper(async (request: NextRequest, _context: Rout
     // email sync ensures the profile column stays current even if it was NULL
     // (pre-migration users) or if the user changed their email via Supabase auth.
     await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: user.id,
+      buildOperationContext(request, user.id, {
         operation: 'login_profile_update',
         source: 'auth/login',
         reason: 'Update last login timestamp, IP, and sync email on successful login',
         metadata: { clientIP, emailSynced: !!user.email },
-      },
+      }),
       { table: 'indb_auth_user_profiles', operationType: 'update' },
       async () => {
         const { error: loginUpdateError } = await supabaseAdmin

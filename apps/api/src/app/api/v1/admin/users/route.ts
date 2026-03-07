@@ -8,13 +8,14 @@
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
     adminApiWrapper,
     formatSuccess,
     formatError
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 export const GET = adminApiWrapper(async (request: NextRequest, adminUser: AdminUser) => {
     try {
@@ -25,19 +26,15 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
         const limit = Number.isNaN(parsedLimit) ? 100 : Math.min(200, Math.max(1, parsedLimit));
         const offset = (page - 1) * limit;
 
-        const usersContext = {
-            userId: adminUser.id,
+        const usersContext = buildOperationContext(request, adminUser.id, {
             operation: 'admin_get_users_list',
             reason: 'Admin fetching user list for management',
             source: 'admin/users',
             metadata: {
-                endpoint: '/api/v1/admin/users',
                 page,
                 limit
             },
-            ipAddress: getClientIP(request),
-            userAgent: request.headers.get('user-agent') || undefined
-        };
+        });
 
         const result = await SecureServiceRoleWrapper.executeSecureOperation(
             usersContext,

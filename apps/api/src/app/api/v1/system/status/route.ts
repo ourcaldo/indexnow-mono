@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
 import { requireServerSuperAdminAuth } from '@indexnow/auth/server';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
@@ -23,18 +24,11 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
 
     // Get system statistics using secure admin operation
     const systemStats = await SecureServiceRoleWrapper.executeSecureOperation<SystemStatsResult>(
-      {
-        userId: 'admin',
+      buildOperationContext(request, 'admin', {
         operation: 'get_system_status',
         source: 'system/status',
         reason: 'Admin fetching system status and statistics',
-        metadata: {
-          endpoint: '/api/v1/system/status',
-          method: 'GET',
-        },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       {
         table: 'indb_auth_user_profiles',
         operationType: 'select',

@@ -7,7 +7,8 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, fromJson, asTypedClient, type Json } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -27,15 +28,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
   try {
     const usageData = (await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_keyword_usage',
         source: 'rank-tracking/keyword-usage',
         reason: 'User checking keyword usage against quota',
-        metadata: { endpoint: '/api/v1/rank-tracking/keyword-usage' },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_rank_keywords', operationType: 'select' },
       async (db) => {
         // keyword-usage is account-wide (quota is per account, not per workspace)

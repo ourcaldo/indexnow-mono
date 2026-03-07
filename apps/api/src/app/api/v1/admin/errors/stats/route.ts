@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 interface ErrorCount {
   message: string;
@@ -56,13 +57,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const timeRange = searchParams.get('range') || '24h';
 
   const stats = await SecureServiceRoleWrapper.executeSecureOperation<StatsResult>(
-    {
-      userId: adminUser.id,
-      operation: 'fetch_error_statistics',
-      reason: 'Admin viewing error dashboard statistics',
-      source: endpoint,
-      metadata: { timeRange },
-    },
+    buildOperationContext(request, adminUser.id, { operation: 'fetch_error_statistics', source: endpoint, reason: 'Admin viewing error dashboard statistics', metadata: { timeRange } }),
     {
       table: 'indb_system_error_logs',
       operationType: 'select',

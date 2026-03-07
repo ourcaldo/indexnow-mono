@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, supabaseAdmin } from '@indexnow/database';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { logger } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper, formatError, createStandardError } from '@/lib/core/api-response-middleware';
 import { formatSuccess, ErrorType, ErrorSeverity } from '@indexnow/shared';
@@ -95,13 +96,12 @@ export const POST = publicApiWrapper<SentryWebhookResult>(async (request: NextRe
 
   if (action === 'resolved') {
     const result = await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: 'system:sentry-webhook',
+      buildOperationContext(request, 'system:sentry-webhook', {
         operation: 'sentry_resolve_errors',
-        reason: 'Sentry webhook resolved issue',
         source: endpoint,
-        metadata: { sentryIssueId, action }
-      },
+        reason: 'Sentry webhook resolved issue',
+        metadata: { sentryIssueId, action },
+      }),
       {
         table: 'indb_system_error_logs',
         operationType: 'update',
@@ -136,13 +136,12 @@ export const POST = publicApiWrapper<SentryWebhookResult>(async (request: NextRe
 
   if (action === 'created' || action === 'unresolved') {
     const result = await SecureServiceRoleWrapper.executeSecureOperation(
-      {
-        userId: 'system:sentry-webhook',
+      buildOperationContext(request, 'system:sentry-webhook', {
         operation: 'sentry_unresolve_errors',
-        reason: 'Sentry webhook unresolved issue',
         source: endpoint,
-        metadata: { sentryIssueId, action }
-      },
+        reason: 'Sentry webhook unresolved issue',
+        metadata: { sentryIssueId, action },
+      }),
       {
         table: 'indb_system_error_logs',
         operationType: 'update',

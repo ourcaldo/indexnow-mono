@@ -1,7 +1,6 @@
 import {
   SecureServiceRoleWrapper,
   supabaseAdmin,
-  type ServiceRoleOperationContext,
 } from '@indexnow/database';
 import { NextRequest } from 'next/server';
 import {
@@ -15,6 +14,7 @@ import { logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { type Json, type AdminOrderTransaction } from '@indexnow/shared';
 import { z } from 'zod';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 /**
  * A-02 (resolved): Order status update + plan activation is now atomic via
@@ -84,20 +84,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   const { status, notes } = parseResult.data;
 
   // Get the current transaction to check current status using secure wrapper
-  const transactionContext = {
-    userId: adminUser.id,
-    operation: 'admin_get_transaction_for_status_update',
-    reason: 'Admin fetching transaction details for status update',
-    source: 'admin/orders/[id]/status',
-    metadata: {
-      orderId,
-      newStatus: status,
-      endpoint: '/api/v1/admin/orders/[id]/status',
-    },
-  };
-
   const currentTransaction = await SecureServiceRoleWrapper.executeSecureOperation(
-    transactionContext,
+    buildOperationContext(request, adminUser.id, { operation: 'admin_get_transaction_for_status_update', source: 'admin/orders/[id]/status', reason: 'Admin fetching transaction details for status update', metadata: { orderId, newStatus: status } }),
     {
       table: 'indb_payment_transactions',
       operationType: 'select',
@@ -204,20 +192,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
   };
 
   // Get updated user profile using secure wrapper
-  const updatedUserProfileContext: ServiceRoleOperationContext = {
-    userId: adminUser.id,
-    operation: 'admin_get_updated_user_profile',
-    reason: 'Admin fetching updated user profile after transaction status change',
-    source: 'admin/orders/[id]/status',
-    metadata: {
-      orderId,
-      targetUserId: updatedTransaction.user_id ?? '',
-      endpoint: '/api/v1/admin/orders/[id]/status',
-    },
-  };
-
   const updatedUserProfile = await SecureServiceRoleWrapper.executeSecureOperation(
-    updatedUserProfileContext,
+    buildOperationContext(request, adminUser.id, { operation: 'admin_get_updated_user_profile', source: 'admin/orders/[id]/status', reason: 'Admin fetching updated user profile after transaction status change', metadata: { orderId, targetUserId: updatedTransaction.user_id ?? '' } }),
     {
       table: 'indb_auth_user_profiles',
       operationType: 'select',
@@ -241,20 +217,8 @@ export const PATCH = adminApiWrapper(async (request: NextRequest, adminUser, con
 
   let verifierProfile = null;
   if (updatedTransaction.verified_by) {
-    const verifierProfileContext: ServiceRoleOperationContext = {
-      userId: adminUser.id,
-      operation: 'admin_get_verifier_profile',
-      reason: 'Admin fetching verifier profile for transaction status change',
-      source: 'admin/orders/[id]/status',
-      metadata: {
-        orderId,
-        verifierId: updatedTransaction.verified_by ?? '',
-        endpoint: '/api/v1/admin/orders/[id]/status',
-      },
-    };
-
     verifierProfile = await SecureServiceRoleWrapper.executeSecureOperation(
-      verifierProfileContext,
+      buildOperationContext(request, adminUser.id, { operation: 'admin_get_verifier_profile', source: 'admin/orders/[id]/status', reason: 'Admin fetching verifier profile for transaction status change', metadata: { orderId, verifierId: updatedTransaction.verified_by ?? '' } }),
       {
         table: 'indb_auth_user_profiles',
         operationType: 'select',

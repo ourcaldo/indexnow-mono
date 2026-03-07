@@ -8,7 +8,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 const changePackageSchema = z
   .object({
@@ -47,19 +48,15 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
   const { packageId, reason, effectiveDate, notifyUser } = validation.data;
 
   const packageResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'admin_verify_package',
       reason: 'Admin verifying package exists before assignment',
       source: 'admin/users/[id]/change-package',
       metadata: {
         targetUserId: userId,
         packageId: packageId,
-        endpoint: '/api/v1/admin/users/[id]/change-package',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    }),
     {
       table: 'indb_payment_packages',
       operationType: 'select',
@@ -91,19 +88,15 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
   }
 
   const userResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_user_for_package_change',
       reason: 'Admin fetching user data before package change',
       source: 'admin/users/[id]/change-package',
       metadata: {
         targetUserId: userId,
         newPackageId: packageId,
-        endpoint: '/api/v1/admin/users/[id]/change-package',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    }),
     {
       table: 'indb_auth_user_profiles',
       operationType: 'select',
@@ -152,8 +145,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
   }
 
   const updateResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'admin_update_user_package',
       reason: `Admin changing user package from ${Array.isArray(currentUser.package) ? currentUser.package[0]?.name : currentUser.package?.name || 'No Package'} to ${packageData.name}`,
       source: 'admin/users/[id]/change-package',
@@ -164,11 +156,8 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
         newPackageId: packageId,
         newPackageName: packageData.name,
         newPackageSlug: packageData.slug,
-        endpoint: '/api/v1/admin/users/[id]/change-package',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    }),
     {
       table: 'indb_auth_user_profiles',
       operationType: 'update',

@@ -3,8 +3,9 @@ import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 export const PATCH = adminApiWrapper(
   async (request: NextRequest, adminUser: AdminUser, context) => {
@@ -14,18 +15,7 @@ export const PATCH = adminApiWrapper(
     try {
       // Atomic RPC: unsets all other defaults + sets this one, in a single transaction
       const result = await SecureServiceRoleWrapper.executeSecureOperation(
-        {
-          userId: adminUser.id,
-          operation: 'admin_set_payment_gateway_as_default',
-          reason: 'Admin setting specific payment gateway as the default (atomic)',
-          source: 'admin/settings/payments/[id]/default',
-          metadata: {
-            defaultGatewayId: id,
-            endpoint: '/api/v1/admin/settings/payments/[id]/default',
-          },
-          ipAddress: getClientIP(request),
-          userAgent: request.headers.get('user-agent') || undefined,
-        },
+        buildOperationContext(request, adminUser.id, { operation: 'admin_set_payment_gateway_as_default', source: 'admin/settings/payments/[id]/default', reason: 'Admin setting specific payment gateway as the default (atomic)', metadata: { defaultGatewayId: id } }),
         {
           table: 'indb_payment_gateways',
           operationType: 'update',

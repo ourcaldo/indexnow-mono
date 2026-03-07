@@ -7,7 +7,8 @@ import {
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { validateQuotaLimits, calculateQuota } from '@/lib/services/quota-calculator';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 /**
  * GET /api/v1/auth/user/quota
@@ -18,15 +19,11 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     const quotaData = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_user_quota_summary',
         source: 'auth/user/quota',
         reason: 'User retrieving their own quota information for dashboard display',
-        metadata: { endpoint: '/api/v1/auth/user/quota', method: 'GET' },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_auth_user_profiles', operationType: 'select' },
       async (db) => {
         // Get user profile with package information

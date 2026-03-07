@@ -5,7 +5,8 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { type Database, getClientIP } from '@indexnow/shared';
+import { type Database } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { authenticatedApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
 import { UserProfileService } from '@/lib/services/user-profile-service';
 
@@ -46,15 +47,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
   const paddleSubscription =
     await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionSelect | null>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_paddle_subscription',
         source: 'paddle/subscription/my-subscription',
         reason: 'User fetching their active Paddle subscription',
-        metadata: { endpoint: '/api/v1/payments/paddle/subscription/my-subscription' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_payment_subscriptions', operationType: 'select' },
       async (db) => {
         const { data, error } = await db

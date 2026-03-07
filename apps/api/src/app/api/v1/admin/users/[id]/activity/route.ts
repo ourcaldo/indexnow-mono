@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { adminApiWrapper, createStandardError, formatError, formatSuccess } from '@/lib/core/api-response-middleware'
 import { logger } from '@/lib/monitoring/error-handling'
 import { ErrorType, ErrorSeverity } from '@indexnow/shared'
+import { buildOperationContext } from '@/lib/services/build-operation-context'
 
 interface ActivityLogsResult {
   logs: Record<string, unknown>[]; // Changed from SecurityActivityLog[]
@@ -41,8 +42,7 @@ export const GET = adminApiWrapper(async (
   let userEmail: string | undefined | null = null
 
   try {
-    const logsContext = {
-      userId: adminUser.id,
+    const logsContext = buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_user_activity_logs',
       reason: 'Admin fetching user activity logs for review',
       source: 'admin/users/[id]/activity',
@@ -50,9 +50,8 @@ export const GET = adminApiWrapper(async (
         targetUserId: userId,
         page,
         limit,
-        endpoint: '/api/v1/admin/users/[id]/activity'
-      }
-    }
+      },
+    })
 
     const logsResult = await SecureServiceRoleWrapper.executeSecureOperation<ActivityLogsResult>(
       logsContext,
@@ -90,16 +89,14 @@ export const GET = adminApiWrapper(async (
     count = logsResult.count
 
     // Get user profile for context using secure wrapper
-    const profileContext = {
-      userId: adminUser.id,
+    const profileContext = buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_user_profile_for_activity',
       reason: 'Admin fetching user profile for activity log context',
       source: 'admin/users/[id]/activity',
       metadata: {
         targetUserId: userId,
-        endpoint: '/api/v1/admin/users/[id]/activity'
-      }
-    }
+      },
+    })
 
     const profiles = await SecureServiceRoleHelpers.secureSelect(
       profileContext,
@@ -114,16 +111,14 @@ export const GET = adminApiWrapper(async (
     if (userProfile) {
       const targetUserId = userProfile.user_id
       try {
-        const authContext = {
-          userId: adminUser.id,
+        const authContext = buildOperationContext(request, adminUser.id, {
           operation: 'admin_get_user_auth_for_activity',
           reason: 'Admin fetching user auth data for activity log context',
           source: 'admin/users/[id]/activity',
           metadata: {
             targetUserId: userId,
-            endpoint: '/api/v1/admin/users/[id]/activity'
-          }
-        }
+          },
+        })
 
         const authUser = await SecureServiceRoleWrapper.executeSecureOperation<AuthUserSubset, string>(
           authContext,

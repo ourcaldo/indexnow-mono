@@ -13,8 +13,8 @@ import {
   ErrorSeverity,
   formatSuccess,
   type Database,
-  getClientIP,
 } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { publicApiWrapper, formatError } from '@/lib/core/api-response-middleware';
 
@@ -38,15 +38,11 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
     // Load Paddle gateway configuration using SecureServiceRoleWrapper
     // This is a public operation to get client-safe config
     const gateway = await SecureServiceRoleWrapper.executeSecureOperation<PaymentGatewayRow | null>(
-      {
-        userId: 'system',
+      buildOperationContext(request, 'system', {
         operation: 'get_paddle_gateway_config',
         source: 'paddle/config',
         reason: 'Frontend requesting Paddle client configuration',
-        metadata: { endpoint: '/api/v1/payments/paddle/config' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+      }),
       { table: 'indb_payment_gateways', operationType: 'select' },
       async () => {
         const { data, error } = await supabaseAdmin

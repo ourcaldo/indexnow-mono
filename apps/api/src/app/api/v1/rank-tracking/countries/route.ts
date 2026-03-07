@@ -7,7 +7,8 @@
 
 import { NextRequest } from 'next/server';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity , getClientIP} from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
     publicApiWrapper,
     formatSuccess,
@@ -18,15 +19,12 @@ import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 export const GET = publicApiWrapper(async (request: NextRequest) => {
     try {
         const countries = await SecureServiceRoleWrapper.executeSecureOperation(
-            {
-                userId: 'system',
+            buildOperationContext(request, 'system', {
                 operation: 'get_public_countries_list',
                 source: 'rank-tracking/countries',
                 reason: 'Public API providing list of available countries for rank tracking',
-                metadata: { endpoint: '/api/v1/rank-tracking/countries', method: 'GET', isPublic: true },
-                ipAddress: getClientIP(request),
-                userAgent: request.headers.get('user-agent') || undefined
-            },
+                metadata: { isPublic: true },
+            }),
             { table: 'indb_keyword_countries', operationType: 'select' },
             async () => {
                 const { data, error } = await supabaseAdmin

@@ -9,10 +9,11 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Json, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity, type Json } from '@indexnow/shared';
 import { adminApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger, ActivityEventTypes } from '@/lib/monitoring/activity-logger';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 // Matches DB schema - no description column
 type PaymentGatewayRow = {
@@ -68,17 +69,11 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser) => {
       );
     }
 
-    const gatewaysContext = {
-      userId: adminUser.id,
+    const gatewaysContext = buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_payment_gateways',
       reason: 'Admin fetching payment gateways for settings',
       source: 'admin/settings/payments',
-      metadata: {
-        endpoint: '/api/v1/admin/settings/payments',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    };
+    });
 
     const gateways = await SecureServiceRoleWrapper.executeSecureOperation<PaymentGatewayRow[]>(
       gatewaysContext,
@@ -144,8 +139,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
 
     const body = validation.data;
 
-    const createContext = {
-      userId: adminUser.id,
+    const createContext = buildOperationContext(request, adminUser.id, {
       operation: 'admin_create_payment_gateway',
       reason: `Admin creating new payment gateway: ${body.name}`,
       source: 'admin/settings/payments',
@@ -153,11 +147,8 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser) => {
         gatewayName: body.name,
         gatewaySlug: body.slug,
         isDefault: body.is_default || false,
-        endpoint: '/api/v1/admin/settings/payments',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    };
+    });
 
     const gateway = await SecureServiceRoleWrapper.executeSecureOperation<PaymentGatewayRow>(
       createContext,

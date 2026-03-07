@@ -9,7 +9,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { SecureServiceRoleWrapper, supabaseAdmin, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { QuotaService } from '@indexnow/services';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
 import {
@@ -40,15 +41,12 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
 
     const result = (await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_user_domains',
         source: 'rank-tracking/domains',
         reason: 'User fetching their domains with keyword counts',
-        metadata: { endpoint: '/api/v1/rank-tracking/domains', method: 'GET', page, limit },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+        metadata: { page, limit },
+      }),
       { table: 'indb_keyword_domains', operationType: 'select' },
       async (db) => {
         // 1. Fetch domains with pagination
@@ -179,15 +177,12 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
     const newDomain = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'create_user_domain',
         source: 'rank-tracking/domains',
         reason: 'User creating a new domain for rank tracking',
         metadata: { domainName: cleanDomain, displayName: display_name || cleanDomain },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_keyword_domains', operationType: 'insert' },
       async (db) => {
         // Check for existing domain

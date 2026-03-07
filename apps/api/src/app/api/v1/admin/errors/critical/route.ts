@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { adminApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 interface CriticalError {
   id: string;
@@ -43,13 +44,7 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
   const offset = (page - 1) * limit;
 
   const result = await SecureServiceRoleWrapper.executeSecureOperation<CriticalErrorResult>(
-    {
-      userId: adminUser.id,
-      operation: 'fetch_critical_errors',
-      reason: 'Admin viewing unresolved critical errors',
-      source: endpoint,
-      metadata: { limit, page },
-    },
+    buildOperationContext(request, adminUser.id, { operation: 'fetch_critical_errors', source: endpoint, reason: 'Admin viewing unresolved critical errors', metadata: { limit, page } }),
     {
       table: 'indb_system_error_logs',
       operationType: 'select',

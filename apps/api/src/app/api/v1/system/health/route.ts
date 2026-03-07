@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
-import { ErrorType, getClientIP } from '@indexnow/shared';
+import { ErrorType } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { publicApiWrapper, formatSuccess, formatError } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { cacheService } from '@/lib/cache/redis-cache';
@@ -33,18 +34,11 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
   // ── 1. Database ──
   const dbStart = Date.now();
   try {
-    const healthContext = {
-      userId: 'system',
+    const healthContext = buildOperationContext(request, 'system', {
       operation: 'system_health_check',
-      reason: 'System health check endpoint testing database connectivity',
       source: 'system/health',
-      metadata: {
-        endpoint: '/api/v1/system/health',
-        method: 'GET',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    };
+      reason: 'System health check endpoint testing database connectivity',
+    });
 
     const healthCheck = await SecureServiceRoleWrapper.executeSecureOperation(
       healthContext,

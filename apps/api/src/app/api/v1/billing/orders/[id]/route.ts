@@ -12,8 +12,8 @@ import {
   DbPackageRow as PackageRow,
   ErrorType,
   ErrorSeverity,
-  getClientIP,
 } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 type TransactionWithPackage = TransactionRow & {
   package: Pick<PackageRow, 'id' | 'name' | 'description' | 'features' | 'quota_limits'> | null;
@@ -41,19 +41,12 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth, co
   const transaction =
     await SecureServiceRoleWrapper.executeWithUserSession<TransactionWithPackage | null>(
       asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
+      buildOperationContext(request, auth.userId, {
         operation: 'get_user_order_details',
         source: 'billing/orders/[id]',
         reason: 'User retrieving their order details',
-        metadata: {
-          orderId: id,
-          endpoint: '/api/v1/billing/orders/[id]',
-          method: 'GET',
-        },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+        metadata: { orderId: id },
+      }),
       { table: 'indb_payment_transactions', operationType: 'select' },
       async (db) => {
         const { data: transaction, error: transactionError } = await db

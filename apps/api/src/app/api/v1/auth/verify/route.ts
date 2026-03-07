@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { SecureServiceRoleWrapper, createServerClient, asTypedClient } from '@indexnow/database';
-import { AppConfig, ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { AppConfig, ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { publicApiWrapper } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 
@@ -75,21 +76,17 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         try {
           await SecureServiceRoleWrapper.executeWithUserSession(
             asTypedClient(supabase),
-            {
-              userId: 'pending_verification',
+            buildOperationContext(request, 'pending_verification', {
               operation: 'verify_otp_signup',
               source: 'auth/verify',
               reason: 'User email verification for account signup',
               metadata: {
-                endpoint: '/api/v1/auth/verify',
                 verificationType: 'signup',
                 hasToken: !!token,
                 redirectTo,
                 tokenType: 'token_hash',
               },
-              ipAddress: getClientIP(request),
-              userAgent: request.headers.get('user-agent') || undefined,
-            },
+            }),
             { table: 'auth.users', operationType: 'update' },
             async (db) => {
               const { error } = await db.auth.verifyOtp({
@@ -128,21 +125,17 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         try {
           await SecureServiceRoleWrapper.executeWithUserSession(
             asTypedClient(supabase),
-            {
-              userId: 'pending_verification',
+            buildOperationContext(request, 'pending_verification', {
               operation: 'verify_otp_recovery',
               source: 'auth/verify',
               reason: 'User password recovery verification',
               metadata: {
-                endpoint: '/api/v1/auth/verify',
                 verificationType: 'recovery',
                 hasToken: !!token,
                 redirectTo,
                 tokenType: 'token_hash',
               },
-              ipAddress: getClientIP(request),
-              userAgent: request.headers.get('user-agent') || undefined,
-            },
+            }),
             { table: 'auth.users', operationType: 'update' },
             async (db) => {
               const { error } = await db.auth.verifyOtp({
@@ -181,21 +174,17 @@ export const GET = publicApiWrapper(async (request: NextRequest) => {
         try {
           await SecureServiceRoleWrapper.executeWithUserSession(
             asTypedClient(supabase),
-            {
-              userId: 'pending_verification',
+            buildOperationContext(request, 'pending_verification', {
               operation: 'verify_otp_magiclink',
               source: 'auth/verify',
               reason: 'User magic link authentication verification',
               metadata: {
-                endpoint: '/api/v1/auth/verify',
                 verificationType: 'magiclink',
                 hasToken: !!token,
                 redirectTo,
                 tokenType: 'token_hash',
               },
-              ipAddress: getClientIP(request),
-              userAgent: request.headers.get('user-agent') || undefined,
-            },
+            }),
             { table: 'auth.users', operationType: 'update' },
             async (db) => {
               const { error } = await db.auth.verifyOtp({

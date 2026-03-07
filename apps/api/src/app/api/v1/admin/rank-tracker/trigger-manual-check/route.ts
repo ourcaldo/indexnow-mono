@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { type AdminUser } from '@indexnow/auth';
 import { supabaseAdmin, SecureServiceRoleWrapper, type Json, toJson } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
   adminApiWrapper,
   formatSuccess,
@@ -17,6 +17,7 @@ import {
   createStandardError,
 } from '@/lib/core/api-response-middleware';
 import { logger } from '@/lib/monitoring/error-handling';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 
 interface RankCheckStats {
   totalKeywords: number;
@@ -94,18 +95,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser: Admi
 
   // Log the trigger event
   await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
-      operation: 'admin_trigger_manual_rank_check',
-      reason: 'Admin manually triggered rank check process',
-      source: 'admin/rank-tracker/trigger-manual-check',
-      metadata: {
-        beforeStats: toJson(beforeStats),
-        endpoint: '/api/v1/admin/rank-tracker/trigger-manual-check',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    buildOperationContext(request, adminUser.id, { operation: 'admin_trigger_manual_rank_check', source: 'admin/rank-tracker/trigger-manual-check', reason: 'Admin manually triggered rank check process', metadata: { beforeStats: toJson(beforeStats) } }),
     {
       table: 'indb_system_activity_logs',
       operationType: 'insert',

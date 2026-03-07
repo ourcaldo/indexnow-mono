@@ -7,7 +7,8 @@
 
 import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, fromJson, asTypedClient, supabaseAdmin, type Json } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -50,15 +51,11 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
     const domain = request.nextUrl.searchParams.get('domain');
     const dashboardData = await SecureServiceRoleWrapper.executeWithUserSession(
       asTypedClient(auth.supabase),
-      {
-        userId: userId,
+      buildOperationContext(request, userId, {
         operation: 'get_dashboard_data',
         source: 'dashboard',
         reason: 'User fetching complete dashboard data',
-        metadata: { endpoint: '/api/v1/dashboard' },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
+      }),
       { table: 'indb_auth_user_profiles', operationType: 'select' },
       async (db) => {
         // Build domain-scoped queries upfront to avoid IIFE issues inside Promise.all

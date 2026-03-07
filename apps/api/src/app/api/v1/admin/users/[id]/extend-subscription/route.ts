@@ -7,7 +7,8 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { formatSuccess } from '@/lib/core/api-response-formatter';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
-import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
+import { buildOperationContext } from '@/lib/services/build-operation-context';
 import { z } from 'zod';
 
 const extendSubscriptionSchema = z.object({
@@ -40,20 +41,15 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
   const { days } = parseResult.data;
 
   const currentUserResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'admin_get_user_subscription_data',
       reason: 'Admin retrieving user subscription data to extend subscription',
       source: 'admin/users/[id]/extend-subscription',
       metadata: {
         targetUserId: userId,
         requestedExtensionDays: days,
-        endpoint: '/api/v1/admin/users/[id]/extend-subscription',
-        method: 'POST',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    }),
     {
       table: 'indb_auth_user_profiles',
       operationType: 'select',
@@ -94,8 +90,7 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
   const newExpiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
 
   const updateResult = await SecureServiceRoleWrapper.executeSecureOperation(
-    {
-      userId: adminUser.id,
+    buildOperationContext(request, adminUser.id, {
       operation: 'admin_extend_user_subscription',
       reason: `Admin extending user subscription by ${days} days`,
       source: 'admin/users/[id]/extend-subscription',
@@ -105,12 +100,8 @@ export const POST = adminApiWrapper(async (request: NextRequest, adminUser, cont
         extensionDays: days,
         previousExpiry: currentUser.subscription_end_date,
         newExpiry: newExpiry.toISOString(),
-        endpoint: '/api/v1/admin/users/[id]/extend-subscription',
-        method: 'POST',
       },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') || undefined,
-    },
+    }),
     {
       table: 'indb_auth_user_profiles',
       operationType: 'update',
