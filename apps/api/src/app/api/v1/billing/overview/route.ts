@@ -13,17 +13,14 @@ import {
   type PackagePricingTiers,
   getClientIP,
 } from '@indexnow/shared';
+import { UserProfileService, type FullProfileWithPackage } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
 type PaymentTransactionRow = Database['public']['Tables']['indb_payment_transactions']['Row'];
 
-// Profile with package join
-type ProfileWithPackage = UserProfileRow & {
-  package: PaymentPackageRow | null;
-};
+// Profile type is imported from UserProfileService as FullProfileWithPackage
 
 // Subscription with package join
 type SubscriptionWithPackage = PaymentSubscriptionRow & {
@@ -65,33 +62,8 @@ interface RecentTransactionInfo {
 export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
     // Fetch user profile with package
-    const userProfile = await SecureServiceRoleWrapper.executeWithUserSession<ProfileWithPackage>(
-      asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
-        operation: 'get_billing_user_profile',
-        source: 'billing/overview',
-        reason: 'User fetching their billing profile with package information',
-        metadata: { endpoint: '/api/v1/billing/overview' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
-      { table: 'indb_auth_user_profiles', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_auth_user_profiles')
-          .select(
-            `
-                        *,
-                        package:indb_payment_packages(*)
-                    `
-          )
-          .eq('user_id', auth.userId)
-          .single();
-
-        if (error) throw error;
-        return data as ProfileWithPackage;
-      }
+    const userProfile = await UserProfileService.getFullProfile(
+      auth, request, 'billing/overview',
     );
 
     // Fetch active subscription

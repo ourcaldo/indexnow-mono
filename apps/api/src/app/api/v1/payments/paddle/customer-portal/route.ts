@@ -7,17 +7,14 @@
  */
 
 import { NextRequest } from 'next/server';
-import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { ErrorType, ErrorSeverity } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
   formatSuccess,
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
-
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
-type ProfilePortalInfo = Pick<UserProfileRow, 'paddle_customer_id'>;
+import { UserProfileService } from '@/lib/services/user-profile-service';
 
 const PORTAL_BASE_URLS: Record<string, string> = {
   production: 'https://customer-portal.paddle.com',
@@ -30,32 +27,9 @@ function getPortalBaseUrl(): string {
 }
 
 export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) => {
-  const profile =
-    await SecureServiceRoleWrapper.executeWithUserSession<ProfilePortalInfo | null>(
-      asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
-        operation: 'get_customer_portal_url',
-        source: 'paddle/customer-portal',
-        reason: 'User requesting Paddle customer portal URL',
-        metadata: { endpoint: '/api/v1/payments/paddle/customer-portal' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
-      { table: 'indb_auth_user_profiles', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_auth_user_profiles')
-          .select('paddle_customer_id')
-          .eq('user_id', auth.userId)
-          .maybeSingle();
-
-        if (error) {
-          throw new Error(`Failed to fetch profile: ${error.message}`);
-        }
-        return data;
-      }
-    );
+  const profile = await UserProfileService.getPaddleCustomerId(
+    auth, request, 'payments/paddle/customer-portal',
+  );
 
   if (!profile?.paddle_customer_id) {
     const error = await ErrorHandlingService.createError(

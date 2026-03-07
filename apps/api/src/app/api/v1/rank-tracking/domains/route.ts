@@ -18,6 +18,7 @@ import {
   formatError,
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
+import { UserProfileService } from '@/lib/services/user-profile-service';
 
 const createDomainSchema = z.object({
   domain_name: z.string().min(1, 'Domain name is required'),
@@ -141,32 +142,9 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     const { domain_name, display_name } = validation.data;
 
     // Check user has active subscription by checking profile
-    const profileCheck = (await SecureServiceRoleWrapper.executeWithUserSession(
-      asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
-        operation: 'check_user_subscription',
-        source: 'rank-tracking/domains',
-        reason: 'Checking user subscription before domain creation',
-        metadata: { endpoint: '/api/v1/rank-tracking/domains', operation: 'create_domain' },
-        ipAddress: getClientIP(request) ?? undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      },
-      { table: 'indb_auth_user_profiles', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_auth_user_profiles')
-          .select('is_active, package_id')
-          .eq('user_id', auth.userId)
-          .single();
-
-        if (error)
-          throw new Error(
-            `Failed to check subscription: ${error.message} (code: ${error.code}, details: ${error.details})`
-          );
-        return data;
-      }
-    )) as { is_active: boolean; package_id: string | null } | null;
+    const profileCheck = await UserProfileService.getSubscriptionCheck(
+      auth, request, 'rank-tracking/domains',
+    );
 
     if (!profileCheck?.is_active || !profileCheck?.package_id) {
       const subscriptionError = await ErrorHandlingService.createError(

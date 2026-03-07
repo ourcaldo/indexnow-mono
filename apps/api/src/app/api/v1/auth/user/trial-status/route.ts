@@ -7,21 +7,12 @@ import {
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { UserProfileService } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
 
-// Pick only the columns we select
-type UserTrialProfile = Pick<
-  UserProfileRow,
-  | 'is_trial_active'
-  | 'trial_ends_at'
-  | 'package_id'
-  | 'subscription_start_date'
-  | 'subscription_end_date'
->;
 type SubscriptionInfo = Pick<PaymentSubscriptionRow, 'end_date' | 'status'>;
 
 interface TrialStatusResponse {
@@ -42,29 +33,8 @@ interface TrialStatusResponse {
  */
 export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
-    const userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserTrialProfile>(
-      asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
-        operation: 'get_user_trial_status',
-        source: 'auth/user/trial-status',
-        reason: 'User fetching their own trial status information',
-        metadata: { endpoint: '/api/v1/auth/user/trial-status', method: 'GET' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
-      { table: 'indb_auth_user_profiles', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_auth_user_profiles')
-          .select(
-            'is_trial_active, trial_ends_at, package_id, subscription_start_date, subscription_end_date'
-          )
-          .eq('user_id', auth.userId)
-          .single();
-        if (error) throw error;
-        return data;
-      }
+    const userProfile = await UserProfileService.getTrialStatus(
+      auth, request, 'auth/user/trial-status',
     );
 
     const now = new Date();

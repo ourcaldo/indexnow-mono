@@ -15,13 +15,10 @@ import {
   type PackagePricingTiers,
   getClientIP,
 } from '@indexnow/shared';
+import { UserProfileService, type BillingInfoProfile } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
-
-// User profile fields we need
-type UserPackageInfo = Pick<UserProfileRow, 'package_id' | 'subscription_end_date' | 'country'>;
 
 // Transformed package for frontend
 interface TransformedPackage {
@@ -85,33 +82,10 @@ export const GET = authenticatedApiWrapper(async (request, auth) => {
     }
 
     // Fetch user profile for current package info
-    let userProfile: UserPackageInfo | null = null;
+    let userProfile: BillingInfoProfile | null = null;
     try {
-      userProfile = await SecureServiceRoleWrapper.executeWithUserSession<UserPackageInfo | null>(
-        asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
-          operation: 'get_user_billing_profile',
-          source: 'billing/packages',
-          reason: 'User fetching their billing profile information for package display',
-          metadata: {
-            endpoint: '/api/v1/billing/packages',
-            profileFields: 'package_id, subscription_end_date, country',
-          },
-          ipAddress: getClientIP(request),
-          userAgent: request.headers.get('user-agent') ?? undefined,
-        },
-        { table: 'indb_auth_user_profiles', operationType: 'select' },
-        async (db) => {
-          const { data, error } = await db
-            .from('indb_auth_user_profiles')
-            .select('package_id, subscription_end_date, country')
-            .eq('user_id', auth.userId)
-            .single();
-
-          if (error && error.code !== 'PGRST116') throw error;
-          return data;
-        }
+      userProfile = await UserProfileService.getBillingInfo(
+        auth, request, 'billing/packages',
       );
     } catch (err) {
       logger.warn(

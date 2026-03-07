@@ -7,6 +7,7 @@ import {
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
+import { UserProfileService } from '@/lib/services/user-profile-service';
 
 /**
  * GET /api/v1/auth/user/profile
@@ -14,35 +15,7 @@ import { ErrorType, ErrorSeverity, getClientIP } from '@indexnow/shared';
  */
 export const GET = authenticatedApiWrapper(async (request, auth) => {
   try {
-    const profile = await SecureServiceRoleWrapper.executeWithUserSession(
-      asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
-        operation: 'get_user_profile',
-        source: 'auth/user/profile',
-        reason: 'User fetching their own profile with package information',
-        metadata: { includePackageInfo: true, endpoint: '/api/v1/auth/user/profile' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
-      { table: 'indb_auth_user_profiles', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_auth_user_profiles')
-          .select(
-            `
-            *,
-            package:indb_payment_packages(id, name, slug, description, features, quota_limits, is_active, pricing_tiers)
-          `
-          )
-          .eq('user_id', auth.userId)
-          .single();
-        if (error) {
-          throw error;
-        }
-        return data;
-      }
-    );
+    const profile = await UserProfileService.getFullProfile(auth, request, 'auth/user/profile');
 
     if (!profile) {
       const notFoundError = await ErrorHandlingService.createError(

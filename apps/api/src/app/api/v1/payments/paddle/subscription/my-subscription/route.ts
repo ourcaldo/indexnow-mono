@@ -7,10 +7,10 @@ import { NextRequest } from 'next/server';
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { type Database, getClientIP } from '@indexnow/shared';
 import { authenticatedApiWrapper, formatSuccess } from '@/lib/core/api-response-middleware';
+import { UserProfileService } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
 
 // Selected subscription fields
 type SubscriptionSelect = Pick<
@@ -25,12 +25,6 @@ type SubscriptionSelect = Pick<
   | 'canceled_at'
   | 'paused_at'
   | 'created_at'
->;
-
-// Selected user profile fields
-type UserProfileSelect = Pick<
-  UserProfileRow,
-  'package_id' | 'subscription_start_date' | 'subscription_end_date'
 >;
 
 interface SubscriptionData {
@@ -99,32 +93,9 @@ export const GET = authenticatedApiWrapper(async (request: NextRequest, auth) =>
   }
 
   // If no Paddle subscription, check for legacy subscription from user profile
-  const userProfile =
-    await SecureServiceRoleWrapper.executeWithUserSession<UserProfileSelect | null>(
-      asTypedClient(auth.supabase),
-      {
-        userId: auth.userId,
-        operation: 'get_user_legacy_subscription',
-        source: 'paddle/subscription/my-subscription',
-        reason: 'User fetching their legacy subscription from profile',
-        metadata: { endpoint: '/api/v1/payments/paddle/subscription/my-subscription' },
-        ipAddress: getClientIP(request),
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
-      { table: 'indb_auth_user_profiles', operationType: 'select' },
-      async (db) => {
-        const { data, error } = await db
-          .from('indb_auth_user_profiles')
-          .select('package_id, subscription_start_date, subscription_end_date')
-          .eq('user_id', auth.userId)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          throw new Error(`Failed to fetch user profile: ${error.message}`);
-        }
-        return data;
-      }
-    );
+  const userProfile = await UserProfileService.getSubscriptionDates(
+    auth, request, 'payments/paddle/subscription/my-subscription',
+  );
 
   // Check if user has an active legacy subscription
   if (userProfile?.package_id && userProfile?.subscription_end_date) {

@@ -7,16 +7,10 @@ import {
 import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
+import { UserProfileService } from '@/lib/services/user-profile-service';
 
 // Derived types from Database schema
-type UserProfileRow = Database['public']['Tables']['indb_auth_user_profiles']['Row'];
 type PaymentPackageRow = Database['public']['Tables']['indb_payment_packages']['Row'];
-
-// Pick only the columns we need for eligibility check
-type UserEligibilityProfile = Pick<
-  UserProfileRow,
-  'package_id' | 'subscription_start_date' | 'subscription_end_date'
->;
 
 // Type for trial package list (only what we select)
 type TrialPackageInfo = Pick<
@@ -46,30 +40,9 @@ type TrialEligibilityResponse = TrialEligibilityIneligible | TrialEligibilityEli
  */
 export const GET = authenticatedApiWrapper<TrialEligibilityResponse>(async (request, auth) => {
   try {
-    // Query available columns from user profile
-    const profileResult =
-      await SecureServiceRoleWrapper.executeWithUserSession<UserEligibilityProfile>(
-        asTypedClient(auth.supabase),
-        {
-          userId: auth.userId,
-          operation: 'get_user_trial_eligibility_profile',
-          source: 'auth/user/trial-eligibility',
-          reason: 'User checking trial eligibility status and usage history',
-          metadata: { endpoint: '/api/v1/auth/user/trial-eligibility', method: 'GET' },
-          ipAddress: getClientIP(request),
-          userAgent: request.headers.get('user-agent') ?? undefined,
-        },
-        { table: 'indb_auth_user_profiles', operationType: 'select' },
-        async (db) => {
-          const { data, error } = await db
-            .from('indb_auth_user_profiles')
-            .select('package_id, subscription_start_date, subscription_end_date')
-            .eq('user_id', auth.userId)
-            .single();
-          if (error) throw new Error('Unable to verify account eligibility');
-          return data;
-        }
-      );
+    const profileResult = await UserProfileService.getSubscriptionDates(
+      auth, request, 'auth/user/trial-eligibility',
+    );
 
     // Infer trial usage from subscription history
     const hasUsedTrial = profileResult.subscription_start_date !== null;
