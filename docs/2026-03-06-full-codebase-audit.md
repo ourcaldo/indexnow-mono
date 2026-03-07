@@ -151,7 +151,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | E-06 | Enhancement | Clean up 17 dead ApiEndpoints constants (M-01) | `packages/shared/src/constants/ApiEndpoints.ts` | ✅ Fixed |
 | E-07 | Enhancement | Extract extractErrorMeta() helper for admin error pages | `apps/admin/src/lib/error-helpers.ts`, `apps/admin/src/components/CodeBlock.tsx` | ✅ Fixed |
 | E-08 | Enhancement | Extract useAdminUserDetail(userId) hook from inline useQuery | `apps/admin/src/hooks/useAdminUserDetail.ts` | ✅ Fixed |
-| E-09 | Enhancement | API client runs getUser()+getSession() per call — add token caching | `apps/user-dashboard/src/lib/api.ts` | Open |
+| E-09 | Enhancement | API client runs getUser()+getSession() per call — add token caching | `apps/user-dashboard/src/lib/api.ts` | ✅ Fixed |
 | E-10 | Enhancement | Consider Zod runtime validation for API responses | All frontend apps | Open |
 | E-11 | Enhancement | Add pnpm audit to CI pipeline | `.github/workflows/ci.yml` | Open |
 | E-12 | Enhancement | Implement nonce-based CSP (tracked as #V7 H-18) | `apps/*/next.config.ts` | Open |
