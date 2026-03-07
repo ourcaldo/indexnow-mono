@@ -7,15 +7,6 @@ import { authService } from '@indexnow/supabase-client'
 import { logger, loginSchema, forgotPasswordSchema } from '@indexnow/shared'
 import { useSiteName, useSiteLogo } from '@indexnow/database/client'
 
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  Button, 
-  Input, 
-  Label,
-} from '@indexnow/ui'
 import {
   PasswordInput,
   AuthErrorAlert,
@@ -33,15 +24,12 @@ export default function Login() {
   const [isMagicLinkMode, setIsMagicLinkMode] = useState(false)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  // (#113) Per-field validation errors
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  
+
   // Check if user is already authenticated and redirect to dashboard
   useEffect(() => {
     let isMounted = true
 
-    // Safety timeout: if auth check hangs (lock contention, slow network),
-    // show the login form after 4 seconds so the page isn't stuck forever.
     const safetyTimer = setTimeout(() => {
       if (isMounted && isCheckingAuth) {
         setIsCheckingAuth(false)
@@ -57,9 +45,7 @@ export default function Login() {
         }
       } catch (error) {
         logger.error({ error: error instanceof Error ? error : undefined }, 'Auth check error on login page')
-        // Don't block login page if auth check fails
       } finally {
-        // Always stop checking auth, even if there's an error
         if (isMounted) setIsCheckingAuth(false)
         clearTimeout(safetyTimer)
       }
@@ -71,89 +57,48 @@ export default function Login() {
       clearTimeout(safetyTimer)
     }
   }, [router])
-  
+
   // Check for auth callback errors in URL params
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const authError = urlParams.get('error')
     if (authError) {
-      switch (authError) {
-        case 'auth_callback_failed':
-          setError('Authentication failed. Please try again.')
-          break
-        case 'auth_callback_exception':
-          setError('An error occurred during authentication. Please try again.')
-          break
-        case 'missing_auth_code':
-          setError('Invalid authentication link. Please request a new magic link.')
-          break
-        // Enhanced error handling for new verification routes
-        case 'email_verification_failed':
-          setError('Email verification failed. Please check your email or request a new verification link.')
-          break
-        case 'recovery_verification_failed':
-          setError('Password reset verification failed. Please request a new password reset link.')
-          break
-        case 'magiclink_verification_failed':
-          setError('Magic link verification failed. Please request a new magic link.')
-          break
-        case 'expired_link':
-          setError('This link has expired. Please request a new verification link.')
-          break
-        case 'invalid_link':
-          setError('This link is invalid. Please request a new verification link.')
-          break
-        case 'access_denied':
-          setError('Access denied. Please try signing in again.')
-          break
-        case 'server_error':
-          setError('Server error occurred. Please try again later.')
-          break
-        case 'temporarily_unavailable':
-          setError('Service temporarily unavailable. Please try again later.')
-          break
-        case 'network_error':
-          setError('Network error occurred. Please check your connection and try again.')
-          break
-        case 'timeout_error':
-          setError('Request timed out. Please try again.')
-          break
-        case 'no_session_data':
-          setError('Session data not found. Please try signing in again.')
-          break
-        case 'missing_verification_token':
-          setError('Verification token missing. Please request a new verification link.')
-          break
-        case 'missing_verification_type':
-          setError('Invalid verification link. Please request a new verification link.')
-          break
-        case 'unknown_verification_type':
-          setError('Unknown verification type. Please request a new verification link.')
-          break
-        case 'verification_exception':
-          setError('Verification error occurred. Please try again.')
-          break
-        default:
-          setError('Authentication error occurred.')
+      const errorMessages: Record<string, string> = {
+        auth_callback_failed: 'Authentication failed. Please try again.',
+        auth_callback_exception: 'An error occurred during authentication. Please try again.',
+        missing_auth_code: 'Invalid authentication link. Please request a new magic link.',
+        email_verification_failed: 'Email verification failed. Please check your email or request a new verification link.',
+        recovery_verification_failed: 'Password reset verification failed. Please request a new password reset link.',
+        magiclink_verification_failed: 'Magic link verification failed. Please request a new magic link.',
+        expired_link: 'This link has expired. Please request a new verification link.',
+        invalid_link: 'This link is invalid. Please request a new verification link.',
+        access_denied: 'Access denied. Please try signing in again.',
+        server_error: 'Server error occurred. Please try again later.',
+        temporarily_unavailable: 'Service temporarily unavailable. Please try again later.',
+        network_error: 'Network error occurred. Please check your connection and try again.',
+        timeout_error: 'Request timed out. Please try again.',
+        no_session_data: 'Session data not found. Please try signing in again.',
+        missing_verification_token: 'Verification token missing. Please request a new verification link.',
+        missing_verification_type: 'Invalid verification link. Please request a new verification link.',
+        unknown_verification_type: 'Unknown verification type. Please request a new verification link.',
+        verification_exception: 'Verification error occurred. Please try again.',
       }
-      // Clear the error from URL
+      setError(errorMessages[authError] ?? 'Authentication error occurred.')
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
-  
-  // Site settings hooks
+
   const siteName = useSiteName()
-  const logoUrl = useSiteLogo(true) // Always use full logo for login page
+  const logoUrl = useSiteLogo(true)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
     setFieldErrors({})
-    
+
     try {
       if (isMagicLinkMode) {
-        // (#113) Validate email for magic link mode
         const result = forgotPasswordSchema.safeParse({ email })
         if (!result.success) {
           const errors: Record<string, string> = {}
@@ -169,7 +114,6 @@ export default function Login() {
         setMagicLinkSent(true)
         setError("")
       } else {
-        // (#113) Validate login fields with Zod
         const result = loginSchema.safeParse({ email, password })
         if (!result.success) {
           const errors: Record<string, string> = {}
@@ -181,19 +125,14 @@ export default function Login() {
           setIsLoading(false)
           return
         }
-        
-        // Handle password login — signIn() routes through API proxy
+
         const authResult = await authService.signIn(email, password)
-        
+
         if (authResult.user) {
-          // Role is included in the API response — no extra Supabase call needed
           const redirectUrl = authService.getSubdomainRedirectUrl(authResult.user.role ?? 'user')
-          
-          // Always use full-page navigation after login so middleware
-          // picks up the freshly-set session cookies reliably.
           window.location.href = redirectUrl || '/'
         } else {
-          window.location.href = '/' // Fallback
+          window.location.href = '/'
         }
       }
     } catch (error: unknown) {
@@ -210,11 +149,10 @@ export default function Login() {
       setFieldErrors({ email: result.error.errors[0]?.message || 'Please enter a valid email' })
       return
     }
-    
+
     setIsLoading(true)
     try {
       await authService.resetPassword(email)
-      // We don't have useToast here yet, let's use the error state for success message
       setError("SUCCESS: Password recovery email sent! Please check your inbox.")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Failed to send recovery email")
@@ -223,196 +161,272 @@ export default function Login() {
     }
   }
 
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth <= 768)
-    }
-    
-    checkIfMobile()
-    window.addEventListener('resize', checkIfMobile)
-    
-    return () => window.removeEventListener('resize', checkIfMobile)
-  }, [])
-
-  // Show loading spinner instead of white screen while checking auth
   if (isCheckingAuth) {
     return <AuthCheckingSpinner />
   }
 
   return (
-    <div className={`min-h-screen flex ${isMobile ? 'flex-col' : 'flex-row'} font-sans`}>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[#f5f5f7]">
 
-      {/* Left Side - Login Form */}
-      <div className={`${isMobile ? 'w-full' : 'w-1/2'} bg-background ${isMobile ? 'px-5 py-10' : 'p-[60px]'} flex flex-col justify-center ${isMobile ? 'items-center' : 'items-start'} relative`}>
-        {/* Logo for both mobile and desktop */}
-        {logoUrl && (
-          <div className={`absolute ${isMobile ? 'top-5 left-5' : 'top-10 left-[60px]'} flex items-center`}>
-            <Image 
-              src={logoUrl} 
-              alt="Logo"
-              width={isMobile ? 240 : 360}
-              height={isMobile ? 48 : 72}
-              className="w-auto"
-              style={{ maxWidth: isMobile ? '240px' : '360px' }}
+      {/* ── Left Panel: Login Form ── */}
+      <div className="w-full lg:w-[55%] bg-white flex flex-col min-h-screen">
+        {/* Logo */}
+        <div className="px-8 pt-8 lg:px-14 lg:pt-10">
+          {logoUrl ? (
+            <Image
+              src={logoUrl}
+              alt={siteName || 'Logo'}
+              width={180}
+              height={40}
+              className="w-auto h-8 lg:h-10"
               unoptimized
             />
-          </div>
-        )}
+          ) : (
+            <span className="text-xl font-bold text-foreground">{siteName || 'IndexNow Studio'}</span>
+          )}
+        </div>
 
-        {/* Main Content */}
-        <div className={`max-w-md w-full ${isMobile ? 'text-center mt-24' : 'text-left'}`}>
-          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-brand-primary mb-2 leading-tight`}>
-            Welcome Back
-          </h1>
-          <p className={`${isMobile ? 'text-sm' : 'text-base'} text-muted-foreground mb-10 leading-relaxed`}>
-            Enter your email and password to access your account.
-          </p>
+        {/* Form (vertically centered) */}
+        <div className="flex-1 flex items-center justify-center px-8 lg:px-14">
+          <div className="w-full max-w-[420px]">
+            <h1 className="text-[28px] lg:text-[32px] font-bold text-foreground mb-2 tracking-tight">
+              Welcome Back
+            </h1>
+            <p className="text-[15px] text-muted-foreground mb-8 leading-relaxed">
+              Enter your email and password to access your account.
+            </p>
 
-          <form onSubmit={handleSubmit}>
-            {/* Magic Link Success Notification */}
-            {magicLinkSent && (
-              <div className="mb-8 text-center">
-                <div className="mb-4 text-[32px]">✨</div>
-                <h3 className="text-lg font-semibold text-foreground mb-2 m-0">
-                  Magic Link Sent!
-                </h3>
-                <p className="text-muted-foreground text-sm m-0 leading-relaxed mb-4">
-                  Check your email ({email}) and click the link to log in instantly.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMagicLinkSent(false)
-                    setIsMagicLinkMode(false)
-                  }}
-                  className="bg-transparent border-0 text-brand-primary text-sm cursor-pointer underline hover:text-brand-secondary transition-colors"
-                >
-                  Back to login
-                </button>
-              </div>
-            )}
-
-            {/* Show form only if magic link is not sent */}
-            {!magicLinkSent && (
-              <>
-                {/* Email Field */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`form-field-default form-field-focus w-full px-4 py-3 text-base ${fieldErrors.email ? 'border-destructive' : ''}`}
-                    placeholder="your@email.com"
-                    required
-                  />
-                  {fieldErrors.email && <p className="text-sm text-destructive mt-1">{fieldErrors.email}</p>}
+            <form onSubmit={handleSubmit}>
+              {/* Magic Link Success */}
+              {magicLinkSent && (
+                <div className="mb-8 text-center py-8 px-6 bg-green-50 rounded-xl border border-green-200">
+                  <div className="mb-3 text-3xl">✨</div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Magic Link Sent!</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed mb-4">
+                    Check your email ({email}) and click the link to log in instantly.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setMagicLinkSent(false); setIsMagicLinkMode(false) }}
+                    className="bg-transparent border-0 text-brand-primary text-sm cursor-pointer underline hover:text-brand-secondary transition-colors"
+                  >
+                    Back to login
+                  </button>
                 </div>
+              )}
 
-                {/* Password Field - Hidden in magic link mode */}
-                {!isMagicLinkMode && (
-                  <>
-                    <PasswordInput
-                      value={password}
-                      onChange={setPassword}
-                      disabled={isLoading}
-                      variant="native"
-                      className="mb-6"
+              {!magicLinkSent && (
+                <>
+                  {/* Email */}
+                  <div className="mb-5">
+                    <label className="block text-[13px] font-medium text-foreground mb-1.5">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`w-full px-4 py-3 text-[15px] bg-white border rounded-lg outline-none transition-all
+                        ${fieldErrors.email ? 'border-destructive' : 'border-gray-200 hover:border-gray-300 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20'}`}
+                      placeholder="your@email.com"
+                      required
                     />
-                    {fieldErrors.password && <p className="text-sm text-destructive -mt-4 mb-6">{fieldErrors.password}</p>}
+                    {fieldErrors.email && <p className="text-[13px] text-destructive mt-1">{fieldErrors.email}</p>}
+                  </div>
 
-                    {/* Remember Me & Forgot Password */}
-                    <div className="flex justify-between items-center mb-8">
-                      <label className="flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          className="mr-2 w-4 h-4 accent-brand"
+                  {/* Password */}
+                  {!isMagicLinkMode && (
+                    <>
+                      <div className="mb-5">
+                        <label className="block text-[13px] font-medium text-foreground mb-1.5">Password</label>
+                        <PasswordInput
+                          value={password}
+                          onChange={setPassword}
+                          disabled={isLoading}
+                          variant="native"
                         />
-                        <span className="text-sm text-muted-foreground">
-                          Remember Me
-                        </span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => router.push("/forgot-password")}
-                        className="bg-transparent border-0 text-brand-primary text-sm cursor-pointer hover:underline transition-all"
-                      >
-                        Forgot Your Password?
-                      </button>
+                        {fieldErrors.password && <p className="text-[13px] text-destructive mt-1">{fieldErrors.password}</p>}
+                      </div>
+
+                      {/* Remember Me + Forgot Password */}
+                      <div className="flex justify-between items-center mb-6">
+                        <label className="flex items-center cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="mr-2 w-4 h-4 rounded border-gray-300 accent-[var(--brand-primary)]"
+                          />
+                          <span className="text-[13px] text-muted-foreground">Remember Me</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          className="bg-transparent border-0 text-brand-primary text-[13px] font-medium cursor-pointer hover:underline transition-all"
+                        >
+                          Forgot Your Password?
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Submit Button */}
+                  <AuthLoadingButton
+                    isLoading={isLoading}
+                    loadingText={isMagicLinkMode ? "Sending..." : "Signing In..."}
+                    variant="native"
+                    className="mb-4 !rounded-lg !py-3.5 !text-[15px]"
+                  >
+                    {isMagicLinkMode && <span className="mr-2">✨</span>}
+                    {isMagicLinkMode ? "Send Magic Link" : "Log In"}
+                  </AuthLoadingButton>
+
+                  {/* Error */}
+                  <AuthErrorAlert error={error || null} allowSuccessPrefix className="mb-4" />
+
+                  {/* Divider + Magic Link Toggle */}
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200" />
                     </div>
-                  </>
-                )}
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-white px-3 text-muted-foreground">
+                        {isMagicLinkMode ? 'Or' : 'Or Login With'}
+                      </span>
+                    </div>
+                  </div>
 
-                {/* Login/Magic Link Button */}
-                <AuthLoadingButton
-                  isLoading={isLoading}
-                  loadingText={isMagicLinkMode ? "Sending..." : "Signing In..."}
-                  variant="native"
-                  className="mb-6"
-                >
-                  {isMagicLinkMode && <span style={{ marginRight: '8px' }}>✨</span>}
-                  {isMagicLinkMode ? "Send Magic Link" : "Sign In"}
-                </AuthLoadingButton>
-
-                {/* Error/Success Message */}
-                <AuthErrorAlert error={error || null} allowSuccessPrefix className="mb-6" />
-
-                {/* Toggle Magic Link Mode */}
-                <div className="text-center mb-6">
+                  {/* Magic Link Button */}
                   <button
                     type="button"
                     onClick={() => setIsMagicLinkMode(!isMagicLinkMode)}
-                    className="bg-transparent border-0 text-muted-foreground text-sm cursor-pointer hover:underline hover:text-foreground transition-all"
+                    className="w-full py-3 px-4 bg-white border border-gray-200 rounded-lg text-[14px] font-medium text-foreground
+                      hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    {isMagicLinkMode ? "← Back to password login" : "✨ Login with magic link instead"}
+                    {isMagicLinkMode ? (
+                      <>🔒 Back to password login</>
+                    ) : (
+                      <>✨ Magic Link</>
+                    )}
                   </button>
-                </div>
-              </>
-            )}
-          </form>
+                </>
+              )}
+            </form>
 
-          {/* Register Link and Verification Link */}
-          <div className="text-center pt-6 border-t border-border space-y-3">
-            <p className="text-sm text-muted-foreground m-0">
-              Don't have an account?{' '}
-              <button
-                onClick={() => router.push("/register")}
-                className="bg-transparent border-0 text-brand-primary text-sm font-semibold cursor-pointer hover:underline transition-all"
-              >
-                Sign up here
-              </button>
-            </p>
-            
-            <p className="text-sm text-muted-foreground m-0">
-              Haven't received your verification email?{' '}
-              <button
-                type="button"
-                onClick={() => router.push("/resend-verification")}
-                className="bg-transparent border-0 text-brand-primary text-sm font-semibold cursor-pointer hover:underline transition-all"
-                data-testid="link-resend-verification"
-              >
-                Resend verification email
-              </button>
-            </p>
+            {/* Register + Verification Links */}
+            <div className="mt-8 text-center space-y-2">
+              <p className="text-[14px] text-muted-foreground">
+                Don&apos;t Have An Account?{' '}
+                <button
+                  onClick={() => router.push("/register")}
+                  className="bg-transparent border-0 text-brand-primary font-semibold cursor-pointer hover:underline transition-all text-[14px]"
+                >
+                  Register Now.
+                </button>
+              </p>
+              <p className="text-[13px] text-muted-foreground">
+                Haven&apos;t received your verification email?{' '}
+                <button
+                  type="button"
+                  onClick={() => router.push("/resend-verification")}
+                  className="bg-transparent border-0 text-brand-primary font-medium cursor-pointer hover:underline transition-all text-[13px]"
+                  data-testid="link-resend-verification"
+                >
+                  Resend it
+                </button>
+              </p>
+            </div>
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 pb-6 lg:px-14 flex flex-col sm:flex-row justify-between items-center gap-2 text-[13px] text-muted-foreground">
+          <span>Copyright © {new Date().getFullYear()} {siteName || 'IndexNow Studio'}. All rights reserved.</span>
+          <a href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</a>
         </div>
       </div>
 
-      {/* Right Side - Dashboard Preview (Desktop Only) */}
-      {!isMobile && (
-        <div className="w-1/2 bg-brand-primary p-[60px] flex flex-col justify-center items-center text-white relative">
-          <div className="overflow-hidden w-full h-full relative flex flex-col items-center justify-center gap-6">
-            <div className="text-4xl font-bold">IndexNow</div>
-            <p className="text-lg opacity-80 text-center max-w-md">Track your keyword rankings and monitor your SEO performance in real-time.</p>
+      {/* ── Right Panel: Dashboard Preview (desktop only) ── */}
+      <div className="hidden lg:flex w-[45%] bg-brand-primary m-3 rounded-2xl p-12 flex-col justify-center items-center text-white relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5" />
+          <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full bg-white/5" />
+          <div className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full bg-white/[0.03]" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 w-full max-w-lg">
+          <h2 className="text-[32px] font-bold leading-tight mb-3">
+            Track your rankings<br />and grow your SEO.
+          </h2>
+          <p className="text-white/70 text-[16px] leading-relaxed mb-10">
+            Log in to access your dashboard and monitor keyword performance in real-time.
+          </p>
+
+          {/* Dashboard Preview Cards */}
+          <div className="space-y-4">
+            {/* Top Row: 3 stat cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <p className="text-white/60 text-[11px] font-medium mb-1">Total Keywords</p>
+                <p className="text-[22px] font-bold">2,847</p>
+                <p className="text-green-300 text-[11px] mt-1">↑ 12.5%</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <p className="text-white/60 text-[11px] font-medium mb-1">Avg Position</p>
+                <p className="text-[22px] font-bold">14.3</p>
+                <p className="text-green-300 text-[11px] mt-1">↑ 3.2 pts</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <p className="text-white/60 text-[11px] font-medium mb-1">Top 10</p>
+                <p className="text-[22px] font-bold">438</p>
+                <p className="text-green-300 text-[11px] mt-1">↑ 24 new</p>
+              </div>
+            </div>
+
+            {/* Rankings Table Preview */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/10 flex justify-between items-center">
+                <p className="text-[13px] font-semibold">Recent Rankings</p>
+                <span className="text-[11px] text-white/50">Updated 2m ago</span>
+              </div>
+              <div className="divide-y divide-white/5">
+                {[
+                  { keyword: 'indexnow api setup', pos: 3, change: 2, domain: 'example.com' },
+                  { keyword: 'seo rank tracker', pos: 7, change: 5, domain: 'mysite.io' },
+                  { keyword: 'keyword monitoring tool', pos: 12, change: -1, domain: 'example.com' },
+                  { keyword: 'google indexing api', pos: 5, change: 3, domain: 'blog.dev' },
+                ].map((row) => (
+                  <div key={row.keyword} className="px-4 py-2.5 flex items-center justify-between text-[12px]">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white/90 truncate block">{row.keyword}</span>
+                      <span className="text-white/40 text-[11px]">{row.domain}</span>
+                    </div>
+                    <div className="flex items-center gap-3 ml-4">
+                      <span className="font-semibold text-white/90 tabular-nums w-6 text-right">#{row.pos}</span>
+                      <span className={`text-[11px] tabular-nums w-8 text-right ${row.change > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        {row.change > 0 ? `↑${row.change}` : `↓${Math.abs(row.change)}`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Domains Summary */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <p className="text-white/60 text-[11px] font-medium mb-1">Active Domains</p>
+                <p className="text-[20px] font-bold">6</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                <p className="text-white/60 text-[11px] font-medium mb-1">Index Submissions</p>
+                <p className="text-[20px] font-bold">1,293</p>
+                <p className="text-green-300 text-[11px] mt-1">↑ 89 today</p>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
