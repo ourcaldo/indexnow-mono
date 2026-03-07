@@ -10,6 +10,7 @@ export { processSubscriptionPaused } from './subscription-paused';
 export { processSubscriptionResumed } from './subscription-resumed';
 export { processSubscriptionActivated } from './subscription-activated';
 export { processSubscriptionPastDue } from './subscription-past-due';
+export { processSubscriptionTrialing } from './subscription-trialing';
 export { processTransactionCompleted } from './transaction-completed';
 export { processTransactionPaymentFailed } from './transaction-payment-failed';
 export { processTransactionRefunded } from './transaction-refunded';

@@ -25,6 +25,7 @@ import {
   processSubscriptionResumed,
   processSubscriptionActivated,
   processSubscriptionPastDue,
+  processSubscriptionTrialing,
   processTransactionCompleted,
   processTransactionPaymentFailed,
   processTransactionRefunded,
@@ -335,6 +336,9 @@ async function routeWebhookEvent(eventType: string, data: unknown, eventId: stri
         break;
       case 'subscription.past_due':
         await processSubscriptionPastDue(data);
+        break;
+      case 'subscription.trialing':
+        await processSubscriptionTrialing(data);
         break;
       case 'transaction.completed':
         await processTransactionCompleted(data);
