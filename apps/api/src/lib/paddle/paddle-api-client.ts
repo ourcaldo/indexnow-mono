@@ -66,7 +66,7 @@ export interface PaddleErrorResponse {
   meta: { request_id: string };
 }
 
-/** Paddle API success response for subscription update */
+/** Paddle API success response for subscription operations */
 export interface PaddleSubscriptionResponse {
   data: {
     id: string;
@@ -80,14 +80,27 @@ export interface PaddleSubscriptionResponse {
     current_billing_period?: {
       starts_at: string;
       ends_at: string;
-    };
-    next_billed_at?: string;
+    } | null;
+    next_billed_at?: string | null;
+    canceled_at?: string | null;
+    scheduled_change?: {
+      action: string;
+      effective_at: string;
+      resume_at?: string | null;
+    } | null;
     updated_at: string;
   };
   meta: { request_id: string };
 }
 
 type PaddleUpdateResult =
+  | { ok: true; data: PaddleSubscriptionResponse }
+  | { ok: false; status: number; error: PaddleApiError; requestId: string };
+
+/** When cancellation should take effect */
+export type CancelEffectiveFrom = 'next_billing_period' | 'immediately';
+
+type PaddleCancelResult =
   | { ok: true; data: PaddleSubscriptionResponse }
   | { ok: false; status: number; error: PaddleApiError; requestId: string };
 
@@ -161,6 +174,78 @@ export async function updatePaddleSubscription(
       requestId: successBody.meta.request_id,
     },
     'Paddle subscription updated successfully'
+  );
+
+  return { ok: true, data: successBody };
+}
+
+/**
+ * Cancel a Paddle subscription.
+ *
+ * Calls POST /subscriptions/{subscription_id}/cancel.
+ * With `next_billing_period`, the subscription stays active until the current
+ * billing period ends — Paddle adds a scheduled_change with action "cancel".
+ * With `immediately`, it cancels right away (status → "canceled").
+ *
+ * Paddle sends a subscription.canceled webhook when the cancellation takes effect.
+ */
+export async function cancelPaddleSubscription(
+  subscriptionId: string,
+  effectiveFrom: CancelEffectiveFrom = 'next_billing_period'
+): Promise<PaddleCancelResult> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('PADDLE_API_KEY is not configured');
+  }
+
+  const baseUrl = getBaseUrl();
+  const url = `${baseUrl}/subscriptions/${subscriptionId}/cancel`;
+
+  logger.info(
+    { subscriptionId, effectiveFrom },
+    'Calling Paddle API to cancel subscription'
+  );
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ effective_from: effectiveFrom }),
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.json()) as PaddleErrorResponse;
+    logger.error(
+      {
+        subscriptionId,
+        status: response.status,
+        paddleError: errorBody.error,
+        requestId: errorBody.meta?.request_id,
+      },
+      'Paddle API subscription cancel failed'
+    );
+
+    return {
+      ok: false,
+      status: response.status,
+      error: errorBody.error,
+      requestId: errorBody.meta?.request_id ?? 'unknown',
+    };
+  }
+
+  const successBody = (await response.json()) as PaddleSubscriptionResponse;
+
+  logger.info(
+    {
+      subscriptionId,
+      status: successBody.data.status,
+      scheduledChange: successBody.data.scheduled_change,
+      canceledAt: successBody.data.canceled_at,
+      requestId: successBody.meta.request_id,
+    },
+    'Paddle subscription cancel request successful'
   );
 
   return { ok: true, data: successBody };

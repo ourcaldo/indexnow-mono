@@ -1,19 +1,19 @@
 /**
  * Paddle Subscription Cancel API
- * Allows authenticated users to cancel their subscription
+ * Allows authenticated users to cancel their subscription via Paddle.
  *
- * Auto-applies 7-day refund policy:
- * - ≤7 days from purchase: Full refund + immediate cancellation
- * - >7 days: No refund + scheduled cancellation (access until period end)
+ * Calls Paddle's Cancel Subscription API with effective_from: "next_billing_period".
+ * The subscription stays active until the current billing period ends.
+ * Paddle sends a subscription.canceled webhook when the cancellation takes effect.
  *
- * Uses cancel_subscription_service RPC for atomic dual-write
- * (subscription table + user profile in one transaction).
+ * Local DB is updated immediately after Paddle confirms the scheduled cancellation.
+ * The webhook processor acts as a backup to ensure consistency.
  */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
-import { ErrorType, ErrorSeverity, type Database, type Json, getClientIP } from '@indexnow/shared';
+import { supabaseAdmin, SecureServiceRoleWrapper, asTypedClient } from '@indexnow/database';
+import { ErrorType, ErrorSeverity, type Database, getClientIP } from '@indexnow/shared';
 import {
   authenticatedApiWrapper,
   formatSuccess,
@@ -21,14 +21,13 @@ import {
 } from '@/lib/core/api-response-middleware';
 import { ErrorHandlingService, logger } from '@/lib/monitoring/error-handling';
 import { ActivityLogger } from '@/lib/monitoring/activity-logger';
+import { cancelPaddleSubscription } from '@/lib/paddle/paddle-api-client';
 
-// Derived types from Database schema
 type PaymentSubscriptionRow = Database['public']['Tables']['indb_payment_subscriptions']['Row'];
 
-// Selected subscription fields for fetch
-type SubscriptionFetch = Pick<
+type SubscriptionForCancel = Pick<
   PaymentSubscriptionRow,
-  'user_id' | 'created_at' | 'current_period_end'
+  'user_id' | 'paddle_subscription_id' | 'status'
 >;
 
 const cancelRequestSchema = z.object({
@@ -36,6 +35,16 @@ const cancelRequestSchema = z.object({
 });
 
 export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) => {
+  // Guard: PADDLE_API_KEY must be configured
+  if (!process.env.PADDLE_API_KEY) {
+    const error = await ErrorHandlingService.createError(
+      ErrorType.SYSTEM,
+      'Subscription cancellation is not available — payment gateway not configured',
+      { severity: ErrorSeverity.MEDIUM, statusCode: 503 }
+    );
+    return formatError(error);
+  }
+
   const body = await request.json();
 
   const validationResult = cancelRequestSchema.safeParse(body);
@@ -50,16 +59,19 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
 
   const { subscriptionId } = validationResult.data;
 
-  // Fetch subscription to verify ownership and calculate refund eligibility
+  // Verify ownership and subscription status
   const subscription =
-    await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionFetch | null>(
+    await SecureServiceRoleWrapper.executeWithUserSession<SubscriptionForCancel | null>(
       asTypedClient(auth.supabase),
       {
         userId: auth.userId,
-        operation: 'fetch_subscription_for_cancellation',
+        operation: 'verify_subscription_ownership_for_cancel',
         source: 'paddle/subscription/cancel',
-        reason: 'User attempting to cancel subscription - ownership verification',
-        metadata: { subscriptionId, endpoint: '/api/v1/payments/paddle/subscription/cancel' },
+        reason: 'User attempting to cancel subscription — ownership verification',
+        metadata: {
+          subscriptionId,
+          endpoint: '/api/v1/payments/paddle/subscription/cancel',
+        },
         ipAddress: getClientIP(request),
         userAgent: request.headers.get('user-agent') ?? undefined,
       },
@@ -67,7 +79,7 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
       async (db) => {
         const { data, error } = await db
           .from('indb_payment_subscriptions')
-          .select('user_id, created_at, current_period_end')
+          .select('user_id, paddle_subscription_id, status')
           .eq('paddle_subscription_id', subscriptionId)
           .single();
 
@@ -94,75 +106,123 @@ export const POST = authenticatedApiWrapper(async (request: NextRequest, auth) =
     return formatError(error);
   }
 
-  // Calculate days since subscription creation
-  const createdAt = new Date(subscription.created_at);
-  const now = new Date();
-  const daysActive = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-  const refundEligible = daysActive <= 7;
+  // Only active subscriptions can be cancelled
+  if (subscription.status !== 'active') {
+    const error = await ErrorHandlingService.createError(
+      ErrorType.BUSINESS_LOGIC,
+      `Cannot cancel subscription with status "${subscription.status}". Only active subscriptions can be cancelled.`,
+      { severity: ErrorSeverity.LOW, statusCode: 409, userId: auth.userId }
+    );
+    return formatError(error);
+  }
 
-  const canceledAt = new Date().toISOString();
-  const subscriptionEndDate = refundEligible
-    ? canceledAt
-    : (subscription.current_period_end ?? canceledAt);
-
-  // Atomic cancel: updates both subscription + user profile in one DB transaction
-  const updatedSub = await SecureServiceRoleWrapper.executeWithUserSession<Json>(
-    asTypedClient(auth.supabase),
-    {
-      userId: auth.userId,
-      operation: 'cancel_subscription_atomic',
-      source: 'paddle/subscription/cancel',
-      reason: refundEligible
-        ? 'User canceling subscription with refund (within 7 days)'
-        : 'User canceling subscription (past 7 day window)',
-      metadata: {
-        subscriptionId,
-        daysActive,
-        refundEligible,
-        endpoint: '/api/v1/payments/paddle/subscription/cancel',
-      },
-      ipAddress: getClientIP(request),
-      userAgent: request.headers.get('user-agent') ?? undefined,
-    },
-    { table: 'indb_payment_subscriptions', operationType: 'update' },
-    async (db) => {
-      const { data, error } = await db.rpc('cancel_subscription_service', {
-        p_paddle_subscription_id: subscriptionId,
-        p_user_id: auth.userId,
-        p_refund_eligible: refundEligible,
-        p_canceled_at: canceledAt,
-        p_subscription_end_date: subscriptionEndDate,
-      });
-
-      if (error) throw new Error(`Failed to cancel subscription: ${error.message}`);
-
-      return data;
-    }
+  // Call Paddle Cancel API — wait for confirmed response before touching DB
+  logger.info(
+    { userId: auth.userId, subscriptionId },
+    'User requesting subscription cancellation'
   );
 
+  const result = await cancelPaddleSubscription(subscriptionId, 'next_billing_period');
+
+  if (!result.ok) {
+    const statusCode = result.status === 404 ? 404 : result.status >= 500 ? 502 : 400;
+
+    const error = await ErrorHandlingService.createError(
+      ErrorType.EXTERNAL_API,
+      `Paddle subscription cancel failed: ${result.error.detail}`,
+      {
+        severity: ErrorSeverity.MEDIUM,
+        statusCode,
+        userId: auth.userId,
+        metadata: {
+          paddleErrorCode: result.error.code,
+          paddleRequestId: result.requestId,
+        },
+      }
+    );
+    return formatError(error);
+  }
+
+  // Paddle confirmed — update local DB immediately
+  const paddleSub = result.data.data;
+  const scheduledChange = paddleSub.scheduled_change;
+  const periodEnd = paddleSub.current_billing_period?.ends_at ?? null;
+
+  try {
+    await SecureServiceRoleWrapper.executeSecureOperation(
+      {
+        userId: 'system',
+        operation: 'update_subscription_after_cancel',
+        reason: 'Immediate DB update after successful Paddle cancel request',
+        source: 'paddle/subscription/cancel',
+        metadata: {
+          subscriptionId,
+          paddleStatus: paddleSub.status,
+          scheduledChange: scheduledChange ?? null,
+        },
+      },
+      {
+        table: 'indb_payment_subscriptions',
+        operationType: 'update',
+        data: { cancel_at_period_end: true },
+        whereConditions: { paddle_subscription_id: subscriptionId },
+      },
+      async () => {
+        await supabaseAdmin
+          .from('indb_payment_subscriptions')
+          .update({
+            cancel_at_period_end: true,
+            canceled_at: new Date().toISOString(),
+            current_period_end: periodEnd,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('paddle_subscription_id', subscriptionId);
+
+        await supabaseAdmin
+          .from('indb_auth_user_profiles')
+          .update({
+            subscription_end_date: periodEnd,
+          })
+          .eq('user_id', auth.userId);
+
+        logger.info(
+          { userId: auth.userId, subscriptionId, periodEnd },
+          'Updated local DB after Paddle cancel confirmation'
+        );
+      }
+    );
+  } catch (dbErr) {
+    // Non-fatal — webhook will handle it as backup
+    logger.warn({ error: dbErr }, 'Failed to update local DB after cancel — webhook will handle it');
+  }
+
+  // Log activity
   try {
     await ActivityLogger.logActivity({
       userId: auth.userId,
       eventType: 'subscription_cancel',
-      actionDescription: refundEligible
-        ? 'Canceled subscription with refund'
-        : 'Scheduled subscription cancellation',
+      actionDescription: 'Scheduled subscription cancellation at end of billing period',
       targetType: 'subscription',
       request,
-      metadata: { subscriptionId, refundEligible, daysActive },
+      metadata: {
+        subscriptionId,
+        effectiveAt: scheduledChange?.effective_at ?? periodEnd,
+      },
     });
   } catch (logErr) {
     logger.warn({ err: logErr }, 'Activity log failed (non-critical)');
   }
 
   return formatSuccess({
-    action: refundEligible ? 'immediate_cancellation' : 'scheduled_cancellation',
-    daysActive,
-    refundEligible,
-    subscription: updatedSub,
-    refund: refundEligible ? { status: 'pending', message: 'Refund will be processed' } : null,
-    message: refundEligible
-      ? 'Subscription canceled with refund'
-      : 'Subscription will be canceled at the end of the billing period',
+    subscription: {
+      id: paddleSub.id,
+      status: paddleSub.status,
+      canceledAt: paddleSub.canceled_at ?? null,
+      scheduledChange: scheduledChange
+        ? { action: scheduledChange.action, effectiveAt: scheduledChange.effective_at }
+        : null,
+      currentBillingPeriod: paddleSub.current_billing_period ?? null,
+    },
+    message: 'Subscription will be cancelled at the end of the current billing period.',
   });
 });
