@@ -145,7 +145,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | L-27 | Low | Inconsistent tsup config styles across packages | `packages/*/tsup.config.ts` | ✅ Fixed |
 | E-01 | Enhancement | Extract UserProfileService — 6 routes duplicate profile fetch | `apps/api/src/lib/services/user-profile-service.ts` | ✅ Fixed |
 | E-02 | Enhancement | Extract QuotaCalculator — identical quota math in 2 routes | `apps/api/.../quota/route.ts`, `dashboard/route.ts` | ✅ Fixed |
-| E-03 | Enhancement | Extract pricing tier extraction — duplicate logic in 2 routes | `apps/api/.../billing/overview/route.ts`, `dashboard/route.ts` | Open |
+| E-03 | Enhancement | Extract pricing tier extraction — duplicate logic in 2 routes | `apps/api/.../billing/overview/route.ts`, `dashboard/route.ts` | ✅ Fixed |
 | E-04 | Enhancement | Create buildOperationContext() helper — ~5 lines boilerplate/route | `apps/api/...` (all routes with SecureServiceRoleWrapper) | Open |
 | E-05 | Enhancement | Create fromJsonTyped<T>() utility for 18 Json ↔ T casts | `apps/api/...` (various route files) | Open |
 | E-06 | Enhancement | Clean up 17 dead ApiEndpoints constants (M-01) | `packages/shared/src/constants/ApiEndpoints.ts` | Open |
