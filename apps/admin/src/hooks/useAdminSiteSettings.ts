@@ -6,6 +6,7 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, type SiteSettingsRow, logger } from '@indexnow/shared';
+import { validateApiResponse, adminSiteSettingsResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export type UI_SiteSettings = SiteSettingsRow & {
@@ -22,6 +23,7 @@ async function fetchSiteSettings(): Promise<UI_SiteSettings | null> {
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminSiteSettingsResponseSchema, 'admin/settings/site');
   return data.data?.settings ?? null;
 }
 

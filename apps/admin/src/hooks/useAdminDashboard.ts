@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared';
+import { validateApiResponse, adminDashboardResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface DashboardStats {
@@ -37,6 +38,7 @@ async function fetchDashboardStats(): Promise<DashboardStats | null> {
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminDashboardResponseSchema, 'admin/dashboard');
   return data.data?.stats ?? null;
 }
 

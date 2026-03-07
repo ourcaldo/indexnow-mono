@@ -16,6 +16,11 @@ import {
   Zap,
 } from 'lucide-react'
 import { formatCurrency, PAYMENT_ENDPOINTS, type PublicSettingsPackage, type DashboardPackagePricingTier } from '@indexnow/shared'
+import {
+  cancelSubscriptionResponseSchema,
+  changePlanResponseSchema,
+  customerPortalResponseSchema,
+} from '@indexnow/shared/response-schemas'
 import { fmtDate } from '../../../lib/utils'
 import { api } from '../../../lib/api'
 import { usePageViewLogger, useActivityLogger } from '@indexnow/ui/hooks'
@@ -185,6 +190,7 @@ export default function BillingPage() {
       const result = await api<{ action: string }>(PAYMENT_ENDPOINTS.SUBSCRIPTION_CANCEL, {
         method: 'POST',
         body: JSON.stringify({ subscriptionId: paddleSubId }),
+        schema: cancelSubscriptionResponseSchema,
       })
 
       setShowCancelDialog(false)
@@ -232,6 +238,7 @@ export default function BillingPage() {
             subscriptionId: paddleSubId,
             newPriceId: paddlePriceId,
           }),
+          schema: changePlanResponseSchema,
         }
       )
 
@@ -261,7 +268,7 @@ export default function BillingPage() {
   const handleManageBilling = async () => {
     setPortalLoading(true)
     try {
-      const result = await api<{ portalUrl: string }>(PAYMENT_ENDPOINTS.CUSTOMER_PORTAL)
+      const result = await api<{ portalUrl: string }>(PAYMENT_ENDPOINTS.CUSTOMER_PORTAL, { schema: customerPortalResponseSchema })
       if (result?.portalUrl) {
         window.open(result.portalUrl, '_blank', 'noopener,noreferrer')
       }

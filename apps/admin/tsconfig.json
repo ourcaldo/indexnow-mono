@@ -4,6 +4,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@indexnow/shared": ["../../packages/shared/src"],
+      "@indexnow/shared/*": ["../../packages/shared/src/*"],
       "@indexnow/database": ["../../packages/database/src"],
       "@indexnow/database/client": ["../../packages/database/src/client"],
       "@indexnow/auth": ["../../packages/auth/src"],

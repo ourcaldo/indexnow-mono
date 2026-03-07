@@ -6,6 +6,7 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared';
+import { validateApiResponse, adminUsersResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface UserProfile {
@@ -57,6 +58,7 @@ async function fetchUsers(page: number, limit: number): Promise<UsersResponse> {
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminUsersResponseSchema, 'admin/users');
   return {
     users: data.data?.users ?? [],
     pagination: data.data?.pagination ?? { total_pages: 1, total_items: 0 },

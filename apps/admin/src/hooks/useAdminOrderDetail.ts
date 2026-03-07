@@ -6,6 +6,7 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, logger, type AdminOrderDetailResponse } from '@indexnow/shared';
+import { validateApiResponse, adminOrderDetailResponseSchema, updateOrderStatusResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 async function fetchOrderDetail(orderId: string): Promise<AdminOrderDetailResponse> {
@@ -18,6 +19,7 @@ async function fetchOrderDetail(orderId: string): Promise<AdminOrderDetailRespon
 
   const data = await response.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch order details');
+  validateApiResponse(data.data, adminOrderDetailResponseSchema, 'admin/orders/detail');
   return data.data;
 }
 
@@ -58,6 +60,7 @@ export function useUpdateOrderStatus(
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to update order status');
       if (!data.success) throw new Error(data.error || 'Failed to update order status');
+      validateApiResponse(data, updateOrderStatusResponseSchema, 'admin/orders/update-status');
       return data as UpdateStatusResponse;
     },
     onSuccess: () => {

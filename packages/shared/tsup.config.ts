@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig((options) => ({
-    entry: ['src/index.ts', 'src/schema.ts'],
+    entry: ['src/index.ts', 'src/schema.ts', 'src/response-schemas.ts'],
     format: ['cjs', 'esm'],
     dts: true,
     splitting: false,

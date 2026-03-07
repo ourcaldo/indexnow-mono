@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, type EnrichedActivityLog } from '@indexnow/shared';
+import { validateApiResponse, adminUserActivityResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 interface UserInfo {
@@ -34,6 +35,7 @@ async function fetchUserActivity(userId: string, page: number): Promise<UserActi
 
   const json = await response.json();
   const payload = json.data ?? json;
+  validateApiResponse(payload, adminUserActivityResponseSchema, 'admin/users/activity');
   return {
     logs: payload.logs ?? [],
     user: payload.user ?? null,

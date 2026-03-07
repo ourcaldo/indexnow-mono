@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, type ActivityDetail } from '@indexnow/shared';
+import { validateApiResponse, adminActivityDetailResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 async function fetchActivityDetail(id: string): Promise<ActivityDetail | null> {
@@ -10,6 +11,7 @@ async function fetchActivityDetail(id: string): Promise<ActivityDetail | null> {
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminActivityDetailResponseSchema, 'admin/activity/detail');
   return data.data?.activity ?? null;
 }
 

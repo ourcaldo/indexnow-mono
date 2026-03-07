@@ -6,6 +6,7 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, logger } from '@indexnow/shared';
+import { validateApiResponse, adminPackagesResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface PricingTier {
@@ -42,6 +43,7 @@ async function fetchPackages(): Promise<PaymentPackage[]> {
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminPackagesResponseSchema, 'admin/settings/packages');
   return data.data?.packages ?? [];
 }
 

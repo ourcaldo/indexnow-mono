@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, type AdminOrdersResponse } from '@indexnow/shared';
+import { validateApiResponse, adminOrdersResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface OrdersParams {
@@ -32,6 +33,7 @@ async function fetchOrders(params: OrdersParams): Promise<AdminOrdersResponse> {
     throw new Error(data.error || 'Failed to fetch orders');
   }
 
+  validateApiResponse(data.data, adminOrdersResponseSchema, 'admin/orders');
   return data.data;
 }
 

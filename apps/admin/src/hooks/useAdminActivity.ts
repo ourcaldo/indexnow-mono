@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, type EnrichedActivityLog } from '@indexnow/shared';
+import { validateApiResponse, adminActivityResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface ActivityParams {
@@ -32,6 +33,7 @@ async function fetchActivityLogs(params: ActivityParams): Promise<ActivityRespon
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminActivityResponseSchema, 'admin/activity');
   return {
     logs: data.data?.logs ?? [],
     pagination: data.data?.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 },

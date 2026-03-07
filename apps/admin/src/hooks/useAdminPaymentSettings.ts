@@ -12,6 +12,7 @@ import {
   type PaymentGatewayCredentials,
   logger,
 } from '@indexnow/shared';
+import { validateApiResponse, adminPaymentGatewaysResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export type UI_PaymentGateway = Omit<PaymentGatewayRow, 'configuration' | 'api_credentials'> & {
@@ -27,6 +28,7 @@ async function fetchPaymentGateways(): Promise<UI_PaymentGateway[]> {
   }
 
   const data = await response.json();
+  validateApiResponse(data.data, adminPaymentGatewaysResponseSchema, 'admin/settings/payments');
   return (data.data?.gateways || []).map((g: PaymentGatewayRow) => ({
     ...g,
     configuration: (g.configuration as PaymentGatewayConfiguration) || {},

@@ -6,6 +6,7 @@ import {
   type UseMutationResult,
 } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS, type ErrorDetailResponse } from '@indexnow/shared';
+import { validateApiResponse, adminErrorDetailResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 async function fetchErrorDetail(errorId: string): Promise<ErrorDetailResponse> {
@@ -18,6 +19,7 @@ async function fetchErrorDetail(errorId: string): Promise<ErrorDetailResponse> {
 
   const data = await response.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch error details');
+  validateApiResponse(data.data, adminErrorDetailResponseSchema, 'admin/errors/detail');
   return data.data;
 }
 

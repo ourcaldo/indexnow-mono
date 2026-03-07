@@ -14,6 +14,25 @@ import {
   type BillingHistoryResponse,
   type OrderDetailsResponse,
 } from '@indexnow/shared'
+import {
+  domainListResponseSchema,
+  countryListResponseSchema,
+  profileResponseSchema,
+  keywordUsageSchema,
+  keywordsResponseSchema,
+  dashboardAggregateResponseSchema,
+  publicSettingsResponseSchema,
+  billingOverviewResponseSchema,
+  billingHistoryResponseSchema,
+  subscriptionStatusResponseSchema,
+  billingPackageSchema,
+  trialEligibilityResponseSchema,
+  orderDetailsResponseSchema,
+  userSettingsResponseSchema,
+  createDomainResponseSchema,
+  addKeywordsResponseSchema,
+  rankHistoryResponseSchema,
+} from '@indexnow/shared/response-schemas'
 import { api } from '../lib/api'
 
 // ——— Types ———
@@ -134,7 +153,7 @@ export type { OrderDetailsResponse as OrderDetails } from '@indexnow/shared'
 export function useDomains(enabled = true) {
   return useQuery({
     queryKey: ['domains'],
-    queryFn: () => api<{ data: Domain[]; pagination: unknown }>(RANK_TRACKING_ENDPOINTS.DOMAINS),
+    queryFn: () => api<{ data: Domain[]; pagination: unknown }>(RANK_TRACKING_ENDPOINTS.DOMAINS, { schema: domainListResponseSchema }),
     select: (d) => d.data ?? [],
     enabled,
   })
@@ -144,7 +163,7 @@ export function useDomains(enabled = true) {
 export function useCountries() {
   return useQuery({
     queryKey: ['countries'],
-    queryFn: () => api<{ data: Country[] }>(RANK_TRACKING_ENDPOINTS.COUNTRIES),
+    queryFn: () => api<{ data: Country[] }>(RANK_TRACKING_ENDPOINTS.COUNTRIES, { schema: countryListResponseSchema }),
     select: (d) => d.data ?? [],
   })
 }
@@ -164,7 +183,7 @@ export function useCountryMap(): Record<string, string> {
 export function useProfile(enabled = true) {
   return useQuery({
     queryKey: ['profile'],
-    queryFn: () => api<{ profile: UserProfile }>(AUTH_ENDPOINTS.PROFILE),
+    queryFn: () => api<{ profile: UserProfile }>(AUTH_ENDPOINTS.PROFILE, { schema: profileResponseSchema }),
     select: (d) => d.profile,
     enabled,
   })
@@ -174,7 +193,7 @@ export function useProfile(enabled = true) {
 export function useKeywordUsage() {
   return useQuery({
     queryKey: ['keyword-usage'],
-    queryFn: () => api<KeywordUsage>(RANK_TRACKING_ENDPOINTS.KEYWORD_USAGE),
+    queryFn: () => api<KeywordUsage>(RANK_TRACKING_ENDPOINTS.KEYWORD_USAGE, { schema: keywordUsageSchema }),
   })
 }
 
@@ -196,7 +215,7 @@ export function useKeywords(params?: { domain?: string; page?: number; limit?: n
     queryFn: () =>
       api<{ keywords: Keyword[]; total: number }>(
         RANK_TRACKING_ENDPOINTS.KEYWORDS,
-        { params: params as Record<string, string | number | boolean> }
+        { params: params as Record<string, string | number | boolean>, schema: keywordsResponseSchema }
       ),
   })
 }
@@ -207,6 +226,7 @@ export function useDashboardAggregate(domain?: string | null) {
     queryKey: ['dashboard-aggregate', domain ?? 'all'],
     queryFn: () => api<DashboardAggregateResponse>(DASHBOARD_ENDPOINTS.MAIN, {
       params: domain ? { domain } : undefined,
+      schema: dashboardAggregateResponseSchema,
     }),
   })
 }
@@ -215,8 +235,7 @@ export function useDashboardAggregate(domain?: string | null) {
 export function usePublicSettings() {
   return useQuery({
     queryKey: ['public-settings'],
-    // Public endpoint — api<T> gracefully omits Authorization if no user is logged in
-    queryFn: () => api<PublicSettingsResponse>(PUBLIC_ENDPOINTS.SETTINGS),
+    queryFn: () => api<PublicSettingsResponse>(PUBLIC_ENDPOINTS.SETTINGS, { schema: publicSettingsResponseSchema }),
     staleTime: 5 * 60 * 1000, // 5 minutes — this data barely changes
   })
 }
@@ -225,7 +244,7 @@ export function usePublicSettings() {
 export function useBillingOverview() {
   return useQuery({
     queryKey: ['billing-overview'],
-    queryFn: () => api<BillingOverviewResponse>(BILLING_ENDPOINTS.OVERVIEW),
+    queryFn: () => api<BillingOverviewResponse>(BILLING_ENDPOINTS.OVERVIEW, { schema: billingOverviewResponseSchema }),
   })
 }
 
@@ -236,6 +255,7 @@ export function useBillingHistory(page: number = 1, limit: number = 10) {
     queryFn: () =>
       api<BillingHistoryResponse>(BILLING_ENDPOINTS.HISTORY, {
         params: { page, limit },
+        schema: billingHistoryResponseSchema,
       }),
   })
 }
@@ -253,7 +273,7 @@ export function useSubscription() {
           expires_at: string
           package_id: string
         }
-      }>(`${API_BASE.V1}/payments/paddle/subscription/my-subscription`)
+      }>(`${API_BASE.V1}/payments/paddle/subscription/my-subscription`, { schema: subscriptionStatusResponseSchema })
       return res
     },
     retry: false, // Don't retry — subscription may not exist
@@ -264,7 +284,7 @@ export function useSubscription() {
 export function usePackageById(id: string | null | undefined) {
   return useQuery({
     queryKey: ['package', id],
-    queryFn: () => api<BillingPackage>(BILLING_ENDPOINTS.PACKAGE_BY_ID(id!)),
+    queryFn: () => api<BillingPackage>(BILLING_ENDPOINTS.PACKAGE_BY_ID(id!), { schema: billingPackageSchema }),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
   })
@@ -274,7 +294,7 @@ export function usePackageById(id: string | null | undefined) {
 export function useTrialEligibility(enabled = true) {
   return useQuery({
     queryKey: ['trial-eligibility'],
-    queryFn: () => api<{ eligible: boolean; message?: string }>(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY),
+    queryFn: () => api<{ eligible: boolean; message?: string }>(AUTH_ENDPOINTS.TRIAL_ELIGIBILITY, { schema: trialEligibilityResponseSchema }),
     enabled,
     staleTime: 2 * 60 * 1000,
   })
@@ -284,7 +304,7 @@ export function useTrialEligibility(enabled = true) {
 export function useOrderDetails(orderId: string | undefined) {
   return useQuery({
     queryKey: ['order', orderId],
-    queryFn: () => api<OrderDetailsResponse>(BILLING_ENDPOINTS.ORDER_BY_ID(orderId!)),
+    queryFn: () => api<OrderDetailsResponse>(BILLING_ENDPOINTS.ORDER_BY_ID(orderId!), { schema: orderDetailsResponseSchema }),
     enabled: !!orderId,
   })
 }
@@ -301,7 +321,7 @@ export function useUserSettings() {
         email_quota_alerts: boolean
         [key: string]: unknown
       }
-    }>(AUTH_ENDPOINTS.SETTINGS),
+    }>(AUTH_ENDPOINTS.SETTINGS, { schema: userSettingsResponseSchema }),
   })
 }
 
@@ -315,6 +335,7 @@ export function useCreateDomain() {
       api<{ data: Domain }>(RANK_TRACKING_ENDPOINTS.DOMAINS, {
         method: 'POST',
         body: JSON.stringify(data),
+        schema: createDomainResponseSchema,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['domains'] })
@@ -337,6 +358,7 @@ export function useAddKeywords() {
       api<{ created: number; keywords: unknown[]; skipped?: string[] }>(RANK_TRACKING_ENDPOINTS.KEYWORDS, {
         method: 'POST',
         body: JSON.stringify(data),
+        schema: addKeywordsResponseSchema,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['keywords'] })
@@ -402,7 +424,7 @@ export function useRankHistory(startDate: string, endDate: string, domain?: stri
     queryFn: () =>
       api<RankHistoryResponse>(
         RANK_TRACKING_ENDPOINTS.RANK_HISTORY,
-        { params: { start_date: startDate, end_date: endDate, limit: '200', ...(domain ? { domain } : {}) } }
+        { params: { start_date: startDate, end_date: endDate, limit: '200', ...(domain ? { domain } : {}) }, schema: rankHistoryResponseSchema }
       ),
     staleTime: 2 * 60 * 1000, // 2 minutes
   })

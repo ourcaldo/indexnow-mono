@@ -1,14 +1,19 @@
 'use client'
 
 import { authService } from '@indexnow/supabase-client'
+import { type ZodType } from 'zod'
 
 /**
  * Local API request helper — no dependency on @indexnow/database/client.
  * Authenticates via cached authService token, sends JSON, parses standardized { success, data } responses.
+ * Optionally validates the response against a Zod schema (logs warning on mismatch, never throws).
  */
 export async function api<T = unknown>(
   url: string,
-  opts?: RequestInit & { params?: Record<string, string | number | boolean> }
+  opts?: RequestInit & {
+    params?: Record<string, string | number | boolean>
+    schema?: ZodType
+  }
 ): Promise<T> {
   // Build URL with query params
   let fullUrl = url.startsWith('http') || url.includes('/api/v1') ? url : `/${url}`
@@ -48,9 +53,23 @@ export async function api<T = unknown>(
   }
 
   // Standardized format: { success: true, data: T }
+  let data: T
   if ('success' in json && json.success && json.data !== undefined) {
-    return json.data as T
+    data = json.data as T
+  } else {
+    data = json as T
   }
 
-  return json as T
+  // Runtime validation (non-breaking — logs warning only)
+  if (opts?.schema) {
+    const result = opts.schema.safeParse(data)
+    if (!result.success) {
+      console.warn(
+        `[API Response Validation] Schema mismatch for ${url}:`,
+        result.error.issues.map((i: { path: (string | number)[]; message: string }) => `${i.path.join('.')}: ${i.message}`),
+      )
+    }
+  }
+
+  return data
 }

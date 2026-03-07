@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS } from '@indexnow/shared';
+import { validateApiResponse, adminErrorStatsResponseSchema, adminErrorListResponseSchema } from '@indexnow/shared/response-schemas';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 
 export interface ErrorStats {
@@ -69,6 +70,7 @@ async function fetchErrorStats(timeRange: TimeRange): Promise<ErrorStats | null>
   const response = await authenticatedFetch(`${ADMIN_ENDPOINTS.ERROR_STATS}?range=${timeRange}`);
   if (!response.ok) return null;
   const data = await response.json();
+  validateApiResponse(data.data, adminErrorStatsResponseSchema, 'admin/errors/stats');
   return data.data ?? null;
 }
 
@@ -114,6 +116,7 @@ async function fetchErrorList(
   const response = await authenticatedFetch(`${ADMIN_ENDPOINTS.ERRORS}?${params.toString()}`);
   if (!response.ok) return { errors: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
   const data = await response.json();
+  validateApiResponse(data.data, adminErrorListResponseSchema, 'admin/errors/list');
   return {
     errors: data.data?.errors ?? [],
     pagination: data.data?.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false },
