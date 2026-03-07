@@ -149,7 +149,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | E-04 | Enhancement | Create buildOperationContext() helper — ~5 lines boilerplate/route | `apps/api/...` (all routes with SecureServiceRoleWrapper) | ✅ Fixed |
 | E-05 | Enhancement | Create fromJsonTyped<T>() utility for 18 Json ↔ T casts | `apps/api/...` (various route files) | ✅ Fixed |
 | E-06 | Enhancement | Clean up 17 dead ApiEndpoints constants (M-01) | `packages/shared/src/constants/ApiEndpoints.ts` | ✅ Fixed |
-| E-07 | Enhancement | Extract extractErrorMeta() helper for admin error pages | `apps/admin/.../errors/page.tsx`, `errors/[id]/page.tsx` | Open |
+| E-07 | Enhancement | Extract extractErrorMeta() helper for admin error pages | `apps/admin/src/lib/error-helpers.ts`, `apps/admin/src/components/CodeBlock.tsx` | ✅ Fixed |
 | E-08 | Enhancement | Extract useAdminUserDetail(userId) hook from inline useQuery | `apps/admin/.../users/[id]/page.tsx` | Open |
 | E-09 | Enhancement | API client runs getUser()+getSession() per call — add token caching | `apps/user-dashboard/src/lib/api.ts` | Open |
 | E-10 | Enhancement | Consider Zod runtime validation for API responses | All frontend apps | Open |
