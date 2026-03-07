@@ -10,3 +10,4 @@ export * from './useAdminSiteSettings';
 export * from './useAdminPaymentSettings';
 export * from './useAdminPackages';
 export * from './useAdminUserActivity';
+export * from './useAdminUserDetail';

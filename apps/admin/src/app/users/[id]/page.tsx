@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 import { useAdminPageViewLogger } from '@indexnow/ui';
-import { useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfile } from '@/hooks';
+import { useChangeUserRole, useSuspendUser, useAdminUserActivity, useAdminUserDetail, type UserProfile } from '@/hooks';
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import {
   ArrowLeft, Shield, Package, AlertTriangle,
@@ -15,13 +15,6 @@ import {
 import Link from 'next/link';
 import { Modal } from '@/components/Modal';
 import { UserDetailContent, LatestActivity } from '@/components/UserDetailContent';
-
-async function fetchUserDetail(userId: string): Promise<UserProfile | null> {
-  const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
-  if (!response.ok) throw new Error('Failed to fetch user');
-  const data = await response.json();
-  return data.data?.user ?? null;
-}
 
 /* ─── Page ───────────────────────────────────────────────── */
 
@@ -39,11 +32,7 @@ export default function UserDetailPage() {
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedPackageId, setSelectedPackageId] = useState('');
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['admin', 'users', userId],
-    queryFn: () => fetchUserDetail(userId),
-    enabled: !!userId,
-  });
+  const { data: user, isLoading } = useAdminUserDetail(userId);
 
   const { data: packages } = useAdminPackages();
   const changeRole = useChangeUserRole();

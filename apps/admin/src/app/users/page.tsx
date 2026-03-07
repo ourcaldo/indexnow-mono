@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { ADMIN_ENDPOINTS } from '@indexnow/shared';
 import { authenticatedFetch } from '@indexnow/supabase-client';
 import { useAdminPageViewLogger } from '@indexnow/ui';
@@ -11,7 +11,7 @@ import {
   X, ExternalLink,
 } from 'lucide-react';
 import { Pagination } from '@/components/shared-primitives';
-import { useAdminUsers, useChangeUserRole, useSuspendUser, useAdminUserActivity, type UserProfile } from '@/hooks';
+import { useAdminUsers, useChangeUserRole, useSuspendUser, useAdminUserActivity, useAdminUserDetail, type UserProfile } from '@/hooks';
 import { useAdminPackages, type PaymentPackage } from '@/hooks';
 import { formatDistanceToNow } from 'date-fns';
 import { Modal } from '@/components/Modal';
@@ -20,16 +20,7 @@ import { UserDetailContent, Avatar, RoleBadge, StatusPill } from '@/components/U
 /* ─── Slide-over panel ───────────────────────────────────── */
 
 function UserSlideOver({ userId, onClose }: { userId: string; onClose: () => void }) {
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['admin', 'users', userId],
-    queryFn: async () => {
-      const response = await authenticatedFetch(ADMIN_ENDPOINTS.USER_BY_ID(userId));
-      if (!response.ok) throw new Error('Failed to fetch user');
-      const data = await response.json();
-      return data.data?.user as UserProfile | null;
-    },
-    enabled: !!userId,
-  });
+  const { data: user, isLoading } = useAdminUserDetail(userId);
 
   const { data: activityData } = useAdminUserActivity(userId, 1);
   const recentLogs = (activityData?.logs ?? []).slice(0, 5);
