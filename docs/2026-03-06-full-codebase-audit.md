@@ -80,7 +80,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | M-02 | Medium | Paddle webhook uses raw NextResponse.json() — non-standard response shape | `apps/api/src/app/api/v1/payments/paddle/webhook/route.ts` | ✅ Fixed |
 | M-03 | Medium | Sentry webhook uses raw NextResponse.json() (12 instances) | `apps/api/src/app/api/v1/webhooks/sentry/route.ts` | ✅ Fixed |
 | M-04 | Medium | No Zod validation on webhook payloads — crash on malformed input | `apps/api/.../webhooks/sentry/route.ts:42`, `paddle/webhook/route.ts` | ✅ Fixed |
-| M-05 | Medium | 4 stub routes return 501/503 without documentation | `apps/api/.../customer-portal/route.ts`, `seranking/health/metrics/route.ts`, etc. | ⏸️ Deferred |
+| M-05 | Medium | 4 stub routes return 501/503 without documentation | `apps/api/.../customer-portal/route.ts`, `seranking/health/metrics/route.ts`, etc. | ✅ Fixed |
 | M-06 | Medium | Inconsistent error creation — throw Error vs ErrorHandlingService.createError | `apps/api/...` (7 route files) | ⏸️ Deferred (throws caught by API wrappers — low risk) |
 | M-07 | Medium | Silent error swallowing — ActivityLogger failures invisible | `apps/api/...` (7 route files) | ✅ Fixed |
 | M-08 | Medium | Type casting `request as unknown as NextRequest` in change-password | `apps/api/.../auth/user/change-password/route.ts:26,101` | ✅ Fixed |
@@ -109,7 +109,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | M-31 | Medium | Wildcard domains in CSP (*.supabase.co, *.posthog.com, etc.) | `apps/*/next.config.ts` | ⏸️ Deferred |
 | M-32 | Medium | Dependency versions not in pnpm catalog (recharts, @paddle/paddle-js) | `apps/user-dashboard/package.json`, `packages/ui/package.json` | ✅ Fixed |
 | M-33 | Medium | PostCSS config in API app (server-only — dead config) | `apps/api/postcss.config.mjs` | ✅ Fixed |
-| M-34 | Medium | SQL schema duplicate CREATE TABLE for indb_keyword_rankings | `database-schema/database_schema.sql` | ⏸️ Deferred |
+| M-34 | Medium | SQL schema duplicate CREATE TABLE for indb_keyword_rankings | `database-schema/database_schema.sql` | ✅ Fixed |
 | M-35 | Medium | Changeset package names don't match workspace names | `.changeset/config.json:7` | ✅ Fixed |
 | M-36 | Medium | api-middleware tsup uses skipLibCheck — hides type errors | `packages/api-middleware/tsup.config.ts:6-9` | ✅ Fixed |
 | M-37 | Medium | Missing peerDependencies in analytics + services packages | `packages/analytics/package.json`, `packages/services/package.json` | ✅ Fixed |
@@ -120,7 +120,7 @@ This audit performed a comprehensive code review across the entire IndexNow mono
 | L-02 | Low | 18 `as unknown as T` patterns in API route handlers | `apps/api/...` (various route files) | ✅ Fixed |
 | L-03 | Low | Non-null assertions in IntegrationService (3 instances) | `apps/api/src/lib/keyword-enrichment/services/IntegrationService.ts:215-217` | ✅ Fixed |
 | L-04 | Low | `as string` on enum comparisons in keyword enrichment (3 instances) | `apps/api/src/lib/keyword-enrichment/services/KeywordEnrichmentService.ts` | ✅ Fixed |
-| L-05 | Low | user-dashboard uses @tanstack/react-query — convention says raw fetch | `apps/user-dashboard/src/hooks/hooks.ts` | ⏸️ Deferred |
+| L-05 | Low | user-dashboard uses @tanstack/react-query — convention says raw fetch | `apps/user-dashboard/src/hooks/hooks.ts` | ✅ Fixed |
 | L-06 | Low | 2 hardcoded API URLs (no endpoint constants) | `apps/user-dashboard/.../PlansBillingContent.tsx` | ✅ Fixed |
 | L-07 | Low | 'use client' on line 4 instead of line 1 | `apps/user-dashboard/.../resend-verification/page.tsx` | ✅ Fixed |
 | L-08 | Low | .env file permissions should be 600 on VPS | `apps/*/.env` | ⏸️ Deferred |

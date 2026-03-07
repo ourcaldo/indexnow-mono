@@ -124,9 +124,8 @@ export const GET = adminApiWrapper(async (request: NextRequest, adminUser: Admin
 ### Frontend Apps
 
 **user-dashboard** (port 3000):
-- Hooks in `src/hooks/` use raw `fetch()` + `useState`/`useCallback` (NOT React Query)
-- Hook subdirs: `business/` (useTrialManager, useQuotaManager), `data/` (useEnhancedUserProfile, usePaymentHistory, useRankTracking), `ui/` (useModal, useNotification)
-- Barrel export via `hooks/index.ts`
+- Uses `@tanstack/react-query` for data fetching (same as admin)
+- Hooks in `src/lib/hooks.ts` use `useQuery`/`useMutation` with `fetch()` internally
 - All hooks call `supabaseBrowser.auth.getSession()` then `fetch(endpoint, { headers: { 'Authorization': \`Bearer ${session.access_token}\` }, credentials: 'include' })`
 - API endpoints centralized in `@/lib/core/constants/ApiEndpoints.ts`
 - Settings pages use file-based routing: `settings/profile/`, `settings/billing/`, `settings/security/`, `settings/notifications/`
