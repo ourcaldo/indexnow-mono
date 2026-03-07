@@ -15,6 +15,7 @@ interface SubscriptionItem {
 
 interface PaddleSubscriptionData {
   id: string;
+  status: string;
   customer_id: string;
   items: SubscriptionItem[];
   custom_data: unknown;
@@ -32,6 +33,7 @@ export async function processSubscriptionCreated(data: unknown) {
   const subData = data as PaddleSubscriptionData;
   const subscription_id = subData.id;
   const customer_id = subData.customer_id;
+  const paddleStatus = subData.status;
   const items = subData.items;
   const custom_data = subData.custom_data;
   const current_billing_period = subData.current_billing_period;
@@ -80,7 +82,7 @@ export async function processSubscriptionCreated(data: unknown) {
     {
       table: 'indb_payment_subscriptions',
       operationType: 'insert',
-      data: { user_id: userId, paddle_subscription_id: subscription_id, status: 'active' },
+      data: { user_id: userId, paddle_subscription_id: subscription_id, status: paddleStatus === 'trialing' ? 'trialing' : 'active' },
     },
     async () => {
       const { data: packageData, error: packageError } = await supabaseAdmin
@@ -101,7 +103,7 @@ export async function processSubscriptionCreated(data: unknown) {
         .insert({
           user_id: userId,
           paddle_subscription_id: subscription_id,
-          status: 'active',
+          status: paddleStatus === 'trialing' ? 'trialing' : 'active',
           package_id: packageData.id,
           paddle_price_id: priceId,
           start_date: current_billing_period.starts_at,

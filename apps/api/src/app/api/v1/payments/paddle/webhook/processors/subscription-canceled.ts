@@ -1,23 +1,19 @@
 /**
  * Paddle Webhook Processor: subscription.canceled
- * Handles subscription cancellation events
+ * Handles subscription cancellation events.
+ *
+ * When this event fires, the cancellation has ALREADY taken effect —
+ * status is "canceled" and current_billing_period is null.
+ * Use canceled_at as the subscription end date.
  */
 
 import { supabaseAdmin, SecureServiceRoleWrapper } from '@indexnow/database';
 import { backfillPaddleCustomerId } from './utils';
 
-interface ScheduledChange {
-  action?: string;
-}
-
 interface PaddleCanceledData {
   id: string;
   customer_id?: string;
   canceled_at?: string;
-  current_billing_period?: {
-    ends_at: string;
-  };
-  scheduled_change?: ScheduledChange;
 }
 
 export async function processSubscriptionCanceled(data: unknown) {
@@ -27,15 +23,11 @@ export async function processSubscriptionCanceled(data: unknown) {
 
   const subData = data as PaddleCanceledData;
   const subscription_id = subData.id;
-  const canceled_at = subData.canceled_at;
-  const current_billing_period = subData.current_billing_period;
-  const scheduled_change = subData.scheduled_change;
+  const canceled_at = subData.canceled_at || new Date().toISOString();
 
   if (!subscription_id) {
     throw new Error('Missing subscription_id in cancel event');
   }
-
-  const cancelAtPeriodEnd = scheduled_change?.action === 'cancel';
 
   await SecureServiceRoleWrapper.executeSecureOperation(
     {
@@ -43,21 +35,21 @@ export async function processSubscriptionCanceled(data: unknown) {
       operation: 'cancel_subscription',
       reason: 'Paddle webhook subscription.canceled event',
       source: 'webhook.processors.subscription-canceled',
-      metadata: { subscription_id, cancelAtPeriodEnd },
+      metadata: { subscription_id, canceled_at },
     },
     {
       table: 'indb_payment_subscriptions',
       operationType: 'update',
-      data: { status: cancelAtPeriodEnd ? 'active' : 'cancelled' },
+      data: { status: 'cancelled' },
       whereConditions: { paddle_subscription_id: subscription_id },
     },
     async () => {
       const { error: subscriptionError } = await supabaseAdmin
         .from('indb_payment_subscriptions')
         .update({
-          status: cancelAtPeriodEnd ? 'active' : 'cancelled',
-          canceled_at: canceled_at || new Date().toISOString(),
-          cancel_at_period_end: cancelAtPeriodEnd,
+          status: 'cancelled',
+          canceled_at,
+          cancel_at_period_end: false,
           updated_at: new Date().toISOString(),
         })
         .eq('paddle_subscription_id', subscription_id);
@@ -77,10 +69,11 @@ export async function processSubscriptionCanceled(data: unknown) {
       }
 
       if (subscription && subscription.user_id) {
+        // Use canceled_at as end date — current_billing_period is null for canceled subs
         const { error: profileError } = await supabaseAdmin
           .from('indb_auth_user_profiles')
           .update({
-            subscription_end_date: current_billing_period?.ends_at || null,
+            subscription_end_date: canceled_at,
           })
           .eq('user_id', subscription.user_id);
 
