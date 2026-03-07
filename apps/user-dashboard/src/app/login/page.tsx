@@ -345,11 +345,11 @@ export default function Login() {
       </div>
 
       {/* ── Right Panel: Dashboard Preview (desktop only) ── */}
-      <div className="hidden lg:flex w-[45%] bg-brand-primary m-3 rounded-2xl p-12 flex-col justify-center items-center text-white relative overflow-hidden">
+      <div className="hidden lg:flex w-[45%] bg-gradient-to-br from-[#c2410c] via-[#ea580c] to-[#b91c1c] m-3 rounded-2xl p-12 flex-col justify-center items-center text-white relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/5" />
-          <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full bg-white/5" />
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/[0.06]" />
+          <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] rounded-full bg-black/[0.08]" />
           <div className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full bg-white/[0.03]" />
         </div>
 
