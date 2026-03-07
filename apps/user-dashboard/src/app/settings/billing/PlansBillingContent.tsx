@@ -397,14 +397,6 @@ export default function BillingPage() {
                   <Zap className="h-4 w-4" />
                   Change Plan
                 </button>
-                <button
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors disabled:opacity-50"
-                >
-                  {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                  Manage Billing
-                </button>
                 {subscriptionData?.hasSubscription && (
                   <button
                     onClick={() => setShowCancelDialog(true)}
@@ -601,16 +593,28 @@ export default function BillingPage() {
 
       {/* ── Payment method info ── */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-            <CreditCard className="h-5 w-5 text-gray-500" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+              <CreditCard className="h-5 w-5 text-gray-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Payment Method</p>
+              <p className="text-xs text-gray-500">
+                Payments are handled securely by Paddle
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">Payment Method</p>
-            <p className="text-xs text-gray-500">
-              Payments are handled securely by Paddle
-            </p>
-          </div>
+          {subscriptionData?.hasSubscription && (
+            <button
+              onClick={handleManageBilling}
+              disabled={portalLoading}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors disabled:opacity-50"
+            >
+              {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+              Manage Billing
+            </button>
+          )}
         </div>
       </div>
 
