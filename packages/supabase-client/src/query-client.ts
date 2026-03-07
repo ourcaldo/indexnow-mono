@@ -1,10 +1,11 @@
+'use client';
+
 import { QueryClient } from '@tanstack/react-query';
 import { type Json } from '@indexnow/shared';
-import { supabaseBrowser as supabase } from '@indexnow/supabase-client';
-import { ApiError } from './api-error';
+import { supabaseBrowser as supabase } from './supabase-browser';
+import { ApiRequestError } from './api-request-error';
 
-// Re-export for backward compatibility
-export { ApiError } from './api-error';
+export { ApiRequestError } from './api-request-error';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,7 +53,7 @@ export const apiRequest = async <T = Json>(url: string, options?: RequestInit): 
     ...options,
   });
 
-  // (#V7 L-06) Parse response JSON. Returns {} on parse failure (e.g. 204 No Content)
+  // Parse response JSON. Returns {} on parse failure (e.g. 204 No Content)
   // so downstream checks like `'success' in jsonResponse` still work without throwing.
   const rawResponse = await response.json().catch(() => ({}));
   const jsonResponse: { success?: boolean; data?: T; error?: Record<string, Json | undefined> } =
@@ -61,7 +62,7 @@ export const apiRequest = async <T = Json>(url: string, options?: RequestInit): 
 
   if (!response.ok) {
     if (isStandardizedFormat && jsonResponse.success === false) {
-      throw new ApiError(jsonResponse.error || { message: `HTTP Error: ${response.status}` });
+      throw new ApiRequestError(jsonResponse.error || { message: `HTTP Error: ${response.status}` });
     } else {
       const errorPayload = jsonResponse.error;
       const errorMessage =

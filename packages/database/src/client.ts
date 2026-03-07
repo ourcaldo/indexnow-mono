@@ -77,5 +77,4 @@ export * from './hooks';
 export { ApiError } from './utils/api-error';
 export { ApiClient, apiClient } from './utils/ApiClient';
 export * from './utils/site-settings';
-export * from './utils/queryClient';
 export { toJson, fromJson, fromJsonOr } from './utils/json-helpers';

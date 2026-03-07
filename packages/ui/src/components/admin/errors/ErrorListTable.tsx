@@ -2,7 +2,7 @@
 
 import { useState, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@indexnow/database/client';
+import { apiRequest } from '@indexnow/supabase-client';
 import {
   Table,
   TableBody,

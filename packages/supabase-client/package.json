@@ -24,7 +24,8 @@
   "dependencies": {
     "@indexnow/shared": "workspace:*",
     "@supabase/supabase-js": "^2.54.0",
-    "@supabase/ssr": "^0.6.1"
+    "@supabase/ssr": "^0.6.1",
+    "@tanstack/react-query": "catalog:"
   },
   "devDependencies": {
     "@indexnow/eslint-config": "workspace:*",

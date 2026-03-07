@@ -22,3 +22,10 @@ export {
   authenticatedFetchJson,
   type AuthenticatedFetchOptions,
 } from './authenticated-fetch'
+
+// React Query client & API request helper (browser-only)
+export {
+  queryClient,
+  apiRequest,
+  ApiRequestError,
+} from './query-client'
